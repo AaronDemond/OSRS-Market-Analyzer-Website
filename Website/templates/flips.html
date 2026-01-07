@@ -95,6 +95,17 @@
         border: 1px solid rgba(255, 152, 0, 0.3);
         color: #ff9800;
     }
+    #flipsTable.delete-mode tbody tr {
+        cursor: pointer;
+    }
+    #flipsTable.delete-mode tbody tr:hover > * {
+        --bs-table-hover-bg: #dc3545;
+        background-color: #dc3545;
+        color: #fff;
+    }
+    #flipsTable.delete-mode tbody tr:hover a {
+        color: #fff;
+    }
 </style>
 {% endblock %}
 
@@ -103,6 +114,9 @@
 
 <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#newFlipModal">
     New Flip
+</button>
+<button type="button" class="btn btn-danger mb-3 ms-2" id="deleteFlipBtn">
+    Delete Flip
 </button>
 
 <div class="stats-row">
@@ -173,7 +187,7 @@
     </thead>
     <tbody>
         {% for item in items %}
-        <tr>
+        <tr data-item-id="{{ item.item_id }}" data-item-name="{{ item.name }}">
             <td><a href="{% url 'item_detail' item.item_id %}">{{ item.name }}</a></td>
             <td data-value="{{ item.avg_price }}">{{ item.avg_price|intcomma }}</td>
             <td data-value="{{ item.quantity }}">{{ item.quantity|intcomma }}</td>
@@ -317,6 +331,67 @@ document.addEventListener('DOMContentLoaded', function() {
         
         rows.forEach(row => tbody.appendChild(row));
     }
+
+    // Delete flip functionality
+    const deleteBtn = document.getElementById('deleteFlipBtn');
+    let deleteMode = false;
+    let isProcessing = false;
+    
+    deleteBtn.addEventListener('click', function() {
+        if (!deleteMode) {
+            deleteMode = true;
+            deleteBtn.textContent = 'Click a row to delete';
+            deleteBtn.classList.add('btn-warning');
+            deleteBtn.classList.remove('btn-danger');
+            table.classList.add('delete-mode');
+        } else {
+            cancelDeleteMode();
+        }
+    });
+
+    function cancelDeleteMode() {
+        deleteMode = false;
+        isProcessing = false;
+        deleteBtn.textContent = 'Delete Flip';
+        deleteBtn.classList.remove('btn-warning');
+        deleteBtn.classList.add('btn-danger');
+        table.classList.remove('delete-mode');
+    }
+
+    table.querySelector('tbody').addEventListener('click', function(e) {
+        if (!deleteMode || isProcessing) return;
+        
+        const row = e.target.closest('tr');
+        if (!row || !row.dataset.itemId) return;
+        
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        
+        isProcessing = true;
+        deleteMode = false;
+        
+        const itemName = row.dataset.itemName;
+        const itemId = row.dataset.itemId;
+        
+        if (confirm(`Are you sure you want to delete all flips for "${itemName}"?`)) {
+            // Create and submit a form to delete
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/flips/delete/${itemId}/`;
+            
+            const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = csrf;
+            form.appendChild(csrfInput);
+            
+            document.body.appendChild(form);
+            form.submit();
+        } else {
+            cancelDeleteMode();
+        }
+    });
 });
 </script>
 {% endblock %}

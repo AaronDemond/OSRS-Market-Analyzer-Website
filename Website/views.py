@@ -134,6 +134,13 @@ def add_flip(request):
     return redirect('flips')
 
 
+def delete_flip(request, item_id):
+    """Delete all flips for a specific item"""
+    if request.method == 'POST':
+        Flip.objects.filter(item_id=item_id).delete()
+    return redirect('flips')
+
+
 def item_search_api(request):
     """API endpoint for item name autocomplete"""
     query = request.GET.get('q', '').lower()
