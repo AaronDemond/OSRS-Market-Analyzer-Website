@@ -84,7 +84,22 @@ def flips(request):
             'quantity': quantity_held,
         })
     
-    return render(request, 'flips.html', {'items': items})
+    # Calculate total net and position size
+    total_net = 0
+    position_size = 0
+    for item in items:
+        item_position = item['avg_price'] * item['quantity']
+        position_size += item_position
+        if item['high_price']:
+            # Apply 2% GE tax to sell value
+            current_value = int(item['high_price'] * item['quantity'] * 0.98)
+            total_net += current_value - item_position
+    
+    return render(request, 'flips.html', {
+        'items': items,
+        'total_net': total_net,
+        'position_size': position_size,
+    })
 
 
 def add_flip(request):

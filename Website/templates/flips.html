@@ -58,6 +58,43 @@
         content: '↓';
         opacity: 1;
     }
+    .stats-row {
+        display: flex;
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .stat-card {
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+    }
+    .stat-label {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        opacity: 0.9;
+        margin-bottom: 0.25rem;
+    }
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 600;
+    }
+    .stat-net-positive {
+        background: linear-gradient(135deg, rgba(40, 167, 69, 0.15) 0%, rgba(40, 167, 69, 0.25) 100%);
+        border: 1px solid rgba(40, 167, 69, 0.3);
+        color: #28a745;
+    }
+    .stat-net-negative {
+        background: linear-gradient(135deg, rgba(220, 53, 69, 0.15) 0%, rgba(220, 53, 69, 0.25) 100%);
+        border: 1px solid rgba(220, 53, 69, 0.3);
+        color: #dc3545;
+    }
+    .stat-position {
+        background: linear-gradient(135deg, rgba(255, 152, 0, 0.15) 0%, rgba(255, 152, 0, 0.25) 100%);
+        border: 1px solid rgba(255, 152, 0, 0.3);
+        color: #ff9800;
+    }
 </style>
 {% endblock %}
 
@@ -67,6 +104,17 @@
 <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#newFlipModal">
     New Flip
 </button>
+
+<div class="stats-row">
+    <div class="stat-card {% if total_net >= 0 %}stat-net-positive{% else %}stat-net-negative{% endif %}">
+        <span class="stat-label">Total Net</span>
+        <span class="stat-value">{% if total_net >= 0 %}+{% endif %}{{ total_net|intcomma }} gp</span>
+    </div>
+    <div class="stat-card stat-position">
+        <span class="stat-label">Position Size</span>
+        <span class="stat-value">{{ position_size|intcomma }} gp</span>
+    </div>
+</div>
 
 <!-- New Flip Modal -->
 <div class="modal fade" id="newFlipModal" tabindex="-1" aria-labelledby="newFlipModalLabel" aria-hidden="true">
