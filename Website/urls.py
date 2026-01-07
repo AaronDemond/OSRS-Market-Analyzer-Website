@@ -24,6 +24,7 @@ urlpatterns = [
     path('home/', views.home, name='home'),
     path('flips/', views.flips, name='flips'),
     path('flips/add/', views.add_flip, name='add_flip'),
+    path('flips/edit/', views.edit_flip, name='edit_flip'),
     path('flips/delete/<int:item_id>/', views.delete_flip, name='delete_flip'),
     path('flips/delete_single/', views.delete_single_flip, name='delete_single_flip'),
     path('flips/item/<int:item_id>/', views.item_detail, name='item_detail'),
