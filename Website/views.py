@@ -141,6 +141,20 @@ def delete_flip(request, item_id):
     return redirect('flips')
 
 
+def delete_single_flip(request):
+    """Delete a single flip by ID"""
+    if request.method == 'POST':
+        flip_id = request.POST.get('flip_id')
+        flip = Flip.objects.filter(id=flip_id).first()
+        if flip:
+            item_id = flip.item_id
+            flip.delete()
+            # Check if there are any remaining flips for this item
+            if Flip.objects.filter(item_id=item_id).exists():
+                return redirect('item_detail', item_id=item_id)
+    return redirect('flips')
+
+
 def item_search_api(request):
     """API endpoint for item name autocomplete"""
     query = request.GET.get('q', '').lower()
