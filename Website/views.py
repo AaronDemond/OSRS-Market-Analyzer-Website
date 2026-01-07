@@ -1,5 +1,6 @@
 from django.shortcuts import render
-from django.db.models import Sum, F, Case, When, IntegerField
+from django.db.models import Sum, F
+import requests
 from .models import Flip
 
 
@@ -35,9 +36,28 @@ def flips(request):
         # Current quantity held
         quantity_held = total_bought - total_sold
         
+        # Fetch current prices from API
+        high_price = None
+        low_price = None
+        try:
+            response = requests.get(
+                f'https://prices.runescape.wiki/api/v1/osrs/latest?id={item_id}',
+                headers={'User-Agent': 'GE Tracker'}
+            )
+            if response.status_code == 200:
+                data = response.json()
+                if 'data' in data and str(item_id) in data['data']:
+                    price_data = data['data'][str(item_id)]
+                    high_price = price_data.get('high')
+                    low_price = price_data.get('low')
+        except requests.RequestException:
+            pass
+        
         items.append({
             'name': item_name,
             'avg_price': avg_price,
+            'high_price': high_price,
+            'low_price': low_price,
             'quantity': quantity_held,
         })
     

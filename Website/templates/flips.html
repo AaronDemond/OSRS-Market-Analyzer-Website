@@ -19,8 +19,9 @@
         <tr>
             <th>Item</th>
             <th>Average Price</th>
-            <th>Current Price</th>
             <th>Quantity</th>
+            <th>Current High Price</th>
+            <th>Current Low Price</th>
         </tr>
     </thead>
     <tbody>
@@ -29,10 +30,12 @@
             <td>{{ item.name }}</td>
             <td>{{ item.avg_price|intcomma }}</td>
             <td>{{ item.quantity|intcomma }}</td>
+            <td>{% if item.high_price %}{{ item.high_price|intcomma }}{% else %}-{% endif %}</td>
+            <td>{% if item.low_price %}{{ item.low_price|intcomma }}{% else %}-{% endif %}</td>
         </tr>
         {% empty %}
         <tr>
-            <td colspan="3" class="text-center">No flips recorded yet.</td>
+            <td colspan="5" class="text-center">No flips recorded yet.</td>
         </tr>
         {% endfor %}
     </tbody>
