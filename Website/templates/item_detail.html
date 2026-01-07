@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}{{ item_name }} - GE Tracker{% endblock %}
+
+{% block extra_css %}
+<style>
+    .table-hover tbody tr:hover > * {
+        --bs-table-hover-bg: #ff9800;
+        background-color: #ff9800;
+    }
+    .sortable {
+        cursor: pointer;
+        user-select: none;
+    }
+    .sortable:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+    .sort-icon::after {
+        content: '⇅';
+        margin-left: 5px;
+        opacity: 0.5;
+    }
+    .sortable.asc .sort-icon::after {
+        content: '↑';
+        opacity: 1;
+    }
+    .sortable.desc .sort-icon::after {
+        content: '↓';
+        opacity: 1;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>{{ item_name }}</h1>
+<a href="{% url 'flips' %}" class="btn btn-secondary mb-3">← Back to My Flips</a>
+
+<table class="table table-striped table-hover" id="itemTable">
+    <thead class="table-dark">
+        <tr>
+            <th class="sortable" data-col="0" data-type="string">Item <span class="sort-icon"></span></th>
+            <th class="sortable" data-col="1" data-type="string">Type <span class="sort-icon"></span></th>
+            <th class="sortable" data-col="2" data-type="number">Price <span class="sort-icon"></span></th>
+            <th class="sortable" data-col="3" data-type="date">Date <span class="sort-icon"></span></th>
+            <th class="sortable" data-col="4" data-type="number">Quantity <span class="sort-icon"></span></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for flip in flips %}
+        <tr>
+            <td>{{ flip.item_name }}</td>
+            <td>{{ flip.type|capfirst }}</td>
+            <td data-value="{{ flip.price }}">{{ flip.price|intcomma }}</td>
+            <td data-value="{{ flip.date|date:'Y-m-d H:i' }}">{{ flip.date|date:'M d, Y H:i' }}</td>
+            <td data-value="{{ flip.quantity }}">{{ flip.quantity|intcomma }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="5" class="text-center">No flips recorded for this item.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const table = document.getElementById('itemTable');
+    const headers = table.querySelectorAll('th.sortable');
+    let currentCol = -1;
+    let currentAsc = true;
+    
+    headers.forEach(header => {
+        header.addEventListener('click', function() {
+            const col = parseInt(this.dataset.col);
+            const type = this.dataset.type;
+            
+            if (col === currentCol) {
+                currentAsc = !currentAsc;
+            } else {
+                currentCol = col;
+                currentAsc = true;
+            }
+            
+            headers.forEach(h => h.classList.remove('asc', 'desc'));
+            this.classList.add(currentAsc ? 'asc' : 'desc');
+            
+            sortTable(col, type, currentAsc);
+        });
+    });
+
+    function sortTable(col, type, asc) {
+        const tbody = table.querySelector('tbody');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        
+        rows.sort((a, b) => {
+            let aVal, bVal;
+            const aCell = a.cells[col];
+            const bCell = b.cells[col];
+            
+            if (type === 'number') {
+                aVal = parseFloat(aCell.dataset.value) || 0;
+                bVal = parseFloat(bCell.dataset.value) || 0;
+            } else if (type === 'date') {
+                aVal = aCell.dataset.value || '';
+                bVal = bCell.dataset.value || '';
+            } else {
+                aVal = aCell.textContent.trim().toLowerCase();
+                bVal = bCell.textContent.trim().toLowerCase();
+            }
+            
+            if (aVal < bVal) return asc ? -1 : 1;
+            if (aVal > bVal) return asc ? 1 : -1;
+            return 0;
+        });
+        
+        rows.forEach(row => tbody.appendChild(row));
+    }
+});
+</script>
+{% endblock %}
+{% endblock %}

@@ -126,7 +126,7 @@
     <tbody>
         {% for item in items %}
         <tr>
-            <td>{{ item.name }}</td>
+            <td><a href="{% url 'item_detail' item.item_id %}">{{ item.name }}</a></td>
             <td data-value="{{ item.avg_price }}">{{ item.avg_price|intcomma }}</td>
             <td data-value="{{ item.quantity }}">{{ item.quantity|intcomma }}</td>
             <td data-value="{{ item.high_price|default:0 }}">{% if item.high_price %}{{ item.high_price|intcomma }}{% else %}-{% endif %}</td>

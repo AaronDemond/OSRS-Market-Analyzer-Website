@@ -76,6 +76,7 @@ def flips(request):
             pass
         
         items.append({
+            'item_id': item_id,
             'name': item_name,
             'avg_price': avg_price,
             'high_price': high_price,
@@ -132,6 +133,18 @@ def item_search_api(request):
     ][:15]  # Limit to 15 results
     
     return JsonResponse(matches, safe=False)
+
+
+def item_detail(request, item_id):
+    """Show all flips for a specific item"""
+    flips = Flip.objects.filter(item_id=item_id).order_by('-date')
+    item_name = flips.first().item_name if flips.exists() else 'Unknown Item'
+    
+    return render(request, 'item_detail.html', {
+        'flips': flips,
+        'item_name': item_name,
+        'item_id': item_id,
+    })
 
 
 def item_search(request):
