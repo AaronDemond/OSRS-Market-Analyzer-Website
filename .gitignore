@@ -3,3 +3,4 @@ manage.py
 Website/__pycache__/*
 *.swp
 *~
+Website/migrations/*
