@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect
+from django.http import JsonResponse
 from django.db.models import Sum, F
 import requests
 from .models import Flip
@@ -115,6 +116,22 @@ def add_flip(request):
         )
     
     return redirect('flips')
+
+
+def item_search_api(request):
+    """API endpoint for item name autocomplete"""
+    query = request.GET.get('q', '').lower()
+    if len(query) < 2:
+        return JsonResponse([], safe=False)
+    
+    mapping = get_item_mapping()
+    matches = [
+        {'name': item['name'], 'id': item['id']}
+        for name, item in mapping.items()
+        if query in name
+    ][:15]  # Limit to 15 results
+    
+    return JsonResponse(matches, safe=False)
 
 
 def item_search(request):

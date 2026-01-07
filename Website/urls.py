@@ -24,6 +24,7 @@ urlpatterns = [
     path('home/', views.home, name='home'),
     path('flips/', views.flips, name='flips'),
     path('flips/add/', views.add_flip, name='add_flip'),
+    path('api/items/', views.item_search_api, name='item_search_api'),
     path('item_search/', views.item_search, name='item_search'),
     path('alerts/', views.alerts, name='alerts'),
 ]

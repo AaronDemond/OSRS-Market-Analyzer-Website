@@ -9,6 +9,35 @@
         --bs-table-hover-bg: #ff9800;
         background-color: #ff9800;
     }
+    .autocomplete-wrapper {
+        position: relative;
+    }
+    .autocomplete-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        max-height: 200px;
+        overflow-y: auto;
+        background: #fff;
+        border: 1px solid #ced4da;
+        border-top: none;
+        border-radius: 0 0 4px 4px;
+        z-index: 1000;
+        display: none;
+    }
+    .autocomplete-results.show {
+        display: block;
+    }
+    .autocomplete-item {
+        padding: 8px 12px;
+        cursor: pointer;
+    }
+    .autocomplete-item:hover,
+    .autocomplete-item.active {
+        background-color: #667eea;
+        color: #fff;
+    }
 </style>
 {% endblock %}
 
@@ -30,9 +59,10 @@
             <form method="post" action="{% url 'add_flip' %}">
                 {% csrf_token %}
                 <div class="modal-body">
-                    <div class="mb-3">
+                    <div class="mb-3 autocomplete-wrapper">
                         <label for="itemName" class="form-label">Item Name</label>
-                        <input type="text" class="form-control" id="itemName" name="item_name" required>
+                        <input type="text" class="form-control" id="itemName" name="item_name" autocomplete="off" required>
+                        <div class="autocomplete-results" id="autocompleteResults"></div>
                     </div>
                     <div class="mb-3">
                         <label for="price" class="form-label">Price</label>
@@ -89,4 +119,83 @@
         {% endfor %}
     </tbody>
 </table>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const input = document.getElementById('itemName');
+    const results = document.getElementById('autocompleteResults');
+    let activeIndex = -1;
+    let items = [];
+
+    input.addEventListener('input', function() {
+        const query = this.value;
+        if (query.length < 2) {
+            results.classList.remove('show');
+            return;
+        }
+
+        fetch(`/api/items/?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                items = data;
+                activeIndex = -1;
+                if (data.length === 0) {
+                    results.classList.remove('show');
+                    return;
+                }
+                results.innerHTML = data.map((item, i) => 
+                    `<div class="autocomplete-item" data-index="${i}" data-name="${item.name}">${item.name}</div>`
+                ).join('');
+                results.classList.add('show');
+            });
+    });
+
+    input.addEventListener('keydown', function(e) {
+        const itemElements = results.querySelectorAll('.autocomplete-item');
+        if (!results.classList.contains('show') || itemElements.length === 0) return;
+
+        if (e.key === 'ArrowDown' || e.key === 'Tab') {
+            e.preventDefault();
+            activeIndex = Math.min(activeIndex + 1, itemElements.length - 1);
+            updateActive(itemElements);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            activeIndex = Math.max(activeIndex - 1, 0);
+            updateActive(itemElements);
+        } else if (e.key === 'Enter' && activeIndex >= 0) {
+            e.preventDefault();
+            selectItem(itemElements[activeIndex].dataset.name);
+        }
+    });
+
+    results.addEventListener('click', function(e) {
+        if (e.target.classList.contains('autocomplete-item')) {
+            selectItem(e.target.dataset.name);
+        }
+    });
+
+    function updateActive(itemElements) {
+        itemElements.forEach((el, i) => {
+            el.classList.toggle('active', i === activeIndex);
+        });
+        if (activeIndex >= 0) {
+            itemElements[activeIndex].scrollIntoView({ block: 'nearest' });
+        }
+    }
+
+    function selectItem(name) {
+        input.value = name;
+        results.classList.remove('show');
+        activeIndex = -1;
+    }
+
+    document.addEventListener('click', function(e) {
+        if (!input.contains(e.target) && !results.contains(e.target)) {
+            results.classList.remove('show');
+        }
+    });
+});
+</script>
+{% endblock %}
 {% endblock %}
