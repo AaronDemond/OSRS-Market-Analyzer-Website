@@ -51,17 +51,12 @@ class Command(BaseCommand):
     def check_alert(self, alert, all_prices):
         """Check if an alert should be triggered. Returns True/False or list of matching items for all_items spread."""
         
-        self.stdout.write(f'DEBUG: Checking alert ID={alert.id}, type={alert.type}, is_all_items={alert.is_all_items}, percentage={alert.percentage}, item_id={alert.item_id}')
-        
         # Handle spread alerts
         if alert.type == 'spread':
             if alert.percentage is None:
-                self.stdout.write(self.style.ERROR(f'DEBUG: Spread alert has no percentage set'))
                 return False
             
             if alert.is_all_items:
-                self.stdout.write(f'DEBUG: Checking ALL items for spread >= {alert.percentage}%')
-                self.stdout.write(f'DEBUG: Min price filter: {alert.minimum_price}, Max price filter: {alert.maximum_price}')
                 item_mapping = self.get_item_mapping()
                 matching_items = []
                 
@@ -91,35 +86,25 @@ class Command(BaseCommand):
                 if matching_items:
                     # Sort by spread descending
                     matching_items.sort(key=lambda x: x['spread'], reverse=True)
-                    self.stdout.write(self.style.SUCCESS(f'DEBUG: Found {len(matching_items)} items with spread >= {alert.percentage}%'))
                     return matching_items
                 
-                self.stdout.write(f'DEBUG: No items found with spread >= {alert.percentage}%')
                 return False
             else:
                 # Check specific item for spread threshold
-                self.stdout.write(f'DEBUG: Checking SPECIFIC item {alert.item_id} for spread >= {alert.percentage}%')
                 if not alert.item_id:
-                    self.stdout.write(self.style.ERROR(f'DEBUG: No item_id set for specific item spread alert'))
                     return False
                 price_data = all_prices.get(str(alert.item_id))
                 if not price_data:
-                    self.stdout.write(self.style.ERROR(f'DEBUG: No price data found for item_id={alert.item_id}'))
                     return False
                 high = price_data.get('high')
                 low = price_data.get('low')
                 spread = self.calculate_spread(high, low)
-                self.stdout.write(f'DEBUG: item_id={alert.item_id}, high={high}, low={low}, spread={spread}')
                 if spread is not None and spread >= alert.percentage:
-                    self.stdout.write(self.style.SUCCESS(f'DEBUG: Spread {spread:.2f}% >= threshold {alert.percentage}%, triggering!'))
                     return True
-                if spread is not None:
-                    self.stdout.write(f'DEBUG: Spread {spread:.2f}% < threshold {alert.percentage}%, not triggering')
                 return False
         
         # Handle above/below alerts
         if not alert.item_id or not alert.price or not alert.reference:
-            self.stdout.write(self.style.ERROR(f'DEBUG: Missing required fields for above/below alert'))
             return False
         
         price_data = all_prices.get(str(alert.item_id))
@@ -157,7 +142,6 @@ class Command(BaseCommand):
                 
                 # Fetch all prices once
                 all_prices = self.get_all_prices()
-                self.stdout.write(f'DEBUG: Fetched {len(all_prices)} item prices from API')
                 
                 if all_prices:
                     for alert in alerts_to_check:
@@ -187,4 +171,4 @@ class Command(BaseCommand):
                 self.stdout.write('No alerts to check.')
             
             # Wait 30 seconds before next check
-            time.sleep(10)
+            time.sleep(30)

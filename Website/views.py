@@ -324,6 +324,22 @@ def create_alert(request):
 def alerts_api(request):
     """API endpoint to fetch current alerts status"""
     from Website.models import get_item_price
+    import requests
+    
+    # Fetch all prices once for spread calculations
+    all_prices = {}
+    try:
+        response = requests.get(
+            'https://prices.runescape.wiki/api/v1/osrs/latest',
+            headers={'User-Agent': 'GE Tracker'}
+        )
+        if response.status_code == 200:
+            data = response.json()
+            if 'data' in data:
+                all_prices = data['data']
+    except requests.RequestException:
+        pass
+    
     all_alerts = Alert.objects.all()
     alerts_data = []
     for alert in all_alerts:
@@ -336,19 +352,46 @@ def alerts_api(request):
             'is_all_items': alert.is_all_items,
             'triggered_data': alert.triggered_data
         }
+        
+        # Add spread data for single item spread alerts
+        if alert.type == 'spread' and not alert.is_all_items and alert.item_id and all_prices:
+            price_data = all_prices.get(str(alert.item_id))
+            if price_data:
+                high = price_data.get('high')
+                low = price_data.get('low')
+                if high and low and low > 0:
+                    spread = round(((high - low) / low) * 100, 2)
+                    alert_dict['spread_high'] = high
+                    alert_dict['spread_low'] = low
+                    alert_dict['spread_percentage'] = spread
+        
         alerts_data.append(alert_dict)
     
     # Get recently triggered alerts (triggered and not dismissed)
     triggered_alerts = Alert.objects.filter(is_triggered=True, is_dismissed=False)
     triggered_data = []
     for alert in triggered_alerts:
-        triggered_data.append({
+        triggered_dict = {
             'id': alert.id,
             'triggered_text': alert.triggered_text(),
             'type': alert.type,
             'is_all_items': alert.is_all_items,
             'triggered_data': alert.triggered_data
-        })
+        }
+        
+        # Add spread data for single item spread alerts
+        if alert.type == 'spread' and not alert.is_all_items and alert.item_id and all_prices:
+            price_data = all_prices.get(str(alert.item_id))
+            if price_data:
+                high = price_data.get('high')
+                low = price_data.get('low')
+                if high and low and low > 0:
+                    spread = round(((high - low) / low) * 100, 2)
+                    triggered_dict['spread_high'] = high
+                    triggered_dict['spread_low'] = low
+                    triggered_dict['spread_percentage'] = spread
+        
+        triggered_data.append(triggered_dict)
     
     return JsonResponse({'alerts': alerts_data, 'triggered': triggered_data})
 
