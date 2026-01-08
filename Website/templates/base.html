@@ -6,17 +6,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}My Site{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'css/bootstrap/bootstrap.min.css' %}">
-    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'css/base.css' %}?v=2">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
     <!-- Sidebar -->
-    <nav class="sidebar">
+    <nav class="sidebar collapsed">
         <div class="sidebar-brand">
             <svg class="nav-icon" style="width: 28px; height: 28px; margin-right: 8px;" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 2L2 8v2h20V8L12 2zm0 2.5L18.5 8h-13L12 4.5zM4 12v7h2v-7H4zm5 0v7h2v-7H9zm5 0v7h2v-7h-2zm5 0v7h2v-7h-2zM2 21h20v2H2v-2z"/>
             </svg>
             <h4>GE Tracker</h4>
+            <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle Sidebar">
+                <svg fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/>
+                </svg>
+            </button>
         </div>
         <ul class="nav flex-column sidebar-nav">
             <li class="nav-item">
@@ -24,7 +29,7 @@
                     <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
                     </svg>
-                    Dashboard
+                    <span>Dashboard</span>
                 </a>
             </li>
             <li class="nav-item">
@@ -32,7 +37,7 @@
                     <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M10 2a1 1 0 011 1v1.323l.956.285a4.5 4.5 0 012.626 2.02 1 1 0 01-1.724 1.016 2.5 2.5 0 00-1.46-1.123L11 6.4V10l.956.285a4.5 4.5 0 01-.001 8.48l-.955.285V20a1 1 0 11-2 0v-.95l-.956-.285a4.5 4.5 0 01-2.626-2.02 1 1 0 011.724-1.016 2.5 2.5 0 001.46 1.123l.398.118V13l-.956-.285a4.5 4.5 0 01.001-8.48L9 4.05V3a1 1 0 011-1zm1 8.79V6.4l.398.118a2.5 2.5 0 010 4.723L11 10.79zm-2 .42l-.398-.118a2.5 2.5 0 010-4.723L9 6.25v3.96zm0 2.54v3.96l-.398-.118a2.5 2.5 0 010-4.723L9 11.75zm2 .46l.398.118a2.5 2.5 0 010 4.723L11 17.17v-3.96z"/>
                     </svg>
-                    My Flips
+                    <span>My Flips</span>
                 </a>
             </li>
             <li class="nav-item">
@@ -40,7 +45,7 @@
                     <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/>
                     </svg>
-                    Item Search
+                    <span>Item Search</span>
                 </a>
             </li>
             <li class="nav-item">
@@ -48,21 +53,58 @@
                     <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"/>
                     </svg>
-                    Alerts
+                    <span>Alerts</span>
                 </a>
             </li>
         </ul>
         <div class="sidebar-footer">
-            <p>© 2026 OSRS Market Tracker</p>
         </div>
     </nav>
 
     <!-- Main Content -->
-    <main class="main-content">
+    <main class="main-content expanded">
         {% block content %}{% endblock %}
     </main>
 
     <script src="{% static 'js/bootstrap/bootstrap.bundle.min.js' %}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Sidebar toggle script loaded');
+            const sidebar = document.querySelector('.sidebar');
+            const mainContent = document.querySelector('.main-content');
+            const toggleBtn = document.getElementById('sidebarToggle');
+
+            console.log('Sidebar:', sidebar);
+            console.log('Toggle button:', toggleBtn);
+
+            if (toggleBtn) {
+                console.log('Adding click listener to toggle button');
+                toggleBtn.addEventListener('click', function(e) {
+                    console.log('Toggle button clicked!');
+                    e.preventDefault();
+                    e.stopPropagation();
+                    sidebar.classList.toggle('collapsed');
+                    mainContent.classList.toggle('expanded');
+                    
+                    console.log('Sidebar collapsed:', sidebar.classList.contains('collapsed'));
+
+                    // Save state to localStorage
+                    const isCollapsed = sidebar.classList.contains('collapsed');
+                    localStorage.setItem('sidebarCollapsed', isCollapsed);
+                });
+            } else {
+                console.error('Toggle button not found!');
+            }
+
+            // Restore saved state
+            const savedState = localStorage.getItem('sidebarCollapsed');
+            console.log('Saved state:', savedState);
+            if (savedState === 'false') {
+                sidebar.classList.remove('collapsed');
+                mainContent.classList.remove('expanded');
+            }
+        });
+    </script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>
