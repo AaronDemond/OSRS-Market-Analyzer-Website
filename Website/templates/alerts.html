@@ -9,7 +9,7 @@
 <div class="alert-tabs">
     <button class="tab-btn active" data-tab="my-alerts">My Alerts</button>
     <button class="tab-btn" data-tab="create-alert">Create Alert</button>
-    <button class="tab-btn" data-tab="edit-delete-alert">Edit / Delete Alert</button>
+    <button class="tab-btn" data-tab="edit-delete-alert">Edit Alert</button>
 </div>
 
 <div class="tab-content">
@@ -23,9 +23,15 @@
             {% endfor %}
         </div>
         {% if all_alerts %}
+        <div class="alert-actions">
+            <button class="action-btn delete-btn" onclick="toggleDeleteMode()">Delete Alert(s)</button>
+            <button class="action-btn confirm-delete-btn" onclick="confirmDelete()" style="display: none;">Confirm Delete</button>
+            <button class="action-btn cancel-btn" onclick="cancelDeleteMode()" style="display: none;">Cancel</button>
+        </div>
             <ul class="alerts-list">
                 {% for alert in all_alerts %}
-                    <li class="alert-item">
+                    <li class="alert-item" data-alert-id="{{ alert.id }}">
+                        <input type="checkbox" class="alert-checkbox" style="display: none;">
                         <span class="alert-icon">🔔</span>
                         <span class="alert-text">{{ alert }}</span>
                         {% if alert.is_triggered %}
@@ -69,7 +75,60 @@
         </form>
     </div>
     <div id="edit-delete-alert" class="tab-pane" style="display: none;">
-        <p style="color: pink;">This is the Edit / Delete Alert section. Pink text for testing purposes.</p>
+        {% if all_alerts %}
+            <ul class="alerts-list edit-alerts-list">
+                {% for alert in all_alerts %}
+                    <li class="alert-item clickable-alert" onclick="openEditModal({{ alert.id }}, '{{ alert.type }}', '{{ alert.item_name }}', {{ alert.item_id }}, {{ alert.price }}, '{{ alert.reference }}')">
+                        <span class="alert-icon">🔔</span>
+                        <span class="alert-text">{{ alert }}</span>
+                        <span class="edit-hint">Click to edit</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="no-alerts">No alerts to edit.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div id="edit-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Edit Alert</h2>
+            <button class="modal-close" onclick="closeEditModal()">&times;</button>
+        </div>
+        <form id="edit-alert-form" class="edit-alert-form">
+            <input type="hidden" id="edit-alert-id">
+            <div class="form-group">
+                <label for="edit-alert-type">Alert Type</label>
+                <select name="type" id="edit-alert-type" required>
+                    <option value="above">Above Threshold</option>
+                    <option value="below">Below Threshold</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="edit-item-name">Item Name</label>
+                <input type="text" name="item_name" id="edit-item-name" autocomplete="off" required>
+                <input type="hidden" name="item_id" id="edit-item-id">
+                <div id="edit-item-suggestions" class="suggestions-dropdown"></div>
+            </div>
+            <div class="form-group">
+                <label for="edit-price">Price Threshold</label>
+                <input type="number" name="price" id="edit-price" required>
+            </div>
+            <div class="form-group">
+                <label for="edit-reference">Reference Price</label>
+                <select name="reference" id="edit-reference" required>
+                    <option value="high">High Price</option>
+                    <option value="low">Low Price</option>
+                </select>
+            </div>
+            <div class="modal-buttons">
+                <button type="button" class="btn-save" onclick="saveAlert()">Save</button>
+                <button type="button" class="btn-cancel" onclick="closeEditModal()">Cancel</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -142,6 +201,58 @@
         padding: 20px;
         text-align: center;
     }
+    .alert-actions {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+    .action-btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+    .edit-btn {
+        background-color: #007bff;
+        color: white;
+    }
+    .edit-btn:hover {
+        background-color: #0056b3;
+    }
+    .delete-btn {
+        background-color: #dc3545;
+        color: white;
+    }
+    .delete-btn:hover {
+        background-color: #c82333;
+    }
+    .confirm-delete-btn {
+        background-color: #dc3545;
+        color: white;
+    }
+    .confirm-delete-btn:hover {
+        background-color: #c82333;
+    }
+    .cancel-btn {
+        background-color: #6c757d;
+        color: white;
+    }
+    .cancel-btn:hover {
+        background-color: #5a6268;
+    }
+    .alert-checkbox {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+        accent-color: #dc3545;
+    }
+    .alert-item.delete-mode {
+        background-color: #fff3cd;
+        border-left-color: #dc3545;
+    }
     .triggered-notification {
         background-color: #28a745;
         color: white;
@@ -150,6 +261,17 @@
         margin-bottom: 15px;
         position: relative;
         font-weight: 500;
+        transition: opacity 0.3s ease, transform 0.3s ease, max-height 0.3s ease, margin 0.3s ease, padding 0.3s ease;
+        max-height: 100px;
+        overflow: hidden;
+    }
+    .triggered-notification.dismissing {
+        opacity: 0;
+        transform: translateX(20px);
+        max-height: 0;
+        margin-bottom: 0;
+        padding-top: 0;
+        padding-bottom: 0;
     }
     .triggered-notification .dismiss-btn {
         position: absolute;
@@ -229,6 +351,95 @@
     .suggestion-item:hover {
         background-color: #f0f0f0;
     }
+    .clickable-alert {
+        cursor: pointer;
+    }
+    .clickable-alert:hover {
+        background-color: #b8daff;
+    }
+    .edit-hint {
+        font-size: 0.8rem;
+        color: #6c757d;
+        font-style: italic;
+        margin-left: auto;
+    }
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+    .modal-content {
+        background-color: white;
+        padding: 30px;
+        border-radius: 12px;
+        width: 100%;
+        max-width: 450px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    }
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    .modal-header h2 {
+        margin: 0;
+        color: #333;
+    }
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 28px;
+        cursor: pointer;
+        color: #666;
+        line-height: 1;
+    }
+    .modal-close:hover {
+        color: #333;
+    }
+    .modal-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+    }
+    .btn-save {
+        flex: 1;
+        background-color: #28a745;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 600;
+    }
+    .btn-save:hover {
+        background-color: #218838;
+    }
+    .btn-cancel {
+        flex: 1;
+        background-color: #6c757d;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 600;
+    }
+    .btn-cancel:hover {
+        background-color: #5a6268;
+    }
+    .edit-alert-form {
+        max-width: 100%;
+    }
 </style>
 
 <script>
@@ -288,6 +499,9 @@
 
     // Auto-refresh alerts every 5 seconds
     async function refreshAlerts() {
+        // Skip refresh if in delete mode
+        if (deleteMode) return;
+        
         try {
             const response = await fetch('/api/alerts/');
             const data = await response.json();
@@ -304,13 +518,24 @@
                     </div>`;
                 });
             }
+
+            // Build action buttons (only show if there are alerts)
+            let actionsHtml = '';
+            if (data.alerts.length > 0) {
+                actionsHtml = `<div class="alert-actions">
+                    <button class="action-btn delete-btn" onclick="toggleDeleteMode()" style="${deleteMode ? 'display:none' : ''}">Delete Alert(s)</button>
+                    <button class="action-btn confirm-delete-btn" onclick="confirmDelete()" style="${deleteMode ? '' : 'display:none'}">Confirm Delete</button>
+                    <button class="action-btn cancel-btn" onclick="cancelDeleteMode()" style="${deleteMode ? '' : 'display:none'}">Cancel</button>
+                </div>`;
+            }
             
             // Build alerts list
             let alertsHtml = '';
             if (data.alerts.length > 0) {
                 alertsHtml = '<ul class="alerts-list">';
                 data.alerts.forEach(alert => {
-                    alertsHtml += `<li class="alert-item">
+                    alertsHtml += `<li class="alert-item ${deleteMode ? 'delete-mode' : ''}" data-alert-id="${alert.id}">
+                        <input type="checkbox" class="alert-checkbox" style="${deleteMode ? 'display:block' : 'display:none'}">
                         <span class="alert-icon">🔔</span>
                         <span class="alert-text">${alert.text}</span>`;
                     if (alert.is_triggered) {
@@ -323,13 +548,20 @@
                 alertsHtml = '<p class="no-alerts">No active alerts. Create one to get started!</p>';
             }
             
-            myAlertsPane.innerHTML = '<div id="triggered-notifications">' + notificationsHtml + '</div>' + alertsHtml;
+            myAlertsPane.innerHTML = '<div id="triggered-notifications">' + notificationsHtml + '</div>' + actionsHtml + alertsHtml;
         } catch (error) {
             console.error('Error refreshing alerts:', error);
         }
     }
 
     async function dismissAlert(alertId) {
+        // Animate out immediately
+        const notification = document.querySelector(`.triggered-notification[data-alert-id="${alertId}"]`);
+        if (notification) {
+            notification.classList.add('dismissing');
+        }
+        
+        // Call API in background
         try {
             await fetch('/api/alerts/dismiss/', {
                 method: 'POST',
@@ -339,11 +571,149 @@
                 },
                 body: JSON.stringify({ alert_id: alertId })
             });
-            refreshAlerts();
         } catch (error) {
             console.error('Error dismissing alert:', error);
         }
     }
+
+    let deleteMode = false;
+
+    function toggleDeleteMode() {
+        deleteMode = true;
+        document.querySelectorAll('.alert-checkbox').forEach(cb => cb.style.display = 'block');
+        document.querySelectorAll('.alert-item').forEach(item => item.classList.add('delete-mode'));
+        document.querySelector('.delete-btn').style.display = 'none';
+        document.querySelector('.confirm-delete-btn').style.display = 'inline-block';
+        document.querySelector('.cancel-btn').style.display = 'inline-block';
+    }
+
+    function cancelDeleteMode() {
+        deleteMode = false;
+        document.querySelectorAll('.alert-checkbox').forEach(cb => {
+            cb.style.display = 'none';
+            cb.checked = false;
+        });
+        document.querySelectorAll('.alert-item').forEach(item => item.classList.remove('delete-mode'));
+        document.querySelector('.delete-btn').style.display = 'inline-block';
+        document.querySelector('.confirm-delete-btn').style.display = 'none';
+        document.querySelector('.cancel-btn').style.display = 'none';
+    }
+
+    async function confirmDelete() {
+        const selectedIds = [];
+        document.querySelectorAll('.alert-checkbox:checked').forEach(cb => {
+            const alertItem = cb.closest('.alert-item');
+            if (alertItem) {
+                selectedIds.push(alertItem.dataset.alertId);
+            }
+        });
+
+        if (selectedIds.length === 0) {
+            alert('Please select at least one alert to delete.');
+            return;
+        }
+
+        try {
+            await fetch('/api/alerts/delete/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ alert_ids: selectedIds })
+            });
+            cancelDeleteMode();
+            refreshAlerts();
+        } catch (error) {
+            console.error('Error deleting alerts:', error);
+        }
+    }
+
+    function toggleEditMode() {
+        // Switch to the Edit Alert tab
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector('[data-tab="edit-delete-alert"]').classList.add('active');
+        document.querySelectorAll('.tab-pane').forEach(pane => pane.style.display = 'none');
+        document.getElementById('edit-delete-alert').style.display = 'block';
+    }
+
+    function openEditModal(id, type, itemName, itemId, price, reference) {
+        document.getElementById('edit-alert-id').value = id;
+        document.getElementById('edit-alert-type').value = type;
+        document.getElementById('edit-item-name').value = itemName;
+        document.getElementById('edit-item-id').value = itemId;
+        document.getElementById('edit-price').value = price;
+        document.getElementById('edit-reference').value = reference;
+        document.getElementById('edit-modal').style.display = 'flex';
+    }
+
+    function closeEditModal() {
+        document.getElementById('edit-modal').style.display = 'none';
+    }
+
+    async function saveAlert() {
+        const alertId = document.getElementById('edit-alert-id').value;
+        const alertType = document.getElementById('edit-alert-type').value;
+        const itemName = document.getElementById('edit-item-name').value;
+        const itemId = document.getElementById('edit-item-id').value;
+        const price = document.getElementById('edit-price').value;
+        const reference = document.getElementById('edit-reference').value;
+
+        try {
+            await fetch('/api/alerts/update/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    alert_id: alertId,
+                    type: alertType,
+                    item_name: itemName,
+                    item_id: itemId,
+                    price: price,
+                    reference: reference
+                })
+            });
+            closeEditModal();
+            location.reload();
+        } catch (error) {
+            console.error('Error updating alert:', error);
+        }
+    }
+
+    // Edit modal item search autocomplete
+    const editItemNameInput = document.getElementById('edit-item-name');
+    const editItemIdInput = document.getElementById('edit-item-id');
+    const editSuggestionsDropdown = document.getElementById('edit-item-suggestions');
+
+    editItemNameInput.addEventListener('input', async () => {
+        const query = editItemNameInput.value;
+        if (query.length < 2) {
+            editSuggestionsDropdown.style.display = 'none';
+            return;
+        }
+
+        const response = await fetch(`/api/items/?q=${encodeURIComponent(query)}`);
+        const items = await response.json();
+
+        if (items.length > 0) {
+            editSuggestionsDropdown.innerHTML = items.map(item => 
+                `<div class="suggestion-item" data-id="${item.id}" data-name="${item.name}">${item.name}</div>`
+            ).join('');
+            editSuggestionsDropdown.style.display = 'block';
+        } else {
+            editSuggestionsDropdown.style.display = 'none';
+        }
+    });
+
+    editSuggestionsDropdown.addEventListener('click', (e) => {
+        if (e.target.classList.contains('suggestion-item')) {
+            editItemNameInput.value = e.target.dataset.name;
+            editItemIdInput.value = e.target.dataset.id;
+            editSuggestionsDropdown.style.display = 'none';
+        }
+    });
 
     // Initial load and poll every 5 seconds
     refreshAlerts();

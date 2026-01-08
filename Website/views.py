@@ -349,3 +349,49 @@ def dismiss_triggered_alert(request):
         if alert_id:
             Alert.objects.filter(id=alert_id).update(is_dismissed=True)
     return JsonResponse({'success': True})
+
+
+@csrf_exempt
+def delete_alerts(request):
+    """Delete multiple alerts"""
+    if request.method == 'POST':
+        import json
+        data = json.loads(request.body)
+        alert_ids = data.get('alert_ids', [])
+        if alert_ids:
+            Alert.objects.filter(id__in=alert_ids).delete()
+    return JsonResponse({'success': True})
+
+
+@csrf_exempt
+def update_alert(request):
+    """Update an existing alert"""
+    if request.method == 'POST':
+        import json
+        data = json.loads(request.body)
+        alert_id = data.get('alert_id')
+        if alert_id:
+            alert = Alert.objects.filter(id=alert_id).first()
+            if alert:
+                alert.type = data.get('type', alert.type)
+                alert.item_name = data.get('item_name', alert.item_name)
+                item_id = data.get('item_id')
+                if item_id:
+                    alert.item_id = int(item_id)
+                elif data.get('item_name'):
+                    # Look up item ID if name changed but ID not provided
+                    mapping = get_item_mapping()
+                    item_data = mapping.get(data.get('item_name').lower())
+                    if item_data:
+                        alert.item_id = item_data['id']
+                        alert.item_name = item_data['name']
+                price = data.get('price')
+                if price:
+                    alert.price = int(price)
+                alert.reference = data.get('reference', alert.reference)
+                # Reset triggered state when alert is edited
+                alert.is_triggered = False
+                alert.is_dismissed = False
+                alert.is_active = True
+                alert.save()
+    return JsonResponse({'success': True})
