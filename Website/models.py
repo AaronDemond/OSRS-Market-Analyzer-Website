@@ -1,4 +1,30 @@
 from django.db import models
+import requests
+
+
+def get_item_price(item_id, reference):
+    """
+    Fetch the high or low price for an item based on reference.
+    reference: 'high' or 'low'
+    """
+    try:
+        response = requests.get(
+            'https://prices.runescape.wiki/api/v1/osrs/latest',
+            headers={'User-Agent': 'GE Tracker'}
+        )
+        if response.status_code == 200:
+            data = response.json()
+            if 'data' in data:
+                price_data = data['data'].get(str(item_id))
+                if price_data:
+                    if reference == 'high':
+                        return price_data.get('high')
+                    elif reference == 'low':
+                        return price_data.get('low')
+    except requests.RequestException:
+        pass
+    return None
+
 
 
 class Flip(models.Model):
@@ -16,3 +42,51 @@ class Flip(models.Model):
 
     def __str__(self):
         return f"{self.item_name} x{self.quantity}"
+
+
+class Alert(models.Model):
+    DIRECTION_CHOICES = [
+        ('up', 'Up'),
+        ('down', 'Down'),
+    ]
+    
+    ABOVE_BELOW_CHOICES = [
+        ('above', 'Above'),
+        ('below', 'Below'),
+    ]
+    
+    REFERENCE_CHOICES = [
+        ('high', 'High Price'),
+        ('low', 'Low Price'),
+    ]
+
+    ALERT_CHOICES = [
+            ('above', 'Above Threshold'),
+            ('below', 'Below Threshold'),
+    ]
+    
+    type = models.CharField(max_length=10, null=True, choices=ALERT_CHOICES, default='above')
+    direction = models.CharField(max_length=10, choices=DIRECTION_CHOICES, blank=True, null=True)
+    above_below = models.CharField(max_length=10, choices=ABOVE_BELOW_CHOICES, blank=True, null=True)
+    item_name = models.CharField(max_length=255, blank=True, null=True, default=None)
+    item_id = models.IntegerField(blank=True, null=True, default=None)
+    price = models.IntegerField(blank=True, null=True, default=None)
+    is_all_items = models.BooleanField(default=None, blank=True, null=True)
+    reference = models.CharField(max_length=4, choices=REFERENCE_CHOICES, blank=True, null=True, default=None)
+    is_triggered = models.BooleanField(default=False, blank=True, null=True)
+    is_active = models.BooleanField(default=True, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        if self.is_all_items:
+            return f"All items {self.type} {self.price} ({self.reference})"
+        return f"{self.item_name} {self.type} {self.price} ({self.reference})"
+
+    def triggered_text(self):
+        item_price = get_item_price(self.item_id, self.reference)
+        if self.type == "above":
+            return self.item_name + " has risen above " + str(self.price) + " to " + str(item_price)
+        if self.type == "below":
+            return self.item_name + " has fallten below " + str(self.price) + " to " + str(item_price)
+        return "Item price is now " + str(item_price)
+

@@ -4,5 +4,285 @@
 
 {% block content %}
 <h1>Alerts</h1>
-<p>Manage your price alerts here.</p>
+<hr>
+
+<div class="alert-tabs">
+    <button class="tab-btn active" data-tab="my-alerts">My Alerts</button>
+    <button class="tab-btn" data-tab="create-alert">Create Alert</button>
+    <button class="tab-btn" data-tab="edit-delete-alert">Edit / Delete Alert</button>
+</div>
+
+<div class="tab-content">
+    <div id="my-alerts" class="tab-pane active">
+        {% if active_alerts %}
+            <ul class="alerts-list">
+                {% for alert in active_alerts %}
+                    <li class="alert-item">
+                        <span class="alert-icon">🔔</span>
+                        <span class="alert-text">{{ alert }}</span>
+                        {% if alert.is_triggered %}
+                            <span class="alert-triggered">TRIGGERED: {{alert.triggered_text}} </span>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="no-alerts">No active alerts. Create one to get started!</p>
+        {% endif %}
+    </div>
+    <div id="create-alert" class="tab-pane" style="display: none;">
+        <form method="POST" action="{% url 'create_alert' %}" class="create-alert-form">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="alert-type">Alert Type</label>
+                <select name="type" id="alert-type" required>
+                    <option value="above" selected>Above Threshold</option>
+                    <option value="below">Below Threshold</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="item-name">Item Name</label>
+                <input type="text" name="item_name" id="item-name" autocomplete="off" required>
+                <input type="hidden" name="item_id" id="item-id">
+                <div id="item-suggestions" class="suggestions-dropdown"></div>
+            </div>
+            <div class="form-group">
+                <label for="price">Price Threshold</label>
+                <input type="number" name="price" id="price" required>
+            </div>
+            <div class="form-group">
+                <label for="reference">Reference Price</label>
+                <select name="reference" id="reference" required>
+                    <option value="high">High Price</option>
+                    <option value="low">Low Price</option>
+                </select>
+            </div>
+            <button type="submit" class="btn-create-alert">Create Alert</button>
+        </form>
+    </div>
+    <div id="edit-delete-alert" class="tab-pane" style="display: none;">
+        <p style="color: pink;">This is the Edit / Delete Alert section. Pink text for testing purposes.</p>
+    </div>
+</div>
+
+<style>
+    .alert-tabs {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+    .tab-btn {
+        padding: 10px 20px;
+        border: none;
+        background-color: transparent;
+        cursor: pointer;
+        font-size: 16px;
+        border-bottom: 2px solid transparent;
+    }
+    .tab-btn:hover {
+        border-bottom: 2px solid #ccc;
+    }
+    .tab-btn.active {
+        border-bottom: 2px solid #007bff;
+        color: #007bff;
+    }
+    .tab-content {
+        padding: 20px;
+    }
+    .alerts-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    .alert-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 15px 20px;
+        margin-bottom: 10px;
+        background-color: #cce5ff;
+        border-left: 4px solid #007bff;
+        border-radius: 8px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .alert-item:hover {
+        transform: translateX(5px);
+        box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
+    }
+    .alert-text {
+        flex: 1;
+    }
+    .alert-triggered {
+        font-weight: 700;
+        color: #8b5cf6;
+        background-color: #ede9fe;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        letter-spacing: 0.5px;
+    }
+    .alert-icon {
+        font-size: 1.4rem;
+    }
+    .alert-text {
+        font-size: 1rem;
+        color: #333;
+    }
+    .no-alerts {
+        color: #6c757d;
+        font-style: italic;
+        padding: 20px;
+        text-align: center;
+    }
+    .create-alert-form {
+        max-width: 400px;
+    }
+    .form-group {
+        margin-bottom: 15px;
+        position: relative;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 600;
+        color: #333;
+    }
+    .form-group input,
+    .form-group select {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        font-size: 14px;
+    }
+    .form-group input:focus,
+    .form-group select:focus {
+        outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.2);
+    }
+    .btn-create-alert {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 600;
+    }
+    .btn-create-alert:hover {
+        background-color: #0056b3;
+    }
+    .suggestions-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #ccc;
+        border-top: none;
+        border-radius: 0 0 5px 5px;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 100;
+        display: none;
+    }
+    .suggestion-item {
+        padding: 10px;
+        cursor: pointer;
+    }
+    .suggestion-item:hover {
+        background-color: #f0f0f0;
+    }
+</style>
+
+<script>
+    document.querySelectorAll('.tab-btn').forEach(button => {
+        button.addEventListener('click', () => {
+            // Remove active class from all buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            // Add active class to clicked button
+            button.classList.add('active');
+            
+            // Hide all tab panes
+            document.querySelectorAll('.tab-pane').forEach(pane => pane.style.display = 'none');
+            // Show the selected tab pane
+            const tabId = button.getAttribute('data-tab');
+            document.getElementById(tabId).style.display = 'block';
+        });
+    });
+
+    // Item search autocomplete
+    const itemNameInput = document.getElementById('item-name');
+    const itemIdInput = document.getElementById('item-id');
+    const suggestionsDropdown = document.getElementById('item-suggestions');
+
+    itemNameInput.addEventListener('input', async () => {
+        const query = itemNameInput.value;
+        if (query.length < 2) {
+            suggestionsDropdown.style.display = 'none';
+            return;
+        }
+
+        const response = await fetch(`/api/items/?q=${encodeURIComponent(query)}`);
+        const items = await response.json();
+
+        if (items.length > 0) {
+            suggestionsDropdown.innerHTML = items.map(item => 
+                `<div class="suggestion-item" data-id="${item.id}" data-name="${item.name}">${item.name}</div>`
+            ).join('');
+            suggestionsDropdown.style.display = 'block';
+        } else {
+            suggestionsDropdown.style.display = 'none';
+        }
+    });
+
+    suggestionsDropdown.addEventListener('click', (e) => {
+        if (e.target.classList.contains('suggestion-item')) {
+            itemNameInput.value = e.target.dataset.name;
+            itemIdInput.value = e.target.dataset.id;
+            suggestionsDropdown.style.display = 'none';
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.form-group')) {
+            suggestionsDropdown.style.display = 'none';
+        }
+    });
+
+    // Auto-refresh alerts every 5 seconds
+    async function refreshAlerts() {
+        try {
+            const response = await fetch('/api/alerts/');
+            const data = await response.json();
+            
+            const alertsList = document.querySelector('.alerts-list');
+            const myAlertsPane = document.getElementById('my-alerts');
+            
+            if (data.alerts.length > 0) {
+                let html = '<ul class="alerts-list">';
+                data.alerts.forEach(alert => {
+                    html += `<li class="alert-item">
+                        <span class="alert-icon">🔔</span>
+                        <span class="alert-text">${alert.text}</span>`;
+                    if (alert.is_triggered) {
+                        html += `<span class="alert-triggered">TRIGGERED: ${alert.triggered_text}</span>`;
+                    }
+                    html += '</li>';
+                });
+                html += '</ul>';
+                myAlertsPane.innerHTML = html;
+            } else {
+                myAlertsPane.innerHTML = '<p class="no-alerts">No active alerts. Create one to get started!</p>';
+            }
+        } catch (error) {
+            console.error('Error refreshing alerts:', error);
+        }
+    }
+
+    // Poll every 5 seconds
+    setInterval(refreshAlerts, 5000);
+</script>
 {% endblock %}

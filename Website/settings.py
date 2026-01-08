@@ -55,6 +55,10 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://homeopathically-cultivable-adam.ngrok-free.dev",
+]
+
 ROOT_URLCONF = 'Website.urls'
 
 TEMPLATES = [

@@ -31,4 +31,6 @@ urlpatterns = [
     path('api/items/', views.item_search_api, name='item_search_api'),
     path('item_search/', views.item_search, name='item_search'),
     path('alerts/', views.alerts, name='alerts'),
+    path('alerts/create/', views.create_alert, name='create_alert'),
+    path('api/alerts/', views.alerts_api, name='alerts_api'),
 ]

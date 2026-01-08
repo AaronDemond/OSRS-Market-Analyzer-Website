@@ -3,7 +3,7 @@ from django.http import JsonResponse
 from django.db.models import Sum, F
 import requests
 import time
-from .models import Flip
+from .models import Flip, Alert
 
 
 # Cache for item mappings
@@ -272,4 +272,42 @@ def item_search(request):
 
 
 def alerts(request):
-    return render(request, 'alerts.html')
+    active_alerts = Alert.objects.filter(is_active=True)
+    return render(request, 'alerts.html', {'active_alerts': active_alerts})
+
+
+def create_alert(request):
+    if request.method == 'POST':
+        alert_type = request.POST.get('type')
+        item_name = request.POST.get('item_name')
+        item_id = request.POST.get('item_id')
+        price = request.POST.get('price')
+        reference = request.POST.get('reference')
+        
+        Alert.objects.create(
+            type=alert_type,
+            item_name=item_name,
+            item_id=int(item_id) if item_id else None,
+            price=int(price) if price else None,
+            reference=reference,
+            is_active=True,
+            is_triggered=False
+        )
+    
+    return redirect('alerts')
+
+
+def alerts_api(request):
+    """API endpoint to fetch current alerts status"""
+    from Website.models import get_item_price
+    active_alerts = Alert.objects.filter(is_active=True)
+    alerts_data = []
+    for alert in active_alerts:
+        alert_dict = {
+            'id': alert.id,
+            'text': str(alert),
+            'is_triggered': alert.is_triggered,
+            'triggered_text': alert.triggered_text() if alert.is_triggered else None
+        }
+        alerts_data.append(alert_dict)
+    return JsonResponse({'alerts': alerts_data})
