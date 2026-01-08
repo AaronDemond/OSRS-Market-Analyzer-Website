@@ -208,7 +208,6 @@
         </div>
     </div>
 </div>
-
 <style>
     .alert-tabs {
         display: flex;
@@ -560,44 +559,544 @@
 </style>
 
 <script>
-    // Handle alert type dropdown change
-    function handleAlertTypeChange() {
-        const alertType = document.getElementById('alert-type').value;
-        const spreadScopeGroup = document.getElementById('spread-scope-group');
-        const itemNameGroup = document.getElementById('item-name-group');
-        const priceGroup = document.getElementById('price-group');
-        const referenceGroup = document.getElementById('reference-group');
-        const percentageGroup = document.getElementById('percentage-group');
-        const minPriceGroup = document.getElementById('min-price-group');
-        const maxPriceGroup = document.getElementById('max-price-group');
-        const isAllItemsInput = document.getElementById('is-all-items');
-        
-        if (alertType === 'spread') {
-            spreadScopeGroup.style.display = 'block';
-            priceGroup.style.display = 'none';
-            referenceGroup.style.display = 'none';
-            percentageGroup.style.display = 'block';
-            // Trigger scope change to set item visibility
-            handleSpreadScopeChange();
-        } else {
-            spreadScopeGroup.style.display = 'none';
-            itemNameGroup.style.display = 'block';
-            priceGroup.style.display = 'block';
-            referenceGroup.style.display = 'block';
-            percentageGroup.style.display = 'none';
-            minPriceGroup.style.display = 'none';
-            maxPriceGroup.style.display = 'none';
-            isAllItemsInput.value = 'false';
+/**
+ * =============================================================================
+ * OSRS ALERTS MANAGEMENT SYSTEM
+ * =============================================================================
+ * 
+ * This module handles all client-side functionality for the alerts system:
+ * - Creating and editing alerts (above/below threshold, spread alerts)
+ * - Displaying triggered alerts with real-time updates
+ * - Managing alert lifecycle (dismiss, delete)
+ * - Item search autocomplete functionality
+ * - Modal management for spread details and editing
+ * 
+ * Architecture:
+ * - AlertsConfig: Central configuration object for settings and selectors
+ * - AlertsState: Manages application state (delete mode, etc.)
+ * - AlertsAPI: Handles all server communication
+ * - AlertsUI: Manages DOM updates and rendering
+ * - FormManager: Handles form field visibility and validation
+ * - ModalManager: Controls modal dialogs
+ * - AutocompleteManager: Handles item search suggestions
+ * - EventManager: Sets up all event listeners
+ * 
+ * =============================================================================
+ */
+
+// =============================================================================
+// CONFIGURATION
+// =============================================================================
+/**
+ * Central configuration object containing all settings, selectors, and constants.
+ * 
+ * Why: Centralizing configuration makes it easy to modify settings without
+ * searching through code. It also makes the codebase more maintainable.
+ * 
+ * How: All DOM selectors, API endpoints, and timing settings are defined here
+ * and referenced throughout the application.
+ */
+const AlertsConfig = {
+    // API endpoints for server communication
+    endpoints: {
+        alerts: '/api/alerts/',
+        dismiss: '/api/alerts/dismiss/',
+        delete: '/api/alerts/delete/',
+        update: '/api/alerts/update/',
+        itemSearch: '/api/items/'
+    },
+    
+    // Timing settings (in milliseconds)
+    timing: {
+        refreshInterval: 5000,      // How often to poll for alert updates
+        minSearchLength: 2          // Minimum characters before searching
+    },
+    
+    // DOM element selectors for the create form
+    selectors: {
+        create: {
+            alertType: '#alert-type',
+            spreadScope: '#spread-scope',
+            itemName: '#item-name',
+            itemId: '#item-id',
+            isAllItems: '#is-all-items',
+            suggestions: '#item-suggestions',
+            groups: {
+                spreadScope: '#spread-scope-group',
+                itemName: '#item-name-group',
+                price: '#price-group',
+                reference: '#reference-group',
+                percentage: '#percentage-group',
+                minPrice: '#min-price-group',
+                maxPrice: '#max-price-group'
+            }
+        },
+        // DOM element selectors for the edit form
+        edit: {
+            modal: '#edit-modal',
+            alertId: '#edit-alert-id',
+            alertType: '#edit-alert-type',
+            spreadScope: '#edit-spread-scope',
+            itemName: '#edit-item-name',
+            itemId: '#edit-item-id',
+            isAllItems: '#edit-is-all-items',
+            price: '#edit-price',
+            reference: '#edit-reference',
+            percentage: '#edit-percentage',
+            minimumPrice: '#edit-minimum-price',
+            maximumPrice: '#edit-maximum-price',
+            suggestions: '#edit-item-suggestions',
+            groups: {
+                spreadScope: '#edit-spread-scope-group',
+                itemName: '#edit-item-name-group',
+                price: '#edit-price-group',
+                reference: '#edit-reference-group',
+                percentage: '#edit-percentage-group',
+                minPrice: '#edit-min-price-group',
+                maxPrice: '#edit-max-price-group'
+            }
+        },
+        // Other UI elements
+        myAlertsPane: '#my-alerts',
+        spreadModal: '#spread-modal',
+        spreadItemsList: '#spread-items-list',
+        tabButtons: '.tab-btn',
+        tabPanes: '.tab-pane'
+    },
+    
+    // Alert type constants for comparison
+    alertTypes: {
+        ABOVE: 'above',
+        BELOW: 'below',
+        SPREAD: 'spread'
+    },
+    
+    // CSRF token for Django POST requests
+    csrfToken: '{{ csrf_token }}'
+};
+
+
+// =============================================================================
+// STATE MANAGEMENT
+// =============================================================================
+/**
+ * Application state manager.
+ * 
+ * Why: Centralizing state prevents scattered variables and makes it easier
+ * to track and debug the application's current status.
+ * 
+ * How: All mutable state is stored in this object and accessed/modified
+ * through consistent patterns.
+ */
+const AlertsState = {
+    deleteMode: false,              // Whether delete mode is active
+    spreadDataCache: {},            // Cache for spread alert data (keyed by alert ID)
+    
+    /**
+     * Stores spread data for a specific alert in the cache.
+     * This allows the spread details modal to access the data later.
+     */
+    setSpreadData(alertId, data) {
+        this.spreadDataCache[alertId] = data;
+    },
+    
+    /**
+     * Retrieves cached spread data for an alert.
+     * Returns null if no data exists for the given ID.
+     */
+    getSpreadData(alertId) {
+        return this.spreadDataCache[alertId] || null;
+    }
+};
+
+
+// =============================================================================
+// API COMMUNICATION
+// =============================================================================
+/**
+ * Handles all server communication.
+ * 
+ * Why: Centralizing API calls makes it easier to handle errors consistently,
+ * modify endpoints, and add features like request caching or retries.
+ * 
+ * How: Each method corresponds to a specific API action and returns a Promise.
+ */
+const AlertsAPI = {
+    /**
+     * Fetches current alerts data from the server.
+     * Returns both active alerts and triggered notifications.
+     */
+    async fetchAlerts() {
+        try {
+            const response = await fetch(AlertsConfig.endpoints.alerts);
+            return await response.json();
+        } catch (error) {
+            console.error('Error fetching alerts:', error);
+            return null;
+        }
+    },
+    
+    /**
+     * Dismisses a triggered alert notification.
+     * The alert remains in the system but the notification banner is hidden.
+     */
+    async dismissAlert(alertId) {
+        try {
+            await fetch(AlertsConfig.endpoints.dismiss, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': AlertsConfig.csrfToken
+                },
+                body: JSON.stringify({ alert_id: alertId })
+            });
+            return true;
+        } catch (error) {
+            console.error('Error dismissing alert:', error);
+            return false;
+        }
+    },
+    
+    /**
+     * Deletes multiple alerts by their IDs.
+     */
+    async deleteAlerts(alertIds) {
+        try {
+            await fetch(AlertsConfig.endpoints.delete, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': AlertsConfig.csrfToken
+                },
+                body: JSON.stringify({ alert_ids: alertIds })
+            });
+            return true;
+        } catch (error) {
+            console.error('Error deleting alerts:', error);
+            return false;
+        }
+    },
+    
+    /**
+     * Updates an existing alert with new values.
+     */
+    async updateAlert(alertData) {
+        try {
+            await fetch(AlertsConfig.endpoints.update, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': AlertsConfig.csrfToken
+                },
+                body: JSON.stringify(alertData)
+            });
+            return true;
+        } catch (error) {
+            console.error('Error updating alert:', error);
+            return false;
+        }
+    },
+    
+    /**
+     * Searches for items by name query.
+     * Used for autocomplete in item name fields.
+     */
+    async searchItems(query) {
+        try {
+            const url = AlertsConfig.endpoints.itemSearch + '?q=' + encodeURIComponent(query);
+            const response = await fetch(url);
+            return await response.json();
+        } catch (error) {
+            console.error('Error searching items:', error);
+            return [];
         }
     }
+};
+
+
+// =============================================================================
+// UI RENDERING
+// =============================================================================
+/**
+ * Handles all DOM updates and HTML rendering.
+ * 
+ * Why: Separating UI logic from business logic makes the code easier to test,
+ * modify, and understand. Changes to how things look don't affect how they work.
+ * 
+ * How: Each method handles a specific rendering task and returns HTML strings
+ * or directly manipulates the DOM as appropriate.
+ */
+const AlertsUI = {
+    /**
+     * Generates the triggered text for an alert based on its type and data.
+     * 
+     * Why: Different alert types need different information displayed when triggered.
+     * - Spread (all items): Shows clickable link to view all matching items
+     * - Spread (single item): Shows low, high, and spread percentage
+     * - Above/Below: Shows the price movement that triggered the alert
+     */
+    buildTriggeredText(alert) {
+        const { alertTypes } = AlertsConfig;
+        
+        // Spread alert for all items - show clickable link
+        if (alert.type === alertTypes.SPREAD && alert.is_all_items && alert.triggered_data) {
+            return 'Alert triggered. Click for details';
+        }
+        
+        // Spread alert for single item - show price details
+        if (alert.type === alertTypes.SPREAD && !alert.is_all_items) {
+            if (alert.spread_high && alert.spread_low) {
+                return 'Alert triggered. Low: ' + alert.spread_low.toLocaleString() + 
+                       ', High: ' + alert.spread_high.toLocaleString() + 
+                       ', Spread: ' + alert.spread_percentage + '%';
+            }
+        }
+        
+        // Above/Below alert - show price movement
+        if ((alert.type === alertTypes.ABOVE || alert.type === alertTypes.BELOW) && alert.current_price) {
+            const refLabel = alert.reference === 'high' ? 'High' : 'Low';
+            const direction = alert.type === alertTypes.ABOVE ? 'rose above' : 'fell below';
+            return 'Alert triggered. ' + refLabel + ' price ' + direction + ' ' +
+                   alert.price.toLocaleString() + ' to ' + alert.current_price.toLocaleString();
+        }
+        
+        // Default fallback
+        return 'Alert triggered.';
+    },
     
-    // Handle spread scope dropdown change
-    function handleSpreadScopeChange() {
-        const spreadScope = document.getElementById('spread-scope').value;
-        const itemNameGroup = document.getElementById('item-name-group');
-        const minPriceGroup = document.getElementById('min-price-group');
-        const maxPriceGroup = document.getElementById('max-price-group');
-        const isAllItemsInput = document.getElementById('is-all-items');
+    /**
+     * Checks if an alert is a spread-all-items type.
+     */
+    isSpreadAllItemsAlert(alert) {
+        return alert.type === AlertsConfig.alertTypes.SPREAD && 
+               alert.is_all_items && 
+               alert.triggered_data;
+    },
+    
+    /**
+     * Renders the green notification banners for triggered alerts.
+     */
+    renderTriggeredNotifications(triggeredAlerts) {
+        if (!triggeredAlerts || triggeredAlerts.length === 0) {
+            return '';
+        }
+        
+        let html = '';
+        triggeredAlerts.forEach(alert => {
+            const isSpreadAllItems = this.isSpreadAllItemsAlert(alert);
+            
+            // Cache spread data for later use in modal
+            if (isSpreadAllItems) {
+                AlertsState.setSpreadData(alert.id, alert.triggered_data);
+            }
+            
+            const clickHandler = isSpreadAllItems 
+                ? 'onclick="ModalManager.showSpreadDetails(' + alert.id + ')"' 
+                : '';
+            const clickableClass = isSpreadAllItems ? 'clickable-triggered' : '';
+            
+            html += '<div class="triggered-notification" data-alert-id="' + alert.id + '">' +
+                    '<span class="' + clickableClass + '" ' + clickHandler + '>' + alert.triggered_text + '</span>' +
+                    '<button class="dismiss-btn" onclick="event.stopPropagation(); AlertActions.dismiss(' + alert.id + ')">&times;</button>' +
+                    '</div>';
+        });
+        
+        return html;
+    },
+    
+    /**
+     * Renders the action buttons (Delete, Confirm, Cancel).
+     */
+    renderActionButtons(hasAlerts) {
+        if (!hasAlerts) return '';
+        
+        const { deleteMode } = AlertsState;
+        
+        return '<div class="alert-actions">' +
+               '<button class="action-btn delete-btn" onclick="AlertActions.toggleDeleteMode()" ' +
+               'style="' + (deleteMode ? 'display:none' : '') + '">Delete Alert(s)</button>' +
+               '<button class="action-btn confirm-delete-btn" onclick="AlertActions.confirmDelete()" ' +
+               'style="' + (deleteMode ? '' : 'display:none') + '">Confirm Delete</button>' +
+               '<button class="action-btn cancel-btn" onclick="AlertActions.cancelDeleteMode()" ' +
+               'style="' + (deleteMode ? '' : 'display:none') + '">Cancel</button>' +
+               '</div>';
+    },
+    
+    /**
+     * Renders a single alert list item.
+     */
+    renderAlertItem(alert) {
+        const { deleteMode } = AlertsState;
+        const isSpreadAllItems = this.isSpreadAllItemsAlert(alert);
+        
+        // Cache spread data if triggered
+        if (isSpreadAllItems && alert.is_triggered) {
+            AlertsState.setSpreadData(alert.id, alert.triggered_data);
+        }
+        
+        const clickHandler = isSpreadAllItems && alert.is_triggered 
+            ? 'onclick="ModalManager.showSpreadDetails(' + alert.id + ')"' 
+            : '';
+        const clickableClass = isSpreadAllItems && alert.is_triggered 
+            ? 'clickable-triggered' 
+            : '';
+        
+        // Build triggered badge if needed
+        let triggeredBadge = '';
+        if (alert.is_triggered) {
+            const triggeredText = this.buildTriggeredText(alert);
+            triggeredBadge = '<span class="alert-triggered ' + clickableClass + '" ' + clickHandler + '>' + triggeredText + '</span>';
+        }
+        
+        return '<li class="alert-item ' + (deleteMode ? 'delete-mode' : '') + '" data-alert-id="' + alert.id + '">' +
+               '<input type="checkbox" class="alert-checkbox" style="' + (deleteMode ? 'display:block' : 'display:none') + '">' +
+               '<span class="alert-icon">🔔</span>' +
+               '<span class="alert-text">' + alert.text + '</span>' +
+               triggeredBadge +
+               '</li>';
+    },
+    
+    /**
+     * Renders the complete alerts list.
+     */
+    renderAlertsList(alerts) {
+        if (!alerts || alerts.length === 0) {
+            return '<p class="no-alerts">No active alerts. Create one to get started!</p>';
+        }
+        
+        let html = '<ul class="alerts-list">';
+        alerts.forEach(alert => {
+            html += this.renderAlertItem(alert);
+        });
+        html += '</ul>';
+        return html;
+    },
+    
+    /**
+     * Renders the spread details modal content.
+     */
+    renderSpreadItemsList(items) {
+        let html = '';
+        items.forEach(item => {
+            const lowPrice = item.low ? item.low.toLocaleString() : 'N/A';
+            const highPrice = item.high ? item.high.toLocaleString() : 'N/A';
+            
+            html += '<li>' +
+                    '<div>' +
+                    '<span class="spread-item-name">' + item.item_name + '</span>' +
+                    '<div class="spread-item-details">Low: ' + lowPrice + ' | High: ' + highPrice + '</div>' +
+                    '</div>' +
+                    '<span class="spread-item-percentage">' + item.spread + '%</span>' +
+                    '</li>';
+        });
+        return html;
+    },
+    
+    /**
+     * Renders autocomplete suggestions.
+     */
+    renderSuggestions(items) {
+        let html = '';
+        items.forEach(item => {
+            html += '<div class="suggestion-item" data-id="' + item.id + '" data-name="' + item.name + '">' + item.name + '</div>';
+        });
+        return html;
+    },
+    
+    /**
+     * Updates the entire My Alerts pane with fresh data.
+     */
+    updateMyAlertsPane(data) {
+        const pane = document.querySelector(AlertsConfig.selectors.myAlertsPane);
+        if (!pane) return;
+        
+        const notificationsHtml = this.renderTriggeredNotifications(data.triggered);
+        const actionsHtml = this.renderActionButtons(data.alerts && data.alerts.length > 0);
+        
+        let alertsHtml = '';
+        if (data.alerts && data.alerts.length > 0) {
+            alertsHtml = this.renderAlertsList(data.alerts);
+        } else if (!data.triggered || data.triggered.length === 0) {
+            alertsHtml = this.renderAlertsList([]);
+        }
+        
+        pane.innerHTML = '<div id="triggered-notifications">' + notificationsHtml + '</div>' +
+                        actionsHtml + alertsHtml;
+    }
+};
+
+
+// =============================================================================
+// FORM MANAGEMENT
+// =============================================================================
+/**
+ * Manages form field visibility and state for create/edit forms.
+ * 
+ * Why: Different alert types require different fields. This manager handles
+ * showing/hiding the appropriate fields based on user selections.
+ * 
+ * How: Uses configuration-driven approach to map alert types to visible fields.
+ */
+const FormManager = {
+    /**
+     * Updates form field visibility based on selected alert type.
+     * 
+     * @param {string} formType - Either 'create' or 'edit'
+     */
+    handleAlertTypeChange(formType) {
+        const selectors = AlertsConfig.selectors[formType];
+        const alertType = document.querySelector(selectors.alertType).value;
+        const groups = selectors.groups;
+        
+        // Get all form group elements
+        const elements = {
+            spreadScope: document.querySelector(groups.spreadScope),
+            itemName: document.querySelector(groups.itemName),
+            price: document.querySelector(groups.price),
+            reference: document.querySelector(groups.reference),
+            percentage: document.querySelector(groups.percentage),
+            minPrice: document.querySelector(groups.minPrice),
+            maxPrice: document.querySelector(groups.maxPrice)
+        };
+        
+        if (alertType === AlertsConfig.alertTypes.SPREAD) {
+            // Spread alerts: show spread-specific fields
+            elements.spreadScope.style.display = 'block';
+            elements.price.style.display = 'none';
+            elements.reference.style.display = 'none';
+            elements.percentage.style.display = 'block';
+            
+            // Let scope change handler determine remaining visibility
+            this.handleSpreadScopeChange(formType);
+        } else {
+            // Above/Below alerts: show threshold fields
+            elements.spreadScope.style.display = 'none';
+            elements.itemName.style.display = 'block';
+            elements.price.style.display = 'block';
+            elements.reference.style.display = 'block';
+            elements.percentage.style.display = 'none';
+            elements.minPrice.style.display = 'none';
+            elements.maxPrice.style.display = 'none';
+            
+            // Reset is_all_items
+            document.querySelector(selectors.isAllItems).value = 'false';
+        }
+    },
+    
+    /**
+     * Updates form fields based on spread scope selection.
+     * 
+     * @param {string} formType - Either 'create' or 'edit'
+     */
+    handleSpreadScopeChange(formType) {
+        const selectors = AlertsConfig.selectors[formType];
+        const spreadScope = document.querySelector(selectors.spreadScope).value;
+        const groups = selectors.groups;
+        
+        const itemNameGroup = document.querySelector(groups.itemName);
+        const minPriceGroup = document.querySelector(groups.minPrice);
+        const maxPriceGroup = document.querySelector(groups.maxPrice);
+        const isAllItemsInput = document.querySelector(selectors.isAllItems);
         
         if (spreadScope === 'all') {
             itemNameGroup.style.display = 'none';
@@ -610,242 +1109,174 @@
             maxPriceGroup.style.display = 'none';
             isAllItemsInput.value = 'false';
         }
-    }
-
-    document.querySelectorAll('.tab-btn').forEach(button => {
-        button.addEventListener('click', () => {
-            // Remove active class from all buttons
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            // Add active class to clicked button
-            button.classList.add('active');
-            
-            // Hide all tab panes
-            document.querySelectorAll('.tab-pane').forEach(pane => pane.style.display = 'none');
-            // Show the selected tab pane
-            const tabId = button.getAttribute('data-tab');
-            document.getElementById(tabId).style.display = 'block';
-        });
-    });
-
-    // Item search autocomplete
-    const itemNameInput = document.getElementById('item-name');
-    const itemIdInput = document.getElementById('item-id');
-    const suggestionsDropdown = document.getElementById('item-suggestions');
-
-    itemNameInput.addEventListener('input', async () => {
-        const query = itemNameInput.value;
-        if (query.length < 2) {
-            suggestionsDropdown.style.display = 'none';
-            return;
-        }
-
-        const response = await fetch(`/api/items/?q=${encodeURIComponent(query)}`);
-        const items = await response.json();
-
-        if (items.length > 0) {
-            suggestionsDropdown.innerHTML = items.map(item => 
-                `<div class="suggestion-item" data-id="${item.id}" data-name="${item.name}">${item.name}</div>`
-            ).join('');
-            suggestionsDropdown.style.display = 'block';
-        } else {
-            suggestionsDropdown.style.display = 'none';
-        }
-    });
-
-    suggestionsDropdown.addEventListener('click', (e) => {
-        if (e.target.classList.contains('suggestion-item')) {
-            itemNameInput.value = e.target.dataset.name;
-            itemIdInput.value = e.target.dataset.id;
-            suggestionsDropdown.style.display = 'none';
-        }
-    });
-
-    document.addEventListener('click', (e) => {
-        if (!e.target.closest('.form-group')) {
-            suggestionsDropdown.style.display = 'none';
-        }
-    });
-
-    // Auto-refresh alerts every 5 seconds
-    async function refreshAlerts() {
-        // Skip refresh if in delete mode
-        if (deleteMode) return;
+    },
+    
+    /**
+     * Collects all form values for the edit form.
+     */
+    getEditFormData() {
+        const selectors = AlertsConfig.selectors.edit;
         
-        try {
-            const response = await fetch('/api/alerts/');
-            const data = await response.json();
-            
-            const myAlertsPane = document.getElementById('my-alerts');
-            
-            // Build triggered notifications
-            let notificationsHtml = '';
-            if (data.triggered && data.triggered.length > 0) {
-                data.triggered.forEach(alert => {
-                    const isSpreadAllItems = alert.type === 'spread' && alert.is_all_items && alert.triggered_data;
-                    
-                    if (isSpreadAllItems) {
-                        // Store the data in a global variable for this alert
-                        window[`spreadData_${alert.id}`] = alert.triggered_data;
-                    }
-                    
-                    const clickHandler = isSpreadAllItems ? `onclick="showSpreadDetails(${alert.id})"` : '';
-                    const clickableClass = isSpreadAllItems ? 'clickable-triggered' : '';
-                    
-                    notificationsHtml += `<div class="triggered-notification" data-alert-id="${alert.id}">
-                        <span class="${clickableClass}" ${clickHandler}>${alert.triggered_text}</span>
-                        <button class="dismiss-btn" onclick="event.stopPropagation(); dismissAlert(${alert.id})">&times;</button>
-                    </div>`;
-                });
-            }
-
-            // Build action buttons (only show if there are alerts)
-            let actionsHtml = '';
-            if (data.alerts.length > 0) {
-                actionsHtml = `<div class="alert-actions">
-                    <button class="action-btn delete-btn" onclick="toggleDeleteMode()" style="${deleteMode ? 'display:none' : ''}">Delete Alert(s)</button>
-                    <button class="action-btn confirm-delete-btn" onclick="confirmDelete()" style="${deleteMode ? '' : 'display:none'}">Confirm Delete</button>
-                    <button class="action-btn cancel-btn" onclick="cancelDeleteMode()" style="${deleteMode ? '' : 'display:none'}">Cancel</button>
-                </div>`;
-            }
-            
-            // Build alerts list
-            let alertsHtml = '';
-            if (data.alerts.length > 0) {
-                alertsHtml = '<ul class="alerts-list">';
-                data.alerts.forEach(alert => {
-                    const isSpreadAllItems = alert.type === 'spread' && alert.is_all_items && alert.triggered_data;
-                    const isSpreadSingleItem = alert.type === 'spread' && !alert.is_all_items;
-                    const isAboveBelow = alert.type === 'above' || alert.type === 'below';
-                    
-                    if (isSpreadAllItems && alert.is_triggered) {
-                        window[`spreadData_${alert.id}`] = alert.triggered_data;
-                    }
-                    
-                    const clickHandler = isSpreadAllItems && alert.is_triggered ? `onclick="showSpreadDetails(${alert.id})"` : '';
-                    const clickableClass = isSpreadAllItems && alert.is_triggered ? 'clickable-triggered' : '';
-                    
-                    // Build triggered text based on alert type
-                    let triggeredText = 'Alert triggered.';
-                    if (isSpreadSingleItem && alert.is_triggered && alert.spread_high && alert.spread_low) {
-                        triggeredText = `Alert triggered. Low: ${alert.spread_low.toLocaleString()}, High: ${alert.spread_high.toLocaleString()}, Spread: ${alert.spread_percentage}%`;
-                    } else if (isAboveBelow && alert.is_triggered && alert.current_price) {
-                        const refLabel = alert.reference === 'high' ? 'High' : 'Low';
-                        const direction = alert.type === 'above' ? 'rose above' : 'fell below';
-                        triggeredText = `Alert triggered. ${refLabel} price ${direction} ${alert.price.toLocaleString()} to ${alert.current_price.toLocaleString()}`;
-                    } else if (isSpreadAllItems && alert.is_triggered) {
-                        triggeredText = 'Alert triggered. Click for details';
-                    }
-                    
-                    alertsHtml += `<li class="alert-item ${deleteMode ? 'delete-mode' : ''}" data-alert-id="${alert.id}">
-                        <input type="checkbox" class="alert-checkbox" style="${deleteMode ? 'display:block' : 'display:none'}">
-                        <span class="alert-icon">🔔</span>
-                        <span class="alert-text">${alert.text}</span>`;
-                    if (alert.is_triggered) {
-                        alertsHtml += `<span class="alert-triggered ${clickableClass}" ${clickHandler}>${triggeredText}</span>`;
-                    }
-                    alertsHtml += '</li>';
-                });
-                alertsHtml += '</ul>';
-            } else if (!data.triggered || data.triggered.length === 0) {
-                alertsHtml = '<p class="no-alerts">No active alerts. Create one to get started!</p>';
-            }
-            
-            myAlertsPane.innerHTML = '<div id="triggered-notifications">' + notificationsHtml + '</div>' + actionsHtml + alertsHtml;
-        } catch (error) {
-            console.error('Error refreshing alerts:', error);
+        return {
+            alert_id: document.querySelector(selectors.alertId).value,
+            type: document.querySelector(selectors.alertType).value,
+            item_name: document.querySelector(selectors.itemName).value,
+            item_id: document.querySelector(selectors.itemId).value,
+            price: document.querySelector(selectors.price).value,
+            reference: document.querySelector(selectors.reference).value,
+            percentage: document.querySelector(selectors.percentage).value,
+            is_all_items: document.querySelector(selectors.isAllItems).value === 'true',
+            minimum_price: document.querySelector(selectors.minimumPrice).value,
+            maximum_price: document.querySelector(selectors.maximumPrice).value
+        };
+    },
+    
+    /**
+     * Populates the edit form with existing alert data.
+     */
+    populateEditForm(alertData) {
+        const selectors = AlertsConfig.selectors.edit;
+        
+        document.querySelector(selectors.alertId).value = alertData.id;
+        document.querySelector(selectors.alertType).value = alertData.type;
+        document.querySelector(selectors.itemName).value = alertData.itemName || '';
+        document.querySelector(selectors.itemId).value = alertData.itemId || '';
+        document.querySelector(selectors.price).value = alertData.price || '';
+        document.querySelector(selectors.reference).value = alertData.reference || 'high';
+        document.querySelector(selectors.percentage).value = alertData.percentage || '';
+        document.querySelector(selectors.isAllItems).value = alertData.isAllItems ? 'true' : 'false';
+        document.querySelector(selectors.minimumPrice).value = alertData.minPrice || '';
+        document.querySelector(selectors.maximumPrice).value = alertData.maxPrice || '';
+        
+        // Set spread scope dropdown if spread alert
+        if (alertData.type === AlertsConfig.alertTypes.SPREAD) {
+            document.querySelector(selectors.spreadScope).value = alertData.isAllItems ? 'all' : 'specific';
         }
+        
+        // Update field visibility
+        this.handleAlertTypeChange('edit');
     }
+};
 
-    function showSpreadDetails(alertId) {
-        const dataStr = window[`spreadData_${alertId}`];
+
+// =============================================================================
+// MODAL MANAGEMENT
+// =============================================================================
+/**
+ * Controls modal dialogs (edit modal and spread details modal).
+ * 
+ * Why: Modals have common behavior that should be handled consistently.
+ */
+const ModalManager = {
+    /**
+     * Opens the edit modal with alert data.
+     */
+    openEditModal(id, type, itemName, itemId, price, reference, percentage, isAllItems, minPrice, maxPrice) {
+        FormManager.populateEditForm({
+            id, type, itemName, itemId, price, reference, 
+            percentage, isAllItems, minPrice, maxPrice
+        });
+        
+        document.querySelector(AlertsConfig.selectors.edit.modal).style.display = 'flex';
+    },
+    
+    /**
+     * Closes the edit modal.
+     */
+    closeEditModal() {
+        document.querySelector(AlertsConfig.selectors.edit.modal).style.display = 'none';
+    },
+    
+    /**
+     * Opens spread details modal with matching items.
+     */
+    showSpreadDetails(alertId) {
+        const dataStr = AlertsState.getSpreadData(alertId);
+        
         if (!dataStr) {
             console.error('No spread data found for alert', alertId);
             return;
         }
         
         const data = JSON.parse(dataStr);
-        const list = document.getElementById('spread-items-list');
+        const list = document.querySelector(AlertsConfig.selectors.spreadItemsList);
+        list.innerHTML = AlertsUI.renderSpreadItemsList(data);
         
-        list.innerHTML = data.map(item => `
-            <li>
-                <div>
-                    <span class="spread-item-name">${item.item_name}</span>
-                    <div class="spread-item-details">Low: ${item.low?.toLocaleString() || 'N/A'} | High: ${item.high?.toLocaleString() || 'N/A'}</div>
-                </div>
-                <span class="spread-item-percentage">${item.spread}%</span>
-            </li>
-        `).join('');
-        
-        document.getElementById('spread-modal').style.display = 'flex';
+        document.querySelector(AlertsConfig.selectors.spreadModal).style.display = 'flex';
+    },
+    
+    /**
+     * Closes the spread details modal.
+     */
+    closeSpreadModal() {
+        document.querySelector(AlertsConfig.selectors.spreadModal).style.display = 'none';
     }
+};
 
-    function closeSpreadModal() {
-        document.getElementById('spread-modal').style.display = 'none';
-    }
 
-    // Close spread modal when clicking the backdrop
-    document.getElementById('spread-modal').addEventListener('click', (e) => {
-        if (e.target.id === 'spread-modal') {
-            closeSpreadModal();
-        }
-    });
-
-    // Close spread modal when pressing Escape
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            const spreadModal = document.getElementById('spread-modal');
-            if (spreadModal && spreadModal.style.display === 'flex') {
-                closeSpreadModal();
-            }
-        }
-    });
-
-    async function dismissAlert(alertId) {
-        // Animate out immediately
-        const notification = document.querySelector(`.triggered-notification[data-alert-id="${alertId}"]`);
+// =============================================================================
+// ALERT ACTIONS
+// =============================================================================
+/**
+ * Handles user actions on alerts (dismiss, delete, save).
+ */
+const AlertActions = {
+    /**
+     * Dismisses a triggered alert notification.
+     */
+    async dismiss(alertId) {
+        // Animate out immediately for responsive feedback
+        const notification = document.querySelector('.triggered-notification[data-alert-id="' + alertId + '"]');
         if (notification) {
             notification.classList.add('dismissing');
         }
         
-        // Call API in background
-        try {
-            await fetch('/api/alerts/dismiss/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
-                },
-                body: JSON.stringify({ alert_id: alertId })
-            });
-        } catch (error) {
-            console.error('Error dismissing alert:', error);
-        }
-    }
-
-    let deleteMode = false;
-
-    function toggleDeleteMode() {
-        deleteMode = true;
+        await AlertsAPI.dismissAlert(alertId);
+    },
+    
+    /**
+     * Toggles delete mode on.
+     */
+    toggleDeleteMode() {
+        AlertsState.deleteMode = true;
+        
         document.querySelectorAll('.alert-checkbox').forEach(cb => cb.style.display = 'block');
         document.querySelectorAll('.alert-item').forEach(item => item.classList.add('delete-mode'));
-        document.querySelector('.delete-btn').style.display = 'none';
-        document.querySelector('.confirm-delete-btn').style.display = 'inline-block';
-        document.querySelector('.cancel-btn').style.display = 'inline-block';
-    }
-
-    function cancelDeleteMode() {
-        deleteMode = false;
+        
+        const deleteBtn = document.querySelector('.delete-btn');
+        const confirmBtn = document.querySelector('.confirm-delete-btn');
+        const cancelBtn = document.querySelector('.cancel-btn');
+        
+        if (deleteBtn) deleteBtn.style.display = 'none';
+        if (confirmBtn) confirmBtn.style.display = 'inline-block';
+        if (cancelBtn) cancelBtn.style.display = 'inline-block';
+    },
+    
+    /**
+     * Cancels delete mode.
+     */
+    cancelDeleteMode() {
+        AlertsState.deleteMode = false;
+        
         document.querySelectorAll('.alert-checkbox').forEach(cb => {
             cb.style.display = 'none';
             cb.checked = false;
         });
         document.querySelectorAll('.alert-item').forEach(item => item.classList.remove('delete-mode'));
-        document.querySelector('.delete-btn').style.display = 'inline-block';
-        document.querySelector('.confirm-delete-btn').style.display = 'none';
-        document.querySelector('.cancel-btn').style.display = 'none';
-    }
-
-    async function confirmDelete() {
+        
+        const deleteBtn = document.querySelector('.delete-btn');
+        const confirmBtn = document.querySelector('.confirm-delete-btn');
+        const cancelBtn = document.querySelector('.cancel-btn');
+        
+        if (deleteBtn) deleteBtn.style.display = 'inline-block';
+        if (confirmBtn) confirmBtn.style.display = 'none';
+        if (cancelBtn) cancelBtn.style.display = 'none';
+    },
+    
+    /**
+     * Confirms deletion of selected alerts.
+     */
+    async confirmDelete() {
         const selectedIds = [];
         document.querySelectorAll('.alert-checkbox:checked').forEach(cb => {
             const alertItem = cb.closest('.alert-item');
@@ -853,184 +1284,321 @@
                 selectedIds.push(alertItem.dataset.alertId);
             }
         });
-
+        
         if (selectedIds.length === 0) {
             alert('Please select at least one alert to delete.');
             return;
         }
-
-        try {
-            await fetch('/api/alerts/delete/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
-                },
-                body: JSON.stringify({ alert_ids: selectedIds })
-            });
-            cancelDeleteMode();
-            refreshAlerts();
-        } catch (error) {
-            console.error('Error deleting alerts:', error);
+        
+        const success = await AlertsAPI.deleteAlerts(selectedIds);
+        if (success) {
+            this.cancelDeleteMode();
+            await AlertsRefresh.refresh();
         }
-    }
-
-    function toggleEditMode() {
-        // Switch to the Edit Alert tab
-        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelector('[data-tab="edit-delete-alert"]').classList.add('active');
-        document.querySelectorAll('.tab-pane').forEach(pane => pane.style.display = 'none');
-        document.getElementById('edit-delete-alert').style.display = 'block';
-    }
-
-    function openEditModal(id, type, itemName, itemId, price, reference, percentage, isAllItems, minPrice, maxPrice) {
-        document.getElementById('edit-alert-id').value = id;
-        document.getElementById('edit-alert-type').value = type;
-        document.getElementById('edit-item-name').value = itemName || '';
-        document.getElementById('edit-item-id').value = itemId || '';
-        document.getElementById('edit-price').value = price || '';
-        document.getElementById('edit-reference').value = reference || 'high';
-        document.getElementById('edit-percentage').value = percentage || '';
-        document.getElementById('edit-is-all-items').value = isAllItems ? 'true' : 'false';
-        document.getElementById('edit-minimum-price').value = minPrice || '';
-        document.getElementById('edit-maximum-price').value = maxPrice || '';
+    },
+    
+    /**
+     * Saves changes from the edit modal.
+     */
+    async save() {
+        const alertData = FormManager.getEditFormData();
         
-        // Set spread scope dropdown
-        if (type === 'spread') {
-            document.getElementById('edit-spread-scope').value = isAllItems ? 'all' : 'specific';
-        }
-        
-        // Update field visibility based on type
-        handleEditAlertTypeChange();
-        
-        document.getElementById('edit-modal').style.display = 'flex';
-    }
-
-    function handleEditAlertTypeChange() {
-        const alertType = document.getElementById('edit-alert-type').value;
-        const spreadScopeGroup = document.getElementById('edit-spread-scope-group');
-        const itemNameGroup = document.getElementById('edit-item-name-group');
-        const priceGroup = document.getElementById('edit-price-group');
-        const referenceGroup = document.getElementById('edit-reference-group');
-        const percentageGroup = document.getElementById('edit-percentage-group');
-        const minPriceGroup = document.getElementById('edit-min-price-group');
-        const maxPriceGroup = document.getElementById('edit-max-price-group');
-        
-        if (alertType === 'spread') {
-            spreadScopeGroup.style.display = 'block';
-            priceGroup.style.display = 'none';
-            referenceGroup.style.display = 'none';
-            percentageGroup.style.display = 'block';
-            handleEditSpreadScopeChange();
-        } else {
-            spreadScopeGroup.style.display = 'none';
-            itemNameGroup.style.display = 'block';
-            priceGroup.style.display = 'block';
-            referenceGroup.style.display = 'block';
-            percentageGroup.style.display = 'none';
-            minPriceGroup.style.display = 'none';
-            maxPriceGroup.style.display = 'none';
-        }
-    }
-
-    function handleEditSpreadScopeChange() {
-        const spreadScope = document.getElementById('edit-spread-scope').value;
-        const itemNameGroup = document.getElementById('edit-item-name-group');
-        const minPriceGroup = document.getElementById('edit-min-price-group');
-        const maxPriceGroup = document.getElementById('edit-max-price-group');
-        const isAllItemsInput = document.getElementById('edit-is-all-items');
-        
-        if (spreadScope === 'all') {
-            itemNameGroup.style.display = 'none';
-            minPriceGroup.style.display = 'block';
-            maxPriceGroup.style.display = 'block';
-            isAllItemsInput.value = 'true';
-        } else {
-            itemNameGroup.style.display = 'block';
-            minPriceGroup.style.display = 'none';
-            maxPriceGroup.style.display = 'none';
-            isAllItemsInput.value = 'false';
-        }
-    }
-
-    function closeEditModal() {
-        document.getElementById('edit-modal').style.display = 'none';
-    }
-
-    async function saveAlert() {
-        const alertId = document.getElementById('edit-alert-id').value;
-        const alertType = document.getElementById('edit-alert-type').value;
-        const itemName = document.getElementById('edit-item-name').value;
-        const itemId = document.getElementById('edit-item-id').value;
-        const price = document.getElementById('edit-price').value;
-        const reference = document.getElementById('edit-reference').value;
-        const percentage = document.getElementById('edit-percentage').value;
-        const isAllItems = document.getElementById('edit-is-all-items').value === 'true';
-        const minimumPrice = document.getElementById('edit-minimum-price').value;
-        const maximumPrice = document.getElementById('edit-maximum-price').value;
-
-        try {
-            await fetch('/api/alerts/update/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
-                },
-                body: JSON.stringify({
-                    alert_id: alertId,
-                    type: alertType,
-                    item_name: itemName,
-                    item_id: itemId,
-                    price: price,
-                    reference: reference,
-                    percentage: percentage,
-                    is_all_items: isAllItems,
-                    minimum_price: minimumPrice,
-                    maximum_price: maximumPrice
-                })
-            });
-            closeEditModal();
+        const success = await AlertsAPI.updateAlert(alertData);
+        if (success) {
+            ModalManager.closeEditModal();
             location.reload();
-        } catch (error) {
-            console.error('Error updating alert:', error);
         }
     }
+};
 
-    // Edit modal item search autocomplete
-    const editItemNameInput = document.getElementById('edit-item-name');
-    const editItemIdInput = document.getElementById('edit-item-id');
-    const editSuggestionsDropdown = document.getElementById('edit-item-suggestions');
 
-    editItemNameInput.addEventListener('input', async () => {
-        const query = editItemNameInput.value;
-        if (query.length < 2) {
-            editSuggestionsDropdown.style.display = 'none';
-            return;
+// =============================================================================
+// AUTOCOMPLETE MANAGEMENT
+// =============================================================================
+/**
+ * Manages item search autocomplete functionality.
+ * 
+ * Why: Both create and edit forms need autocomplete. This manager provides
+ * reusable autocomplete logic for any item name input.
+ */
+const AutocompleteManager = {
+    /**
+     * Sets up autocomplete for an input/dropdown pair.
+     */
+    setup(input, hiddenInput, dropdown) {
+        if (!input || !dropdown) return;
+        
+        // Handle input changes - fetch suggestions
+        input.addEventListener('input', async function() {
+            const query = input.value;
+            
+            if (query.length < AlertsConfig.timing.minSearchLength) {
+                dropdown.style.display = 'none';
+                return;
+            }
+            
+            const items = await AlertsAPI.searchItems(query);
+            
+            if (items.length > 0) {
+                dropdown.innerHTML = AlertsUI.renderSuggestions(items);
+                dropdown.style.display = 'block';
+            } else {
+                dropdown.style.display = 'none';
+            }
+        });
+        
+        // Handle suggestion selection
+        dropdown.addEventListener('click', function(e) {
+            if (e.target.classList.contains('suggestion-item')) {
+                input.value = e.target.dataset.name;
+                hiddenInput.value = e.target.dataset.id;
+                dropdown.style.display = 'none';
+            }
+        });
+    },
+    
+    /**
+     * Initializes autocomplete for both forms.
+     */
+    init() {
+        // Create form autocomplete
+        const createSelectors = AlertsConfig.selectors.create;
+        this.setup(
+            document.querySelector(createSelectors.itemName),
+            document.querySelector(createSelectors.itemId),
+            document.querySelector(createSelectors.suggestions)
+        );
+        
+        // Edit form autocomplete
+        const editSelectors = AlertsConfig.selectors.edit;
+        this.setup(
+            document.querySelector(editSelectors.itemName),
+            document.querySelector(editSelectors.itemId),
+            document.querySelector(editSelectors.suggestions)
+        );
+    }
+};
+
+
+// =============================================================================
+// ALERTS REFRESH
+// =============================================================================
+/**
+ * Handles periodic refresh of alerts data.
+ * 
+ * Why: Alerts can be triggered by the background script at any time.
+ * Periodic refresh ensures the UI stays in sync.
+ */
+const AlertsRefresh = {
+    intervalId: null,
+    
+    /**
+     * Fetches fresh data and updates the UI.
+     */
+    async refresh() {
+        // Don't refresh during delete mode
+        if (AlertsState.deleteMode) return;
+        
+        const data = await AlertsAPI.fetchAlerts();
+        if (data) {
+            AlertsUI.updateMyAlertsPane(data);
         }
-
-        const response = await fetch(`/api/items/?q=${encodeURIComponent(query)}`);
-        const items = await response.json();
-
-        if (items.length > 0) {
-            editSuggestionsDropdown.innerHTML = items.map(item => 
-                `<div class="suggestion-item" data-id="${item.id}" data-name="${item.name}">${item.name}</div>`
-            ).join('');
-            editSuggestionsDropdown.style.display = 'block';
-        } else {
-            editSuggestionsDropdown.style.display = 'none';
+    },
+    
+    /**
+     * Starts the periodic refresh interval.
+     */
+    start() {
+        this.refresh();
+        this.intervalId = setInterval(
+            () => this.refresh(), 
+            AlertsConfig.timing.refreshInterval
+        );
+    },
+    
+    /**
+     * Stops the periodic refresh.
+     */
+    stop() {
+        if (this.intervalId) {
+            clearInterval(this.intervalId);
+            this.intervalId = null;
         }
-    });
+    }
+};
 
-    editSuggestionsDropdown.addEventListener('click', (e) => {
-        if (e.target.classList.contains('suggestion-item')) {
-            editItemNameInput.value = e.target.dataset.name;
-            editItemIdInput.value = e.target.dataset.id;
-            editSuggestionsDropdown.style.display = 'none';
+
+// =============================================================================
+// TAB NAVIGATION
+// =============================================================================
+/**
+ * Manages tab switching between views.
+ */
+const TabManager = {
+    /**
+     * Switches to a specific tab.
+     */
+    switchTo(tabId) {
+        document.querySelectorAll(AlertsConfig.selectors.tabButtons).forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.getAttribute('data-tab') === tabId) {
+                btn.classList.add('active');
+            }
+        });
+        
+        document.querySelectorAll(AlertsConfig.selectors.tabPanes).forEach(pane => {
+            pane.style.display = 'none';
+        });
+        document.getElementById(tabId).style.display = 'block';
+    },
+    
+    /**
+     * Initializes tab click handlers.
+     */
+    init() {
+        document.querySelectorAll(AlertsConfig.selectors.tabButtons).forEach(button => {
+            button.addEventListener('click', function() {
+                const tabId = button.getAttribute('data-tab');
+                TabManager.switchTo(tabId);
+            });
+        });
+    }
+};
+
+
+// =============================================================================
+// EVENT MANAGEMENT
+// =============================================================================
+/**
+ * Sets up all event listeners for the alerts system.
+ */
+const EventManager = {
+    /**
+     * Sets up modal event listeners.
+     */
+    setupModalEvents() {
+        const spreadModal = document.querySelector(AlertsConfig.selectors.spreadModal);
+        
+        // Close spread modal on backdrop click
+        if (spreadModal) {
+            spreadModal.addEventListener('click', function(e) {
+                if (e.target.id === 'spread-modal') {
+                    ModalManager.closeSpreadModal();
+                }
+            });
         }
-    });
+        
+        // Close modals on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const spreadModal = document.querySelector(AlertsConfig.selectors.spreadModal);
+                if (spreadModal && spreadModal.style.display === 'flex') {
+                    ModalManager.closeSpreadModal();
+                }
+            }
+        });
+    },
+    
+    /**
+     * Sets up autocomplete dropdown close on outside click.
+     */
+    setupAutocompleteEvents() {
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.form-group')) {
+                const createSuggestions = document.querySelector(AlertsConfig.selectors.create.suggestions);
+                const editSuggestions = document.querySelector(AlertsConfig.selectors.edit.suggestions);
+                
+                if (createSuggestions) createSuggestions.style.display = 'none';
+                if (editSuggestions) editSuggestions.style.display = 'none';
+            }
+        });
+    },
+    
+    /**
+     * Initializes all event listeners.
+     */
+    init() {
+        this.setupModalEvents();
+        this.setupAutocompleteEvents();
+    }
+};
 
-    // Initial load and poll every 5 seconds
-    refreshAlerts();
-    setInterval(refreshAlerts, 5000);
+
+// =============================================================================
+// GLOBAL FUNCTION EXPORTS
+// =============================================================================
+/**
+ * These functions are exposed globally for use in onclick handlers in HTML.
+ */
+
+// Form handlers
+function handleAlertTypeChange() {
+    FormManager.handleAlertTypeChange('create');
+}
+
+function handleSpreadScopeChange() {
+    FormManager.handleSpreadScopeChange('create');
+}
+
+function handleEditAlertTypeChange() {
+    FormManager.handleAlertTypeChange('edit');
+}
+
+function handleEditSpreadScopeChange() {
+    FormManager.handleSpreadScopeChange('edit');
+}
+
+// Modal handlers
+function openEditModal(id, type, itemName, itemId, price, reference, percentage, isAllItems, minPrice, maxPrice) {
+    ModalManager.openEditModal(id, type, itemName, itemId, price, reference, percentage, isAllItems, minPrice, maxPrice);
+}
+
+function closeEditModal() {
+    ModalManager.closeEditModal();
+}
+
+function closeSpreadModal() {
+    ModalManager.closeSpreadModal();
+}
+
+function showSpreadDetails(alertId) {
+    ModalManager.showSpreadDetails(alertId);
+}
+
+// Alert action handlers
+function dismissAlert(alertId) {
+    AlertActions.dismiss(alertId);
+}
+
+function toggleDeleteMode() {
+    AlertActions.toggleDeleteMode();
+}
+
+function cancelDeleteMode() {
+    AlertActions.cancelDeleteMode();
+}
+
+function confirmDelete() {
+    AlertActions.confirmDelete();
+}
+
+function saveAlert() {
+    AlertActions.save();
+}
+
+
+// =============================================================================
+// INITIALIZATION
+// =============================================================================
+/**
+ * Initialize the alerts system when the script loads.
+ */
+(function init() {
+    TabManager.init();
+    AutocompleteManager.init();
+    EventManager.init();
+    AlertsRefresh.start();
+})();
 </script>
+
 {% endblock %}
