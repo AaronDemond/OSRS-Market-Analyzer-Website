@@ -246,11 +246,21 @@
         background-color: #cce5ff;
         border-left: 4px solid #007bff;
         border-radius: 8px;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.3s ease, max-height 0.3s ease, margin 0.3s ease, padding 0.3s ease;
+        max-height: 200px;
+        overflow: hidden;
     }
     .alert-item:hover {
         transform: translateX(5px);
         box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
+    }
+    .alert-item.deleting {
+        opacity: 0;
+        transform: translateX(20px);
+        max-height: 0;
+        margin-bottom: 0;
+        padding-top: 0;
+        padding-bottom: 0;
     }
     .alert-text {
         flex: 1;
@@ -1277,12 +1287,20 @@ const AlertActions = {
     
     /**
      * Confirms deletion of selected alerts.
+     * 
+     * What: Deletes selected alerts with smooth animation
+     * Why: Provides visual feedback and smooth UX when removing alerts
+     * How: Animates selected items out, waits for animation, then calls API
+     *      and refreshes the list
      */
     async confirmDelete() {
+        const selectedItems = [];
         const selectedIds = [];
+        
         document.querySelectorAll('.alert-checkbox:checked').forEach(cb => {
             const alertItem = cb.closest('.alert-item');
             if (alertItem) {
+                selectedItems.push(alertItem);
                 selectedIds.push(alertItem.dataset.alertId);
             }
         });
@@ -1292,6 +1310,15 @@ const AlertActions = {
             return;
         }
         
+        // Animate items out
+        selectedItems.forEach(item => {
+            item.classList.add('deleting');
+        });
+        
+        // Wait for animation to complete (300ms matches CSS transition)
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Call API to delete
         const success = await AlertsAPI.deleteAlerts(selectedIds);
         if (success) {
             this.cancelDeleteMode();
