@@ -424,8 +424,10 @@
         padding: 10px;
         cursor: pointer;
     }
-    .suggestion-item:hover {
-        background-color: #f0f0f0;
+    .suggestion-item:hover,
+    .suggestion-item.selected {
+        background-color: #007bff;
+        color: white;
     }
     .clickable-alert {
         cursor: pointer;
@@ -1323,17 +1325,76 @@ const AlertActions = {
  */
 const AutocompleteManager = {
     /**
-     * Sets up autocomplete for an input/dropdown pair.
+     * Tracks the currently selected suggestion index for each dropdown.
+     * Keys are dropdown element IDs, values are the selected index (-1 = none).
+     */
+    selectedIndex: {},
+    
+    /**
+     * Sets up autocomplete for an input/dropdown pair with full keyboard support.
+     * 
+     * What: Enables item search with suggestions dropdown
+     * Why: Users need to find items by name, and keyboard navigation improves UX
+     * How: Listens for input changes to fetch suggestions, and keydown events
+     *      for arrow key navigation, Enter to select, and Escape to close
+     * 
+     * @param {HTMLElement} input - The text input element
+     * @param {HTMLElement} hiddenInput - Hidden input to store selected item ID
+     * @param {HTMLElement} dropdown - The suggestions dropdown container
      */
     setup(input, hiddenInput, dropdown) {
         if (!input || !dropdown) return;
         
+        const dropdownId = dropdown.id;
+        this.selectedIndex[dropdownId] = -1;
+        
+        /**
+         * Updates visual highlighting of the currently selected suggestion.
+         * Adds 'selected' class to the active item and scrolls it into view.
+         */
+        const updateSelection = () => {
+            const items = dropdown.querySelectorAll('.suggestion-item');
+            items.forEach((item, index) => {
+                if (index === this.selectedIndex[dropdownId]) {
+                    item.classList.add('selected');
+                    item.scrollIntoView({ block: 'nearest' });
+                } else {
+                    item.classList.remove('selected');
+                }
+            });
+        };
+        
+        /**
+         * Selects the currently highlighted suggestion.
+         * Sets the input value and hidden ID, then closes the dropdown.
+         */
+        const selectCurrentItem = () => {
+            const items = dropdown.querySelectorAll('.suggestion-item');
+            const index = this.selectedIndex[dropdownId];
+            
+            if (index >= 0 && index < items.length) {
+                const selectedItem = items[index];
+                input.value = selectedItem.dataset.name;
+                hiddenInput.value = selectedItem.dataset.id;
+                dropdown.style.display = 'none';
+                this.selectedIndex[dropdownId] = -1;
+            }
+        };
+        
+        /**
+         * Resets the selection index when new suggestions are loaded.
+         */
+        const resetSelection = () => {
+            this.selectedIndex[dropdownId] = -1;
+        };
+        
         // Handle input changes - fetch suggestions
-        input.addEventListener('input', async function() {
+        input.addEventListener('input', async () => {
             const query = input.value;
             
             if (query.length < AlertsConfig.timing.minSearchLength) {
                 dropdown.style.display = 'none';
+                resetSelection();
                 return;
             }
             
@@ -1342,17 +1403,93 @@ const AutocompleteManager = {
             if (items.length > 0) {
                 dropdown.innerHTML = AlertsUI.renderSuggestions(items);
                 dropdown.style.display = 'block';
+                resetSelection();
             } else {
                 dropdown.style.display = 'none';
+                resetSelection();
             }
         });
         
-        // Handle suggestion selection
-        dropdown.addEventListener('click', function(e) {
+        // Handle keyboard navigation
+        input.addEventListener('keydown', (e) => {
+            // Only handle keys when dropdown is visible
+            if (dropdown.style.display === 'none') return;
+            
+            const items = dropdown.querySelectorAll('.suggestion-item');
+            if (items.length === 0) return;
+            
+            switch (e.key) {
+                case 'ArrowDown':
+                    // Move selection down, wrap to top if at bottom
+                    e.preventDefault();
+                    this.selectedIndex[dropdownId] = 
+                        (this.selectedIndex[dropdownId] + 1) % items.length;
+                    updateSelection();
+                    break;
+                    
+                case 'ArrowUp':
+                    // Move selection up, wrap to bottom if at top
+                    e.preventDefault();
+                    this.selectedIndex[dropdownId] = 
+                        this.selectedIndex[dropdownId] <= 0 
+                            ? items.length - 1 
+                            : this.selectedIndex[dropdownId] - 1;
+                    updateSelection();
+                    break;
+                    
+                case 'Tab':
+                    e.preventDefault();
+                    if (e.shiftKey) {
+                        // Shift+Tab moves selection up like ArrowUp
+                        this.selectedIndex[dropdownId] = 
+                            this.selectedIndex[dropdownId] <= 0 
+                                ? items.length - 1 
+                                : this.selectedIndex[dropdownId] - 1;
+                    } else {
+                        // Tab moves selection down like ArrowDown
+                        this.selectedIndex[dropdownId] = 
+                            (this.selectedIndex[dropdownId] + 1) % items.length;
+                    }
+                    updateSelection();
+                    break;
+                    
+                case 'Enter':
+                    // Enter selects current item
+                    if (this.selectedIndex[dropdownId] >= 0) {
+                        e.preventDefault();
+                        selectCurrentItem();
+                    }
+                    break;
+                    
+                case 'Escape':
+                    // Escape closes dropdown without selecting
+                    e.preventDefault();
+                    dropdown.style.display = 'none';
+                    resetSelection();
+                    break;
+            }
+        });
+        
+        // Handle mouse click on suggestion
+        dropdown.addEventListener('click', (e) => {
             if (e.target.classList.contains('suggestion-item')) {
                 input.value = e.target.dataset.name;
                 hiddenInput.value = e.target.dataset.id;
                 dropdown.style.display = 'none';
+                resetSelection();
+            }
+        });
+        
+        // Handle mouse hover to update selection
+        dropdown.addEventListener('mouseover', (e) => {
+            if (e.target.classList.contains('suggestion-item')) {
+                const items = dropdown.querySelectorAll('.suggestion-item');
+                items.forEach((item, index) => {
+                    if (item === e.target) {
+                        this.selectedIndex[dropdownId] = index;
+                    }
+                });
+                updateSelection();
             }
         });
     },
