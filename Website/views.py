@@ -99,6 +99,7 @@ def flips(request):
             'high_price': high_price,
             'low_price': low_price,
             'quantity': quantity_held,
+            'net': item_net,
         })
     
     return render(request, 'flips.html', {

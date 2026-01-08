@@ -183,6 +183,7 @@
             <th class="sortable" data-col="2" data-type="number">Quantity <span class="sort-icon"></span></th>
             <th class="sortable" data-col="3" data-type="number">Current High Price <span class="sort-icon"></span></th>
             <th class="sortable" data-col="4" data-type="number">Current Low Price <span class="sort-icon"></span></th>
+            <th class="sortable" data-col="5" data-type="number">Net <span class="sort-icon"></span></th>
         </tr>
     </thead>
     <tbody>
@@ -193,10 +194,11 @@
             <td data-value="{{ item.quantity }}">{{ item.quantity|intcomma }}</td>
             <td data-value="{{ item.high_price|default:0 }}">{% if item.high_price %}{{ item.high_price|intcomma }}{% else %}-{% endif %}</td>
             <td data-value="{{ item.low_price|default:0 }}">{% if item.low_price %}{{ item.low_price|intcomma }}{% else %}-{% endif %}</td>
+            <td data-value="{{ item.net }}" class="{% if item.net >= 0 %}text-success{% else %}text-danger{% endif %}">{% if item.net >= 0 %}+{% endif %}{{ item.net|intcomma }}</td>
         </tr>
         {% empty %}
         <tr>
-            <td colspan="5" class="text-center">No flips recorded yet.</td>
+            <td colspan="6" class="text-center">No flips recorded yet.</td>
         </tr>
         {% endfor %}
     </tbody>
