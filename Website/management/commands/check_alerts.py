@@ -188,8 +188,9 @@ class Command(BaseCommand):
                                 self.stdout.write(
                                     self.style.WARNING(f'TRIGGERED (all items spread): {len(result)} items found')
                                 )
-                                # Send email notification
-                                self.send_alert_email(alert, alert.triggered_text())
+                                # Send email notification if enabled
+                                if alert.email_notification:
+                                    self.send_alert_email(alert, alert.triggered_text())
                             else:
                                 alert.is_triggered = True
                                 # Deactivate alert if it's not for all items
@@ -199,8 +200,9 @@ class Command(BaseCommand):
                                 self.stdout.write(
                                     self.style.WARNING(f'TRIGGERED: {alert}')
                                 )
-                                # Send email notification
-                                self.send_alert_email(alert, alert.triggered_text())
+                                # Send email notification if enabled
+                                if alert.email_notification:
+                                    self.send_alert_email(alert, alert.triggered_text())
             else:
                 self.stdout.write('No alerts to check.')
             

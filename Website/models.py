@@ -83,6 +83,7 @@ class Alert(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     minimum_price = models.IntegerField(blank=True, null=True, default=None)
     maximum_price = models.IntegerField(blank=True, null=True, default=None)
+    email_notification = models.BooleanField(default=False)
     
     def __str__(self):
         if self.type == 'spread':

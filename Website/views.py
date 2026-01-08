@@ -295,6 +295,7 @@ def create_alert(request):
         is_all_items = request.POST.get('is_all_items') == 'true'
         minimum_price = request.POST.get('minimum_price')
         maximum_price = request.POST.get('maximum_price')
+        email_notification = request.POST.get('email_notification') == 'on'
         
         # Look up item ID from name if not provided
         if not item_id and item_name:
@@ -314,6 +315,7 @@ def create_alert(request):
             is_all_items=is_all_items,
             minimum_price=int(minimum_price) if minimum_price else None,
             maximum_price=int(maximum_price) if maximum_price else None,
+            email_notification=email_notification,
             is_active=True,
             is_triggered=False
         )
@@ -503,6 +505,9 @@ def update_alert(request):
                     alert.maximum_price = int(maximum_price)
                 else:
                     alert.maximum_price = None
+                
+                # Handle email notification preference
+                alert.email_notification = data.get('email_notification', False)
                 
                 # Reset triggered state when alert is edited
                 alert.is_triggered = False
