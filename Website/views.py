@@ -350,7 +350,9 @@ def alerts_api(request):
             'triggered_text': alert.triggered_text() if alert.is_triggered else None,
             'type': alert.type,
             'is_all_items': alert.is_all_items,
-            'triggered_data': alert.triggered_data
+            'triggered_data': alert.triggered_data,
+            'reference': alert.reference,
+            'price': alert.price
         }
         
         # Add spread data for single item spread alerts
@@ -365,6 +367,15 @@ def alerts_api(request):
                     alert_dict['spread_low'] = low
                     alert_dict['spread_percentage'] = spread
         
+        # Add current price for above/below alerts
+        if alert.type in ['above', 'below'] and alert.item_id and all_prices:
+            price_data = all_prices.get(str(alert.item_id))
+            if price_data:
+                if alert.reference == 'high':
+                    alert_dict['current_price'] = price_data.get('high')
+                else:
+                    alert_dict['current_price'] = price_data.get('low')
+        
         alerts_data.append(alert_dict)
     
     # Get recently triggered alerts (triggered and not dismissed)
@@ -376,7 +387,9 @@ def alerts_api(request):
             'triggered_text': alert.triggered_text(),
             'type': alert.type,
             'is_all_items': alert.is_all_items,
-            'triggered_data': alert.triggered_data
+            'triggered_data': alert.triggered_data,
+            'reference': alert.reference,
+            'price': alert.price
         }
         
         # Add spread data for single item spread alerts
@@ -390,6 +403,15 @@ def alerts_api(request):
                     triggered_dict['spread_high'] = high
                     triggered_dict['spread_low'] = low
                     triggered_dict['spread_percentage'] = spread
+        
+        # Add current price for above/below alerts
+        if alert.type in ['above', 'below'] and alert.item_id and all_prices:
+            price_data = all_prices.get(str(alert.item_id))
+            if price_data:
+                if alert.reference == 'high':
+                    triggered_dict['current_price'] = price_data.get('high')
+                else:
+                    triggered_dict['current_price'] = price_data.get('low')
         
         triggered_data.append(triggered_dict)
     

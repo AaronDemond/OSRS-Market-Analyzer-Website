@@ -715,6 +715,7 @@
                 data.alerts.forEach(alert => {
                     const isSpreadAllItems = alert.type === 'spread' && alert.is_all_items && alert.triggered_data;
                     const isSpreadSingleItem = alert.type === 'spread' && !alert.is_all_items;
+                    const isAboveBelow = alert.type === 'above' || alert.type === 'below';
                     
                     if (isSpreadAllItems && alert.is_triggered) {
                         window[`spreadData_${alert.id}`] = alert.triggered_data;
@@ -724,9 +725,15 @@
                     const clickableClass = isSpreadAllItems && alert.is_triggered ? 'clickable-triggered' : '';
                     
                     // Build triggered text based on alert type
-                    let triggeredText = 'Alert triggered. Click for details';
+                    let triggeredText = 'Alert triggered.';
                     if (isSpreadSingleItem && alert.is_triggered && alert.spread_high && alert.spread_low) {
                         triggeredText = `Alert triggered. Low: ${alert.spread_low.toLocaleString()}, High: ${alert.spread_high.toLocaleString()}, Spread: ${alert.spread_percentage}%`;
+                    } else if (isAboveBelow && alert.is_triggered && alert.current_price) {
+                        const refLabel = alert.reference === 'high' ? 'High' : 'Low';
+                        const direction = alert.type === 'above' ? 'rose above' : 'fell below';
+                        triggeredText = `Alert triggered. ${refLabel} price ${direction} ${alert.price.toLocaleString()} to ${alert.current_price.toLocaleString()}`;
+                    } else if (isSpreadAllItems && alert.is_triggered) {
+                        triggeredText = 'Alert triggered. Click for details';
                     }
                     
                     alertsHtml += `<li class="alert-item ${deleteMode ? 'delete-mode' : ''}" data-alert-id="${alert.id}">
