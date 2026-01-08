@@ -67,11 +67,12 @@ class Alert(models.Model):
     
     type = models.CharField(max_length=10, null=True, choices=ALERT_CHOICES, default='above')
     direction = models.CharField(max_length=10, choices=DIRECTION_CHOICES, blank=True, null=True)
+    # unused field
     above_below = models.CharField(max_length=10, choices=ABOVE_BELOW_CHOICES, blank=True, null=True)
     item_name = models.CharField(max_length=255, blank=True, null=True, default=None)
     item_id = models.IntegerField(blank=True, null=True, default=None)
     price = models.IntegerField(blank=True, null=True, default=None)
-    is_all_items = models.BooleanField(default=None, blank=True, null=True)
+    is_all_items = models.BooleanField(default=False, blank=True, null=True)
     reference = models.CharField(max_length=4, choices=REFERENCE_CHOICES, blank=True, null=True, default=None)
     is_triggered = models.BooleanField(default=False, blank=True, null=True)
     is_active = models.BooleanField(default=True, blank=True, null=True)

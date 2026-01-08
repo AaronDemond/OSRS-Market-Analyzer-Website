@@ -33,4 +33,5 @@ urlpatterns = [
     path('alerts/', views.alerts, name='alerts'),
     path('alerts/create/', views.create_alert, name='create_alert'),
     path('api/alerts/', views.alerts_api, name='alerts_api'),
+    path('api/alerts/dismiss/', views.dismiss_triggered_alert, name='dismiss_triggered_alert'),
 ]

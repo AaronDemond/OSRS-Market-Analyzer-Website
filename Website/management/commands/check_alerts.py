@@ -65,6 +65,9 @@ class Command(BaseCommand):
                     for alert in active_alerts:
                         if self.check_alert(alert, all_prices):
                             alert.is_triggered = True
+                            # Deactivate alert if it's not for all items
+                            if alert.is_all_items is not True:
+                                alert.is_active = False
                             alert.save()
                             self.stdout.write(
                                 self.style.WARNING(f'TRIGGERED: {alert}')

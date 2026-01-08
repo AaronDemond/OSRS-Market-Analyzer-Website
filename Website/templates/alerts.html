@@ -14,9 +14,17 @@
 
 <div class="tab-content">
     <div id="my-alerts" class="tab-pane active">
-        {% if active_alerts %}
+        <div id="triggered-notifications">
+            {% for alert in triggered_alerts %}
+                <div class="triggered-notification" data-alert-id="{{ alert.id }}">
+                    {{ alert.triggered_text }}
+                    <button class="dismiss-btn" onclick="dismissAlert({{ alert.id }})">&times;</button>
+                </div>
+            {% endfor %}
+        </div>
+        {% if all_alerts %}
             <ul class="alerts-list">
-                {% for alert in active_alerts %}
+                {% for alert in all_alerts %}
                     <li class="alert-item">
                         <span class="alert-icon">🔔</span>
                         <span class="alert-text">{{ alert }}</span>
@@ -26,7 +34,7 @@
                     </li>
                 {% endfor %}
             </ul>
-        {% else %}
+        {% elif not triggered_alerts %}
             <p class="no-alerts">No active alerts. Create one to get started!</p>
         {% endif %}
     </div>
@@ -133,6 +141,32 @@
         font-style: italic;
         padding: 20px;
         text-align: center;
+    }
+    .triggered-notification {
+        background-color: #28a745;
+        color: white;
+        padding: 15px 40px 15px 20px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        position: relative;
+        font-weight: 500;
+    }
+    .triggered-notification .dismiss-btn {
+        position: absolute;
+        top: 50%;
+        right: 15px;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: white;
+        font-size: 20px;
+        cursor: pointer;
+        font-weight: bold;
+        line-height: 1;
+        opacity: 0.8;
+    }
+    .triggered-notification .dismiss-btn:hover {
+        opacity: 1;
     }
     .create-alert-form {
         max-width: 400px;
@@ -258,31 +292,61 @@
             const response = await fetch('/api/alerts/');
             const data = await response.json();
             
-            const alertsList = document.querySelector('.alerts-list');
             const myAlertsPane = document.getElementById('my-alerts');
             
+            // Build triggered notifications
+            let notificationsHtml = '';
+            if (data.triggered && data.triggered.length > 0) {
+                data.triggered.forEach(alert => {
+                    notificationsHtml += `<div class="triggered-notification" data-alert-id="${alert.id}">
+                        ${alert.triggered_text}
+                        <button class="dismiss-btn" onclick="dismissAlert(${alert.id})">&times;</button>
+                    </div>`;
+                });
+            }
+            
+            // Build alerts list
+            let alertsHtml = '';
             if (data.alerts.length > 0) {
-                let html = '<ul class="alerts-list">';
+                alertsHtml = '<ul class="alerts-list">';
                 data.alerts.forEach(alert => {
-                    html += `<li class="alert-item">
+                    alertsHtml += `<li class="alert-item">
                         <span class="alert-icon">🔔</span>
                         <span class="alert-text">${alert.text}</span>`;
                     if (alert.is_triggered) {
-                        html += `<span class="alert-triggered">TRIGGERED: ${alert.triggered_text}</span>`;
+                        alertsHtml += `<span class="alert-triggered">TRIGGERED: ${alert.triggered_text}</span>`;
                     }
-                    html += '</li>';
+                    alertsHtml += '</li>';
                 });
-                html += '</ul>';
-                myAlertsPane.innerHTML = html;
-            } else {
-                myAlertsPane.innerHTML = '<p class="no-alerts">No active alerts. Create one to get started!</p>';
+                alertsHtml += '</ul>';
+            } else if (!data.triggered || data.triggered.length === 0) {
+                alertsHtml = '<p class="no-alerts">No active alerts. Create one to get started!</p>';
             }
+            
+            myAlertsPane.innerHTML = '<div id="triggered-notifications">' + notificationsHtml + '</div>' + alertsHtml;
         } catch (error) {
             console.error('Error refreshing alerts:', error);
         }
     }
 
-    // Poll every 5 seconds
+    async function dismissAlert(alertId) {
+        try {
+            await fetch('/api/alerts/dismiss/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ alert_id: alertId })
+            });
+            refreshAlerts();
+        } catch (error) {
+            console.error('Error dismissing alert:', error);
+        }
+    }
+
+    // Initial load and poll every 5 seconds
+    refreshAlerts();
     setInterval(refreshAlerts, 5000);
 </script>
 {% endblock %}

@@ -272,8 +272,15 @@ def item_search(request):
 
 
 def alerts(request):
+    all_alerts = Alert.objects.all()
     active_alerts = Alert.objects.filter(is_active=True)
-    return render(request, 'alerts.html', {'active_alerts': active_alerts})
+    triggered_alerts = Alert.objects.filter(is_triggered=True, is_active=False)
+    return render(request, 'alerts.html', {
+        'active_alerts': active_alerts,
+        'triggered_alerts': triggered_alerts,
+        'all_alerts': all_alerts,
+
+    })
 
 
 def create_alert(request):
@@ -310,4 +317,25 @@ def alerts_api(request):
             'triggered_text': alert.triggered_text() if alert.is_triggered else None
         }
         alerts_data.append(alert_dict)
-    return JsonResponse({'alerts': alerts_data})
+    
+    # Get recently triggered alerts (triggered and now inactive)
+    triggered_alerts = Alert.objects.filter(is_triggered=True, is_active=False)
+    triggered_data = []
+    for alert in triggered_alerts:
+        triggered_data.append({
+            'id': alert.id,
+            'triggered_text': alert.triggered_text()
+        })
+    
+    return JsonResponse({'alerts': alerts_data, 'triggered': triggered_data})
+
+
+def dismiss_triggered_alert(request):
+    """Dismiss a triggered alert notification"""
+    if request.method == 'POST':
+        import json
+        data = json.loads(request.body)
+        alert_id = data.get('alert_id')
+        if alert_id:
+            Alert.objects.filter(id=alert_id).delete()
+    return JsonResponse({'success': True})
