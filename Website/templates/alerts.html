@@ -1358,8 +1358,34 @@ const AlertActions = {
         const success = await AlertsAPI.deleteAlerts(selectedIds);
         if (success) {
             this.cancelDeleteMode();
+            // Remove deleted alerts from the Edit Alert tab as well
+            this.removeFromEditTab(selectedIds);
             await AlertsRefresh.refresh();
         }
+    },
+    
+    /**
+     * Removes alerts from the Edit Alert tab by their IDs.
+     * 
+     * What: Finds and removes alert items from the edit alerts list
+     * Why: After deletion, alerts should not appear in Edit tab until page refresh
+     * How: Parses onclick handlers to find matching alert IDs and removes elements
+     */
+    removeFromEditTab(alertIds) {
+        const editList = document.querySelector('.edit-alerts-list');
+        if (!editList) return;
+        
+        editList.querySelectorAll('.alert-item').forEach(item => {
+            // Extract alert ID from onclick handler (first parameter)
+            const onclick = item.getAttribute('onclick');
+            if (onclick) {
+                const match = onclick.match(/openEditModal\((\d+)/);
+                if (match && alertIds.includes(match[1])) {
+                    item.classList.add('deleting');
+                    setTimeout(() => item.remove(), 300);
+                }
+            }
+        });
     },
     
     /**
