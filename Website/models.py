@@ -76,6 +76,7 @@ class Alert(models.Model):
     reference = models.CharField(max_length=4, choices=REFERENCE_CHOICES, blank=True, null=True, default=None)
     is_triggered = models.BooleanField(default=False, blank=True, null=True)
     is_active = models.BooleanField(default=True, blank=True, null=True)
+    is_dismissed = models.BooleanField(default=False, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):

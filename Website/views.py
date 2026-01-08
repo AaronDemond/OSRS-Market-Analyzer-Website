@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.db.models import Sum, F
+from django.views.decorators.csrf import csrf_exempt
 import requests
 import time
 from .models import Flip, Alert
@@ -274,7 +275,7 @@ def item_search(request):
 def alerts(request):
     all_alerts = Alert.objects.all()
     active_alerts = Alert.objects.filter(is_active=True)
-    triggered_alerts = Alert.objects.filter(is_triggered=True, is_active=False)
+    triggered_alerts = Alert.objects.filter(is_triggered=True, is_dismissed=False)
     return render(request, 'alerts.html', {
         'active_alerts': active_alerts,
         'triggered_alerts': triggered_alerts,
@@ -290,6 +291,14 @@ def create_alert(request):
         item_id = request.POST.get('item_id')
         price = request.POST.get('price')
         reference = request.POST.get('reference')
+        
+        # Look up item ID from name if not provided
+        if not item_id and item_name:
+            mapping = get_item_mapping()
+            item_data = mapping.get(item_name.lower())
+            if item_data:
+                item_id = item_data['id']
+                item_name = item_data['name']
         
         Alert.objects.create(
             type=alert_type,
@@ -307,9 +316,9 @@ def create_alert(request):
 def alerts_api(request):
     """API endpoint to fetch current alerts status"""
     from Website.models import get_item_price
-    active_alerts = Alert.objects.filter(is_active=True)
+    all_alerts = Alert.objects.all()
     alerts_data = []
-    for alert in active_alerts:
+    for alert in all_alerts:
         alert_dict = {
             'id': alert.id,
             'text': str(alert),
@@ -318,8 +327,8 @@ def alerts_api(request):
         }
         alerts_data.append(alert_dict)
     
-    # Get recently triggered alerts (triggered and now inactive)
-    triggered_alerts = Alert.objects.filter(is_triggered=True, is_active=False)
+    # Get recently triggered alerts (triggered and not dismissed)
+    triggered_alerts = Alert.objects.filter(is_triggered=True, is_dismissed=False)
     triggered_data = []
     for alert in triggered_alerts:
         triggered_data.append({
@@ -330,6 +339,7 @@ def alerts_api(request):
     return JsonResponse({'alerts': alerts_data, 'triggered': triggered_data})
 
 
+@csrf_exempt
 def dismiss_triggered_alert(request):
     """Dismiss a triggered alert notification"""
     if request.method == 'POST':
@@ -337,5 +347,5 @@ def dismiss_triggered_alert(request):
         data = json.loads(request.body)
         alert_id = data.get('alert_id')
         if alert_id:
-            Alert.objects.filter(id=alert_id).delete()
+            Alert.objects.filter(id=alert_id).update(is_dismissed=True)
     return JsonResponse({'success': True})
