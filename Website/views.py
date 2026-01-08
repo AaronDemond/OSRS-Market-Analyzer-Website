@@ -39,6 +39,9 @@ def flips(request):
     item_ids = Flip.objects.values_list('item_id', flat=True).distinct()
     
     items = []
+    total_net = 0
+    position_size = 0
+    
     for item_id in item_ids:
         item_flips = Flip.objects.filter(item_id=item_id)
         item_name = item_flips.first().item_name
@@ -48,9 +51,11 @@ def flips(request):
         total_bought = buys.aggregate(total=Sum('quantity'))['total'] or 0
         total_spent = buys.aggregate(total=Sum(F('quantity') * F('price')))['total'] or 0
         
-        # Calculate total sold
+        # Calculate total sold and revenue (with tax)
         sells = item_flips.filter(type='sell')
         total_sold = sells.aggregate(total=Sum('quantity'))['total'] or 0
+        total_sell_revenue = sells.aggregate(total=Sum(F('quantity') * F('price')))['total'] or 0
+        total_sell_revenue_after_tax = int(total_sell_revenue * 0.98)
         
         # Average price (of buys)
         avg_price = total_spent // total_bought if total_bought > 0 else 0
@@ -75,6 +80,18 @@ def flips(request):
         except requests.RequestException:
             pass
         
+        # Calculate unrealized value of remaining items (with tax)
+        unrealized_value = 0
+        if high_price and quantity_held > 0:
+            unrealized_value = int(quantity_held * high_price * 0.98)
+        
+        # Calculate net for this item: (realized sells + unrealized value) - total spent
+        item_net = (total_sell_revenue_after_tax + unrealized_value) - total_spent
+        total_net += item_net
+        
+        # Position size is the cost basis of remaining items
+        position_size += avg_price * quantity_held
+        
         items.append({
             'item_id': item_id,
             'name': item_name,
@@ -83,17 +100,6 @@ def flips(request):
             'low_price': low_price,
             'quantity': quantity_held,
         })
-    
-    # Calculate total net and position size
-    total_net = 0
-    position_size = 0
-    for item in items:
-        item_position = item['avg_price'] * item['quantity']
-        position_size += item_position
-        if item['high_price']:
-            # Apply 2% GE tax to sell value
-            current_value = int(item['high_price'] * item['quantity'] * 0.98)
-            total_net += current_value - item_position
     
     return render(request, 'flips.html', {
         'items': items,
