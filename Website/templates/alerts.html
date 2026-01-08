@@ -756,7 +756,7 @@
             <li>
                 <div>
                     <span class="spread-item-name">${item.item_name}</span>
-                    <div class="spread-item-details">High: ${item.high?.toLocaleString() || 'N/A'} | Low: ${item.low?.toLocaleString() || 'N/A'}</div>
+                    <div class="spread-item-details">Low: ${item.low?.toLocaleString() || 'N/A'} | High: ${item.high?.toLocaleString() || 'N/A'}</div>
                 </div>
                 <span class="spread-item-percentage">${item.spread}%</span>
             </li>
@@ -768,6 +768,23 @@
     function closeSpreadModal() {
         document.getElementById('spread-modal').style.display = 'none';
     }
+
+    // Close spread modal when clicking the backdrop
+    document.getElementById('spread-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'spread-modal') {
+            closeSpreadModal();
+        }
+    });
+
+    // Close spread modal when pressing Escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const spreadModal = document.getElementById('spread-modal');
+            if (spreadModal && spreadModal.style.display === 'flex') {
+                closeSpreadModal();
+            }
+        }
+    });
 
     async function dismissAlert(alertId) {
         // Animate out immediately
