@@ -157,6 +157,9 @@ def flips(request):
             'high_price': high_price,
             'low_price': low_price,
             'quantity': quantity_held,
+            'quantity_holding': quantity_held,
+            'total_bought': total_bought,
+            'total_sold': total_sold,
             'net': item_net,
         })
     

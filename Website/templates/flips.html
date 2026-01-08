@@ -165,7 +165,7 @@
 {% endblock %}
 
 {% block content %}
-<h1>My Flips!!!!</h1>
+<h1>My Flips</h1>
 
 <div class="stats-row">
     <div class="stat-card {% if total_net >= 0 %}stat-net-positive{% else %}stat-net-negative{% endif %}">
@@ -229,7 +229,7 @@
                         <input type="datetime-local" class="form-control" id="date" name="date" required>
                     </div>
                     <div class="mb-3">
-                        <label for="quantity" class="form-label">Quantity</label>
+                        <label for="quantity" class="form-label">Total Quantity</label>
                         <input type="number" class="form-control" id="quantity" name="quantity" required>
                     </div>
                     <div class="mb-3">
@@ -254,7 +254,7 @@
         <tr>
             <th class="sortable" data-col="0" data-type="string">Item <span class="sort-icon"></span></th>
             <th class="sortable" data-col="1" data-type="number">Average Price <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="2" data-type="number">Quantity <span class="sort-icon"></span></th>
+            <th class="sortable" data-col="2" data-type="number">Quantity Holding <span class="sort-icon"></span></th>
             <th class="sortable" data-col="3" data-type="number">High Price <span class="sort-icon"></span></th>
             <th class="sortable" data-col="4" data-type="number">Low Price <span class="sort-icon"></span></th>
             <th class="sortable" data-col="5" data-type="number">Net <span class="sort-icon"></span></th>
@@ -265,7 +265,7 @@
         <tr data-item-id="{{ item.item_id }}" data-item-name="{{ item.name }}">
             <td><a href="{% url 'item_detail' item.item_id %}">{{ item.name }}</a></td>
             <td data-value="{{ item.avg_price }}">{{ item.avg_price|intcomma }}</td>
-            <td data-value="{{ item.quantity }}">{{ item.quantity|intcomma }}</td>
+            <td data-value="{{ item.quantity_holding }}">{{ item.quantity_holding|intcomma }}</td>
             <td data-value="{{ item.high_price|default:0 }}">{% if item.high_price %}{{ item.high_price|intcomma }}{% else %}-{% endif %}</td>
             <td data-value="{{ item.low_price|default:0 }}">{% if item.low_price %}{{ item.low_price|intcomma }}{% else %}-{% endif %}</td>
             <td data-value="{{ item.net }}" class="{% if item.net >= 0 %}text-success{% else %}text-danger{% endif %}">{% if item.net >= 0 %}+{% endif %}{{ item.net|intcomma }}</td>
