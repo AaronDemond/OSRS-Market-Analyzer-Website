@@ -1,3 +1,4 @@
+import os
 import time
 import json
 import requests
@@ -10,8 +11,8 @@ from Website.models import Alert
 class Command(BaseCommand):
     help = 'Continuously checks alerts every 30 seconds and triggers them if conditions are met'
 
-    # Email recipient for alert notifications
-    ALERT_EMAIL_RECIPIENT = 'demondsoftware@gmail.com'
+    # Email/SMS recipient for alert notifications (loaded from environment variable)
+    ALERT_RECIPIENT = os.environ.get('ALERT_RECIPIENT', '')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -53,17 +54,20 @@ class Command(BaseCommand):
             return None
         return ((high - low) / low) * 100
 
-    def send_alert_email(self, alert, triggered_text):
+    def send_alert_notification(self, alert, triggered_text):
         """
-        Send email notification when an alert is triggered.
+        Send email/SMS notification when an alert is triggered.
         
-        What: Sends an email to notify user of triggered alert
+        What: Sends an email to notify user of triggered alert (works with email-to-SMS gateways)
         Why: Users need to be notified even when not viewing the website
         How: Uses Django's send_mail with the alert's triggered_text as content
         """
-        # Skip if email not configured
+        # Skip if not configured
         if not settings.EMAIL_HOST_USER or not settings.EMAIL_HOST_PASSWORD:
             self.stdout.write(self.style.WARNING('Email not configured - skipping notification'))
+            return
+        if not self.ALERT_RECIPIENT:
+            self.stdout.write(self.style.WARNING('ALERT_RECIPIENT not set - skipping notification'))
             return
             
         try:
@@ -71,12 +75,12 @@ class Command(BaseCommand):
                 subject='Alert Triggered',
                 message=triggered_text,
                 from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[self.ALERT_EMAIL_RECIPIENT],
+                recipient_list=[self.ALERT_RECIPIENT],
                 fail_silently=False
             )
-            self.stdout.write(self.style.SUCCESS(f'Email sent for alert: {alert}'))
+            self.stdout.write(self.style.SUCCESS(f'Notification sent for alert: {alert}'))
         except Exception as e:
-            self.stdout.write(self.style.ERROR(f'Failed to send email: {e}'))
+            self.stdout.write(self.style.ERROR(f'Failed to send notification: {e}'))
 
     def check_alert(self, alert, all_prices):
         """Check if an alert should be triggered. Returns True/False or list of matching items for all_items spread."""
@@ -190,7 +194,7 @@ class Command(BaseCommand):
                                 )
                                 # Send email notification if enabled
                                 if alert.email_notification:
-                                    self.send_alert_email(alert, alert.triggered_text())
+                                    self.send_alert_notification(alert, alert.triggered_text())
                             else:
                                 alert.is_triggered = True
                                 # Deactivate alert if it's not for all items
@@ -202,7 +206,7 @@ class Command(BaseCommand):
                                 )
                                 # Send email notification if enabled
                                 if alert.email_notification:
-                                    self.send_alert_email(alert, alert.triggered_text())
+                                    self.send_alert_notification(alert, alert.triggered_text())
             else:
                 self.stdout.write('No alerts to check.')
             
