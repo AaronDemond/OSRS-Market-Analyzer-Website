@@ -2,11 +2,16 @@ import time
 import json
 import requests
 from django.core.management.base import BaseCommand
+from django.core.mail import send_mail
+from django.conf import settings
 from Website.models import Alert
 
 
 class Command(BaseCommand):
     help = 'Continuously checks alerts every 30 seconds and triggers them if conditions are met'
+
+    # Email recipient for alert notifications
+    ALERT_EMAIL_RECIPIENT = 'demondsoftware@gmail.com'
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -47,6 +52,31 @@ class Command(BaseCommand):
         if low is None or low == 0 or high is None:
             return None
         return ((high - low) / low) * 100
+
+    def send_alert_email(self, alert, triggered_text):
+        """
+        Send email notification when an alert is triggered.
+        
+        What: Sends an email to notify user of triggered alert
+        Why: Users need to be notified even when not viewing the website
+        How: Uses Django's send_mail with the alert's triggered_text as content
+        """
+        # Skip if email not configured
+        if not settings.EMAIL_HOST_USER or not settings.EMAIL_HOST_PASSWORD:
+            self.stdout.write(self.style.WARNING('Email not configured - skipping notification'))
+            return
+            
+        try:
+            send_mail(
+                subject='Alert Triggered',
+                message=triggered_text,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[self.ALERT_EMAIL_RECIPIENT],
+                fail_silently=False
+            )
+            self.stdout.write(self.style.SUCCESS(f'Email sent for alert: {alert}'))
+        except Exception as e:
+            self.stdout.write(self.style.ERROR(f'Failed to send email: {e}'))
 
     def check_alert(self, alert, all_prices):
         """Check if an alert should be triggered. Returns True/False or list of matching items for all_items spread."""
@@ -158,6 +188,8 @@ class Command(BaseCommand):
                                 self.stdout.write(
                                     self.style.WARNING(f'TRIGGERED (all items spread): {len(result)} items found')
                                 )
+                                # Send email notification
+                                self.send_alert_email(alert, alert.triggered_text())
                             else:
                                 alert.is_triggered = True
                                 # Deactivate alert if it's not for all items
@@ -167,8 +199,10 @@ class Command(BaseCommand):
                                 self.stdout.write(
                                     self.style.WARNING(f'TRIGGERED: {alert}')
                                 )
+                                # Send email notification
+                                self.send_alert_email(alert, alert.triggered_text())
             else:
                 self.stdout.write('No alerts to check.')
             
             # Wait 30 seconds before next check
-            time.sleep(30)
+            time.sleep(10)
