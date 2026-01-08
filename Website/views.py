@@ -293,6 +293,8 @@ def create_alert(request):
         reference = request.POST.get('reference')
         percentage = request.POST.get('percentage')
         is_all_items = request.POST.get('is_all_items') == 'true'
+        minimum_price = request.POST.get('minimum_price')
+        maximum_price = request.POST.get('maximum_price')
         
         # Look up item ID from name if not provided
         if not item_id and item_name:
@@ -310,6 +312,8 @@ def create_alert(request):
             reference=reference if reference else None,
             percentage=float(percentage) if percentage else None,
             is_all_items=is_all_items,
+            minimum_price=int(minimum_price) if minimum_price else None,
+            maximum_price=int(maximum_price) if maximum_price else None,
             is_active=True,
             is_triggered=False
         )
@@ -384,24 +388,61 @@ def update_alert(request):
             alert = Alert.objects.filter(id=alert_id).first()
             if alert:
                 alert.type = data.get('type', alert.type)
-                alert.item_name = data.get('item_name', alert.item_name)
-                item_id = data.get('item_id')
-                if item_id:
-                    alert.item_id = int(item_id)
-                elif data.get('item_name'):
-                    # Look up item ID if name changed but ID not provided
-                    mapping = get_item_mapping()
-                    item_data = mapping.get(data.get('item_name').lower())
-                    if item_data:
-                        alert.item_id = item_data['id']
-                        alert.item_name = item_data['name']
+                
+                # Handle is_all_items
+                is_all_items = data.get('is_all_items', False)
+                alert.is_all_items = is_all_items
+                
+                if is_all_items:
+                    alert.item_name = None
+                    alert.item_id = None
+                else:
+                    alert.item_name = data.get('item_name', alert.item_name)
+                    item_id = data.get('item_id')
+                    if item_id:
+                        alert.item_id = int(item_id)
+                    elif data.get('item_name'):
+                        # Look up item ID if name changed but ID not provided
+                        mapping = get_item_mapping()
+                        item_data = mapping.get(data.get('item_name').lower())
+                        if item_data:
+                            alert.item_id = item_data['id']
+                            alert.item_name = item_data['name']
+                
+                # Handle price/reference for above/below alerts
                 price = data.get('price')
                 if price:
                     alert.price = int(price)
-                alert.reference = data.get('reference', alert.reference)
+                else:
+                    alert.price = None
+                    
+                reference = data.get('reference')
+                alert.reference = reference if reference else None
+                
+                # Handle percentage for spread alerts
+                percentage = data.get('percentage')
+                if percentage:
+                    alert.percentage = float(percentage)
+                else:
+                    alert.percentage = None
+                
+                # Handle min/max price for spread all items alerts
+                minimum_price = data.get('minimum_price')
+                if minimum_price:
+                    alert.minimum_price = int(minimum_price)
+                else:
+                    alert.minimum_price = None
+                    
+                maximum_price = data.get('maximum_price')
+                if maximum_price:
+                    alert.maximum_price = int(maximum_price)
+                else:
+                    alert.maximum_price = None
+                
                 # Reset triggered state when alert is edited
                 alert.is_triggered = False
                 alert.is_dismissed = False
                 alert.is_active = True
+                alert.triggered_data = None
                 alert.save()
     return JsonResponse({'success': True})

@@ -61,12 +61,22 @@ class Command(BaseCommand):
             
             if alert.is_all_items:
                 self.stdout.write(f'DEBUG: Checking ALL items for spread >= {alert.percentage}%')
+                self.stdout.write(f'DEBUG: Min price filter: {alert.minimum_price}, Max price filter: {alert.maximum_price}')
                 item_mapping = self.get_item_mapping()
                 matching_items = []
                 
                 for item_id, price_data in all_prices.items():
                     high = price_data.get('high')
                     low = price_data.get('low')
+                    
+                    # Filter by min/max price if set (check both high AND low are within bounds)
+                    if alert.minimum_price is not None:
+                        if high is None or low is None or high < alert.minimum_price or low < alert.minimum_price:
+                            continue
+                    if alert.maximum_price is not None:
+                        if high is None or low is None or high > alert.maximum_price or low > alert.maximum_price:
+                            continue
+                    
                     spread = self.calculate_spread(high, low)
                     if spread is not None and spread >= alert.percentage:
                         item_name = item_mapping.get(item_id, f'Item {item_id}')

@@ -81,11 +81,13 @@ class Alert(models.Model):
     is_dismissed = models.BooleanField(default=False, blank=True, null=True)
     triggered_data = models.TextField(blank=True, null=True, default=None)  # JSON string for spread all items data
     created_at = models.DateTimeField(auto_now_add=True)
+    minimum_price = models.IntegerField(blank=True, null=True, default=None)
+    maximum_price = models.IntegerField(blank=True, null=True, default=None)
     
     def __str__(self):
         if self.type == 'spread':
             if self.is_all_items:
-                return f"All items spread >= {self.percentage}%"
+                return f"All items spread >= {self.percentage}%, minimum price: {self.minimum_price}, maximum price: {self.maximum_price}"
             return f"{self.item_name} spread >= {self.percentage}%"
         if self.is_all_items:
             return f"All items {self.type} {self.price} ({self.reference})"

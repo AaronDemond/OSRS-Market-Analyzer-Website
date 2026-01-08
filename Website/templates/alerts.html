@@ -93,6 +93,16 @@
                 <input type="number" name="percentage" id="percentage" step="0.1" min="0">
             </div>
             
+            <!-- Min/Max price fields (shown for spread all items only) -->
+            <div class="form-group" id="min-price-group" style="display: none;">
+                <label for="minimum-price">Minimum Price</label>
+                <input type="number" name="minimum_price" id="minimum-price" min="0">
+            </div>
+            <div class="form-group" id="max-price-group" style="display: none;">
+                <label for="maximum-price">Maximum Price</label>
+                <input type="number" name="maximum_price" id="maximum-price" min="0">
+            </div>
+            
             <button type="submit" class="btn-create-alert">Create Alert</button>
         </form>
     </div>
@@ -100,7 +110,7 @@
         {% if all_alerts %}
             <ul class="alerts-list edit-alerts-list">
                 {% for alert in all_alerts %}
-                    <li class="alert-item clickable-alert" onclick="openEditModal({{ alert.id }}, '{{ alert.type }}', '{{ alert.item_name }}', {{ alert.item_id }}, {{ alert.price }}, '{{ alert.reference }}')">
+                    <li class="alert-item clickable-alert" onclick="openEditModal({{ alert.id }}, '{{ alert.type }}', '{{ alert.item_name|default_if_none:"" }}', {{ alert.item_id|default_if_none:"null" }}, {{ alert.price|default_if_none:"null" }}, '{{ alert.reference|default_if_none:"" }}', {{ alert.percentage|default_if_none:"null" }}, {{ alert.is_all_items|yesno:"true,false,false" }}, {{ alert.minimum_price|default_if_none:"null" }}, {{ alert.maximum_price|default_if_none:"null" }})">
                         <span class="alert-icon">🔔</span>
                         <span class="alert-text">{{ alert }}</span>
                         <span class="edit-hint">Click to edit</span>
@@ -122,30 +132,59 @@
         </div>
         <form id="edit-alert-form" class="edit-alert-form">
             <input type="hidden" id="edit-alert-id">
+            <input type="hidden" id="edit-is-all-items">
             <div class="form-group">
                 <label for="edit-alert-type">Alert Type</label>
-                <select name="type" id="edit-alert-type" required>
+                <select name="type" id="edit-alert-type" required onchange="handleEditAlertTypeChange()">
                     <option value="above">Above Threshold</option>
                     <option value="below">Below Threshold</option>
+                    <option value="spread">Spread</option>
                 </select>
             </div>
-            <div class="form-group">
+            
+            <!-- Spread-specific fields -->
+            <div class="form-group" id="edit-spread-scope-group" style="display: none;">
+                <label for="edit-spread-scope">Apply To</label>
+                <select name="spread_scope" id="edit-spread-scope" onchange="handleEditSpreadScopeChange()">
+                    <option value="all">All Items</option>
+                    <option value="specific">Specific Item</option>
+                </select>
+            </div>
+            
+            <div class="form-group" id="edit-item-name-group">
                 <label for="edit-item-name">Item Name</label>
-                <input type="text" name="item_name" id="edit-item-name" autocomplete="off" required>
+                <input type="text" name="item_name" id="edit-item-name" autocomplete="off">
                 <input type="hidden" name="item_id" id="edit-item-id">
                 <div id="edit-item-suggestions" class="suggestions-dropdown"></div>
             </div>
-            <div class="form-group">
+            <div class="form-group" id="edit-price-group">
                 <label for="edit-price">Price Threshold</label>
-                <input type="number" name="price" id="edit-price" required>
+                <input type="number" name="price" id="edit-price">
             </div>
-            <div class="form-group">
+            <div class="form-group" id="edit-reference-group">
                 <label for="edit-reference">Reference Price</label>
-                <select name="reference" id="edit-reference" required>
+                <select name="reference" id="edit-reference">
                     <option value="high">High Price</option>
                     <option value="low">Low Price</option>
                 </select>
             </div>
+            
+            <!-- Percentage field (shown for spread only) -->
+            <div class="form-group" id="edit-percentage-group" style="display: none;">
+                <label for="edit-percentage">Spread Percentage (%)</label>
+                <input type="number" name="percentage" id="edit-percentage" step="0.1" min="0">
+            </div>
+            
+            <!-- Min/Max price fields (shown for spread all items only) -->
+            <div class="form-group" id="edit-min-price-group" style="display: none;">
+                <label for="edit-minimum-price">Minimum Price</label>
+                <input type="number" name="minimum_price" id="edit-minimum-price" min="0">
+            </div>
+            <div class="form-group" id="edit-max-price-group" style="display: none;">
+                <label for="edit-maximum-price">Maximum Price</label>
+                <input type="number" name="maximum_price" id="edit-maximum-price" min="0">
+            </div>
+            
             <div class="modal-buttons">
                 <button type="button" class="btn-save" onclick="saveAlert()">Save</button>
                 <button type="button" class="btn-cancel" onclick="closeEditModal()">Cancel</button>
@@ -529,6 +568,8 @@
         const priceGroup = document.getElementById('price-group');
         const referenceGroup = document.getElementById('reference-group');
         const percentageGroup = document.getElementById('percentage-group');
+        const minPriceGroup = document.getElementById('min-price-group');
+        const maxPriceGroup = document.getElementById('max-price-group');
         const isAllItemsInput = document.getElementById('is-all-items');
         
         if (alertType === 'spread') {
@@ -544,6 +585,8 @@
             priceGroup.style.display = 'block';
             referenceGroup.style.display = 'block';
             percentageGroup.style.display = 'none';
+            minPriceGroup.style.display = 'none';
+            maxPriceGroup.style.display = 'none';
             isAllItemsInput.value = 'false';
         }
     }
@@ -552,13 +595,19 @@
     function handleSpreadScopeChange() {
         const spreadScope = document.getElementById('spread-scope').value;
         const itemNameGroup = document.getElementById('item-name-group');
+        const minPriceGroup = document.getElementById('min-price-group');
+        const maxPriceGroup = document.getElementById('max-price-group');
         const isAllItemsInput = document.getElementById('is-all-items');
         
         if (spreadScope === 'all') {
             itemNameGroup.style.display = 'none';
+            minPriceGroup.style.display = 'block';
+            maxPriceGroup.style.display = 'block';
             isAllItemsInput.value = 'true';
         } else {
             itemNameGroup.style.display = 'block';
+            minPriceGroup.style.display = 'none';
+            maxPriceGroup.style.display = 'none';
             isAllItemsInput.value = 'false';
         }
     }
@@ -803,14 +852,74 @@
         document.getElementById('edit-delete-alert').style.display = 'block';
     }
 
-    function openEditModal(id, type, itemName, itemId, price, reference) {
+    function openEditModal(id, type, itemName, itemId, price, reference, percentage, isAllItems, minPrice, maxPrice) {
         document.getElementById('edit-alert-id').value = id;
         document.getElementById('edit-alert-type').value = type;
-        document.getElementById('edit-item-name').value = itemName;
-        document.getElementById('edit-item-id').value = itemId;
-        document.getElementById('edit-price').value = price;
-        document.getElementById('edit-reference').value = reference;
+        document.getElementById('edit-item-name').value = itemName || '';
+        document.getElementById('edit-item-id').value = itemId || '';
+        document.getElementById('edit-price').value = price || '';
+        document.getElementById('edit-reference').value = reference || 'high';
+        document.getElementById('edit-percentage').value = percentage || '';
+        document.getElementById('edit-is-all-items').value = isAllItems ? 'true' : 'false';
+        document.getElementById('edit-minimum-price').value = minPrice || '';
+        document.getElementById('edit-maximum-price').value = maxPrice || '';
+        
+        // Set spread scope dropdown
+        if (type === 'spread') {
+            document.getElementById('edit-spread-scope').value = isAllItems ? 'all' : 'specific';
+        }
+        
+        // Update field visibility based on type
+        handleEditAlertTypeChange();
+        
         document.getElementById('edit-modal').style.display = 'flex';
+    }
+
+    function handleEditAlertTypeChange() {
+        const alertType = document.getElementById('edit-alert-type').value;
+        const spreadScopeGroup = document.getElementById('edit-spread-scope-group');
+        const itemNameGroup = document.getElementById('edit-item-name-group');
+        const priceGroup = document.getElementById('edit-price-group');
+        const referenceGroup = document.getElementById('edit-reference-group');
+        const percentageGroup = document.getElementById('edit-percentage-group');
+        const minPriceGroup = document.getElementById('edit-min-price-group');
+        const maxPriceGroup = document.getElementById('edit-max-price-group');
+        
+        if (alertType === 'spread') {
+            spreadScopeGroup.style.display = 'block';
+            priceGroup.style.display = 'none';
+            referenceGroup.style.display = 'none';
+            percentageGroup.style.display = 'block';
+            handleEditSpreadScopeChange();
+        } else {
+            spreadScopeGroup.style.display = 'none';
+            itemNameGroup.style.display = 'block';
+            priceGroup.style.display = 'block';
+            referenceGroup.style.display = 'block';
+            percentageGroup.style.display = 'none';
+            minPriceGroup.style.display = 'none';
+            maxPriceGroup.style.display = 'none';
+        }
+    }
+
+    function handleEditSpreadScopeChange() {
+        const spreadScope = document.getElementById('edit-spread-scope').value;
+        const itemNameGroup = document.getElementById('edit-item-name-group');
+        const minPriceGroup = document.getElementById('edit-min-price-group');
+        const maxPriceGroup = document.getElementById('edit-max-price-group');
+        const isAllItemsInput = document.getElementById('edit-is-all-items');
+        
+        if (spreadScope === 'all') {
+            itemNameGroup.style.display = 'none';
+            minPriceGroup.style.display = 'block';
+            maxPriceGroup.style.display = 'block';
+            isAllItemsInput.value = 'true';
+        } else {
+            itemNameGroup.style.display = 'block';
+            minPriceGroup.style.display = 'none';
+            maxPriceGroup.style.display = 'none';
+            isAllItemsInput.value = 'false';
+        }
     }
 
     function closeEditModal() {
@@ -824,6 +933,10 @@
         const itemId = document.getElementById('edit-item-id').value;
         const price = document.getElementById('edit-price').value;
         const reference = document.getElementById('edit-reference').value;
+        const percentage = document.getElementById('edit-percentage').value;
+        const isAllItems = document.getElementById('edit-is-all-items').value === 'true';
+        const minimumPrice = document.getElementById('edit-minimum-price').value;
+        const maximumPrice = document.getElementById('edit-maximum-price').value;
 
         try {
             await fetch('/api/alerts/update/', {
@@ -838,7 +951,11 @@
                     item_name: itemName,
                     item_id: itemId,
                     price: price,
-                    reference: reference
+                    reference: reference,
+                    percentage: percentage,
+                    is_all_items: isAllItems,
+                    minimum_price: minimumPrice,
+                    maximum_price: maximumPrice
                 })
             });
             closeEditModal();
