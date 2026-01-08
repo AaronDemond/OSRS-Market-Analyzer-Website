@@ -27,6 +27,22 @@ def get_item_mapping():
     return _item_mapping_cache
 
 
+def get_all_current_prices():
+    """Fetch all current prices in one API call"""
+    try:
+        response = requests.get(
+            'https://prices.runescape.wiki/api/v1/osrs/latest',
+            headers={'User-Agent': 'GE Tracker'}
+        )
+        if response.status_code == 200:
+            data = response.json()
+            if 'data' in data:
+                return data['data']
+    except requests.RequestException:
+        pass
+    return {}
+
+
 def get_historical_price(item_id, time_filter):
     """Fetch historical price for an item based on time filter"""
     try:
@@ -37,7 +53,7 @@ def get_historical_price(item_id, time_filter):
         if response.status_code == 200:
             data = response.json()
             if 'data' in data and data['data']:
-                now = int(time.time())
+                now = time.time()
                 if time_filter == 'week':
                     target_time = now - (7 * 24 * 60 * 60)
                 elif time_filter == 'month':
@@ -78,6 +94,9 @@ def flips(request):
     # Get all unique items
     item_ids = Flip.objects.values_list('item_id', flat=True).distinct()
     
+    # Fetch all current prices in one API call
+    all_prices = get_all_current_prices()
+    
     items = []
     total_net = 0
     position_size = 0
@@ -103,22 +122,13 @@ def flips(request):
         # Current quantity held
         quantity_held = total_bought - total_sold
         
-        # Fetch current prices from API
+        # Get current prices from cached data
         high_price = None
         low_price = None
-        try:
-            response = requests.get(
-                f'https://prices.runescape.wiki/api/v1/osrs/latest?id={item_id}',
-                headers={'User-Agent': 'GE Tracker'}
-            )
-            if response.status_code == 200:
-                data = response.json()
-                if 'data' in data and str(item_id) in data['data']:
-                    price_data = data['data'][str(item_id)]
-                    high_price = price_data.get('high')
-                    low_price = price_data.get('low')
-        except requests.RequestException:
-            pass
+        price_data = all_prices.get(str(item_id))
+        if price_data:
+            high_price = price_data.get('high')
+            low_price = price_data.get('low')
         
         # Get historical prices if filter is not current
         if time_filter != 'current':
