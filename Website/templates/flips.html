@@ -106,6 +106,50 @@
     #flipsTable.delete-mode tbody tr:hover a {
         color: #fff;
     }
+    .time-filter {
+        display: flex;
+        gap: 0;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+    .time-filter-btn {
+        padding: 0.6rem 1.2rem;
+        border: none;
+        background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+        color: rgba(255, 255, 255, 0.7);
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+    }
+    .time-filter-btn:hover {
+        color: #fff;
+        background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+    }
+    .time-filter-btn.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+    }
+    .time-filter-btn:first-child {
+        border-radius: 12px 0 0 12px;
+    }
+    .time-filter-btn:last-child {
+        border-radius: 0 12px 12px 0;
+    }
+    .filter-row {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .filter-label {
+        font-weight: 600;
+        color: #4a5568;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 0.5px;
+    }
 </style>
 {% endblock %}
 
@@ -118,6 +162,16 @@
 <button type="button" class="btn btn-danger mb-3 ms-2" id="deleteFlipBtn">
     Delete Flip
 </button>
+
+<div class="filter-row">
+    <span class="filter-label">Compare To:</span>
+    <div class="time-filter">
+        <button class="time-filter-btn {% if time_filter == 'current' or not time_filter %}active{% endif %}" data-filter="current">Current</button>
+        <button class="time-filter-btn {% if time_filter == 'week' %}active{% endif %}" data-filter="week">Week</button>
+        <button class="time-filter-btn {% if time_filter == 'month' %}active{% endif %}" data-filter="month">Month</button>
+        <button class="time-filter-btn {% if time_filter == 'year' %}active{% endif %}" data-filter="year">Year</button>
+    </div>
+</div>
 
 <div class="stats-row">
     <div class="stat-card {% if total_net >= 0 %}stat-net-positive{% else %}stat-net-negative{% endif %}">
@@ -393,6 +447,15 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             cancelDeleteMode();
         }
+    });
+
+    // Time filter functionality
+    const filterBtns = document.querySelectorAll('.time-filter-btn');
+    filterBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const filter = this.dataset.filter;
+            window.location.href = `/flips/?filter=${filter}`;
+        });
     });
 });
 </script>

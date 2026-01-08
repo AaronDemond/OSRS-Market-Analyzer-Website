@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.db.models import Sum, F
 import requests
+import time
 from .models import Flip
 
 
@@ -26,6 +27,42 @@ def get_item_mapping():
     return _item_mapping_cache
 
 
+def get_historical_price(item_id, time_filter):
+    """Fetch historical price for an item based on time filter"""
+    try:
+        response = requests.get(
+            f'https://prices.runescape.wiki/api/v1/osrs/timeseries?timestep=24h&id={item_id}',
+            headers={'User-Agent': 'GE Tracker'}
+        )
+        if response.status_code == 200:
+            data = response.json()
+            if 'data' in data and data['data']:
+                now = int(time.time())
+                if time_filter == 'week':
+                    target_time = now - (7 * 24 * 60 * 60)
+                elif time_filter == 'month':
+                    target_time = now - (30 * 24 * 60 * 60)
+                elif time_filter == 'year':
+                    target_time = now - (365 * 24 * 60 * 60)
+                else:
+                    return None, None
+                
+                # Find the closest data point to target time
+                closest = None
+                closest_diff = float('inf')
+                for point in data['data']:
+                    diff = abs(point['timestamp'] - target_time)
+                    if diff < closest_diff:
+                        closest_diff = diff
+                        closest = point
+                
+                if closest:
+                    return closest.get('avgHighPrice'), closest.get('avgLowPrice')
+    except requests.RequestException:
+        pass
+    return None, None
+
+
 def test(request):
     return render(request, 'test.html')
 
@@ -35,6 +72,9 @@ def home(request):
 
 
 def flips(request):
+    # Get time filter from query params
+    time_filter = request.GET.get('filter', 'current')
+    
     # Get all unique items
     item_ids = Flip.objects.values_list('item_id', flat=True).distinct()
     
@@ -80,6 +120,14 @@ def flips(request):
         except requests.RequestException:
             pass
         
+        # Get historical prices if filter is not current
+        if time_filter != 'current':
+            hist_high, hist_low = get_historical_price(item_id, time_filter)
+            if hist_high is not None:
+                high_price = hist_high
+            if hist_low is not None:
+                low_price = hist_low
+        
         # Calculate unrealized value of remaining items (with tax)
         unrealized_value = 0
         if high_price and quantity_held > 0:
@@ -106,6 +154,7 @@ def flips(request):
         'items': items,
         'total_net': total_net,
         'position_size': position_size,
+        'time_filter': time_filter,
     })
 
 
