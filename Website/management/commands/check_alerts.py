@@ -1,4 +1,5 @@
 import time
+import json
 import requests
 from django.core.management.base import BaseCommand
 from Website.models import Alert
@@ -6,6 +7,25 @@ from Website.models import Alert
 
 class Command(BaseCommand):
     help = 'Continuously checks alerts every 30 seconds and triggers them if conditions are met'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.item_mapping = None
+
+    def get_item_mapping(self):
+        """Fetch and cache item ID to name mapping"""
+        if self.item_mapping is None:
+            try:
+                response = requests.get(
+                    'https://prices.runescape.wiki/api/v1/osrs/mapping',
+                    headers={'User-Agent': 'GE Tracker'}
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    self.item_mapping = {str(item['id']): item['name'] for item in data}
+            except requests.RequestException:
+                self.item_mapping = {}
+        return self.item_mapping
 
     def get_all_prices(self):
         """Fetch all current prices in one API call"""
@@ -22,9 +42,74 @@ class Command(BaseCommand):
             self.stdout.write(self.style.ERROR(f'Error fetching prices: {e}'))
         return {}
 
+    def calculate_spread(self, high, low):
+        """Calculate spread percentage: ((high - low) / low) * 100"""
+        if low is None or low == 0 or high is None:
+            return None
+        return ((high - low) / low) * 100
+
     def check_alert(self, alert, all_prices):
-        """Check if an alert should be triggered"""
+        """Check if an alert should be triggered. Returns True/False or list of matching items for all_items spread."""
+        
+        self.stdout.write(f'DEBUG: Checking alert ID={alert.id}, type={alert.type}, is_all_items={alert.is_all_items}, percentage={alert.percentage}, item_id={alert.item_id}')
+        
+        # Handle spread alerts
+        if alert.type == 'spread':
+            if alert.percentage is None:
+                self.stdout.write(self.style.ERROR(f'DEBUG: Spread alert has no percentage set'))
+                return False
+            
+            if alert.is_all_items:
+                self.stdout.write(f'DEBUG: Checking ALL items for spread >= {alert.percentage}%')
+                item_mapping = self.get_item_mapping()
+                matching_items = []
+                
+                for item_id, price_data in all_prices.items():
+                    high = price_data.get('high')
+                    low = price_data.get('low')
+                    spread = self.calculate_spread(high, low)
+                    if spread is not None and spread >= alert.percentage:
+                        item_name = item_mapping.get(item_id, f'Item {item_id}')
+                        matching_items.append({
+                            'item_id': item_id,
+                            'item_name': item_name,
+                            'high': high,
+                            'low': low,
+                            'spread': round(spread, 2)
+                        })
+                
+                if matching_items:
+                    # Sort by spread descending
+                    matching_items.sort(key=lambda x: x['spread'], reverse=True)
+                    self.stdout.write(self.style.SUCCESS(f'DEBUG: Found {len(matching_items)} items with spread >= {alert.percentage}%'))
+                    return matching_items
+                
+                self.stdout.write(f'DEBUG: No items found with spread >= {alert.percentage}%')
+                return False
+            else:
+                # Check specific item for spread threshold
+                self.stdout.write(f'DEBUG: Checking SPECIFIC item {alert.item_id} for spread >= {alert.percentage}%')
+                if not alert.item_id:
+                    self.stdout.write(self.style.ERROR(f'DEBUG: No item_id set for specific item spread alert'))
+                    return False
+                price_data = all_prices.get(str(alert.item_id))
+                if not price_data:
+                    self.stdout.write(self.style.ERROR(f'DEBUG: No price data found for item_id={alert.item_id}'))
+                    return False
+                high = price_data.get('high')
+                low = price_data.get('low')
+                spread = self.calculate_spread(high, low)
+                self.stdout.write(f'DEBUG: item_id={alert.item_id}, high={high}, low={low}, spread={spread}')
+                if spread is not None and spread >= alert.percentage:
+                    self.stdout.write(self.style.SUCCESS(f'DEBUG: Spread {spread:.2f}% >= threshold {alert.percentage}%, triggering!'))
+                    return True
+                if spread is not None:
+                    self.stdout.write(f'DEBUG: Spread {spread:.2f}% < threshold {alert.percentage}%, not triggering')
+                return False
+        
+        # Handle above/below alerts
         if not alert.item_id or not alert.price or not alert.reference:
+            self.stdout.write(self.style.ERROR(f'DEBUG: Missing required fields for above/below alert'))
             return False
         
         price_data = all_prices.get(str(alert.item_id))
@@ -52,28 +137,44 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS('Starting alert checker...'))
         
         while True:
-            # Get all active, non-triggered alerts
-            active_alerts = Alert.objects.filter(is_active=True, is_triggered=False)
+            # Get all active alerts (include triggered all_items spread alerts for re-check)
+            active_alerts = Alert.objects.filter(is_active=True)
+            # Filter to non-triggered OR is_all_items spread (which can re-trigger)
+            alerts_to_check = [a for a in active_alerts if not a.is_triggered or (a.type == 'spread' and a.is_all_items)]
             
-            if active_alerts.exists():
-                self.stdout.write(f'Checking {active_alerts.count()} active alerts...')
+            if alerts_to_check:
+                self.stdout.write(f'Checking {len(alerts_to_check)} alerts...')
                 
                 # Fetch all prices once
                 all_prices = self.get_all_prices()
+                self.stdout.write(f'DEBUG: Fetched {len(all_prices)} item prices from API')
                 
                 if all_prices:
-                    for alert in active_alerts:
-                        if self.check_alert(alert, all_prices):
-                            alert.is_triggered = True
-                            # Deactivate alert if it's not for all items
-                            if alert.is_all_items is not True:
-                                alert.is_active = False
-                            alert.save()
-                            self.stdout.write(
-                                self.style.WARNING(f'TRIGGERED: {alert}')
-                            )
+                    for alert in alerts_to_check:
+                        result = self.check_alert(alert, all_prices)
+                        
+                        if result:
+                            # Handle all_items spread alerts specially
+                            if alert.type == 'spread' and alert.is_all_items and isinstance(result, list):
+                                alert.triggered_data = json.dumps(result)
+                                alert.is_triggered = True
+                                # Keep is_active = True for all_items spread alerts
+                                alert.is_dismissed = False  # Reset dismissed so notification shows again
+                                alert.save()
+                                self.stdout.write(
+                                    self.style.WARNING(f'TRIGGERED (all items spread): {len(result)} items found')
+                                )
+                            else:
+                                alert.is_triggered = True
+                                # Deactivate alert if it's not for all items
+                                if alert.is_all_items is not True:
+                                    alert.is_active = False
+                                alert.save()
+                                self.stdout.write(
+                                    self.style.WARNING(f'TRIGGERED: {alert}')
+                                )
             else:
-                self.stdout.write('No active alerts to check.')
+                self.stdout.write('No alerts to check.')
             
             # Wait 30 seconds before next check
-            time.sleep(30)
+            time.sleep(10)

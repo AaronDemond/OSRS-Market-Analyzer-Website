@@ -63,6 +63,7 @@ class Alert(models.Model):
     ALERT_CHOICES = [
             ('above', 'Above Threshold'),
             ('below', 'Below Threshold'),
+            ('spread', 'Spread')
     ]
     
     type = models.CharField(max_length=10, null=True, choices=ALERT_CHOICES, default='above')
@@ -72,23 +73,33 @@ class Alert(models.Model):
     item_name = models.CharField(max_length=255, blank=True, null=True, default=None)
     item_id = models.IntegerField(blank=True, null=True, default=None)
     price = models.IntegerField(blank=True, null=True, default=None)
+    percentage = models.FloatField(blank=True, null=True, default=None)
     is_all_items = models.BooleanField(default=False, blank=True, null=True)
     reference = models.CharField(max_length=4, choices=REFERENCE_CHOICES, blank=True, null=True, default=None)
     is_triggered = models.BooleanField(default=False, blank=True, null=True)
     is_active = models.BooleanField(default=True, blank=True, null=True)
     is_dismissed = models.BooleanField(default=False, blank=True, null=True)
+    triggered_data = models.TextField(blank=True, null=True, default=None)  # JSON string for spread all items data
     created_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
+        if self.type == 'spread':
+            if self.is_all_items:
+                return f"All items spread >= {self.percentage}%"
+            return f"{self.item_name} spread >= {self.percentage}%"
         if self.is_all_items:
             return f"All items {self.type} {self.price} ({self.reference})"
         return f"{self.item_name} {self.type} {self.price} ({self.reference})"
 
     def triggered_text(self):
+        if self.type == "spread":
+            if self.is_all_items:
+                return f"Price spread above {self.percentage}% Triggered. Click for details"
+            return f"{self.item_name} spread has reached {self.percentage}% or higher"
         item_price = get_item_price(self.item_id, self.reference)
         if self.type == "above":
             return self.item_name + " has risen above " + str(self.price) + " to " + str(item_price)
         if self.type == "below":
-            return self.item_name + " has fallten below " + str(self.price) + " to " + str(item_price)
+            return self.item_name + " has fallen below " + str(self.price) + " to " + str(item_price)
         return "Item price is now " + str(item_price)
 

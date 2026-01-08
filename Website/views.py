@@ -291,6 +291,8 @@ def create_alert(request):
         item_id = request.POST.get('item_id')
         price = request.POST.get('price')
         reference = request.POST.get('reference')
+        percentage = request.POST.get('percentage')
+        is_all_items = request.POST.get('is_all_items') == 'true'
         
         # Look up item ID from name if not provided
         if not item_id and item_name:
@@ -302,10 +304,12 @@ def create_alert(request):
         
         Alert.objects.create(
             type=alert_type,
-            item_name=item_name,
-            item_id=int(item_id) if item_id else None,
+            item_name=item_name if not is_all_items else None,
+            item_id=int(item_id) if item_id and not is_all_items else None,
             price=int(price) if price else None,
-            reference=reference,
+            reference=reference if reference else None,
+            percentage=float(percentage) if percentage else None,
+            is_all_items=is_all_items,
             is_active=True,
             is_triggered=False
         )
@@ -323,7 +327,10 @@ def alerts_api(request):
             'id': alert.id,
             'text': str(alert),
             'is_triggered': alert.is_triggered,
-            'triggered_text': alert.triggered_text() if alert.is_triggered else None
+            'triggered_text': alert.triggered_text() if alert.is_triggered else None,
+            'type': alert.type,
+            'is_all_items': alert.is_all_items,
+            'triggered_data': alert.triggered_data
         }
         alerts_data.append(alert_dict)
     
@@ -333,7 +340,10 @@ def alerts_api(request):
     for alert in triggered_alerts:
         triggered_data.append({
             'id': alert.id,
-            'triggered_text': alert.triggered_text()
+            'triggered_text': alert.triggered_text(),
+            'type': alert.type,
+            'is_all_items': alert.is_all_items,
+            'triggered_data': alert.triggered_data
         })
     
     return JsonResponse({'alerts': alerts_data, 'triggered': triggered_data})

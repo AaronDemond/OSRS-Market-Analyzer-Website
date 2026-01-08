@@ -49,28 +49,50 @@
             {% csrf_token %}
             <div class="form-group">
                 <label for="alert-type">Alert Type</label>
-                <select name="type" id="alert-type" required>
+                <select name="type" id="alert-type" required onchange="handleAlertTypeChange()">
                     <option value="above" selected>Above Threshold</option>
                     <option value="below">Below Threshold</option>
+                    <option value="spread">Spread</option>
                 </select>
             </div>
-            <div class="form-group">
+            
+            <!-- Spread-specific fields -->
+            <div class="form-group" id="spread-scope-group" style="display: none;">
+                <label for="spread-scope">Apply To</label>
+                <select name="spread_scope" id="spread-scope" onchange="handleSpreadScopeChange()">
+                    <option value="all">All Items</option>
+                    <option value="specific">Specific Item</option>
+                </select>
+            </div>
+            
+            <!-- Item fields (shown for above/below, or spread with specific item) -->
+            <div class="form-group" id="item-name-group">
                 <label for="item-name">Item Name</label>
-                <input type="text" name="item_name" id="item-name" autocomplete="off" required>
+                <input type="text" name="item_name" id="item-name" autocomplete="off">
                 <input type="hidden" name="item_id" id="item-id">
+                <input type="hidden" name="is_all_items" id="is-all-items" value="false">
                 <div id="item-suggestions" class="suggestions-dropdown"></div>
             </div>
-            <div class="form-group">
+            
+            <!-- Price fields (shown for above/below only) -->
+            <div class="form-group" id="price-group">
                 <label for="price">Price Threshold</label>
-                <input type="number" name="price" id="price" required>
+                <input type="number" name="price" id="price">
             </div>
-            <div class="form-group">
+            <div class="form-group" id="reference-group">
                 <label for="reference">Reference Price</label>
-                <select name="reference" id="reference" required>
+                <select name="reference" id="reference">
                     <option value="high">High Price</option>
                     <option value="low">Low Price</option>
                 </select>
             </div>
+            
+            <!-- Percentage field (shown for spread only) -->
+            <div class="form-group" id="percentage-group" style="display: none;">
+                <label for="percentage">Spread Percentage (%)</label>
+                <input type="number" name="percentage" id="percentage" step="0.1" min="0">
+            </div>
+            
             <button type="submit" class="btn-create-alert">Create Alert</button>
         </form>
     </div>
@@ -129,6 +151,22 @@
                 <button type="button" class="btn-cancel" onclick="closeEditModal()">Cancel</button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Spread Details Modal -->
+<div id="spread-modal" class="modal" style="display: none;">
+    <div class="modal-content modal-content-large">
+        <div class="modal-header">
+            <h2>Spread Alert Details</h2>
+            <button class="modal-close" onclick="closeSpreadModal()">&times;</button>
+        </div>
+        <div id="spread-modal-body">
+            <ul id="spread-items-list"></ul>
+        </div>
+        <div class="modal-buttons">
+            <button type="button" class="btn-cancel" onclick="closeSpreadModal()">Close</button>
+        </div>
     </div>
 </div>
 
@@ -440,9 +478,91 @@
     .edit-alert-form {
         max-width: 100%;
     }
+    .modal-content-large {
+        max-width: 700px;
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+    #spread-items-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    #spread-items-list li {
+        padding: 12px 15px;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    #spread-items-list li:last-child {
+        border-bottom: none;
+    }
+    .spread-item-name {
+        font-weight: 600;
+        color: #333;
+    }
+    .spread-item-details {
+        color: #666;
+        font-size: 0.9rem;
+    }
+    .spread-item-percentage {
+        font-weight: 700;
+        color: #28a745;
+        font-size: 1.1rem;
+    }
+    .clickable-triggered {
+        cursor: pointer;
+        text-decoration: underline;
+    }
+    .clickable-triggered:hover {
+        opacity: 0.8;
+    }
 </style>
 
 <script>
+    // Handle alert type dropdown change
+    function handleAlertTypeChange() {
+        const alertType = document.getElementById('alert-type').value;
+        const spreadScopeGroup = document.getElementById('spread-scope-group');
+        const itemNameGroup = document.getElementById('item-name-group');
+        const priceGroup = document.getElementById('price-group');
+        const referenceGroup = document.getElementById('reference-group');
+        const percentageGroup = document.getElementById('percentage-group');
+        const isAllItemsInput = document.getElementById('is-all-items');
+        
+        if (alertType === 'spread') {
+            spreadScopeGroup.style.display = 'block';
+            priceGroup.style.display = 'none';
+            referenceGroup.style.display = 'none';
+            percentageGroup.style.display = 'block';
+            // Trigger scope change to set item visibility
+            handleSpreadScopeChange();
+        } else {
+            spreadScopeGroup.style.display = 'none';
+            itemNameGroup.style.display = 'block';
+            priceGroup.style.display = 'block';
+            referenceGroup.style.display = 'block';
+            percentageGroup.style.display = 'none';
+            isAllItemsInput.value = 'false';
+        }
+    }
+    
+    // Handle spread scope dropdown change
+    function handleSpreadScopeChange() {
+        const spreadScope = document.getElementById('spread-scope').value;
+        const itemNameGroup = document.getElementById('item-name-group');
+        const isAllItemsInput = document.getElementById('is-all-items');
+        
+        if (spreadScope === 'all') {
+            itemNameGroup.style.display = 'none';
+            isAllItemsInput.value = 'true';
+        } else {
+            itemNameGroup.style.display = 'block';
+            isAllItemsInput.value = 'false';
+        }
+    }
+
     document.querySelectorAll('.tab-btn').forEach(button => {
         button.addEventListener('click', () => {
             // Remove active class from all buttons
@@ -512,9 +632,19 @@
             let notificationsHtml = '';
             if (data.triggered && data.triggered.length > 0) {
                 data.triggered.forEach(alert => {
+                    const isSpreadAllItems = alert.type === 'spread' && alert.is_all_items && alert.triggered_data;
+                    
+                    if (isSpreadAllItems) {
+                        // Store the data in a global variable for this alert
+                        window[`spreadData_${alert.id}`] = alert.triggered_data;
+                    }
+                    
+                    const clickHandler = isSpreadAllItems ? `onclick="showSpreadDetails(${alert.id})"` : '';
+                    const clickableClass = isSpreadAllItems ? 'clickable-triggered' : '';
+                    
                     notificationsHtml += `<div class="triggered-notification" data-alert-id="${alert.id}">
-                        ${alert.triggered_text}
-                        <button class="dismiss-btn" onclick="dismissAlert(${alert.id})">&times;</button>
+                        <span class="${clickableClass}" ${clickHandler}>${alert.triggered_text}</span>
+                        <button class="dismiss-btn" onclick="event.stopPropagation(); dismissAlert(${alert.id})">&times;</button>
                     </div>`;
                 });
             }
@@ -534,12 +664,21 @@
             if (data.alerts.length > 0) {
                 alertsHtml = '<ul class="alerts-list">';
                 data.alerts.forEach(alert => {
+                    const isSpreadAllItems = alert.type === 'spread' && alert.is_all_items && alert.triggered_data;
+                    
+                    if (isSpreadAllItems && alert.is_triggered) {
+                        window[`spreadData_${alert.id}`] = alert.triggered_data;
+                    }
+                    
+                    const clickHandler = isSpreadAllItems && alert.is_triggered ? `onclick="showSpreadDetails(${alert.id})"` : '';
+                    const clickableClass = isSpreadAllItems && alert.is_triggered ? 'clickable-triggered' : '';
+                    
                     alertsHtml += `<li class="alert-item ${deleteMode ? 'delete-mode' : ''}" data-alert-id="${alert.id}">
                         <input type="checkbox" class="alert-checkbox" style="${deleteMode ? 'display:block' : 'display:none'}">
                         <span class="alert-icon">🔔</span>
                         <span class="alert-text">${alert.text}</span>`;
                     if (alert.is_triggered) {
-                        alertsHtml += `<span class="alert-triggered">TRIGGERED: ${alert.triggered_text}</span>`;
+                        alertsHtml += `<span class="alert-triggered ${clickableClass}" ${clickHandler}>Alert triggered. Click for details</span>`;
                     }
                     alertsHtml += '</li>';
                 });
@@ -552,6 +691,33 @@
         } catch (error) {
             console.error('Error refreshing alerts:', error);
         }
+    }
+
+    function showSpreadDetails(alertId) {
+        const dataStr = window[`spreadData_${alertId}`];
+        if (!dataStr) {
+            console.error('No spread data found for alert', alertId);
+            return;
+        }
+        
+        const data = JSON.parse(dataStr);
+        const list = document.getElementById('spread-items-list');
+        
+        list.innerHTML = data.map(item => `
+            <li>
+                <div>
+                    <span class="spread-item-name">${item.item_name}</span>
+                    <div class="spread-item-details">High: ${item.high?.toLocaleString() || 'N/A'} | Low: ${item.low?.toLocaleString() || 'N/A'}</div>
+                </div>
+                <span class="spread-item-percentage">${item.spread}%</span>
+            </li>
+        `).join('');
+        
+        document.getElementById('spread-modal').style.display = 'flex';
+    }
+
+    function closeSpreadModal() {
+        document.getElementById('spread-modal').style.display = 'none';
     }
 
     async function dismissAlert(alertId) {
