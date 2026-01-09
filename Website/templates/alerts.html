@@ -29,23 +29,41 @@
             {% endfor %}
         </div>
         {% if all_alerts %}
-        <div class="alert-actions">
-            <div class="alert-actions-left">
-                <select id="alert-action-select" class="action-dropdown" onchange="AlertActions.handleAction(this.value); this.value='';">
-                    <option value="">Actions</option>
-                    <option value="delete">Delete</option>
-                    <option value="group">Add to Group</option>
-                </select>
+        <div class="alert-actions-wrapper">
+            <div class="alert-actions">
+                <div class="alert-actions-left">
+                    <select id="alert-action-select" class="action-dropdown" onchange="AlertActions.handleAction(this.value); this.value='';">
+                        <option value="">Actions</option>
+                        <option value="delete">Delete</option>
+                        <option value="group">Add to Group</option>
+                    </select>
+                </div>
+                <div class="alert-actions-right" id="active-filters">
+                    <div class="alert-actions-controls">
+                        <div class="sort-controls">
+                            <select class="sort-dropdown" onchange="handleSortSelection(this.value); this.value='';">
+                                <option value="">Sort...</option>
+                                <option value="lastTriggered">Last Triggered Time</option>
+                                <option value="alertType">Alert Type</option>
+                                <option value="thresholdDistance">Threshold Distance</option>
+                                <option value="createdDate">Created Date</option>
+                            </select>
+                            <div id="sort-order-picker" class="sort-order-picker" style="display: none;"></div>
+                        </div>
+                        <select class="filter-dropdown" onchange="addFilter(this.value); this.value='';">
+                            <option value="">Add Filter...</option>
+                            <option value="triggered">Triggered</option>
+                            <option value="notTriggered">Not Triggered</option>
+                            <option value="minimumPrice">Minimum Price</option>
+                            <option value="maximumPrice">Maximum Price</option>
+                            <option value="myGroups">My Groups</option>
+                        </select>
+                    </div>
+                </div>
             </div>
-            <div class="alert-actions-right" id="active-filters">
-                <select class="filter-dropdown" onchange="addFilter(this.value); this.value='';">
-                    <option value="">Add Filter...</option>
-                    <option value="triggered">Triggered</option>
-                    <option value="notTriggered">Not Triggered</option>
-                    <option value="minimumPrice">Minimum Price</option>
-                    <option value="maximumPrice">Maximum Price</option>
-                    <option value="myGroups">My Groups</option>
-                </select>
+            <div class="alert-indicators">
+                <div class="filter-tags"></div>
+                <div class="sort-tag-holder"></div>
             </div>
         </div>
             <ul class="alerts-list">
@@ -126,7 +144,7 @@
             <div class="form-group checkbox-group">
                 <label class="checkbox-label">
                     <input type="checkbox" name="email_notification" id="email-notification">
-                    Receive Email Notification
+                    Receive SMS Notification
                 </label>
             </div>
             
@@ -284,6 +302,24 @@
         </div>
     </div>
 </div>
+
+<!-- Price Filter Modal -->
+<div id="price-filter-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="price-filter-title">Set Price Filter</h2>
+            <button class="modal-close" onclick="closePriceFilterModal()">&times;</button>
+        </div>
+        <div class="form-group">
+            <label for="price-filter-input" id="price-filter-label">Enter value</label>
+            <input type="number" id="price-filter-input" placeholder="Enter price...">
+        </div>
+        <div class="modal-buttons">
+            <button type="button" class="btn-save" onclick="applyPriceFilter()">Apply</button>
+            <button type="button" class="btn-cancel" onclick="closePriceFilterModal()">Cancel</button>
+        </div>
+    </div>
+</div>
 <style>
     .pill-padding span {
         margin-right: 5px;
@@ -380,33 +416,41 @@
         padding-bottom: 8px;
         border-bottom: 2px solid #fd7e14;
     }
-    .alert-actions {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 10px;
-        margin-bottom: 20px;
-    }
-    .alert-actions-left {
-        display: flex;
-        gap: 10px;
-    }
-    .action-dropdown {
-        padding: 8px 6px 8px 10px;
-        border: 1px solid #ccc;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: 600;
+.alert-actions-wrapper {
+    margin-bottom: 10px;
+}
+.alert-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+.alert-actions-left {
+    display: flex;
+    gap: 10px;
+}
+.alert-actions-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.alert-actions-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.action-dropdown {
+ /*   padding: 6px 6px 6px 10px; */
+    margin-bottom: 6px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    cursor: pointer;
+        /* font-weight: 600; */
         background-color: white;
     }
     .action-dropdown:focus {
         outline: none;
         border-color: #007bff;
-    }
-    .alert-actions-right {
-        display: flex;
-        align-items: center;
-        gap: 10px;
     }
     .action-btn {
         padding: 10px 20px;
@@ -491,10 +535,10 @@
     }
     /* Filter UI styles */
     .filter-dropdown {
-        padding: 8px 6px 8px 10px;
+        /* padding: 6px 6px 8px 10px; */
         border: 1px solid #ccc;
         border-radius: 5px;
-        font-size: 14px;
+        /* font-size: 14px; */
         cursor: pointer;
         background-color: white;
     }
@@ -509,19 +553,19 @@
         margin-bottom: 15px;
         min-height: 0;
     }
-    .filter-tag {
-        display: inline-flex;
-        align-items: center;
-        background-color: #007bff;
-        color: white;
-        padding: 6px 10px;
-        border-radius: 20px;
-        font-size: 13px;
-        font-weight: 500;
-        animation: filterTagIn 0.3s ease forwards;
-        max-width: 200px;
-        overflow: hidden;
-    }
+.filter-tag {
+    display: inline-flex;
+    align-items: center;
+    background-color: #007bff;
+    color: white;
+    padding: 6px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    animation: filterTagIn 0.3s ease forwards;
+    max-width: 200px;
+    overflow: hidden;
+}
     .filter-tag.removing {
         animation: filterTagOut 0.3s ease forwards;
     }
@@ -569,6 +613,93 @@
     .filter-tag-remove:hover {
         opacity: 1;
     }
+    .sort-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .sort-dropdown {
+        /* padding: 6px 10px; */
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        cursor: pointer;
+        /* font-weight: 600; */
+        background-color: white;
+    }
+    .sort-dropdown:focus {
+        outline: none;
+        border-color: #fd7e14;
+        box-shadow: 0 0 0 2px rgba(253, 126, 20, 0.2);
+    }
+    .sort-order-picker {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 8px;
+        background: #fff3e6;
+        border: 1px solid #fd7e14;
+        border-radius: 8px;
+    }
+    .sort-order-label {
+        font-weight: 600;
+        color: #d35400;
+    }
+    .sort-order-btn {
+        padding: 4px 9px;
+        border: 1px solid #fd7e14;
+        background: white;
+        color: #d35400;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 12px;
+        transition: all 0.2s ease;
+    }
+    .sort-order-btn:hover {
+        background: #fd7e14;
+        color: white;
+    }
+.sort-tag {
+    background-color: #fd7e14;
+    color: white;
+    padding: 6px 10px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    font-size: 12px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    margin-right: 8px;
+}
+    .sort-tag-remove {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 16px;
+        margin-left: 4px;
+        cursor: pointer;
+        line-height: 1;
+        opacity: 0.85;
+        padding: 0;
+    }
+.sort-tag-remove:hover {
+    opacity: 1;
+}
+.alert-indicators {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    flex-wrap: wrap-reverse;
+    gap: 8px;
+    margin-top: 6px;
+}
+.filter-tags {
+    display: contents;
+}
+.sort-tag-holder {
+    display: contents;
+}
     /* Filter input styles */
     .filter-input-container {
         display: inline-flex;
@@ -950,6 +1081,7 @@ const AlertsConfig = {
             label: 'Minimum Price',
             shortLabel: 'Min',
             requiresInput: true,
+            requiresModal: true,
             inputType: 'number',
             inputPlaceholder: 'Enter minimum price...',
             testWithValue: (alert, value) => {
@@ -980,6 +1112,7 @@ const AlertsConfig = {
             label: 'Maximum Price',
             shortLabel: 'Max',
             requiresInput: true,
+            requiresModal: true,
             inputType: 'number',
             inputPlaceholder: 'Enter maximum price...',
             testWithValue: (alert, value) => {
@@ -1086,6 +1219,68 @@ const AlertsConfig = {
     csrfToken: '{{ csrf_token }}'
 };
 
+// =============================================================================
+// DROPDOWN SIZING (compact label, expandable options)
+// =============================================================================
+const DropdownSizer = {
+    _canvas: null,
+    
+    measureText(text, select) {
+        if (!this._canvas) this._canvas = document.createElement('canvas');
+        const ctx = this._canvas.getContext('2d');
+        const style = window.getComputedStyle(select);
+        ctx.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+        return ctx.measureText(text || '').width;
+    },
+    
+    applySizing(select) {
+        if (!select) return;
+        const padding =
+            parseFloat(window.getComputedStyle(select).paddingLeft || 0) +
+            parseFloat(window.getComputedStyle(select).paddingRight || 0);
+        const arrowSpace = 24; // room for native dropdown arrow
+        
+        const calcWidth = text => this.measureText(text, select) + padding + arrowSpace;
+        const getExpandedWidth = () => {
+            let max = 0;
+            Array.from(select.options).forEach(opt => { max = Math.max(max, calcWidth(opt.text)); });
+            return max || calcWidth(select.options[0]?.text || '');
+        };
+        
+        const updateCompactWidth = () => {
+            const selectedText = select.options[select.selectedIndex]?.text || select.options[0]?.text || '';
+            select.dataset.compactWidth = calcWidth(selectedText);
+        };
+        
+        const applyCompact = () => {
+            const width = select.dataset.compactWidth || calcWidth(select.options[0]?.text || '');
+            select.style.minWidth = `${width}px`;
+        };
+        
+        const expandedWidth = getExpandedWidth();
+        select.dataset.expandedWidth = expandedWidth;
+        updateCompactWidth();
+        applyCompact();
+        
+        const expand = () => { select.style.minWidth = `${select.dataset.expandedWidth}px`; };
+        const collapse = () => { applyCompact(); };
+        
+        select.addEventListener('focus', expand);
+        select.addEventListener('mousedown', expand);
+        select.addEventListener('blur', collapse);
+        select.addEventListener('change', () => {
+            updateCompactWidth();
+            collapse();
+        });
+    },
+    
+    init() {
+        this.applySizing(document.querySelector('.action-dropdown'));
+        this.applySizing(document.querySelector('.sort-dropdown'));
+        this.applySizing(document.querySelector('.filter-dropdown'));
+    }
+};
+
 
 // =============================================================================
 // STATE MANAGEMENT
@@ -1104,6 +1299,11 @@ const AlertsState = {
     activeFilters: new Set(),       // Currently active filter IDs
     filterValues: {},               // Values for input-based filters (keyed by filter ID)
     alertGroups: [],                // Known alert groups
+    sorting: {                      // Current sorting state
+        sortKey: null,
+        sortOrder: null,
+        pendingKey: null
+    },
     
     /**
      * Stores spread data for a specific alert in the cache.
@@ -1397,8 +1597,27 @@ const AlertsUI = {
                 }
             }
         }
+
+        let sortTag = '';
+        if (AlertsState.sorting.sortKey) {
+            const sortOption = SortManager.options[AlertsState.sorting.sortKey];
+            const orderLabel = AlertsState.sorting.sortOrder === 'asc' ? 'Ascending' : 'Descending';
+            const label = sortOption ? sortOption.label : 'Sort';
+            sortTag = '<span class="sort-tag" data-sort-id="' + AlertsState.sorting.sortKey + '">' +
+                label + ': ' + orderLabel +
+                '<button class="sort-tag-remove" onclick="clearSort()">&times;</button>' +
+                '</span>';
+        }
+
+        const sortOptions = '' +
+            '<option value="">Sort...</option>' +
+            '<option value="lastTriggered">Last Triggered Time</option>' +
+            '<option value="alertType">Alert Type</option>' +
+            '<option value="thresholdDistance">Threshold Distance</option>' +
+            '<option value="createdDate">Created Date</option>';
         
-        return '<div class="alert-actions">' +
+        return '<div class="alert-actions-wrapper">' +
+               '<div class="alert-actions">' +
                '<div class="alert-actions-left">' +
                '<select id="alert-action-select" class="action-dropdown" onchange="AlertActions.handleAction(this.value); this.value=\'\';">' +
                '<option value="">Actions</option>' +
@@ -1407,8 +1626,18 @@ const AlertsUI = {
                '</select>' +
                '</div>' +
                '<div class="alert-actions-right" id="active-filters">' +
-               tags +
+               '<div class="alert-actions-controls">' +
+               '<div class="sort-controls">' +
+               '<select class="sort-dropdown" onchange="handleSortSelection(this.value); this.value=\'\';">' + sortOptions + '</select>' +
+               '<div id="sort-order-picker" class="sort-order-picker" style="display: none;"></div>' +
+               '</div>' +
                '<select class="filter-dropdown" onchange="addFilter(this.value); this.value=\'\';">' + options + '</select>' +
+               '</div>' +
+               '</div>' +
+               '</div>' +
+               '<div class="alert-indicators">' +
+               '<div class="filter-tags">' + tags + '</div>' +
+               '<div class="sort-tag-holder">' + sortTag + '</div>' +
                '</div>' +
                '</div>';
     },
@@ -1455,8 +1684,8 @@ const AlertsUI = {
             return '<p class="no-alerts">No active alerts. Create one to get started!</p>';
         }
         
-        // Apply active filters
-        const filteredAlerts = FilterManager.applyFilters(alerts);
+        // Apply active filters then sort
+        const filteredAlerts = SortManager.applySort(FilterManager.applyFilters(alerts));
         
         if (filteredAlerts.length === 0) {
             return '<p class="no-alerts">No alerts match the current filters.</p>';
@@ -1503,13 +1732,11 @@ const AlertsUI = {
         sortedGroups.forEach(group => {
             const groupAlerts = groupedAlerts[group];
             if (groupAlerts.length > 0) {
-                // Sort alerts within group alphabetically by their text
-                groupAlerts.sort((a, b) => (a.text || '').localeCompare(b.text || ''));
-                
+                const sortedGroupAlerts = SortManager.applySort(groupAlerts);
                 html += '<div class="alert-group">';
                 html += '<h3 class="alert-group-header">' + group + '</h3>';
                 html += '<ul class="alerts-list">';
-                groupAlerts.forEach(alert => {
+                sortedGroupAlerts.forEach(alert => {
                     html += this.renderAlertItem(alert);
                 });
                 html += '</ul>';
@@ -1579,6 +1806,10 @@ const AlertsUI = {
         const filterDropdown = pane.querySelector('.filter-dropdown');
         const isFilterDropdownOpen = filterDropdown && document.activeElement === filterDropdown;
         
+        // Check if sort dropdown is currently open/focused
+        const sortDropdown = pane.querySelector('.sort-dropdown');
+        const isSortDropdownOpen = sortDropdown && document.activeElement === sortDropdown;
+        
         // Check if actions dropdown is currently open/focused
         const actionsDropdown = pane.querySelector('.action-dropdown');
         const isActionsDropdownOpen = actionsDropdown && document.activeElement === actionsDropdown;
@@ -1587,7 +1818,7 @@ const AlertsUI = {
         const hasActiveFilters = AlertsState.activeFilters.size > 0;
         const hasFilterInput = pane.querySelector('.filter-input-container') !== null;
         
-        if (hasActiveFilters || hasFilterInput || isFilterDropdownOpen || isActionsDropdownOpen) {
+        if (hasActiveFilters || hasFilterInput || isFilterDropdownOpen || isSortDropdownOpen || isActionsDropdownOpen) {
             this.updateMyAlertsPaneSelective(data);
             return;
         }
@@ -1681,6 +1912,155 @@ const AlertsUI = {
 
 
 // =============================================================================
+// SORT MANAGEMENT
+// =============================================================================
+const SortManager = {
+    options: {
+        lastTriggered: { id: 'lastTriggered', label: 'Last Triggered Time', defaultOrder: 'desc' },
+        alertType: { id: 'alertType', label: 'Alert Type', defaultOrder: 'asc' },
+        thresholdDistance: { id: 'thresholdDistance', label: 'Threshold Distance', defaultOrder: 'asc' },
+        createdDate: { id: 'createdDate', label: 'Created Date', defaultOrder: 'desc' }
+    },
+
+    getSortValue(alert, sortKey) {
+        switch (sortKey) {
+            case 'lastTriggered': {
+                const ts = alert.last_triggered_at || alert.triggered_at || alert.triggered_time || alert.last_triggered_time;
+                return this.parseDateValue(ts);
+            }
+            case 'alertType':
+                return (alert.type || '').toString();
+            case 'thresholdDistance':
+                return this.getThresholdDistance(alert);
+            case 'createdDate':
+                return this.parseDateValue(alert.created_at);
+            default:
+                return null;
+        }
+    },
+
+    parseDateValue(value) {
+        if (!value) return null;
+        const ts = Date.parse(value);
+        return isNaN(ts) ? null : ts;
+    },
+
+    getThresholdDistance(alert) {
+        const { alertTypes } = AlertsConfig;
+        if ((alert.type === alertTypes.ABOVE || alert.type === alertTypes.BELOW) && alert.price && alert.current_price) {
+            return Math.abs(alert.price - alert.current_price);
+        }
+        if (alert.type === alertTypes.SPREAD && alert.percentage != null) {
+            if (alert.spread_percentage != null) {
+                return Math.abs(alert.percentage - alert.spread_percentage);
+            }
+            if (alert.spread_current_percentage != null) {
+                return Math.abs(alert.percentage - alert.spread_current_percentage);
+            }
+        }
+        return null;
+    },
+
+    applySort(alerts) {
+        const sorted = [...alerts];
+        const { sortKey, sortOrder } = AlertsState.sorting || {};
+        if (!sortKey) {
+            return sorted.sort((a, b) => (a.text || '').localeCompare(b.text || ''));
+        }
+
+        const direction = sortOrder === 'asc' ? 1 : -1;
+
+        sorted.sort((a, b) => {
+            const aVal = this.getSortValue(a, sortKey);
+            const bVal = this.getSortValue(b, sortKey);
+            const aMissing = aVal === null || aVal === undefined || Number.isNaN(aVal);
+            const bMissing = bVal === null || bVal === undefined || Number.isNaN(bVal);
+
+            if (!aMissing || !bMissing) {
+                if (aMissing) return 1;
+                if (bMissing) return -1;
+                if (aVal > bVal) return direction;
+                if (aVal < bVal) return -direction;
+            }
+
+            return (a.text || '').localeCompare(b.text || '');
+        });
+
+        return sorted;
+    },
+
+    handleSortSelection(sortKey) {
+        if (!sortKey) return;
+        AlertsState.sorting.pendingKey = sortKey;
+        const defaultOrder = this.options[sortKey]?.defaultOrder || 'asc';
+        this.showOrderPicker(sortKey, defaultOrder);
+    },
+
+    showOrderPicker(sortKey, defaultOrder) {
+        const picker = document.getElementById('sort-order-picker');
+        if (!picker) return;
+        AlertsRefresh.pauseForSort();
+        picker.innerHTML = '' +
+            '<span class="sort-order-label">Order:</span>' +
+            '<button class="sort-order-btn" onclick="applySortOrder(\'asc\')">Ascending</button>' +
+            '<button class="sort-order-btn" onclick="applySortOrder(\'desc\')">Descending</button>';
+        picker.style.display = 'flex';
+
+        // Preselect by applying default immediately if we already have this sort active
+        if (AlertsState.sorting.sortKey === sortKey && AlertsState.sorting.sortOrder) {
+            // no-op, waiting for user click
+        } else {
+            AlertsState.sorting.sortOrder = defaultOrder;
+        }
+    },
+
+    applySortOrder(order) {
+        const sortKey = AlertsState.sorting.pendingKey || AlertsState.sorting.sortKey;
+        if (!sortKey) return;
+        AlertsState.sorting.sortKey = sortKey;
+        AlertsState.sorting.sortOrder = order || this.options[sortKey]?.defaultOrder || 'asc';
+        AlertsState.sorting.pendingKey = null;
+        this.hideOrderPicker();
+        this.renderSortTag();
+        FilterManager.updateAlertsList();
+        AlertsRefresh.resumeAfterSort();
+    },
+
+    hideOrderPicker() {
+        const picker = document.getElementById('sort-order-picker');
+        if (picker) picker.style.display = 'none';
+        AlertsRefresh.resumeAfterSort();
+    },
+
+    clearSort() {
+        AlertsState.sorting = { sortKey: null, sortOrder: null, pendingKey: null };
+        this.hideOrderPicker();
+        this.renderSortTag();
+        FilterManager.updateAlertsList();
+    },
+
+    renderSortTag() {
+        const container = document.querySelector('.alert-indicators .sort-tag-holder') || document.querySelector('.alert-indicators');
+        if (!container) return;
+        const existing = container.querySelector('.sort-tag');
+        if (existing) existing.remove();
+
+        if (!AlertsState.sorting.sortKey) return;
+
+        const option = this.options[AlertsState.sorting.sortKey];
+        const label = option ? option.label : 'Sort';
+        const orderLabel = AlertsState.sorting.sortOrder === 'asc' ? 'Ascending' : 'Descending';
+        const tagHtml = '<span class="sort-tag" data-sort-id="' + AlertsState.sorting.sortKey + '">' +
+            label + ': ' + orderLabel +
+            '<button class="sort-tag-remove" onclick="clearSort()">&times;</button>' +
+            '</span>';
+
+        container.insertAdjacentHTML('beforeend', tagHtml);
+    }
+};
+
+
+// =============================================================================
 // FILTER MANAGEMENT
 // =============================================================================
 /**
@@ -1706,15 +2086,15 @@ const FilterManager = {
         }
         if (AlertsState.activeFilters.has(filterId)) return;
         
-        // If filter requires input, show input UI instead of adding directly
-        if (filter.requiresInput) {
-            this.showFilterInput(filterId);
+        // If filter requires a modal, open it
+        if (filter.requiresModal) {
+            this.showFilterModal(filterId);
             return;
         }
         
-        // If filter requires modal, show modal instead
-        if (filter.requiresModal) {
-            this.showFilterModal(filterId);
+        // If filter requires input, show input UI instead of adding directly
+        if (filter.requiresInput) {
+            this.showFilterInput(filterId);
             return;
         }
         
@@ -1725,8 +2105,12 @@ const FilterManager = {
      * Shows a modal for a modal-based filter.
      */
     showFilterModal(filterId) {
+        const dropdown = document.querySelector('#active-filters .filter-dropdown');
+        if (dropdown) dropdown.value = '';
         if (filterId === 'myGroups') {
             openGroupsFilterModal();
+        } else if (filterId === 'minimumPrice' || filterId === 'maximumPrice') {
+            openPriceFilterModal(filterId);
         }
     },
     
@@ -1804,6 +2188,7 @@ const FilterManager = {
         const filter = AlertsConfig.filters[filterId];
         const container = document.querySelector('#active-filters');
         const dropdown = container ? container.querySelector('.filter-dropdown') : null;
+        const tagContainer = document.querySelector('.alert-indicators .filter-tags');
         if (dropdown) {
             // Format the label based on whether it's a numeric value or not
             let label;
@@ -1820,7 +2205,11 @@ const FilterManager = {
             const tagHtml = '<span class="filter-tag" data-filter-id="' + filterId + '">' + label + 
                     '<button class="filter-tag-remove" onclick="removeFilter(\'' + filterId + '\')">&times;</button>' +
                     '</span>';
-            dropdown.insertAdjacentHTML('beforebegin', tagHtml);
+            if (tagContainer) {
+                tagContainer.insertAdjacentHTML('beforeend', tagHtml);
+            } else {
+                dropdown.insertAdjacentHTML('beforebegin', tagHtml);
+            }
             
             // Remove the option from dropdown
             const option = dropdown.querySelector('option[value="' + filterId + '"]');
@@ -1837,6 +2226,9 @@ const FilterManager = {
     removeFilter(filterId) {
         AlertsState.activeFilters.delete(filterId);
         AlertsState.filterValues[filterId] = null; // Clear any stored value
+        
+        const tagEl = document.querySelector('.filter-tag[data-filter-id="' + filterId + '"]');
+        if (tagEl) tagEl.remove();
         
         // Re-add the option to dropdown
         const filter = AlertsConfig.filters[filterId];
@@ -1870,17 +2262,18 @@ const FilterManager = {
         const alertGroup = pane.querySelector('.alert-group');
         const noAlertsMsg = pane.querySelector('.no-alerts');
         const filteredAlerts = this.applyFilters(data.alerts || []);
+        const sortedAlerts = SortManager.applySort(filteredAlerts);
         const selectedGroups = AlertsState.getFilterValue('myGroups');
         const isGroupedView = selectedGroups && selectedGroups.length > 0 && AlertsState.activeFilters.has('myGroups');
 
         let newHtml = '';
-        if (filteredAlerts.length === 0) {
+        if (sortedAlerts.length === 0) {
             newHtml = '<p class="no-alerts">No alerts match the current filters.</p>';
         } else if (isGroupedView) {
-            newHtml = AlertsUI.renderGroupedAlertsList(filteredAlerts, selectedGroups);
+            newHtml = AlertsUI.renderGroupedAlertsList(sortedAlerts, selectedGroups);
         } else {
             newHtml = '<ul class="alerts-list">';
-            filteredAlerts.forEach(alert => {
+            sortedAlerts.forEach(alert => {
                 newHtml += AlertsUI.renderAlertItem(alert);
             });
             newHtml += '</ul>';
@@ -2607,6 +3000,7 @@ const AutocompleteManager = {
  */
 const AlertsRefresh = {
     intervalId: null,
+    pausedForSort: false,
     
     /**
      * Fetches fresh data and updates the UI.
@@ -2622,11 +3016,29 @@ const AlertsRefresh = {
      * Starts the periodic refresh interval.
      */
     start() {
+        if (this.intervalId) return;
         this.refresh();
         this.intervalId = setInterval(
             () => this.refresh(), 
             AlertsConfig.timing.refreshInterval
         );
+    },
+    
+    /**
+     * Temporarily pause refresh while user chooses sort order.
+     */
+    pauseForSort() {
+        this.pausedForSort = true;
+        this.stop();
+    },
+    
+    /**
+     * Resume refresh if it was paused for sort selection.
+     */
+    resumeAfterSort() {
+        if (!this.pausedForSort) return;
+        this.pausedForSort = false;
+        this.start();
     },
     
     /**
@@ -2842,6 +3254,19 @@ function handleFilterInputKeydown(event, filterId) {
     }
 }
 
+// Sort handlers
+function handleSortSelection(sortKey) {
+    SortManager.handleSortSelection(sortKey);
+}
+
+function applySortOrder(order) {
+    SortManager.applySortOrder(order);
+}
+
+function clearSort() {
+    SortManager.clearSort();
+}
+
 // Groups filter modal functions
 function openGroupsFilterModal() {
     const modal = document.getElementById('groups-filter-modal');
@@ -2913,6 +3338,41 @@ function applyGroupsFilter() {
     closeGroupsFilterModal();
 }
 
+function openPriceFilterModal(filterId) {
+    const modal = document.getElementById('price-filter-modal');
+    const title = document.getElementById('price-filter-title');
+    const label = document.getElementById('price-filter-label');
+    const input = document.getElementById('price-filter-input');
+    if (!modal || !title || !label || !input) return;
+    modal.dataset.filterId = filterId;
+    const isMin = filterId === 'minimumPrice';
+    title.textContent = isMin ? 'Set Minimum Price' : 'Set Maximum Price';
+    label.textContent = isMin ? 'Minimum Price' : 'Maximum Price';
+    input.placeholder = isMin ? 'Enter minimum price...' : 'Enter maximum price...';
+    input.value = '';
+    modal.style.display = 'flex';
+    setTimeout(() => input.focus(), 0);
+}
+
+function closePriceFilterModal() {
+    const modal = document.getElementById('price-filter-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+function applyPriceFilter() {
+    const modal = document.getElementById('price-filter-modal');
+    const input = document.getElementById('price-filter-input');
+    if (!modal || !input) return;
+    const filterId = modal.dataset.filterId;
+    const value = input.value.trim();
+    if (!filterId || !value) {
+        closePriceFilterModal();
+        return;
+    }
+    FilterManager.activateFilter(filterId, value);
+    closePriceFilterModal();
+}
+
 function confirmDelete() {
     AlertActions.confirmDelete();
 }
@@ -2932,6 +3392,7 @@ function saveAlert() {
     TabManager.init();
     AutocompleteManager.init();
     EventManager.init();
+    DropdownSizer.init();
     AlertsRefresh.start();
 })();
 </script>

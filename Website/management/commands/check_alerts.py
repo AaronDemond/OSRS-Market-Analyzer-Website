@@ -1,10 +1,24 @@
 import os
+import sys
 import time
 import json
+from pathlib import Path
+
 import requests
 from django.core.management.base import BaseCommand
 from django.core.mail import send_mail
 from django.conf import settings
+
+# Allow running the command directly (outside manage.py) by ensuring the project is on sys.path and Django is configured
+BASE_DIR = Path(__file__).resolve().parents[2]
+if str(BASE_DIR) not in sys.path:
+    sys.path.append(str(BASE_DIR))
+
+if not os.environ.get('DJANGO_SETTINGS_MODULE'):
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'Website.settings')
+    import django
+    django.setup()
+
 from Website.models import Alert
 
 

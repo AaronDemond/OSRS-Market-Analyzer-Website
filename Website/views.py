@@ -361,8 +361,11 @@ def alerts_api(request):
             'triggered_data': alert.triggered_data,
             'reference': alert.reference,
             'price': alert.price,
+            'percentage': alert.percentage,
             'minimum_price': alert.minimum_price,
             'maximum_price': alert.maximum_price,
+            'created_at': alert.created_at.isoformat(),
+            'last_triggered_at': getattr(alert, 'triggered_at', None),
             'groups': list(alert.groups.values_list('name', flat=True))
         }
         for g in alert_dict['groups']:
