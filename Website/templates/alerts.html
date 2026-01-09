@@ -1056,6 +1056,21 @@
     #spread-items-list li:last-child {
         border-bottom: none;
     }
+    #spike-items-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    #spike-items-list li {
+        padding: 12px 15px;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    #spike-items-list li:last-child {
+        border-bottom: none;
+    }
     .spread-item-name {
         font-weight: 600;
         color: #333;
@@ -1068,6 +1083,9 @@
         font-weight: 700;
         color: #28a745;
         font-size: 1.1rem;
+    }
+    .spread-item-percentage.negative-change {
+        color: #dc3545;
     }
     .clickable-triggered {
         cursor: pointer;
@@ -1935,12 +1953,15 @@ const AlertsUI = {
             const baseline = item.baseline ? item.baseline.toLocaleString() : 'N/A';
             const current = item.current ? item.current.toLocaleString() : 'N/A';
             const percent = item.percent_change != null ? item.percent_change.toFixed(2) : 'N/A';
+            const pctClass = (item.percent_change != null && item.percent_change < 0)
+                ? 'spread-item-percentage negative-change'
+                : 'spread-item-percentage';
             html += '<li>' +
                     '<div>' +
                     '<span class="spread-item-name">' + item.item_name + '</span>' +
                     '<div class="spread-item-details">Baseline: ' + baseline + ' | Current: ' + current + '</div>' +
                     '</div>' +
-                    '<span class="spread-item-percentage">' + percent + '%</span>' +
+                    '<span class="' + pctClass + '">' + percent + '%</span>' +
                     '</li>';
         });
         return html;
