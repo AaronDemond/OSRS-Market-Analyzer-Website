@@ -359,7 +359,8 @@ def alerts_api(request):
             'is_all_items': alert.is_all_items,
             'triggered_data': alert.triggered_data,
             'reference': alert.reference,
-            'price': alert.price
+            'price': alert.price,
+            'minimum_price': alert.minimum_price
         }
         
         # Add spread data for single item spread alerts

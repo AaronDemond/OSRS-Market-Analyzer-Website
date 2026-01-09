@@ -40,6 +40,7 @@
                     <option value="">Add Filter...</option>
                     <option value="triggered">Triggered</option>
                     <option value="notTriggered">Not Triggered</option>
+                    <option value="minimumPrice">Minimum Price</option>
                 </select>
             </div>
         </div>
@@ -496,6 +497,46 @@
     .filter-tag-remove:hover {
         opacity: 1;
     }
+    /* Filter input styles */
+    .filter-input-container {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+        margin-right: 15px;
+        animation: filterTagIn 0.3s ease forwards;
+    }
+    .filter-input {
+        padding: 6px 10px;
+        border: 1px solid #007bff;
+        border-radius: 20px;
+        font-size: 13px;
+        width: 150px;
+        outline: none;
+    }
+    .filter-input:focus {
+        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.3);
+    }
+    .filter-input-confirm,
+    .filter-input-cancel {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+        padding: 4px 4px;
+        border-radius: 4px;
+    }
+    .filter-input-confirm {
+        color: #28a745;
+    }
+    .filter-input-confirm:hover {
+        background-color: rgba(40, 167, 69, 0.1);
+    }
+    .filter-input-cancel {
+        color: #dc3545;
+    }
+    .filter-input-cancel:hover {
+        background-color: rgba(220, 53, 69, 0.1);
+    }
     .create-alert-form {
         max-width: 400px;
     }
@@ -763,9 +804,48 @@ const AlertsConfig = {
     },
     
     // Available filters for the alerts list
+    // Simple filters have just a test function
+    // Input filters have requiresInput: true and testWithValue function
     filters: {
-        triggered: { id: 'triggered', label: 'Triggered', test: alert => alert.is_triggered },
-        notTriggered: { id: 'notTriggered', label: 'Not Triggered', test: alert => !alert.is_triggered }
+        triggered: { 
+            id: 'triggered', 
+            label: 'Triggered', 
+            test: alert => alert.is_triggered 
+        },
+        notTriggered: { 
+            id: 'notTriggered', 
+            label: 'Not Triggered', 
+            test: alert => !alert.is_triggered 
+        },
+        minimumPrice: {
+            id: 'minimumPrice',
+            label: 'Minimum Price',
+            requiresInput: true,
+            inputType: 'number',
+            inputPlaceholder: 'Enter minimum price...',
+            testWithValue: (alert, value) => {
+                const minPrice = parseInt(value);
+                if (isNaN(minPrice)) return true;
+                
+                // For above/below alerts, use the price threshold
+                if (alert.type === 'above' || alert.type === 'below') {
+                    return (alert.price || 0) >= minPrice;
+                }
+                
+                // For spread alerts with all items, use minimum_price field
+                if (alert.type === 'spread' && alert.is_all_items) {
+                    return (alert.minimum_price || 0) >= minPrice;
+                }
+                
+                // For spread alerts with single item, use current low price
+                if (alert.type === 'spread' && !alert.is_all_items) {
+                    return (alert.spread_low || 0) >= minPrice;
+                }
+                
+                // Default: use current low price if available
+                return (alert.spread_low || alert.price || 0) >= minPrice;
+            }
+        }
     },
     
     // DOM element selectors for the create form
@@ -850,6 +930,7 @@ const AlertsState = {
     deleteMode: false,              // Whether delete mode is active
     spreadDataCache: {},            // Cache for spread alert data (keyed by alert ID)
     activeFilters: new Set(),       // Currently active filter IDs
+    filterValues: {},               // Values for input-based filters (keyed by filter ID)
     
     /**
      * Stores spread data for a specific alert in the cache.
@@ -865,6 +946,20 @@ const AlertsState = {
      */
     getSpreadData(alertId) {
         return this.spreadDataCache[alertId] || null;
+    },
+    
+    /**
+     * Sets a value for an input-based filter.
+     */
+    setFilterValue(filterId, value) {
+        this.filterValues[filterId] = value;
+    },
+    
+    /**
+     * Gets the value for an input-based filter.
+     */
+    getFilterValue(filterId) {
+        return this.filterValues[filterId] || null;
     }
 };
 
@@ -1206,8 +1301,11 @@ const AlertsUI = {
         const pane = document.querySelector(AlertsConfig.selectors.myAlertsPane);
         if (!pane) return;
         
-        // If there are active filters, do a selective update to avoid flashing
-        if (AlertsState.activeFilters.size > 0) {
+        // If there are active filters OR a filter input is open, do a selective update to avoid flashing
+        const hasActiveFilters = AlertsState.activeFilters.size > 0;
+        const hasFilterInput = pane.querySelector('.filter-input-container') !== null;
+        
+        if (hasActiveFilters || hasFilterInput) {
             this.updateMyAlertsPaneSelective(data);
             return;
         }
@@ -1296,29 +1394,109 @@ const AlertsUI = {
 const FilterManager = {
     /**
      * Adds a filter to the active filters set and updates the DOM.
+     * For input-based filters, shows an input prompt first.
      */
     addFilter(filterId) {
-        if (AlertsConfig.filters[filterId] && !AlertsState.activeFilters.has(filterId)) {
-            AlertsState.activeFilters.add(filterId);
-            
-            // Add filter tag to DOM
-            const filter = AlertsConfig.filters[filterId];
-            const container = document.querySelector('#active-filters');
-            const dropdown = container ? container.querySelector('.filter-dropdown') : null;
-            if (dropdown) {
-                const tagHtml = '<span class="filter-tag" data-filter-id="' + filterId + '">' + filter.label + 
-                        '<button class="filter-tag-remove" onclick="removeFilter(\'' + filterId + '\')">&times;</button>' +
-                        '</span>';
-                dropdown.insertAdjacentHTML('beforebegin', tagHtml);
-                
-                // Remove the option from dropdown
-                const option = dropdown.querySelector('option[value="' + filterId + '"]');
-                if (option) option.remove();
-            }
-            
-            // Only update the alerts list, not the entire pane
-            this.updateAlertsList();
+        const filter = AlertsConfig.filters[filterId];
+        if (!filter || AlertsState.activeFilters.has(filterId)) return;
+        
+        // If filter requires input, show input UI instead of adding directly
+        if (filter.requiresInput) {
+            this.showFilterInput(filterId);
+            return;
         }
+        
+        this.activateFilter(filterId);
+    },
+    
+    /**
+     * Shows the input UI for an input-based filter.
+     */
+    showFilterInput(filterId) {
+        const filter = AlertsConfig.filters[filterId];
+        const container = document.querySelector('#active-filters');
+        const dropdown = container ? container.querySelector('.filter-dropdown') : null;
+        if (!dropdown) return;
+        
+        // Create input UI
+        const inputHtml = '<span class="filter-input-container" data-filter-id="' + filterId + '">' +
+            '<input type="' + (filter.inputType || 'text') + '" class="filter-input" ' +
+            'placeholder="' + (filter.inputPlaceholder || 'Enter value...') + '" ' +
+            'onkeydown="handleFilterInputKeydown(event, \'' + filterId + '\')">' +
+            '<button class="filter-input-confirm" onclick="confirmFilterInput(\'' + filterId + '\')">✓</button>' +
+            '<button class="filter-input-cancel" onclick="cancelFilterInput(\'' + filterId + '\')">&times;</button>' +
+            '</span>';
+        
+        dropdown.insertAdjacentHTML('beforebegin', inputHtml);
+        
+        // Focus the input
+        const input = container.querySelector('.filter-input-container[data-filter-id="' + filterId + '"] .filter-input');
+        if (input) input.focus();
+        
+        // Reset dropdown
+        dropdown.value = '';
+    },
+    
+    /**
+     * Confirms the input for an input-based filter and activates it.
+     */
+    confirmFilterInput(filterId) {
+        const container = document.querySelector('#active-filters');
+        const inputContainer = container ? container.querySelector('.filter-input-container[data-filter-id="' + filterId + '"]') : null;
+        const input = inputContainer ? inputContainer.querySelector('.filter-input') : null;
+        
+        if (!input || !input.value.trim()) {
+            this.cancelFilterInput(filterId);
+            return;
+        }
+        
+        const value = input.value.trim();
+        AlertsState.setFilterValue(filterId, value);
+        
+        // Remove input container
+        inputContainer.remove();
+        
+        // Activate the filter with the value displayed
+        this.activateFilter(filterId, value);
+    },
+    
+    /**
+     * Cancels the input for an input-based filter.
+     */
+    cancelFilterInput(filterId) {
+        const container = document.querySelector('#active-filters');
+        const inputContainer = container ? container.querySelector('.filter-input-container[data-filter-id="' + filterId + '"]') : null;
+        if (inputContainer) {
+            inputContainer.remove();
+        }
+    },
+    
+    /**
+     * Activates a filter and adds its tag to the DOM.
+     * @param {string} filterId - The filter ID
+     * @param {string} displayValue - Optional value to display in the tag
+     */
+    activateFilter(filterId, displayValue) {
+        AlertsState.activeFilters.add(filterId);
+        
+        // Add filter tag to DOM
+        const filter = AlertsConfig.filters[filterId];
+        const container = document.querySelector('#active-filters');
+        const dropdown = container ? container.querySelector('.filter-dropdown') : null;
+        if (dropdown) {
+            const label = displayValue ? filter.label + ': ' + parseInt(displayValue).toLocaleString() : filter.label;
+            const tagHtml = '<span class="filter-tag" data-filter-id="' + filterId + '">' + label + 
+                    '<button class="filter-tag-remove" onclick="removeFilter(\'' + filterId + '\')">&times;</button>' +
+                    '</span>';
+            dropdown.insertAdjacentHTML('beforebegin', tagHtml);
+            
+            // Remove the option from dropdown
+            const option = dropdown.querySelector('option[value="' + filterId + '"]');
+            if (option) option.remove();
+        }
+        
+        // Only update the alerts list, not the entire pane
+        this.updateAlertsList();
     },
     
     /**
@@ -1326,6 +1504,7 @@ const FilterManager = {
      */
     removeFilter(filterId) {
         AlertsState.activeFilters.delete(filterId);
+        AlertsState.filterValues[filterId] = null; // Clear any stored value
         
         // Re-add the option to dropdown
         const filter = AlertsConfig.filters[filterId];
@@ -1395,7 +1574,15 @@ const FilterManager = {
         return alerts.filter(alert => {
             for (const filterId of AlertsState.activeFilters) {
                 const filter = AlertsConfig.filters[filterId];
-                if (filter && !filter.test(alert)) {
+                if (!filter) continue;
+                
+                // Use testWithValue for input-based filters
+                if (filter.requiresInput && filter.testWithValue) {
+                    const value = AlertsState.getFilterValue(filterId);
+                    if (!filter.testWithValue(alert, value)) {
+                        return false;
+                    }
+                } else if (filter.test && !filter.test(alert)) {
                     return false;
                 }
             }
@@ -2174,6 +2361,24 @@ function removeFilter(filterId) {
         }, 300);
     } else {
         FilterManager.removeFilter(filterId);
+    }
+}
+
+function confirmFilterInput(filterId) {
+    FilterManager.confirmFilterInput(filterId);
+}
+
+function cancelFilterInput(filterId) {
+    FilterManager.cancelFilterInput(filterId);
+}
+
+function handleFilterInputKeydown(event, filterId) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        confirmFilterInput(filterId);
+    } else if (event.key === 'Escape') {
+        event.preventDefault();
+        cancelFilterInput(filterId);
     }
 }
 
