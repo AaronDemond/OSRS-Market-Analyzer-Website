@@ -190,10 +190,13 @@
         font-style: italic;
     }
     
-    /* Edit Mode Styles */
+    /* Edit Controls */
     .edit-controls {
         display: flex;
         gap: 10px;
+        padding: 20px 24px;
+        background: #f8f9fa;
+        border-top: 1px solid #e9ecef;
     }
     
     .btn-edit {
@@ -279,101 +282,55 @@
         gap: 8px;
     }
     
-    /* Editable Fields */
-    .editable-field {
+    /* Form Styles */
+    .edit-form {
         display: none;
     }
     
-    .edit-mode .editable-field {
+    .edit-mode .edit-form {
         display: block;
     }
     
-    .edit-mode .display-value {
+    .edit-mode .display-content {
         display: none;
     }
     
-    .editable-field input,
-    .editable-field select {
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #333;
+        font-size: 0.9rem;
+    }
+    
+    .form-group input,
+    .form-group select {
         width: 100%;
-        padding: 10px 14px;
+        padding: 12px 14px;
         border: 2px solid #e9ecef;
         border-radius: 8px;
         font-size: 1rem;
         transition: all 0.2s ease;
+        background: white;
     }
     
-    .editable-field input:focus,
-    .editable-field select:focus {
+    .form-group input:focus,
+    .form-group select:focus {
         outline: none;
         border-color: #667eea;
         box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
     }
     
-    /* Groups Pills */
-    .groups-container {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-    }
-    
-    .group-pill {
-        display: inline-flex;
-        align-items: center;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 6px 14px;
-        border-radius: 20px;
-        font-size: 0.85rem;
-        font-weight: 500;
-    }
-    
-    .no-groups {
-        color: #6c757d;
-        font-style: italic;
-    }
-    
-    /* Current Price Card */
-    .price-card {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        border: none;
-    }
-    
-    .price-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 20px;
-        text-align: center;
-    }
-    
-    .price-item {
-        padding: 15px;
-        background: white;
-        border-radius: 10px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    }
-    
-    .price-item .detail-label {
-        margin-bottom: 8px;
-    }
-    
-    .price-item .detail-value {
-        font-size: 1.4rem;
-    }
-    
-    /* Timestamps */
-    .timestamp-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 15px;
-    }
-    
-    .timestamp-item {
+    .form-group input:disabled {
         background: #f8f9fa;
-        padding: 15px;
-        border-radius: 8px;
+        cursor: not-allowed;
     }
     
-    /* Checkbox toggle */
+    /* Toggle Switch */
     .toggle-container {
         display: flex;
         align-items: center;
@@ -384,6 +341,7 @@
         position: relative;
         width: 50px;
         height: 26px;
+        flex-shrink: 0;
     }
     
     .toggle-switch input {
@@ -429,7 +387,29 @@
         color: #333;
     }
     
-    /* Groups edit mode */
+    /* Groups */
+    .groups-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .group-pill {
+        display: inline-flex;
+        align-items: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    
+    .no-groups {
+        color: #6c757d;
+        font-style: italic;
+    }
+    
     .groups-edit-container {
         display: none;
         flex-wrap: wrap;
@@ -471,6 +451,47 @@
         font-weight: 600;
     }
     
+    /* Price Card */
+    .price-card {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border: none;
+    }
+    
+    .price-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+        text-align: center;
+    }
+    
+    .price-item {
+        padding: 15px;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+    
+    .price-item .detail-label {
+        margin-bottom: 8px;
+    }
+    
+    .price-item .detail-value {
+        font-size: 1.4rem;
+    }
+    
+    /* Timestamps */
+    .timestamp-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 15px;
+    }
+    
+    .timestamp-item {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+    }
+    
     /* Responsive */
     @media (max-width: 768px) {
         .alert-header {
@@ -507,9 +528,9 @@
     </a>
     
     <!-- Header Card -->
-    <div class="alert-header">
+    <div class="alert-header" id="alertHeader">
         <div class="alert-header-top">
-            <div class="alert-type-badge">
+            <div class="alert-type-badge" id="typeBadge">
                 {% if alert.type == 'above' %}
                     <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
                     Above Threshold
@@ -535,32 +556,8 @@
                 {% endif %}
             </div>
         </div>
-        <h1 class="alert-title">{{ alert }}</h1>
+        <h1 class="alert-title" id="alertTitle">{{ alert }}</h1>
         <p class="alert-subtitle">Alert ID: #{{ alert.id }}</p>
-    </div>
-    
-    <!-- Edit Controls -->
-    <div class="detail-card">
-        <div class="detail-card-body">
-            <div class="edit-controls" id="editControls">
-                <button class="btn-edit" onclick="enterEditMode()">
-                    <svg fill="currentColor" viewBox="0 0 20 20"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg>
-                    Edit Alert
-                </button>
-                <button class="btn-save" onclick="saveChanges()">
-                    <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-                    Save Changes
-                </button>
-                <button class="btn-cancel" onclick="cancelEdit()">
-                    <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
-                    Cancel
-                </button>
-                <button class="btn-delete" onclick="deleteAlert()">
-                    <svg fill="currentColor" viewBox="0 0 20 20" style="width:18px;height:18px;margin-right:6px;"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
-                    Delete
-                </button>
-            </div>
-        </div>
     </div>
     
     <!-- Alert Configuration -->
@@ -572,136 +569,215 @@
             </h3>
         </div>
         <div class="detail-card-body">
-            <div class="detail-grid">
-                <div class="detail-item">
-                    <span class="detail-label">Alert Type</span>
-                    <span class="detail-value">
-                        {% if alert.type == 'above' %}Above Threshold
-                        {% elif alert.type == 'below' %}Below Threshold
-                        {% elif alert.type == 'spread' %}Spread
-                        {% elif alert.type == 'spike' %}Spike
-                        {% else %}{{ alert.type }}{% endif %}
-                    </span>
-                    <input type="hidden" id="edit-type" value="{{ alert.type }}">
-                </div>
-                
-                <div class="detail-item">
-                    <span class="detail-label">Item</span>
-                    <span class="detail-value display-value {% if alert.is_all_items %}muted{% endif %}">
-                        {% if alert.is_all_items %}All Items{% else %}{{ alert.item_name|default:"Not Set" }}{% endif %}
-                    </span>
-                    <div class="editable-field">
-                        <input type="text" id="edit-item-name" value="{{ alert.item_name|default:'' }}" placeholder="Item name..." {% if alert.is_all_items %}disabled{% endif %}>
-                        <input type="hidden" id="edit-item-id" value="{{ alert.item_id|default:'' }}">
+            <!-- Display Content (shown when not editing) -->
+            <div class="display-content">
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <span class="detail-label">Active</span>
+                        <span class="detail-value {% if alert.is_active %}positive{% else %}muted{% endif %}">{% if alert.is_active %}Yes{% else %}No{% endif %}</span>
                     </div>
-                </div>
-                
-                <div class="detail-item">
-                    <span class="detail-label">All Items</span>
-                    <span class="detail-value">{% if alert.is_all_items %}Yes{% else %}No{% endif %}</span>
-                    <input type="hidden" id="edit-is-all-items" value="{% if alert.is_all_items %}true{% else %}false{% endif %}">
-                </div>
-                
-                {% if alert.type == 'above' or alert.type == 'below' %}
-                <div class="detail-item" id="price-field">
-                    <span class="detail-label">Price Threshold</span>
-                    <span class="detail-value display-value price">{% if alert.price %}{{ alert.price|intcomma }}{% else %}Not Set{% endif %}</span>
-                    <div class="editable-field">
-                        <input type="number" id="edit-price" value="{{ alert.price|default:'' }}" placeholder="Price...">
+                    
+                    <div class="detail-item">
+                        <span class="detail-label">Alert Type</span>
+                        <span class="detail-value">
+                            {% if alert.type == 'above' %}Above Threshold
+                            {% elif alert.type == 'below' %}Below Threshold
+                            {% elif alert.type == 'spread' %}Spread
+                            {% elif alert.type == 'spike' %}Spike
+                            {% else %}{{ alert.type }}{% endif %}
+                        </span>
                     </div>
-                </div>
-                
-                <div class="detail-item" id="reference-field">
-                    <span class="detail-label">Reference Price</span>
-                    <span class="detail-value display-value">{% if alert.reference == 'high' %}High Price{% elif alert.reference == 'low' %}Low Price{% else %}Not Set{% endif %}</span>
-                    <div class="editable-field">
-                        <select id="edit-reference" name="reference">
-                            <option value="high" {% if alert.reference == 'high' %}selected{% endif %}>High Price</option>
-                            <option value="low" {% if alert.reference == 'low' %}selected{% endif %}>Low Price</option>
-                        </select>
+                    
+                    {% if alert.type == 'spread' or alert.type == 'spike' %}
+                    <div class="detail-item">
+                        <span class="detail-label">All Items</span>
+                        <span class="detail-value">{% if alert.is_all_items %}Yes{% else %}No{% endif %}</span>
                     </div>
-                </div>
-                {% endif %}
-                
-                {% if alert.type == 'spread' or alert.type == 'spike' %}
-                <div class="detail-item" id="percentage-field">
-                    <span class="detail-label">Percentage</span>
-                    <span class="detail-value display-value highlight">{% if alert.percentage %}{{ alert.percentage }}%{% else %}Not Set{% endif %}</span>
-                    <div class="editable-field">
-                        <input type="number" id="edit-percentage" value="{{ alert.percentage|default:'' }}" step="0.1" placeholder="Percentage...">
+                    {% endif %}
+                    
+                    {% if not alert.is_all_items %}
+                    <div class="detail-item">
+                        <span class="detail-label">Item</span>
+                        <span class="detail-value">{{ alert.item_name|default:"Not Set" }}</span>
                     </div>
-                </div>
-                {% endif %}
-                
-                {% if alert.type == 'spike' %}
-                <div class="detail-item" id="timeframe-field">
-                    <span class="detail-label">Time Frame</span>
-                    <span class="detail-value display-value">{% if alert.price %}{{ alert.price }} minutes{% else %}Not Set{% endif %}</span>
-                    <div class="editable-field">
-                        <input type="number" id="edit-time-frame" value="{{ alert.price|default:'' }}" placeholder="Minutes...">
+                    {% endif %}
+                    
+                    {% if alert.type == 'above' or alert.type == 'below' %}
+                    <div class="detail-item">
+                        <span class="detail-label">Price Threshold</span>
+                        <span class="detail-value price">{% if alert.price %}{{ alert.price|intcomma }}{% else %}Not Set{% endif %}</span>
                     </div>
-                </div>
-                
-                <div class="detail-item" id="direction-field">
-                    <span class="detail-label">Direction</span>
-                    <span class="detail-value display-value">
-                        {% if alert.direction == 'up' %}Up Only
-                        {% elif alert.direction == 'down' %}Down Only
-                        {% else %}Both{% endif %}
-                    </span>
-                    <div class="editable-field">
-                        <select id="edit-direction" name="direction">
-                            <option value="both" {% if alert.direction == 'both' or not alert.direction %}selected{% endif %}>Both</option>
-                            <option value="up" {% if alert.direction == 'up' %}selected{% endif %}>Up Only</option>
-                            <option value="down" {% if alert.direction == 'down' %}selected{% endif %}>Down Only</option>
-                        </select>
+                    <div class="detail-item">
+                        <span class="detail-label">Reference Price</span>
+                        <span class="detail-value">{% if alert.reference == 'high' %}High Price{% else %}Low Price{% endif %}</span>
                     </div>
-                </div>
-                
-                <div class="detail-item" id="spike-reference-field">
-                    <span class="detail-label">Reference Price</span>
-                    <span class="detail-value display-value">{% if alert.reference == 'high' %}High Price{% elif alert.reference == 'low' %}Low Price{% else %}Low Price{% endif %}</span>
-                    <div class="editable-field">
-                        <select id="edit-spike-reference" name="reference">
-                            <option value="low" {% if alert.reference == 'low' or not alert.reference %}selected{% endif %}>Low Price</option>
-                            <option value="high" {% if alert.reference == 'high' %}selected{% endif %}>High Price</option>
-                        </select>
+                    {% endif %}
+                    
+                    {% if alert.type == 'spread' or alert.type == 'spike' %}
+                    <div class="detail-item">
+                        <span class="detail-label">Percentage</span>
+                        <span class="detail-value highlight">{% if alert.percentage %}{{ alert.percentage }}%{% else %}Not Set{% endif %}</span>
                     </div>
-                </div>
-                {% endif %}
-                
-                {% if alert.type == 'spread' or alert.type == 'spike' %}
-                <div class="detail-item" id="min-price-field">
-                    <span class="detail-label">Minimum Price Filter</span>
-                    <span class="detail-value display-value price">{% if alert.minimum_price %}{{ alert.minimum_price|intcomma }}{% else %}None{% endif %}</span>
-                    <div class="editable-field">
-                        <input type="number" id="edit-minimum-price" value="{{ alert.minimum_price|default:'' }}" placeholder="Min price filter...">
+                    {% endif %}
+                    
+                    {% if alert.type == 'spike' %}
+                    <div class="detail-item">
+                        <span class="detail-label">Time Frame</span>
+                        <span class="detail-value">{% if alert.price %}{{ alert.price }} minutes{% else %}Not Set{% endif %}</span>
                     </div>
-                </div>
-                
-                <div class="detail-item" id="max-price-field">
-                    <span class="detail-label">Maximum Price Filter</span>
-                    <span class="detail-value display-value price">{% if alert.maximum_price %}{{ alert.maximum_price|intcomma }}{% else %}None{% endif %}</span>
-                    <div class="editable-field">
-                        <input type="number" id="edit-maximum-price" value="{{ alert.maximum_price|default:'' }}" placeholder="Max price filter...">
+                    <div class="detail-item">
+                        <span class="detail-label">Direction</span>
+                        <span class="detail-value">
+                            {% if alert.direction == 'up' %}Up Only
+                            {% elif alert.direction == 'down' %}Down Only
+                            {% else %}Both{% endif %}
+                        </span>
                     </div>
-                </div>
-                {% endif %}
-                
-                <div class="detail-item">
-                    <span class="detail-label">Email Notifications</span>
-                    <span class="detail-value display-value">{% if alert.email_notification %}Enabled{% else %}Disabled{% endif %}</span>
-                    <div class="editable-field">
-                        <div class="toggle-container">
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="edit-email-notification" {% if alert.email_notification %}checked{% endif %}>
-                                <span class="toggle-slider"></span>
-                            </label>
-                            <span class="toggle-label">Send email when triggered</span>
-                        </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Reference Price</span>
+                        <span class="detail-value">{% if alert.reference == 'high' %}High Price{% else %}Low Price{% endif %}</span>
+                    </div>
+                    {% endif %}
+                    
+                    {% if alert.is_all_items %}
+                    <div class="detail-item">
+                        <span class="detail-label">Minimum Price Filter</span>
+                        <span class="detail-value price">{% if alert.minimum_price %}{{ alert.minimum_price|intcomma }}{% else %}None{% endif %}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Maximum Price Filter</span>
+                        <span class="detail-value price">{% if alert.maximum_price %}{{ alert.maximum_price|intcomma }}{% else %}None{% endif %}</span>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="detail-item">
+                        <span class="detail-label">SMS Notifications</span>
+                        <span class="detail-value">{% if alert.email_notification %}Enabled{% else %}Disabled{% endif %}</span>
                     </div>
                 </div>
             </div>
+            
+            <!-- Edit Form (shown when editing) -->
+            <div class="edit-form">
+                <!-- Active Toggle -->
+                <div class="form-group" id="active-group">
+                    <div class="toggle-container">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="edit-is-active" {% if alert.is_active %}checked{% endif %}>
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span class="toggle-label">Active</span>
+                    </div>
+                </div>
+                
+                <!-- Alert Type -->
+                <div class="form-group" id="type-group">
+                    <label for="edit-type">Alert Type</label>
+                    <select id="edit-type" onchange="handleTypeChange()">
+                        <option value="above" {% if alert.type == 'above' %}selected{% endif %}>Above Threshold</option>
+                        <option value="below" {% if alert.type == 'below' %}selected{% endif %}>Below Threshold</option>
+                        <option value="spread" {% if alert.type == 'spread' %}selected{% endif %}>Spread</option>
+                        <option value="spike" {% if alert.type == 'spike' %}selected{% endif %}>Spike</option>
+                    </select>
+                </div>
+                
+                <!-- All Items Toggle (spike/spread only) -->
+                <div class="form-group" id="all-items-group" style="display: none;">
+                    <div class="toggle-container">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="edit-all-items" {% if alert.is_all_items %}checked{% endif %} onchange="handleScopeChange()">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span class="toggle-label">All Items</span>
+                    </div>
+                    <input type="hidden" id="edit-is-all-items" value="{% if alert.is_all_items %}true{% else %}false{% endif %}">
+                </div>
+                
+                <!-- Item Name -->
+                <div class="form-group" id="item-name-group">
+                    <label for="edit-item-name">Item Name</label>
+                    <input type="text" id="edit-item-name" value="{{ alert.item_name|default:'' }}" placeholder="Enter item name..." autocomplete="off">
+                    <input type="hidden" id="edit-item-id" value="{{ alert.item_id|default:'' }}">
+                </div>
+                
+                <!-- Price Threshold (above/below only) -->
+                <div class="form-group" id="price-group">
+                    <label for="edit-price">Price Threshold</label>
+                    <input type="number" id="edit-price" value="{{ alert.price|default:'' }}" placeholder="Enter price...">
+                </div>
+                
+                <!-- Reference Price (above/below/spike) -->
+                <div class="form-group" id="reference-group">
+                    <label for="edit-reference">Reference Price</label>
+                    <select id="edit-reference">
+                        <option value="high" {% if alert.reference == 'high' %}selected{% endif %}>High Price</option>
+                        <option value="low" {% if alert.reference == 'low' or not alert.reference %}selected{% endif %}>Low Price</option>
+                    </select>
+                </div>
+                
+                <!-- Percentage (spread/spike) -->
+                <div class="form-group" id="percentage-group" style="display: none;">
+                    <label for="edit-percentage">Percentage (%)</label>
+                    <input type="number" id="edit-percentage" value="{{ alert.percentage|default:'' }}" step="0.001" min="0.001" placeholder="Enter percentage...">
+                </div>
+                
+                <!-- Time Frame (spike only) -->
+                <div class="form-group" id="time-frame-group" style="display: none;">
+                    <label for="edit-time-frame">Time Frame (minutes)</label>
+                    <input type="number" id="edit-time-frame" value="{% if alert.type == 'spike' %}{{ alert.price|default:'' }}{% endif %}" min="1" step="1" placeholder="e.g. 10">
+                </div>
+                
+                <!-- Direction (spike only) -->
+                <div class="form-group" id="direction-group" style="display: none;">
+                    <label for="edit-direction">Direction</label>
+                    <select id="edit-direction">
+                        <option value="both" {% if alert.direction == 'both' or not alert.direction %}selected{% endif %}>Both</option>
+                        <option value="up" {% if alert.direction == 'up' %}selected{% endif %}>Up</option>
+                        <option value="down" {% if alert.direction == 'down' %}selected{% endif %}>Down</option>
+                    </select>
+                </div>
+                
+                <!-- Min/Max Price (all items only) -->
+                <div class="form-group" id="min-price-group" style="display: none;">
+                    <label for="edit-minimum-price">Minimum Price</label>
+                    <input type="number" id="edit-minimum-price" value="{{ alert.minimum_price|default:'' }}" min="0" placeholder="Enter minimum price...">
+                </div>
+                <div class="form-group" id="max-price-group" style="display: none;">
+                    <label for="edit-maximum-price">Maximum Price</label>
+                    <input type="number" id="edit-maximum-price" value="{{ alert.maximum_price|default:'' }}" min="0" placeholder="Enter maximum price...">
+                </div>
+                
+                <!-- SMS Notification -->
+                <div class="form-group">
+                    <div class="toggle-container">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="edit-email-notification" {% if alert.email_notification %}checked{% endif %}>
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span class="toggle-label">Receive SMS Notification</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Edit Controls (inside config card, at bottom) -->
+        <div class="edit-controls" id="editControls">
+            <button class="btn-edit" onclick="enterEditMode()">
+                <svg fill="currentColor" viewBox="0 0 20 20"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg>
+                Edit Alert
+            </button>
+            <button class="btn-save" onclick="saveChanges()">
+                <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                Save Changes
+            </button>
+            <button class="btn-cancel" onclick="cancelEdit()">
+                <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                Cancel
+            </button>
+            <button class="btn-delete" onclick="deleteAlert()">
+                <svg fill="currentColor" viewBox="0 0 20 20" style="width:18px;height:18px;margin-right:6px;"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                Delete
+            </button>
         </div>
     </div>
     
@@ -734,7 +810,7 @@
     {% endif %}
     
     <!-- Groups -->
-    <div class="detail-card">
+    <div class="detail-card" id="groupsCard">
         <div class="detail-card-header">
             <h3>
                 <svg fill="currentColor" viewBox="0 0 20 20"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"/></svg>
@@ -789,52 +865,7 @@
             </div>
         </div>
     </div>
-    
-    <!-- Status Details -->
-    <div class="detail-card">
-        <div class="detail-card-header">
-            <h3>
-                <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
-                Status Details
-            </h3>
-        </div>
-        <div class="detail-card-body">
-            <div class="detail-grid">
-                <div class="detail-item">
-                    <span class="detail-label">Active</span>
-                    <span class="detail-value display-value {% if alert.is_active %}positive{% else %}muted{% endif %}">{% if alert.is_active %}Yes{% else %}No{% endif %}</span>
-                    <div class="editable-field">
-                        <div class="toggle-container">
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="edit-is-active" {% if alert.is_active %}checked{% endif %}>
-                                <span class="toggle-slider"></span>
-                            </label>
-                            <span class="toggle-label">Alert is active</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label">Triggered</span>
-                    <span class="detail-value {% if alert.is_triggered %}highlight{% else %}muted{% endif %}">{% if alert.is_triggered %}Yes{% else %}No{% endif %}</span>
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label">Dismissed</span>
-                    <span class="detail-value muted">{% if alert.is_dismissed %}Yes{% else %}No{% endif %}</span>
-                </div>
-                {% if alert.item_id %}
-                <div class="detail-item">
-                    <span class="detail-label">Item ID</span>
-                    <span class="detail-value muted">{{ alert.item_id }}</span>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
 </div>
-
-<form id="deleteForm" method="post" action="{% url 'delete_alerts' %}" style="display:none;">
-    {% csrf_token %}
-</form>
 {% endblock %}
 
 {% block extra_js %}
@@ -848,25 +879,31 @@ function enterEditMode() {
     isEditMode = true;
     document.getElementById('editControls').classList.add('edit-mode');
     document.getElementById('configCard').classList.add('edit-mode');
-    document.querySelector('.detail-card:has(.groups-display)').classList.add('edit-mode');
-    document.querySelector('.detail-card:has(#edit-is-active)').classList.add('edit-mode');
+    document.getElementById('groupsCard').classList.add('edit-mode');
     
     // Store original values for cancel
+    storeOriginalValues();
+    
+    // Set up form based on current alert type
+    handleTypeChange();
+}
+
+function storeOriginalValues() {
     originalValues = {
-        type: document.getElementById('edit-type')?.value,
-        itemName: document.getElementById('edit-item-name')?.value,
-        itemId: document.getElementById('edit-item-id')?.value,
-        isAllItems: document.getElementById('edit-is-all-items')?.value,
-        price: document.getElementById('edit-price')?.value,
-        reference: document.getElementById('edit-reference')?.value,
-        percentage: document.getElementById('edit-percentage')?.value,
-        timeFrame: document.getElementById('edit-time-frame')?.value,
-        direction: document.getElementById('edit-direction')?.value,
-        spikeReference: document.getElementById('edit-spike-reference')?.value,
-        minimumPrice: document.getElementById('edit-minimum-price')?.value,
-        maximumPrice: document.getElementById('edit-maximum-price')?.value,
-        emailNotification: document.getElementById('edit-email-notification')?.checked,
-        isActive: document.getElementById('edit-is-active')?.checked,
+        type: document.getElementById('edit-type').value,
+        allItems: document.getElementById('edit-all-items').checked,
+        itemName: document.getElementById('edit-item-name').value,
+        itemId: document.getElementById('edit-item-id').value,
+        isAllItems: document.getElementById('edit-is-all-items').value,
+        price: document.getElementById('edit-price').value,
+        reference: document.getElementById('edit-reference').value,
+        percentage: document.getElementById('edit-percentage').value,
+        timeFrame: document.getElementById('edit-time-frame').value,
+        direction: document.getElementById('edit-direction').value,
+        minimumPrice: document.getElementById('edit-minimum-price').value,
+        maximumPrice: document.getElementById('edit-maximum-price').value,
+        emailNotification: document.getElementById('edit-email-notification').checked,
+        isActive: document.getElementById('edit-is-active').checked,
         groups: Array.from(document.querySelectorAll('input[name="groups"]:checked')).map(cb => cb.value)
     };
 }
@@ -875,22 +912,23 @@ function cancelEdit() {
     isEditMode = false;
     document.getElementById('editControls').classList.remove('edit-mode');
     document.getElementById('configCard').classList.remove('edit-mode');
-    document.querySelector('.detail-card:has(.groups-display)').classList.remove('edit-mode');
-    document.querySelector('.detail-card:has(#edit-is-active)').classList.remove('edit-mode');
+    document.getElementById('groupsCard').classList.remove('edit-mode');
     
     // Restore original values
-    if (document.getElementById('edit-item-name')) document.getElementById('edit-item-name').value = originalValues.itemName;
-    if (document.getElementById('edit-item-id')) document.getElementById('edit-item-id').value = originalValues.itemId;
-    if (document.getElementById('edit-price')) document.getElementById('edit-price').value = originalValues.price;
-    if (document.getElementById('edit-reference')) document.getElementById('edit-reference').value = originalValues.reference;
-    if (document.getElementById('edit-percentage')) document.getElementById('edit-percentage').value = originalValues.percentage;
-    if (document.getElementById('edit-time-frame')) document.getElementById('edit-time-frame').value = originalValues.timeFrame;
-    if (document.getElementById('edit-direction')) document.getElementById('edit-direction').value = originalValues.direction;
-    if (document.getElementById('edit-spike-reference')) document.getElementById('edit-spike-reference').value = originalValues.spikeReference;
-    if (document.getElementById('edit-minimum-price')) document.getElementById('edit-minimum-price').value = originalValues.minimumPrice;
-    if (document.getElementById('edit-maximum-price')) document.getElementById('edit-maximum-price').value = originalValues.maximumPrice;
-    if (document.getElementById('edit-email-notification')) document.getElementById('edit-email-notification').checked = originalValues.emailNotification;
-    if (document.getElementById('edit-is-active')) document.getElementById('edit-is-active').checked = originalValues.isActive;
+    document.getElementById('edit-type').value = originalValues.type;
+    document.getElementById('edit-all-items').checked = originalValues.allItems;
+    document.getElementById('edit-item-name').value = originalValues.itemName;
+    document.getElementById('edit-item-id').value = originalValues.itemId;
+    document.getElementById('edit-is-all-items').value = originalValues.isAllItems;
+    document.getElementById('edit-price').value = originalValues.price;
+    document.getElementById('edit-reference').value = originalValues.reference;
+    document.getElementById('edit-percentage').value = originalValues.percentage;
+    document.getElementById('edit-time-frame').value = originalValues.timeFrame;
+    document.getElementById('edit-direction').value = originalValues.direction;
+    document.getElementById('edit-minimum-price').value = originalValues.minimumPrice;
+    document.getElementById('edit-maximum-price').value = originalValues.maximumPrice;
+    document.getElementById('edit-email-notification').checked = originalValues.emailNotification;
+    document.getElementById('edit-is-active').checked = originalValues.isActive;
     
     // Restore groups
     document.querySelectorAll('input[name="groups"]').forEach(cb => {
@@ -898,35 +936,115 @@ function cancelEdit() {
     });
 }
 
+function handleTypeChange() {
+    const alertType = document.getElementById('edit-type').value;
+    
+    // Get all form groups
+    const groups = {
+        allItems: document.getElementById('all-items-group'),
+        itemName: document.getElementById('item-name-group'),
+        price: document.getElementById('price-group'),
+        reference: document.getElementById('reference-group'),
+        percentage: document.getElementById('percentage-group'),
+        timeFrame: document.getElementById('time-frame-group'),
+        direction: document.getElementById('direction-group'),
+        minPrice: document.getElementById('min-price-group'),
+        maxPrice: document.getElementById('max-price-group')
+    };
+    
+    if (alertType === 'spread') {
+        // Spread: show all items toggle, percentage
+        groups.allItems.style.display = 'block';
+        groups.price.style.display = 'none';
+        groups.reference.style.display = 'none';
+        groups.percentage.style.display = 'block';
+        groups.timeFrame.style.display = 'none';
+        groups.direction.style.display = 'none';
+        
+        // Let scope change handler determine item/min/max visibility
+        handleScopeChange();
+    } else if (alertType === 'spike') {
+        // Spike: show all items toggle, percentage, time frame, direction, reference
+        groups.allItems.style.display = 'block';
+        groups.price.style.display = 'none';
+        groups.reference.style.display = 'block';
+        groups.percentage.style.display = 'block';
+        groups.timeFrame.style.display = 'block';
+        groups.direction.style.display = 'block';
+        
+        // Let scope change handler determine item/min/max visibility
+        handleScopeChange();
+    } else {
+        // Above/Below: show item, price, reference
+        groups.allItems.style.display = 'none';
+        groups.itemName.style.display = 'block';
+        groups.price.style.display = 'block';
+        groups.reference.style.display = 'block';
+        groups.percentage.style.display = 'none';
+        groups.timeFrame.style.display = 'none';
+        groups.direction.style.display = 'none';
+        groups.minPrice.style.display = 'none';
+        groups.maxPrice.style.display = 'none';
+        
+        // Reset is_all_items for above/below
+        document.getElementById('edit-is-all-items').value = 'false';
+        document.getElementById('edit-all-items').checked = false;
+    }
+}
+
+function handleScopeChange() {
+    const isAllItems = document.getElementById('edit-all-items').checked;
+    const itemNameGroup = document.getElementById('item-name-group');
+    const minPriceGroup = document.getElementById('min-price-group');
+    const maxPriceGroup = document.getElementById('max-price-group');
+    const isAllItemsInput = document.getElementById('edit-is-all-items');
+    
+    if (isAllItems) {
+        itemNameGroup.style.display = 'none';
+        minPriceGroup.style.display = 'block';
+        maxPriceGroup.style.display = 'block';
+        isAllItemsInput.value = 'true';
+    } else {
+        itemNameGroup.style.display = 'block';
+        minPriceGroup.style.display = 'none';
+        maxPriceGroup.style.display = 'none';
+        isAllItemsInput.value = 'false';
+    }
+}
+
 async function saveChanges() {
-    const alertType = document.getElementById('edit-type')?.value;
-    const isAllItems = document.getElementById('edit-is-all-items')?.value === 'true';
+    const alertType = document.getElementById('edit-type').value;
+    const isAllItems = document.getElementById('edit-is-all-items').value === 'true';
     
     const data = {
         type: alertType,
-        item_name: document.getElementById('edit-item-name')?.value || null,
-        item_id: document.getElementById('edit-item-id')?.value || null,
+        item_name: document.getElementById('edit-item-name').value || null,
+        item_id: document.getElementById('edit-item-id').value || null,
         is_all_items: isAllItems,
-        email_notification: document.getElementById('edit-email-notification')?.checked || false,
-        is_active: document.getElementById('edit-is-active')?.checked ?? true,
+        email_notification: document.getElementById('edit-email-notification').checked,
+        is_active: document.getElementById('edit-is-active').checked,
         groups: Array.from(document.querySelectorAll('input[name="groups"]:checked')).map(cb => cb.value)
     };
     
     // Type-specific fields
     if (alertType === 'above' || alertType === 'below') {
-        data.price = document.getElementById('edit-price')?.value || null;
-        data.reference = document.getElementById('edit-reference')?.value || null;
+        data.price = document.getElementById('edit-price').value || null;
+        data.reference = document.getElementById('edit-reference').value || null;
     } else if (alertType === 'spread') {
-        data.percentage = document.getElementById('edit-percentage')?.value || null;
-        data.minimum_price = document.getElementById('edit-minimum-price')?.value || null;
-        data.maximum_price = document.getElementById('edit-maximum-price')?.value || null;
+        data.percentage = document.getElementById('edit-percentage').value || null;
+        if (isAllItems) {
+            data.minimum_price = document.getElementById('edit-minimum-price').value || null;
+            data.maximum_price = document.getElementById('edit-maximum-price').value || null;
+        }
     } else if (alertType === 'spike') {
-        data.percentage = document.getElementById('edit-percentage')?.value || null;
-        data.time_frame = document.getElementById('edit-time-frame')?.value || null;
-        data.direction = document.getElementById('edit-direction')?.value || 'both';
-        data.reference = document.getElementById('edit-spike-reference')?.value || 'low';
-        data.minimum_price = document.getElementById('edit-minimum-price')?.value || null;
-        data.maximum_price = document.getElementById('edit-maximum-price')?.value || null;
+        data.percentage = document.getElementById('edit-percentage').value || null;
+        data.time_frame = document.getElementById('edit-time-frame').value || null;
+        data.direction = document.getElementById('edit-direction').value || 'both';
+        data.reference = document.getElementById('edit-reference').value || 'low';
+        if (isAllItems) {
+            data.minimum_price = document.getElementById('edit-minimum-price').value || null;
+            data.maximum_price = document.getElementById('edit-maximum-price').value || null;
+        }
     }
     
     try {
@@ -980,6 +1098,5 @@ async function deleteAlert() {
         alert('Error deleting alert. Please try again.');
     }
 }
-
 </script>
 {% endblock %}
