@@ -1699,7 +1699,12 @@ const FilterManager = {
      */
     addFilter(filterId) {
         const filter = AlertsConfig.filters[filterId];
-        if (!filter || AlertsState.activeFilters.has(filterId)) return;
+        if (!filter) return;
+        if (filterId === 'myGroups' && AlertsState.activeFilters.has(filterId)) {
+            this.showFilterModal(filterId);
+            return;
+        }
+        if (AlertsState.activeFilters.has(filterId)) return;
         
         // If filter requires input, show input UI instead of adding directly
         if (filter.requiresInput) {
@@ -1819,7 +1824,7 @@ const FilterManager = {
             
             // Remove the option from dropdown
             const option = dropdown.querySelector('option[value="' + filterId + '"]');
-            if (option) option.remove();
+            if (option && filterId !== 'myGroups') option.remove();
         }
         
         // Only update the alerts list, not the entire pane
@@ -1837,10 +1842,13 @@ const FilterManager = {
         const filter = AlertsConfig.filters[filterId];
         const dropdown = document.querySelector('#active-filters .filter-dropdown');
         if (dropdown && filter) {
-            const option = document.createElement('option');
-            option.value = filterId;
-            option.textContent = filter.label;
-            dropdown.appendChild(option);
+            const existingOption = dropdown.querySelector('option[value="' + filterId + '"]');
+            if (!existingOption) {
+                const option = document.createElement('option');
+                option.value = filterId;
+                option.textContent = filter.label;
+                dropdown.appendChild(option);
+            }
         }
         
         // Only update the alerts list, not the entire pane
@@ -1855,30 +1863,40 @@ const FilterManager = {
         const data = await AlertsAPI.fetchAlerts();
         if (!data) return;
         
-        const alertsList = document.querySelector('#my-alerts .alerts-list');
-        const noAlertsMsg = document.querySelector('#my-alerts .no-alerts');
-        
-        if (alertsList) {
-            const filteredAlerts = this.applyFilters(data.alerts || []);
-            if (filteredAlerts.length === 0) {
-                alertsList.outerHTML = '<p class="no-alerts">No alerts match the current filters.</p>';
-            } else {
-                let html = '';
-                filteredAlerts.forEach(alert => {
-                    html += AlertsUI.renderAlertItem(alert);
-                });
-                alertsList.innerHTML = html;
+        const pane = document.querySelector('#my-alerts');
+        if (!pane) return;
+
+        const alertsList = pane.querySelector('.alerts-list');
+        const alertGroup = pane.querySelector('.alert-group');
+        const noAlertsMsg = pane.querySelector('.no-alerts');
+        const filteredAlerts = this.applyFilters(data.alerts || []);
+        const selectedGroups = AlertsState.getFilterValue('myGroups');
+        const isGroupedView = selectedGroups && selectedGroups.length > 0 && AlertsState.activeFilters.has('myGroups');
+
+        let newHtml = '';
+        if (filteredAlerts.length === 0) {
+            newHtml = '<p class="no-alerts">No alerts match the current filters.</p>';
+        } else if (isGroupedView) {
+            newHtml = AlertsUI.renderGroupedAlertsList(filteredAlerts, selectedGroups);
+        } else {
+            newHtml = '<ul class="alerts-list">';
+            filteredAlerts.forEach(alert => {
+                newHtml += AlertsUI.renderAlertItem(alert);
+            });
+            newHtml += '</ul>';
+        }
+
+        if (alertGroup) {
+            const allGroups = pane.querySelectorAll('.alert-group');
+            const firstGroup = allGroups[0];
+            allGroups.forEach((g, i) => { if (i > 0) g.remove(); });
+            if (firstGroup) {
+                firstGroup.outerHTML = newHtml;
             }
+        } else if (alertsList) {
+            alertsList.outerHTML = newHtml;
         } else if (noAlertsMsg) {
-            const filteredAlerts = this.applyFilters(data.alerts || []);
-            if (filteredAlerts.length > 0) {
-                let html = '<ul class="alerts-list">';
-                filteredAlerts.forEach(alert => {
-                    html += AlertsUI.renderAlertItem(alert);
-                });
-                html += '</ul>';
-                noAlertsMsg.outerHTML = html;
-            }
+            noAlertsMsg.outerHTML = newHtml;
         }
     },
     
@@ -2864,8 +2882,9 @@ function closeGroupsFilterModal() {
 function applyGroupsFilter() {
     const pills = document.querySelectorAll('#groups-filter-list .group-pill.selected');
     const selectedGroups = Array.from(pills).map(pill => pill.dataset.group);
+    const sortedSelectedGroups = selectedGroups.slice().sort((a, b) => a.localeCompare(b));
     
-    if (selectedGroups.length === 0) {
+    if (sortedSelectedGroups.length === 0) {
         // If no groups selected, remove the filter if it exists
         if (AlertsState.activeFilters.has('myGroups')) {
             FilterManager.removeFilter('myGroups');
@@ -2874,17 +2893,17 @@ function applyGroupsFilter() {
         return;
     }
     
-    AlertsState.setFilterValue('myGroups', selectedGroups);
+    AlertsState.setFilterValue('myGroups', sortedSelectedGroups);
     
     // If filter not already active, activate it
     if (!AlertsState.activeFilters.has('myGroups')) {
-        const displayValue = selectedGroups.length === 1 ? selectedGroups[0] : selectedGroups.length + ' groups';
+        const displayValue = sortedSelectedGroups.length === 1 ? sortedSelectedGroups[0] : sortedSelectedGroups.length + ' groups';
         FilterManager.activateFilter('myGroups', displayValue);
     } else {
         // Update the filter tag label
         const tag = document.querySelector('.filter-tag[data-filter-id="myGroups"]');
         if (tag) {
-            const displayValue = selectedGroups.length === 1 ? selectedGroups[0] : selectedGroups.length + ' groups';
+            const displayValue = sortedSelectedGroups.length === 1 ? sortedSelectedGroups[0] : sortedSelectedGroups.length + ' groups';
             tag.innerHTML = 'My Groups: ' + displayValue + 
                 '<button class="filter-tag-remove" onclick="removeFilter(\'myGroups\')">&times;</button>';
         }
