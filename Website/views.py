@@ -296,10 +296,16 @@ def create_alert(request):
         reference = request.POST.get('reference')
         percentage = request.POST.get('percentage')
         time_frame = request.POST.get('time_frame')
+        direction = request.POST.get('direction')
         is_all_items = request.POST.get('is_all_items') == 'true'
         minimum_price = request.POST.get('minimum_price')
         maximum_price = request.POST.get('maximum_price')
         email_notification = request.POST.get('email_notification') == 'on'
+        direction_value = None
+        if alert_type == 'spike':
+            direction_value = (direction or '').lower()
+            if direction_value not in ['up', 'down', 'both']:
+                direction_value = 'both'
         
         # Look up item ID from name if not provided
         if not item_id and item_name:
@@ -321,7 +327,8 @@ def create_alert(request):
             maximum_price=int(maximum_price) if maximum_price else None,
             email_notification=email_notification,
             is_active=True,
-            is_triggered=False
+            is_triggered=False,
+            direction=direction_value
         )
         messages.success(request, 'Alert created')
         return redirect('alerts')
@@ -358,6 +365,7 @@ def alerts_api(request):
             'is_triggered': alert.is_triggered,
             'triggered_text': alert.triggered_text() if alert.is_triggered else None,
             'type': alert.type,
+            'direction': alert.direction,
             'is_all_items': alert.is_all_items,
             'triggered_data': alert.triggered_data,
             'reference': alert.reference,
@@ -405,6 +413,7 @@ def alerts_api(request):
             'id': alert.id,
             'triggered_text': alert.triggered_text(),
             'type': alert.type,
+            'direction': alert.direction,
             'is_all_items': alert.is_all_items,
             'triggered_data': alert.triggered_data,
             'reference': alert.reference,
@@ -581,6 +590,15 @@ def update_alert(request):
                     
                 reference = data.get('reference')
                 alert.reference = reference if reference else None
+
+                direction = data.get('direction')
+                if alert.type == 'spike':
+                    direction_value = (direction or '').lower() if isinstance(direction, str) else ''
+                    if direction_value not in ['up', 'down', 'both']:
+                        direction_value = 'both'
+                    alert.direction = direction_value
+                else:
+                    alert.direction = None
                 
                 # Handle percentage for spread or spike alerts
                 percentage = data.get('percentage')

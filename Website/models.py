@@ -56,6 +56,7 @@ class Alert(models.Model):
     DIRECTION_CHOICES = [
         ('up', 'Up'),
         ('down', 'Down'),
+        ('both', 'Both'),
     ]
     
     ABOVE_BELOW_CHOICES = [

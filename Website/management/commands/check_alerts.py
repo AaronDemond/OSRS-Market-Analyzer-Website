@@ -192,13 +192,23 @@ class Command(BaseCommand):
                 return False
 
             percent_change = ((current_price - baseline_price) / baseline_price) * 100
-            if abs(percent_change) >= alert.percentage:
+            direction = (alert.direction or 'both').lower()
+            should_trigger = False
+            if direction == 'up':
+                should_trigger = percent_change >= alert.percentage
+            elif direction == 'down':
+                should_trigger = percent_change <= -alert.percentage
+            else:
+                should_trigger = abs(percent_change) >= alert.percentage
+
+            if should_trigger:
                 alert.triggered_data = json.dumps({
                     'baseline': baseline_price,
                     'current': current_price,
                     'percent_change': percent_change,
                     'time_frame_minutes': time_frame_minutes,
-                    'reference': alert.reference
+                    'reference': alert.reference,
+                    'direction': direction
                 })
                 return True
             return False

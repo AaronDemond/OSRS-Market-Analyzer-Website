@@ -138,6 +138,16 @@
                 <input type="number" name="time_frame" id="time-frame" min="1" step="1" placeholder="e.g. 10">
             </div>
             
+            <!-- Direction field (shown for spike only) -->
+            <div class="form-group" id="direction-group" style="display: none;">
+                <label for="direction">Direction</label>
+                <select name="direction" id="direction">
+                    <option value="both" selected>Both</option>
+                    <option value="up">Up</option>
+                    <option value="down">Down</option>
+                </select>
+            </div>
+            
             <!-- Min/Max price fields (shown for spread all items only) -->
             <div class="form-group" id="min-price-group" style="display: none;">
                 <label for="minimum-price">Minimum Price</label>
@@ -162,7 +172,7 @@
         {% if all_alerts %}
             <ul class="alerts-list edit-alerts-list">
                 {% for alert in all_alerts %}
-                    <li class="alert-item clickable-alert" onclick="openEditModal({{ alert.id }}, '{{ alert.type }}', '{{ alert.item_name|default_if_none:"" }}', {{ alert.item_id|default_if_none:"null" }}, {{ alert.price|default_if_none:"null" }}, '{{ alert.reference|default_if_none:"" }}', {{ alert.percentage|default_if_none:"null" }}, {{ alert.is_all_items|yesno:"true,false,false" }}, {{ alert.minimum_price|default_if_none:"null" }}, {{ alert.maximum_price|default_if_none:"null" }}, {{ alert.email_notification|yesno:"true,false,false" }}, {{ alert.price|default_if_none:"null" }})">
+                    <li class="alert-item clickable-alert" onclick="openEditModal({{ alert.id }}, '{{ alert.type }}', '{{ alert.item_name|default_if_none:"" }}', {{ alert.item_id|default_if_none:"null" }}, {{ alert.price|default_if_none:"null" }}, '{{ alert.reference|default_if_none:"" }}', {{ alert.percentage|default_if_none:"null" }}, {{ alert.is_all_items|yesno:"true,false,false" }}, {{ alert.minimum_price|default_if_none:"null" }}, {{ alert.maximum_price|default_if_none:"null" }}, {{ alert.email_notification|yesno:"true,false,false" }}, {{ alert.price|default_if_none:"null" }}, '{{ alert.direction|default_if_none:"both" }}')">
                         <span class="alert-icon">🔔</span>
                         <span class="alert-text">{{ alert }}</span>
                         <span class="edit-hint">Click to edit</span>
@@ -232,6 +242,16 @@
             <div class="form-group" id="edit-time-frame-group" style="display: none;">
                 <label for="edit-time-frame">Time Frame (minutes)</label>
                 <input type="number" name="time_frame" id="edit-time-frame" min="1" step="1" placeholder="e.g. 10">
+            </div>
+            
+            <!-- Direction field (shown for spike only) -->
+            <div class="form-group" id="edit-direction-group" style="display: none;">
+                <label for="edit-direction">Direction</label>
+                <select name="direction" id="edit-direction">
+                    <option value="both">Both</option>
+                    <option value="up">Up</option>
+                    <option value="down">Down</option>
+                </select>
             </div>
             
             <!-- Min/Max price fields (shown for spread all items only) -->
@@ -1183,20 +1203,22 @@ const AlertsConfig = {
             itemName: '#item-name',
             itemId: '#item-id',
             isAllItems: '#is-all-items',
+            direction: '#direction',
             emailNotification: '#email-notification',
             suggestions: '#item-suggestions',
-            groups: {
-                spreadScope: '#spread-scope-group',
-                itemName: '#item-name-group',
-                price: '#price-group',
-                reference: '#reference-group',
-                percentage: '#percentage-group',
-                timeFrame: '#time-frame-group',
-                minPrice: '#min-price-group',
-                maxPrice: '#max-price-group'
-            }
-        },
-        // DOM element selectors for the edit form
+                groups: {
+                    spreadScope: '#spread-scope-group',
+                    itemName: '#item-name-group',
+                    price: '#price-group',
+                    reference: '#reference-group',
+                    percentage: '#percentage-group',
+                    timeFrame: '#time-frame-group',
+                    direction: '#direction-group',
+                    minPrice: '#min-price-group',
+                    maxPrice: '#max-price-group'
+                }
+            },
+            // DOM element selectors for the edit form
         edit: {
             modal: '#edit-modal',
             alertId: '#edit-alert-id',
@@ -1205,24 +1227,26 @@ const AlertsConfig = {
             itemName: '#edit-item-name',
             itemId: '#edit-item-id',
             isAllItems: '#edit-is-all-items',
-            price: '#edit-price',
-            reference: '#edit-reference',
-            percentage: '#edit-percentage',
-            minimumPrice: '#edit-minimum-price',
-            maximumPrice: '#edit-maximum-price',
-            emailNotification: '#edit-email-notification',
-            suggestions: '#edit-item-suggestions',
-            groups: {
-                spreadScope: '#edit-spread-scope-group',
-                itemName: '#edit-item-name-group',
-                price: '#edit-price-group',
-                reference: '#edit-reference-group',
-                percentage: '#edit-percentage-group',
-                timeFrame: '#edit-time-frame-group',
-                minPrice: '#edit-min-price-group',
-                maxPrice: '#edit-max-price-group'
-            }
-        },
+                price: '#edit-price',
+                reference: '#edit-reference',
+                percentage: '#edit-percentage',
+                direction: '#edit-direction',
+                minimumPrice: '#edit-minimum-price',
+                maximumPrice: '#edit-maximum-price',
+                emailNotification: '#edit-email-notification',
+                suggestions: '#edit-item-suggestions',
+                groups: {
+                    spreadScope: '#edit-spread-scope-group',
+                    itemName: '#edit-item-name-group',
+                    price: '#edit-price-group',
+                    reference: '#edit-reference-group',
+                    percentage: '#edit-percentage-group',
+                    timeFrame: '#edit-time-frame-group',
+                    direction: '#edit-direction-group',
+                    minPrice: '#edit-min-price-group',
+                    maxPrice: '#edit-max-price-group'
+                }
+            },
         // Other UI elements
         myAlertsPane: '#my-alerts',
         spreadModal: '#spread-modal',
@@ -2439,6 +2463,7 @@ const FormManager = {
             reference: document.querySelector(groups.reference),
             percentage: document.querySelector(groups.percentage),
             timeFrame: document.querySelector(groups.timeFrame),
+            direction: document.querySelector(groups.direction),
             minPrice: document.querySelector(groups.minPrice),
             maxPrice: document.querySelector(groups.maxPrice)
         };
@@ -2450,6 +2475,7 @@ const FormManager = {
             elements.reference.style.display = 'none';
             elements.percentage.style.display = 'block';
             elements.timeFrame.style.display = 'none';
+            elements.direction.style.display = 'none';
             
             // Let scope change handler determine remaining visibility
             this.handleSpreadScopeChange(formType);
@@ -2461,6 +2487,7 @@ const FormManager = {
             elements.reference.style.display = 'block';
             elements.percentage.style.display = 'block';
             elements.timeFrame.style.display = 'block';
+            elements.direction.style.display = 'block';
             elements.minPrice.style.display = 'none';
             elements.maxPrice.style.display = 'none';
             
@@ -2474,11 +2501,17 @@ const FormManager = {
             elements.reference.style.display = 'block';
             elements.percentage.style.display = 'none';
             elements.timeFrame.style.display = 'none';
+            elements.direction.style.display = 'none';
             elements.minPrice.style.display = 'none';
             elements.maxPrice.style.display = 'none';
             
             // Reset is_all_items
             document.querySelector(selectors.isAllItems).value = 'false';
+        }
+
+        const directionInput = document.querySelector(selectors.direction);
+        if (directionInput && elements.direction.style.display === 'none') {
+            directionInput.value = 'both';
         }
     },
     
@@ -2525,6 +2558,7 @@ const FormManager = {
             reference: document.querySelector(selectors.reference).value,
             percentage: document.querySelector(selectors.percentage).value,
             time_frame: document.querySelector('#edit-time-frame').value,
+            direction: document.querySelector(selectors.direction).value,
             is_all_items: document.querySelector(selectors.isAllItems).value === 'true',
             minimum_price: document.querySelector(selectors.minimumPrice).value,
             maximum_price: document.querySelector(selectors.maximumPrice).value,
@@ -2547,6 +2581,10 @@ const FormManager = {
         document.querySelector('#edit-time-frame').value = timeFrameVal;
         document.querySelector(selectors.reference).value = alertData.reference || 'high';
         document.querySelector(selectors.percentage).value = alertData.percentage || '';
+        const directionInput = document.querySelector(selectors.direction);
+        if (directionInput) {
+            directionInput.value = alertData.direction || 'both';
+        }
         document.querySelector(selectors.isAllItems).value = alertData.isAllItems ? 'true' : 'false';
         document.querySelector(selectors.minimumPrice).value = alertData.minPrice || '';
         document.querySelector(selectors.maximumPrice).value = alertData.maxPrice || '';
@@ -2575,10 +2613,10 @@ const ModalManager = {
     /**
      * Opens the edit modal with alert data.
      */
-    openEditModal(id, type, itemName, itemId, price, reference, percentage, isAllItems, minPrice, maxPrice, emailNotification, timeFrame) {
+    openEditModal(id, type, itemName, itemId, price, reference, percentage, isAllItems, minPrice, maxPrice, emailNotification, timeFrame, direction) {
         FormManager.populateEditForm({
             id, type, itemName, itemId, price, reference, 
-            percentage, isAllItems, minPrice, maxPrice, emailNotification, timeFrame
+            percentage, isAllItems, minPrice, maxPrice, emailNotification, timeFrame, direction
         });
         
         document.querySelector(AlertsConfig.selectors.edit.modal).style.display = 'flex';
@@ -3309,8 +3347,8 @@ function handleEditSpreadScopeChange() {
 }
 
 // Modal handlers
-function openEditModal(id, type, itemName, itemId, price, reference, percentage, isAllItems, minPrice, maxPrice, emailNotification) {
-    ModalManager.openEditModal(id, type, itemName, itemId, price, reference, percentage, isAllItems, minPrice, maxPrice, emailNotification);
+function openEditModal(id, type, itemName, itemId, price, reference, percentage, isAllItems, minPrice, maxPrice, emailNotification, timeFrame, direction) {
+    ModalManager.openEditModal(id, type, itemName, itemId, price, reference, percentage, isAllItems, minPrice, maxPrice, emailNotification, timeFrame, direction);
 }
 
 function closeEditModal() {
