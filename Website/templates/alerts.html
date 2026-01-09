@@ -68,8 +68,8 @@
         </div>
             <ul class="alerts-list">
                 {% for alert in all_alerts %}
-                    <li class="alert-item" data-alert-id="{{ alert.id }}">
-                        <input type="checkbox" class="alert-checkbox">
+                    <li class="alert-item clickable-alert" data-alert-id="{{ alert.id }}" onclick="navigateToAlertDetail(event, {{ alert.id }})">
+                        <input type="checkbox" class="alert-checkbox" onclick="event.stopPropagation()">
                         <span class="alert-icon">🔔</span>
                         <span class="alert-text">{{ alert }}</span>
                         {% if alert.is_triggered %}
@@ -1839,8 +1839,8 @@ const AlertsUI = {
             thresholdDisplay = '<span class="alert-threshold" style="color: orange; margin-left: 8px;">Threshold: ' + formatted + '%</span>';
         }
 
-        return '<li class="alert-item" data-alert-id="' + alert.id + '">' +
-               '<input type="checkbox" class="alert-checkbox">' +
+        return '<li class="alert-item clickable-alert" data-alert-id="' + alert.id + '" onclick="navigateToAlertDetail(event, ' + alert.id + ')">' +
+               '<input type="checkbox" class="alert-checkbox" onclick="event.stopPropagation()">' +
                '<span class="alert-icon">🔔</span>' +
                '<span class="alert-text">' + alert.text + '</span>' +
                triggeredBadge +
@@ -3567,6 +3567,17 @@ function closeSpikeModal() {
 
 function showSpikeDetails(alertId) {
     ModalManager.showSpikeDetails(alertId);
+}
+
+// Navigate to alert detail page
+function navigateToAlertDetail(event, alertId) {
+    // Don't navigate if clicking on checkbox or triggered badge
+    if (event.target.classList.contains('alert-checkbox') || 
+        event.target.classList.contains('alert-triggered') ||
+        event.target.classList.contains('clickable-triggered')) {
+        return;
+    }
+    window.location.href = '/alerts/' + alertId + '/';
 }
 
 // Alert action handlers

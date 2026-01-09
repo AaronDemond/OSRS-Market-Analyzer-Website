@@ -40,4 +40,6 @@ urlpatterns = [
     path('api/alerts/update/', views.update_alert, name='update_alert'),
     path('api/alerts/group/', views.group_alerts, name='group_alerts'),
     path('api/alerts/groups/delete/', views.delete_groups, name='delete_groups'),
+    path('alerts/<int:alert_id>/', views.alert_detail, name='alert_detail'),
+    path('api/alerts/<int:alert_id>/update/', views.update_single_alert, name='update_single_alert'),
 ]

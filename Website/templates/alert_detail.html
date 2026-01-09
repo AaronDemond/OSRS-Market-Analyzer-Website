@@ -1,0 +1,985 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Alert Details - GE Tracker{% endblock %}
+
+{% block extra_css %}
+<style>
+    .alert-detail-container {
+        max-width: 900px;
+        margin: 0 auto;
+    }
+    
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 500;
+        margin-bottom: 20px;
+        transition: all 0.2s ease;
+    }
+    
+    .back-link:hover {
+        color: #764ba2;
+        transform: translateX(-3px);
+    }
+    
+    .back-link svg {
+        width: 20px;
+        height: 20px;
+    }
+    
+    .alert-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 16px;
+        padding: 30px;
+        margin-bottom: 30px;
+        color: white;
+        box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
+    }
+    
+    .alert-header-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 15px;
+    }
+    
+    .alert-type-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(255, 255, 255, 0.2);
+        padding: 8px 16px;
+        border-radius: 25px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .alert-type-badge svg {
+        width: 18px;
+        height: 18px;
+    }
+    
+    .alert-status {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .status-pill {
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+    
+    .status-active {
+        background: #28a745;
+        color: white;
+    }
+    
+    .status-inactive {
+        background: #6c757d;
+        color: white;
+    }
+    
+    .status-triggered {
+        background: #ffc107;
+        color: #212529;
+    }
+    
+    .alert-title {
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin: 0 0 10px 0;
+        line-height: 1.3;
+    }
+    
+    .alert-subtitle {
+        opacity: 0.9;
+        font-size: 1rem;
+    }
+    
+    .detail-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+    
+    .detail-card-header {
+        background: #f8f9fa;
+        padding: 16px 24px;
+        border-bottom: 1px solid #e9ecef;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .detail-card-header h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #333;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .detail-card-header h3 svg {
+        width: 20px;
+        height: 20px;
+        color: #667eea;
+    }
+    
+    .detail-card-body {
+        padding: 24px;
+    }
+    
+    .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+    }
+    
+    .detail-item {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    
+    .detail-label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .detail-value {
+        font-size: 1.1rem;
+        font-weight: 500;
+        color: #333;
+    }
+    
+    .detail-value.highlight {
+        color: #667eea;
+        font-weight: 700;
+    }
+    
+    .detail-value.price {
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        font-weight: 700;
+    }
+    
+    .detail-value.positive {
+        color: #28a745;
+    }
+    
+    .detail-value.negative {
+        color: #dc3545;
+    }
+    
+    .detail-value.muted {
+        color: #6c757d;
+        font-style: italic;
+    }
+    
+    /* Edit Mode Styles */
+    .edit-controls {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .btn-edit {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 10px 24px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .btn-edit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-edit svg {
+        width: 18px;
+        height: 18px;
+    }
+    
+    .btn-save {
+        background: #28a745;
+        color: white;
+        border: none;
+        padding: 10px 24px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: none;
+    }
+    
+    .btn-save:hover {
+        background: #218838;
+    }
+    
+    .btn-cancel {
+        background: #6c757d;
+        color: white;
+        border: none;
+        padding: 10px 24px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: none;
+    }
+    
+    .btn-cancel:hover {
+        background: #5a6268;
+    }
+    
+    .btn-delete {
+        background: #dc3545;
+        color: white;
+        border: none;
+        padding: 10px 24px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        margin-left: auto;
+    }
+    
+    .btn-delete:hover {
+        background: #c82333;
+    }
+    
+    .edit-mode .btn-edit {
+        display: none;
+    }
+    
+    .edit-mode .btn-save,
+    .edit-mode .btn-cancel {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    /* Editable Fields */
+    .editable-field {
+        display: none;
+    }
+    
+    .edit-mode .editable-field {
+        display: block;
+    }
+    
+    .edit-mode .display-value {
+        display: none;
+    }
+    
+    .editable-field input,
+    .editable-field select {
+        width: 100%;
+        padding: 10px 14px;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.2s ease;
+    }
+    
+    .editable-field input:focus,
+    .editable-field select:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+    }
+    
+    /* Groups Pills */
+    .groups-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .group-pill {
+        display: inline-flex;
+        align-items: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    
+    .no-groups {
+        color: #6c757d;
+        font-style: italic;
+    }
+    
+    /* Current Price Card */
+    .price-card {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border: none;
+    }
+    
+    .price-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+        text-align: center;
+    }
+    
+    .price-item {
+        padding: 15px;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+    
+    .price-item .detail-label {
+        margin-bottom: 8px;
+    }
+    
+    .price-item .detail-value {
+        font-size: 1.4rem;
+    }
+    
+    /* Timestamps */
+    .timestamp-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 15px;
+    }
+    
+    .timestamp-item {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+    }
+    
+    /* Checkbox toggle */
+    .toggle-container {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .toggle-switch {
+        position: relative;
+        width: 50px;
+        height: 26px;
+    }
+    
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: 0.3s;
+        border-radius: 26px;
+    }
+    
+    .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 20px;
+        width: 20px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.3s;
+        border-radius: 50%;
+    }
+    
+    input:checked + .toggle-slider {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    input:checked + .toggle-slider:before {
+        transform: translateX(24px);
+    }
+    
+    .toggle-label {
+        font-weight: 500;
+        color: #333;
+    }
+    
+    /* Groups edit mode */
+    .groups-edit-container {
+        display: none;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .edit-mode .groups-edit-container {
+        display: flex;
+    }
+    
+    .edit-mode .groups-display {
+        display: none;
+    }
+    
+    .group-checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        border: 2px solid #e9ecef;
+        border-radius: 20px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 0.9rem;
+    }
+    
+    .group-checkbox-label:hover {
+        border-color: #667eea;
+    }
+    
+    .group-checkbox-label input {
+        width: 16px;
+        height: 16px;
+        accent-color: #667eea;
+    }
+    
+    .group-checkbox-label input:checked ~ span {
+        color: #667eea;
+        font-weight: 600;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .alert-header {
+            padding: 20px;
+        }
+        
+        .alert-title {
+            font-size: 1.4rem;
+        }
+        
+        .alert-header-top {
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .price-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .edit-controls {
+            flex-wrap: wrap;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="alert-detail-container">
+    <a href="{% url 'alerts' %}" class="back-link">
+        <svg fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/>
+        </svg>
+        Back to Alerts
+    </a>
+    
+    <!-- Header Card -->
+    <div class="alert-header">
+        <div class="alert-header-top">
+            <div class="alert-type-badge">
+                {% if alert.type == 'above' %}
+                    <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+                    Above Threshold
+                {% elif alert.type == 'below' %}
+                    <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                    Below Threshold
+                {% elif alert.type == 'spread' %}
+                    <svg fill="currentColor" viewBox="0 0 20 20"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/><path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd"/></svg>
+                    Spread Alert
+                {% elif alert.type == 'spike' %}
+                    <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
+                    Spike Alert
+                {% endif %}
+            </div>
+            <div class="alert-status">
+                {% if alert.is_active %}
+                    <span class="status-pill status-active">Active</span>
+                {% else %}
+                    <span class="status-pill status-inactive">Inactive</span>
+                {% endif %}
+                {% if alert.is_triggered %}
+                    <span class="status-pill status-triggered">Triggered</span>
+                {% endif %}
+            </div>
+        </div>
+        <h1 class="alert-title">{{ alert }}</h1>
+        <p class="alert-subtitle">Alert ID: #{{ alert.id }}</p>
+    </div>
+    
+    <!-- Edit Controls -->
+    <div class="detail-card">
+        <div class="detail-card-body">
+            <div class="edit-controls" id="editControls">
+                <button class="btn-edit" onclick="enterEditMode()">
+                    <svg fill="currentColor" viewBox="0 0 20 20"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg>
+                    Edit Alert
+                </button>
+                <button class="btn-save" onclick="saveChanges()">
+                    <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                    Save Changes
+                </button>
+                <button class="btn-cancel" onclick="cancelEdit()">
+                    <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                    Cancel
+                </button>
+                <button class="btn-delete" onclick="deleteAlert()">
+                    <svg fill="currentColor" viewBox="0 0 20 20" style="width:18px;height:18px;margin-right:6px;"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                    Delete
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Alert Configuration -->
+    <div class="detail-card" id="configCard">
+        <div class="detail-card-header">
+            <h3>
+                <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/></svg>
+                Alert Configuration
+            </h3>
+        </div>
+        <div class="detail-card-body">
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <span class="detail-label">Alert Type</span>
+                    <span class="detail-value">
+                        {% if alert.type == 'above' %}Above Threshold
+                        {% elif alert.type == 'below' %}Below Threshold
+                        {% elif alert.type == 'spread' %}Spread
+                        {% elif alert.type == 'spike' %}Spike
+                        {% else %}{{ alert.type }}{% endif %}
+                    </span>
+                    <input type="hidden" id="edit-type" value="{{ alert.type }}">
+                </div>
+                
+                <div class="detail-item">
+                    <span class="detail-label">Item</span>
+                    <span class="detail-value display-value {% if alert.is_all_items %}muted{% endif %}">
+                        {% if alert.is_all_items %}All Items{% else %}{{ alert.item_name|default:"Not Set" }}{% endif %}
+                    </span>
+                    <div class="editable-field">
+                        <input type="text" id="edit-item-name" value="{{ alert.item_name|default:'' }}" placeholder="Item name..." {% if alert.is_all_items %}disabled{% endif %}>
+                        <input type="hidden" id="edit-item-id" value="{{ alert.item_id|default:'' }}">
+                    </div>
+                </div>
+                
+                <div class="detail-item">
+                    <span class="detail-label">All Items</span>
+                    <span class="detail-value">{% if alert.is_all_items %}Yes{% else %}No{% endif %}</span>
+                    <input type="hidden" id="edit-is-all-items" value="{% if alert.is_all_items %}true{% else %}false{% endif %}">
+                </div>
+                
+                {% if alert.type == 'above' or alert.type == 'below' %}
+                <div class="detail-item" id="price-field">
+                    <span class="detail-label">Price Threshold</span>
+                    <span class="detail-value display-value price">{% if alert.price %}{{ alert.price|intcomma }}{% else %}Not Set{% endif %}</span>
+                    <div class="editable-field">
+                        <input type="number" id="edit-price" value="{{ alert.price|default:'' }}" placeholder="Price...">
+                    </div>
+                </div>
+                
+                <div class="detail-item" id="reference-field">
+                    <span class="detail-label">Reference Price</span>
+                    <span class="detail-value display-value">{% if alert.reference == 'high' %}High Price{% elif alert.reference == 'low' %}Low Price{% else %}Not Set{% endif %}</span>
+                    <div class="editable-field">
+                        <select id="edit-reference" name="reference">
+                            <option value="high" {% if alert.reference == 'high' %}selected{% endif %}>High Price</option>
+                            <option value="low" {% if alert.reference == 'low' %}selected{% endif %}>Low Price</option>
+                        </select>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if alert.type == 'spread' or alert.type == 'spike' %}
+                <div class="detail-item" id="percentage-field">
+                    <span class="detail-label">Percentage</span>
+                    <span class="detail-value display-value highlight">{% if alert.percentage %}{{ alert.percentage }}%{% else %}Not Set{% endif %}</span>
+                    <div class="editable-field">
+                        <input type="number" id="edit-percentage" value="{{ alert.percentage|default:'' }}" step="0.1" placeholder="Percentage...">
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if alert.type == 'spike' %}
+                <div class="detail-item" id="timeframe-field">
+                    <span class="detail-label">Time Frame</span>
+                    <span class="detail-value display-value">{% if alert.price %}{{ alert.price }} minutes{% else %}Not Set{% endif %}</span>
+                    <div class="editable-field">
+                        <input type="number" id="edit-time-frame" value="{{ alert.price|default:'' }}" placeholder="Minutes...">
+                    </div>
+                </div>
+                
+                <div class="detail-item" id="direction-field">
+                    <span class="detail-label">Direction</span>
+                    <span class="detail-value display-value">
+                        {% if alert.direction == 'up' %}Up Only
+                        {% elif alert.direction == 'down' %}Down Only
+                        {% else %}Both{% endif %}
+                    </span>
+                    <div class="editable-field">
+                        <select id="edit-direction" name="direction">
+                            <option value="both" {% if alert.direction == 'both' or not alert.direction %}selected{% endif %}>Both</option>
+                            <option value="up" {% if alert.direction == 'up' %}selected{% endif %}>Up Only</option>
+                            <option value="down" {% if alert.direction == 'down' %}selected{% endif %}>Down Only</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="detail-item" id="spike-reference-field">
+                    <span class="detail-label">Reference Price</span>
+                    <span class="detail-value display-value">{% if alert.reference == 'high' %}High Price{% elif alert.reference == 'low' %}Low Price{% else %}Low Price{% endif %}</span>
+                    <div class="editable-field">
+                        <select id="edit-spike-reference" name="reference">
+                            <option value="low" {% if alert.reference == 'low' or not alert.reference %}selected{% endif %}>Low Price</option>
+                            <option value="high" {% if alert.reference == 'high' %}selected{% endif %}>High Price</option>
+                        </select>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if alert.type == 'spread' or alert.type == 'spike' %}
+                <div class="detail-item" id="min-price-field">
+                    <span class="detail-label">Minimum Price Filter</span>
+                    <span class="detail-value display-value price">{% if alert.minimum_price %}{{ alert.minimum_price|intcomma }}{% else %}None{% endif %}</span>
+                    <div class="editable-field">
+                        <input type="number" id="edit-minimum-price" value="{{ alert.minimum_price|default:'' }}" placeholder="Min price filter...">
+                    </div>
+                </div>
+                
+                <div class="detail-item" id="max-price-field">
+                    <span class="detail-label">Maximum Price Filter</span>
+                    <span class="detail-value display-value price">{% if alert.maximum_price %}{{ alert.maximum_price|intcomma }}{% else %}None{% endif %}</span>
+                    <div class="editable-field">
+                        <input type="number" id="edit-maximum-price" value="{{ alert.maximum_price|default:'' }}" placeholder="Max price filter...">
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div class="detail-item">
+                    <span class="detail-label">Email Notifications</span>
+                    <span class="detail-value display-value">{% if alert.email_notification %}Enabled{% else %}Disabled{% endif %}</span>
+                    <div class="editable-field">
+                        <div class="toggle-container">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="edit-email-notification" {% if alert.email_notification %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="toggle-label">Send email when triggered</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Current Market Data (if item has current price) -->
+    {% if current_price.high or current_price.low %}
+    <div class="detail-card price-card">
+        <div class="detail-card-header">
+            <h3>
+                <svg fill="currentColor" viewBox="0 0 20 20"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/></svg>
+                Current Market Data
+            </h3>
+        </div>
+        <div class="detail-card-body">
+            <div class="price-grid">
+                <div class="price-item">
+                    <span class="detail-label">High Price</span>
+                    <span class="detail-value price positive">{% if current_price.high %}{{ current_price.high|intcomma }}{% else %}N/A{% endif %}</span>
+                </div>
+                <div class="price-item">
+                    <span class="detail-label">Low Price</span>
+                    <span class="detail-value price negative">{% if current_price.low %}{{ current_price.low|intcomma }}{% else %}N/A{% endif %}</span>
+                </div>
+                <div class="price-item">
+                    <span class="detail-label">Current Spread</span>
+                    <span class="detail-value price highlight">{% if current_price.spread %}{{ current_price.spread }}%{% else %}N/A{% endif %}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Groups -->
+    <div class="detail-card">
+        <div class="detail-card-header">
+            <h3>
+                <svg fill="currentColor" viewBox="0 0 20 20"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"/></svg>
+                Alert Groups
+            </h3>
+        </div>
+        <div class="detail-card-body">
+            <div class="groups-display">
+                {% if groups %}
+                <div class="groups-container">
+                    {% for group in groups %}
+                    <span class="group-pill">{{ group }}</span>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <span class="no-groups">No groups assigned</span>
+                {% endif %}
+            </div>
+            <div class="groups-edit-container">
+                {% for group in all_groups %}
+                <label class="group-checkbox-label">
+                    <input type="checkbox" name="groups" value="{{ group }}" {% if group in groups %}checked{% endif %}>
+                    <span>{{ group }}</span>
+                </label>
+                {% empty %}
+                <span class="no-groups">No groups available</span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Timestamps -->
+    <div class="detail-card">
+        <div class="detail-card-header">
+            <h3>
+                <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
+                Timestamps
+            </h3>
+        </div>
+        <div class="detail-card-body">
+            <div class="timestamp-grid">
+                <div class="timestamp-item">
+                    <span class="detail-label">Created</span>
+                    <span class="detail-value">{{ alert.created_at|date:"M d, Y H:i" }}</span>
+                </div>
+                {% if alert.triggered_at %}
+                <div class="timestamp-item">
+                    <span class="detail-label">Last Triggered</span>
+                    <span class="detail-value">{{ alert.triggered_at|date:"M d, Y H:i" }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Status Details -->
+    <div class="detail-card">
+        <div class="detail-card-header">
+            <h3>
+                <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+                Status Details
+            </h3>
+        </div>
+        <div class="detail-card-body">
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <span class="detail-label">Active</span>
+                    <span class="detail-value display-value {% if alert.is_active %}positive{% else %}muted{% endif %}">{% if alert.is_active %}Yes{% else %}No{% endif %}</span>
+                    <div class="editable-field">
+                        <div class="toggle-container">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="edit-is-active" {% if alert.is_active %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="toggle-label">Alert is active</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Triggered</span>
+                    <span class="detail-value {% if alert.is_triggered %}highlight{% else %}muted{% endif %}">{% if alert.is_triggered %}Yes{% else %}No{% endif %}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Dismissed</span>
+                    <span class="detail-value muted">{% if alert.is_dismissed %}Yes{% else %}No{% endif %}</span>
+                </div>
+                {% if alert.item_id %}
+                <div class="detail-item">
+                    <span class="detail-label">Item ID</span>
+                    <span class="detail-value muted">{{ alert.item_id }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<form id="deleteForm" method="post" action="{% url 'delete_alerts' %}" style="display:none;">
+    {% csrf_token %}
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const alertId = {{ alert.id }};
+const csrfToken = '{{ csrf_token }}';
+let isEditMode = false;
+let originalValues = {};
+
+function enterEditMode() {
+    isEditMode = true;
+    document.getElementById('editControls').classList.add('edit-mode');
+    document.getElementById('configCard').classList.add('edit-mode');
+    document.querySelector('.detail-card:has(.groups-display)').classList.add('edit-mode');
+    document.querySelector('.detail-card:has(#edit-is-active)').classList.add('edit-mode');
+    
+    // Store original values for cancel
+    originalValues = {
+        type: document.getElementById('edit-type')?.value,
+        itemName: document.getElementById('edit-item-name')?.value,
+        itemId: document.getElementById('edit-item-id')?.value,
+        isAllItems: document.getElementById('edit-is-all-items')?.value,
+        price: document.getElementById('edit-price')?.value,
+        reference: document.getElementById('edit-reference')?.value,
+        percentage: document.getElementById('edit-percentage')?.value,
+        timeFrame: document.getElementById('edit-time-frame')?.value,
+        direction: document.getElementById('edit-direction')?.value,
+        spikeReference: document.getElementById('edit-spike-reference')?.value,
+        minimumPrice: document.getElementById('edit-minimum-price')?.value,
+        maximumPrice: document.getElementById('edit-maximum-price')?.value,
+        emailNotification: document.getElementById('edit-email-notification')?.checked,
+        isActive: document.getElementById('edit-is-active')?.checked,
+        groups: Array.from(document.querySelectorAll('input[name="groups"]:checked')).map(cb => cb.value)
+    };
+}
+
+function cancelEdit() {
+    isEditMode = false;
+    document.getElementById('editControls').classList.remove('edit-mode');
+    document.getElementById('configCard').classList.remove('edit-mode');
+    document.querySelector('.detail-card:has(.groups-display)').classList.remove('edit-mode');
+    document.querySelector('.detail-card:has(#edit-is-active)').classList.remove('edit-mode');
+    
+    // Restore original values
+    if (document.getElementById('edit-item-name')) document.getElementById('edit-item-name').value = originalValues.itemName;
+    if (document.getElementById('edit-item-id')) document.getElementById('edit-item-id').value = originalValues.itemId;
+    if (document.getElementById('edit-price')) document.getElementById('edit-price').value = originalValues.price;
+    if (document.getElementById('edit-reference')) document.getElementById('edit-reference').value = originalValues.reference;
+    if (document.getElementById('edit-percentage')) document.getElementById('edit-percentage').value = originalValues.percentage;
+    if (document.getElementById('edit-time-frame')) document.getElementById('edit-time-frame').value = originalValues.timeFrame;
+    if (document.getElementById('edit-direction')) document.getElementById('edit-direction').value = originalValues.direction;
+    if (document.getElementById('edit-spike-reference')) document.getElementById('edit-spike-reference').value = originalValues.spikeReference;
+    if (document.getElementById('edit-minimum-price')) document.getElementById('edit-minimum-price').value = originalValues.minimumPrice;
+    if (document.getElementById('edit-maximum-price')) document.getElementById('edit-maximum-price').value = originalValues.maximumPrice;
+    if (document.getElementById('edit-email-notification')) document.getElementById('edit-email-notification').checked = originalValues.emailNotification;
+    if (document.getElementById('edit-is-active')) document.getElementById('edit-is-active').checked = originalValues.isActive;
+    
+    // Restore groups
+    document.querySelectorAll('input[name="groups"]').forEach(cb => {
+        cb.checked = originalValues.groups.includes(cb.value);
+    });
+}
+
+async function saveChanges() {
+    const alertType = document.getElementById('edit-type')?.value;
+    const isAllItems = document.getElementById('edit-is-all-items')?.value === 'true';
+    
+    const data = {
+        type: alertType,
+        item_name: document.getElementById('edit-item-name')?.value || null,
+        item_id: document.getElementById('edit-item-id')?.value || null,
+        is_all_items: isAllItems,
+        email_notification: document.getElementById('edit-email-notification')?.checked || false,
+        is_active: document.getElementById('edit-is-active')?.checked ?? true,
+        groups: Array.from(document.querySelectorAll('input[name="groups"]:checked')).map(cb => cb.value)
+    };
+    
+    // Type-specific fields
+    if (alertType === 'above' || alertType === 'below') {
+        data.price = document.getElementById('edit-price')?.value || null;
+        data.reference = document.getElementById('edit-reference')?.value || null;
+    } else if (alertType === 'spread') {
+        data.percentage = document.getElementById('edit-percentage')?.value || null;
+        data.minimum_price = document.getElementById('edit-minimum-price')?.value || null;
+        data.maximum_price = document.getElementById('edit-maximum-price')?.value || null;
+    } else if (alertType === 'spike') {
+        data.percentage = document.getElementById('edit-percentage')?.value || null;
+        data.time_frame = document.getElementById('edit-time-frame')?.value || null;
+        data.direction = document.getElementById('edit-direction')?.value || 'both';
+        data.reference = document.getElementById('edit-spike-reference')?.value || 'low';
+        data.minimum_price = document.getElementById('edit-minimum-price')?.value || null;
+        data.maximum_price = document.getElementById('edit-maximum-price')?.value || null;
+    }
+    
+    try {
+        const response = await fetch(`/api/alerts/${alertId}/update/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Reload page to show updated data
+            window.location.reload();
+        } else {
+            alert('Error saving changes: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error saving changes. Please try again.');
+    }
+}
+
+async function deleteAlert() {
+    if (!confirm('Are you sure you want to delete this alert? This action cannot be undone.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/alerts/delete/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ alert_ids: [alertId] })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            window.location.href = '{% url "alerts" %}';
+        } else {
+            alert('Error deleting alert: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error deleting alert. Please try again.');
+    }
+}
+
+</script>
+{% endblock %}

@@ -637,3 +637,132 @@ def update_alert(request):
                 alert.triggered_at = None
                 alert.save()
     return JsonResponse({'success': True})
+
+
+def alert_detail(request, alert_id):
+    """Display detailed view of a single alert"""
+    from django.shortcuts import get_object_or_404
+    
+    alert = get_object_or_404(Alert, id=alert_id)
+    
+    # Get current price data if alert has an item
+    current_price_data = {}
+    if alert.item_id:
+        all_prices = get_all_current_prices()
+        price_data = all_prices.get(str(alert.item_id), {})
+        current_price_data = {
+            'high': price_data.get('high'),
+            'low': price_data.get('low'),
+            'highTime': price_data.get('highTime'),
+            'lowTime': price_data.get('lowTime'),
+        }
+        if current_price_data['high'] and current_price_data['low'] and current_price_data['low'] > 0:
+            current_price_data['spread'] = round(((current_price_data['high'] - current_price_data['low']) / current_price_data['low']) * 100, 2)
+    
+    # Get alert groups
+    groups = list(alert.groups.values_list('name', flat=True))
+    all_groups = list(AlertGroup.objects.values_list('name', flat=True))
+    
+    context = {
+        'alert': alert,
+        'current_price': current_price_data,
+        'groups': groups,
+        'all_groups': all_groups,
+    }
+    
+    return render(request, 'alert_detail.html', context)
+
+
+@csrf_exempt
+def update_single_alert(request, alert_id):
+    """API endpoint to update a single alert"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST required'}, status=405)
+    
+    import json
+    from django.shortcuts import get_object_or_404
+    
+    alert = get_object_or_404(Alert, id=alert_id)
+    
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    
+    # Update alert fields
+    alert.type = data.get('type', alert.type)
+    
+    # Handle is_all_items
+    is_all_items = data.get('is_all_items', False)
+    alert.is_all_items = is_all_items
+    
+    if is_all_items:
+        alert.item_name = None
+        alert.item_id = None
+    else:
+        alert.item_name = data.get('item_name', alert.item_name)
+        item_id = data.get('item_id')
+        if item_id:
+            alert.item_id = int(item_id)
+        elif data.get('item_name'):
+            mapping = get_item_mapping()
+            item_data = mapping.get(data.get('item_name').lower())
+            if item_data:
+                alert.item_id = item_data['id']
+                alert.item_name = item_data['name']
+    
+    # Handle price/reference for alerts
+    if alert.type == 'spike':
+        time_frame = data.get('time_frame') or data.get('price')
+        alert.price = int(time_frame) if time_frame else None
+    else:
+        price = data.get('price')
+        alert.price = int(price) if price else None
+    
+    reference = data.get('reference')
+    alert.reference = reference if reference else None
+    
+    direction = data.get('direction')
+    if alert.type == 'spike':
+        direction_value = (direction or '').lower() if isinstance(direction, str) else ''
+        if direction_value not in ['up', 'down', 'both']:
+            direction_value = 'both'
+        alert.direction = direction_value
+    else:
+        alert.direction = None
+    
+    # Handle percentage
+    percentage = data.get('percentage')
+    alert.percentage = float(percentage) if percentage else None
+    
+    # Handle min/max price
+    minimum_price = data.get('minimum_price')
+    alert.minimum_price = int(minimum_price) if minimum_price else None
+    
+    maximum_price = data.get('maximum_price')
+    alert.maximum_price = int(maximum_price) if maximum_price else None
+    
+    # Handle email notification
+    alert.email_notification = data.get('email_notification', False)
+    
+    # Handle is_active
+    if 'is_active' in data:
+        alert.is_active = data.get('is_active', True)
+    
+    # Handle groups
+    if 'groups' in data:
+        group_names = data.get('groups', [])
+        alert.groups.clear()
+        for name in group_names:
+            group, _ = AlertGroup.objects.get_or_create(name=name)
+            alert.groups.add(group)
+    
+    # Reset triggered state when alert is edited
+    alert.is_triggered = False
+    alert.is_dismissed = False
+    alert.triggered_data = None
+    alert.triggered_at = None
+    
+    alert.save()
+    
+    return JsonResponse({'success': True})
