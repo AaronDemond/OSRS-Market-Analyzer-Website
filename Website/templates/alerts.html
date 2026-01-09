@@ -441,7 +441,7 @@
 }
 .action-dropdown {
  /*   padding: 6px 6px 6px 10px; */
-    margin-bottom: 6px;
+ /*    margin-bottom: 6px; */
     border: 1px solid #ccc;
     border-radius: 6px;
     cursor: pointer;
@@ -1666,7 +1666,7 @@ const AlertsUI = {
             const triggeredText = this.buildTriggeredText(alert);
             triggeredBadge = '<span class="alert-triggered ' + clickableClass + '" ' + clickHandler + '>' + triggeredText + '</span>';
         }
-        
+
         return '<li class="alert-item" data-alert-id="' + alert.id + '">' +
                '<input type="checkbox" class="alert-checkbox">' +
                '<span class="alert-icon">🔔</span>' +
@@ -1948,7 +1948,11 @@ const SortManager = {
     getThresholdDistance(alert) {
         const { alertTypes } = AlertsConfig;
         if ((alert.type === alertTypes.ABOVE || alert.type === alertTypes.BELOW) && alert.price && alert.current_price) {
-            return Math.abs(alert.price - alert.current_price);
+            const target = Number(alert.price);
+            const current = Number(alert.current_price);
+            if (!target || !Number.isFinite(current)) return null;
+            const percentDiff = ((current - target) / target) * 100;
+            return Number.isFinite(percentDiff) ? percentDiff : null;
         }
         if (alert.type === alertTypes.SPREAD && alert.percentage != null) {
             if (alert.spread_percentage != null) {
