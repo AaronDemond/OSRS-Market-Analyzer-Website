@@ -438,6 +438,42 @@
         cursor: not-allowed;
     }
     
+    /* Suggestions Dropdown */
+    .suggestions-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        display: none;
+    }
+    
+    .suggestion-item {
+        padding: 10px 15px;
+        cursor: pointer;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .suggestion-item:last-child {
+        border-bottom: none;
+    }
+    
+    .suggestion-item:hover,
+    .suggestion-item.selected {
+        background-color: #007bff;
+        color: white;
+    }
+    
+    #item-name-group {
+        position: relative;
+    }
+    
     .form-group.toggle-group {
         display: flex;
         flex-direction: column;
@@ -1037,6 +1073,7 @@
                         <label for="edit-item-name">Item Name</label>
                         <input type="text" id="edit-item-name" value="{{ alert.item_name|default:'' }}" placeholder="Enter item name..." autocomplete="off">
                         <input type="hidden" id="edit-item-id" value="{{ alert.item_id|default:'' }}">
+                        <div id="edit-item-suggestions" class="suggestions-dropdown"></div>
                     </div>
                     
                     <!-- Price Threshold (above/below only) -->
@@ -1803,5 +1840,146 @@ function dismissStatusNotification(button) {
         setTimeout(() => notification.remove(), 300);
     }
 }
+
+// =============================================================================
+// ITEM AUTOCOMPLETE
+// =============================================================================
+
+const ItemAutocomplete = {
+    selectedIndex: -1,
+    minSearchLength: 2,
+    
+    init() {
+        const input = document.getElementById('edit-item-name');
+        const hiddenInput = document.getElementById('edit-item-id');
+        const dropdown = document.getElementById('edit-item-suggestions');
+        
+        if (!input || !dropdown) return;
+        
+        // Handle input changes - fetch suggestions
+        input.addEventListener('input', async () => {
+            const query = input.value;
+            
+            if (query.length < this.minSearchLength) {
+                dropdown.style.display = 'none';
+                this.selectedIndex = -1;
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/items/?q=' + encodeURIComponent(query));
+                const items = await response.json();
+                
+                if (items.length > 0) {
+                    dropdown.innerHTML = items.map(item => 
+                        `<div class="suggestion-item" data-id="${item.id}" data-name="${item.name}">${item.name}</div>`
+                    ).join('');
+                    dropdown.style.display = 'block';
+                    this.selectedIndex = -1;
+                } else {
+                    dropdown.style.display = 'none';
+                    this.selectedIndex = -1;
+                }
+            } catch (error) {
+                console.error('Error searching items:', error);
+                dropdown.style.display = 'none';
+            }
+        });
+        
+        // Handle keyboard navigation
+        input.addEventListener('keydown', (e) => {
+            if (dropdown.style.display === 'none') return;
+            
+            const items = dropdown.querySelectorAll('.suggestion-item');
+            if (items.length === 0) return;
+            
+            switch (e.key) {
+                case 'ArrowDown':
+                    e.preventDefault();
+                    this.selectedIndex = (this.selectedIndex + 1) % items.length;
+                    this.updateSelection(items);
+                    break;
+                    
+                case 'ArrowUp':
+                    e.preventDefault();
+                    this.selectedIndex = this.selectedIndex <= 0 ? items.length - 1 : this.selectedIndex - 1;
+                    this.updateSelection(items);
+                    break;
+                    
+                case 'Tab':
+                    e.preventDefault();
+                    if (e.shiftKey) {
+                        this.selectedIndex = this.selectedIndex <= 0 ? items.length - 1 : this.selectedIndex - 1;
+                    } else {
+                        this.selectedIndex = (this.selectedIndex + 1) % items.length;
+                    }
+                    this.updateSelection(items);
+                    break;
+                    
+                case 'Enter':
+                    if (this.selectedIndex >= 0) {
+                        e.preventDefault();
+                        this.selectItem(items[this.selectedIndex], input, hiddenInput, dropdown);
+                    }
+                    break;
+                    
+                case 'Escape':
+                    e.preventDefault();
+                    dropdown.style.display = 'none';
+                    this.selectedIndex = -1;
+                    break;
+            }
+        });
+        
+        // Handle mouse click on suggestion
+        dropdown.addEventListener('click', (e) => {
+            if (e.target.classList.contains('suggestion-item')) {
+                this.selectItem(e.target, input, hiddenInput, dropdown);
+            }
+        });
+        
+        // Handle mouse hover to update selection
+        dropdown.addEventListener('mouseover', (e) => {
+            if (e.target.classList.contains('suggestion-item')) {
+                const items = dropdown.querySelectorAll('.suggestion-item');
+                items.forEach((item, index) => {
+                    if (item === e.target) {
+                        this.selectedIndex = index;
+                    }
+                });
+                this.updateSelection(items);
+            }
+        });
+        
+        // Close dropdown on outside click
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#item-name-group')) {
+                dropdown.style.display = 'none';
+                this.selectedIndex = -1;
+            }
+        });
+    },
+    
+    updateSelection(items) {
+        items.forEach((item, index) => {
+            if (index === this.selectedIndex) {
+                item.classList.add('selected');
+                item.scrollIntoView({ block: 'nearest' });
+            } else {
+                item.classList.remove('selected');
+            }
+        });
+    },
+    
+    selectItem(item, input, hiddenInput, dropdown) {
+        input.value = item.dataset.name;
+        hiddenInput.value = item.dataset.id;
+        dropdown.style.display = 'none';
+        this.selectedIndex = -1;
+    }
+};
+
+// Initialize autocomplete when page loads
+ItemAutocomplete.init();
 </script>
 {% endblock %}
