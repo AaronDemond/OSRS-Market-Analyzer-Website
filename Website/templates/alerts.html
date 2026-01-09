@@ -30,9 +30,18 @@
         </div>
         {% if all_alerts %}
         <div class="alert-actions">
-            <button class="action-btn delete-btn" onclick="toggleDeleteMode()">Delete Alert(s)</button>
-            <button class="action-btn confirm-delete-btn" onclick="confirmDelete()" style="display: none;">Confirm Delete</button>
-            <button class="action-btn cancel-btn" onclick="cancelDeleteMode()" style="display: none;">Cancel</button>
+            <div class="alert-actions-left">
+                <button class="action-btn delete-btn" onclick="toggleDeleteMode()">Delete Alert(s)</button>
+                <button class="action-btn confirm-delete-btn" onclick="confirmDelete()" style="display: none;">Confirm Delete</button>
+                <button class="action-btn cancel-btn" onclick="cancelDeleteMode()" style="display: none;">Cancel</button>
+            </div>
+            <div class="alert-actions-right" id="active-filters">
+                <select class="filter-dropdown" onchange="addFilter(this.value); this.value='';">
+                    <option value="">Add Filter...</option>
+                    <option value="triggered">Triggered</option>
+                    <option value="notTriggered">Not Triggered</option>
+                </select>
+            </div>
         </div>
             <ul class="alerts-list">
                 {% for alert in all_alerts %}
@@ -309,8 +318,19 @@
     }
     .alert-actions {
         display: flex;
+        justify-content: space-between;
+        align-items: center;
         gap: 10px;
         margin-bottom: 20px;
+    }
+    .alert-actions-left {
+        display: flex;
+        gap: 10px;
+    }
+    .alert-actions-right {
+        display: flex;
+        align-items: center;
+        gap: 10px;
     }
     .action-btn {
         padding: 10px 20px;
@@ -394,6 +414,86 @@
         opacity: 0.8;
     }
     .triggered-notification .dismiss-btn:hover {
+        opacity: 1;
+    }
+    /* Filter UI styles */
+    .filter-dropdown {
+        padding: 8px 12px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        font-size: 14px;
+        cursor: pointer;
+        background-color: white;
+    }
+    .filter-dropdown:focus {
+        outline: none;
+        border-color: #007bff;
+    }
+    .active-filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 15px;
+        min-height: 0;
+    }
+    .filter-tag {
+        display: inline-flex;
+        align-items: center;
+        background-color: #007bff;
+        color: white;
+        padding: 6px 10px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 500;
+        animation: filterTagIn 0.3s ease forwards;
+        max-width: 200px;
+        overflow: hidden;
+    }
+    .filter-tag.removing {
+        animation: filterTagOut 0.3s ease forwards;
+    }
+    @keyframes filterTagIn {
+        from {
+            opacity: 0;
+            transform: scale(0.8);
+            max-width: 0;
+            padding: 0;
+            margin: 0;
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+            max-width: 200px;
+            padding: 6px 10px;
+        }
+    }
+    @keyframes filterTagOut {
+        from {
+            opacity: 1;
+            transform: scale(1);
+            max-width: 200px;
+            padding: 6px 10px;
+        }
+        to {
+            opacity: 0;
+            transform: scale(0.8);
+            max-width: 0;
+            padding: 0;
+            margin: 0;
+        }
+    }
+    .filter-tag-remove {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 16px;
+        margin-left: 6px;
+        cursor: pointer;
+        line-height: 1;
+        opacity: 0.8;
+        padding: 0;
+    }
+    .filter-tag-remove:hover {
         opacity: 1;
     }
     .create-alert-form {
@@ -662,6 +762,12 @@ const AlertsConfig = {
         minSearchLength: 2          // Minimum characters before searching
     },
     
+    // Available filters for the alerts list
+    filters: {
+        triggered: { id: 'triggered', label: 'Triggered', test: alert => alert.is_triggered },
+        notTriggered: { id: 'notTriggered', label: 'Not Triggered', test: alert => !alert.is_triggered }
+    },
+    
     // DOM element selectors for the create form
     selectors: {
         create: {
@@ -743,6 +849,7 @@ const AlertsConfig = {
 const AlertsState = {
     deleteMode: false,              // Whether delete mode is active
     spreadDataCache: {},            // Cache for spread alert data (keyed by alert ID)
+    activeFilters: new Set(),       // Currently active filter IDs
     
     /**
      * Stores spread data for a specific alert in the cache.
@@ -957,20 +1064,49 @@ const AlertsUI = {
     },
     
     /**
-     * Renders the action buttons (Delete, Confirm, Cancel).
+     * Renders the action buttons (Delete, Confirm, Cancel) and filter dropdown.
+     * @param {boolean} hasAlerts - Whether there are alerts to display
+     * @param {string} preservedFilterTagsHtml - HTML of preserved filter tags (optional)
      */
-    renderActionButtons(hasAlerts) {
+    renderActionButtons(hasAlerts, preservedFilterTagsHtml) {
         if (!hasAlerts) return '';
         
         const { deleteMode } = AlertsState;
         
+        // Build dropdown options (exclude already active filters)
+        let options = '<option value="">Add Filter...</option>';
+        for (const [id, filter] of Object.entries(AlertsConfig.filters)) {
+            if (!FilterManager.isActive(id)) {
+                options += '<option value="' + id + '">' + filter.label + '</option>';
+            }
+        }
+        
+        // Use preserved filter tags if provided, otherwise build from state
+        let tags = preservedFilterTagsHtml || '';
+        if (!preservedFilterTagsHtml) {
+            for (const filterId of AlertsState.activeFilters) {
+                const filter = AlertsConfig.filters[filterId];
+                if (filter) {
+                    tags += '<span class="filter-tag" data-filter-id="' + filterId + '">' + filter.label + 
+                            '<button class="filter-tag-remove" onclick="removeFilter(\'' + filterId + '\')">&times;</button>' +
+                            '</span>';
+                }
+            }
+        }
+        
         return '<div class="alert-actions">' +
+               '<div class="alert-actions-left">' +
                '<button class="action-btn delete-btn" onclick="AlertActions.toggleDeleteMode()" ' +
                'style="' + (deleteMode ? 'display:none' : '') + '">Delete Alert(s)</button>' +
                '<button class="action-btn confirm-delete-btn" onclick="AlertActions.confirmDelete()" ' +
                'style="' + (deleteMode ? '' : 'display:none') + '">Confirm Delete</button>' +
                '<button class="action-btn cancel-btn" onclick="AlertActions.cancelDeleteMode()" ' +
                'style="' + (deleteMode ? '' : 'display:none') + '">Cancel</button>' +
+               '</div>' +
+               '<div class="alert-actions-right" id="active-filters">' +
+               tags +
+               '<select class="filter-dropdown" onchange="addFilter(this.value); this.value=\'\';">' + options + '</select>' +
+               '</div>' +
                '</div>';
     },
     
@@ -1016,8 +1152,15 @@ const AlertsUI = {
             return '<p class="no-alerts">No active alerts. Create one to get started!</p>';
         }
         
+        // Apply active filters
+        const filteredAlerts = FilterManager.applyFilters(alerts);
+        
+        if (filteredAlerts.length === 0) {
+            return '<p class="no-alerts">No alerts match the current filters.</p>';
+        }
+        
         let html = '<ul class="alerts-list">';
-        alerts.forEach(alert => {
+        filteredAlerts.forEach(alert => {
             html += this.renderAlertItem(alert);
         });
         html += '</ul>';
@@ -1057,10 +1200,17 @@ const AlertsUI = {
     
     /**
      * Updates the entire My Alerts pane with fresh data.
+     * Preserves status notifications and filter tags to prevent flashing.
      */
     updateMyAlertsPane(data) {
         const pane = document.querySelector(AlertsConfig.selectors.myAlertsPane);
         if (!pane) return;
+        
+        // If there are active filters, do a selective update to avoid flashing
+        if (AlertsState.activeFilters.size > 0) {
+            this.updateMyAlertsPaneSelective(data);
+            return;
+        }
         
         // Preserve any status notifications (e.g., "Alert created")
         const existingStatusNotifications = pane.querySelectorAll('.status-notification');
@@ -1070,7 +1220,7 @@ const AlertsUI = {
         });
         
         const notificationsHtml = this.renderTriggeredNotifications(data.triggered);
-        const actionsHtml = this.renderActionButtons(data.alerts && data.alerts.length > 0);
+        const actionsHtml = this.renderActionButtons(data.alerts && data.alerts.length > 0, '');
         
         let alertsHtml = '';
         if (data.alerts && data.alerts.length > 0) {
@@ -1081,6 +1231,176 @@ const AlertsUI = {
         
         pane.innerHTML = '<div id="triggered-notifications">' + statusHtml + notificationsHtml + '</div>' +
                         actionsHtml + alertsHtml;
+    },
+    
+    /**
+     * Selectively updates parts of the My Alerts pane without touching the action bar.
+     * Used when filters are active to prevent filter tags from flashing.
+     */
+    updateMyAlertsPaneSelective(data) {
+        const pane = document.querySelector(AlertsConfig.selectors.myAlertsPane);
+        if (!pane) return;
+        
+        // Update triggered notifications (preserve status notifications)
+        const notificationsContainer = pane.querySelector('#triggered-notifications');
+        if (notificationsContainer) {
+            const existingStatusNotifications = notificationsContainer.querySelectorAll('.status-notification');
+            let statusHtml = '';
+            existingStatusNotifications.forEach(n => {
+                statusHtml += n.outerHTML;
+            });
+            const notificationsHtml = this.renderTriggeredNotifications(data.triggered);
+            notificationsContainer.innerHTML = statusHtml + notificationsHtml;
+        }
+        
+        // Update alerts list only
+        const alertsList = pane.querySelector('.alerts-list');
+        const noAlertsMsg = pane.querySelector('.no-alerts');
+        
+        const filteredAlerts = FilterManager.applyFilters(data.alerts || []);
+        
+        if (alertsList) {
+            if (filteredAlerts.length === 0) {
+                alertsList.outerHTML = '<p class="no-alerts">No alerts match the current filters.</p>';
+            } else {
+                let html = '';
+                filteredAlerts.forEach(alert => {
+                    html += this.renderAlertItem(alert);
+                });
+                alertsList.innerHTML = html;
+            }
+        } else if (noAlertsMsg && filteredAlerts.length > 0) {
+            let html = '<ul class="alerts-list">';
+            filteredAlerts.forEach(alert => {
+                html += this.renderAlertItem(alert);
+            });
+            html += '</ul>';
+            noAlertsMsg.outerHTML = html;
+        }
+    }
+};
+
+
+// =============================================================================
+// FILTER MANAGEMENT
+// =============================================================================
+/**
+ * Manages alert list filtering.
+ * 
+ * Why: Users need to filter alerts by various criteria (triggered status, etc.)
+ * to quickly find relevant alerts.
+ * 
+ * How: Maintains a set of active filter IDs in AlertsState. When rendering,
+ * alerts are filtered through all active filter test functions.
+ */
+const FilterManager = {
+    /**
+     * Adds a filter to the active filters set and updates the DOM.
+     */
+    addFilter(filterId) {
+        if (AlertsConfig.filters[filterId] && !AlertsState.activeFilters.has(filterId)) {
+            AlertsState.activeFilters.add(filterId);
+            
+            // Add filter tag to DOM
+            const filter = AlertsConfig.filters[filterId];
+            const container = document.querySelector('#active-filters');
+            const dropdown = container ? container.querySelector('.filter-dropdown') : null;
+            if (dropdown) {
+                const tagHtml = '<span class="filter-tag" data-filter-id="' + filterId + '">' + filter.label + 
+                        '<button class="filter-tag-remove" onclick="removeFilter(\'' + filterId + '\')">&times;</button>' +
+                        '</span>';
+                dropdown.insertAdjacentHTML('beforebegin', tagHtml);
+                
+                // Remove the option from dropdown
+                const option = dropdown.querySelector('option[value="' + filterId + '"]');
+                if (option) option.remove();
+            }
+            
+            // Only update the alerts list, not the entire pane
+            this.updateAlertsList();
+        }
+    },
+    
+    /**
+     * Removes a filter from the active filters set.
+     */
+    removeFilter(filterId) {
+        AlertsState.activeFilters.delete(filterId);
+        
+        // Re-add the option to dropdown
+        const filter = AlertsConfig.filters[filterId];
+        const dropdown = document.querySelector('#active-filters .filter-dropdown');
+        if (dropdown && filter) {
+            const option = document.createElement('option');
+            option.value = filterId;
+            option.textContent = filter.label;
+            dropdown.appendChild(option);
+        }
+        
+        // Only update the alerts list, not the entire pane
+        this.updateAlertsList();
+    },
+    
+    /**
+     * Updates just the alerts list based on current filters.
+     * Does not touch the action bar or filter tags.
+     */
+    async updateAlertsList() {
+        const data = await AlertsAPI.fetchAlerts();
+        if (!data) return;
+        
+        const alertsList = document.querySelector('#my-alerts .alerts-list');
+        const noAlertsMsg = document.querySelector('#my-alerts .no-alerts');
+        
+        if (alertsList) {
+            const filteredAlerts = this.applyFilters(data.alerts || []);
+            if (filteredAlerts.length === 0) {
+                alertsList.outerHTML = '<p class="no-alerts">No alerts match the current filters.</p>';
+            } else {
+                let html = '';
+                filteredAlerts.forEach(alert => {
+                    html += AlertsUI.renderAlertItem(alert);
+                });
+                alertsList.innerHTML = html;
+            }
+        } else if (noAlertsMsg) {
+            const filteredAlerts = this.applyFilters(data.alerts || []);
+            if (filteredAlerts.length > 0) {
+                let html = '<ul class="alerts-list">';
+                filteredAlerts.forEach(alert => {
+                    html += AlertsUI.renderAlertItem(alert);
+                });
+                html += '</ul>';
+                noAlertsMsg.outerHTML = html;
+            }
+        }
+    },
+    
+    /**
+     * Checks if a filter is currently active.
+     */
+    isActive(filterId) {
+        return AlertsState.activeFilters.has(filterId);
+    },
+    
+    /**
+     * Applies all active filters to an array of alerts.
+     * Returns only alerts that pass ALL active filter tests.
+     */
+    applyFilters(alerts) {
+        if (AlertsState.activeFilters.size === 0) {
+            return alerts;
+        }
+        
+        return alerts.filter(alert => {
+            for (const filterId of AlertsState.activeFilters) {
+                const filter = AlertsConfig.filters[filterId];
+                if (filter && !filter.test(alert)) {
+                    return false;
+                }
+            }
+            return true;
+        });
     }
 };
 
@@ -1835,6 +2155,25 @@ function dismissStatusNotification(button) {
     if (notification) {
         notification.classList.add('dismissing');
         setTimeout(() => notification.remove(), 300);
+    }
+}
+
+function addFilter(filterId) {
+    if (filterId) {
+        FilterManager.addFilter(filterId);
+    }
+}
+
+function removeFilter(filterId) {
+    // Animate the tag out first
+    const tag = document.querySelector('.filter-tag[data-filter-id="' + filterId + '"]');
+    if (tag) {
+        tag.classList.add('removing');
+        setTimeout(() => {
+            FilterManager.removeFilter(filterId);
+        }, 300);
+    } else {
+        FilterManager.removeFilter(filterId);
     }
 }
 
