@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}Test Page{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Test Page</h1>
+<table class="table table-striped table-hover">
+    <thead class="table-dark">
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>1</td>
+            <td>John Smith</td>
+            <td>john.smith@example.com</td>
+            <td><span class="badge bg-success">Active</span></td>
+        </tr>
+        <tr>
+            <td>2</td>
+            <td>Jane Doe</td>
+            <td>jane.doe@example.com</td>
+            <td><span class="badge bg-warning">Pending</span></td>
+        </tr>
+        <tr>
+            <td>3</td>
+            <td>Bob Johnson</td>
+            <td>bob.johnson@example.com</td>
+            <td><span class="badge bg-success">Active</span></td>
+        </tr>
+        <tr>
+            <td>4</td>
+            <td>Alice Brown</td>
+            <td>alice.brown@example.com</td>
+            <td><span class="badge bg-danger">Inactive</span></td>
+        </tr>
+        <tr>
+            <td>5</td>
+            <td>Charlie Wilson</td>
+            <td>charlie.wilson@example.com</td>
+            <td><span class="badge bg-success">Active</span></td>
+        </tr>
+    </tbody>
+</table>
+{% endblock %}
