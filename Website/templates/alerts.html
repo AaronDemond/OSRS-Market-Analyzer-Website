@@ -2020,6 +2020,23 @@ const SortManager = {
                 return Math.abs(alert.percentage - alert.spread_current_percentage);
             }
         }
+        if (alert.type === alertTypes.SPIKE) {
+            // Use spike triggered data when available
+            if (alert.triggered_data) {
+                try {
+                    const data = JSON.parse(alert.triggered_data);
+                    const baseline = Number(data?.baseline);
+                    const current = Number(data?.current ?? alert.current_price);
+                    if (Number.isFinite(baseline) && baseline !== 0 && Number.isFinite(current)) {
+                        return ((current - baseline) / baseline) * 100;
+                    }
+                } catch (e) {
+                    // ignore parse errors
+                }
+            }
+            // Fallback to current price vs stored baseline in current_price if available (no baseline -> null)
+            return null;
+        }
         return null;
     },
 
