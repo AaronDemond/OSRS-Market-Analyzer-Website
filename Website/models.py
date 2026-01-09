@@ -88,11 +88,13 @@ class Alert(models.Model):
     def __str__(self):
         if self.type == 'spread':
             if self.is_all_items:
-                return f"All items spread >= {self.percentage}%, minimum price: {self.minimum_price}, maximum price: {self.maximum_price}"
+                min_price = f"{self.minimum_price:,}" if self.minimum_price else "None"
+                max_price = f"{self.maximum_price:,}" if self.maximum_price else "None"
+                return f"All items spread >= {self.percentage}%, minimum price: {min_price}, maximum price: {max_price}"
             return f"{self.item_name} spread >= {self.percentage}%"
         if self.is_all_items:
-            return f"All items {self.type} {self.price} ({self.reference})"
-        return f"{self.item_name} {self.type} {self.price} ({self.reference})"
+            return f"All items {self.type} {self.price:,} ({self.reference})"
+        return f"{self.item_name} {self.type} {self.price:,} ({self.reference})"
 
     def triggered_text(self):
         if self.type == "spread":
@@ -100,9 +102,10 @@ class Alert(models.Model):
                 return f"Price spread above {self.percentage}% Triggered. Click for details"
             return f"{self.item_name} spread has reached {self.percentage}% or higher"
         item_price = get_item_price(self.item_id, self.reference)
+        price_formatted = f"{item_price:,}" if item_price else str(item_price)
         if self.type == "above":
-            return self.item_name + " has risen above " + str(self.price) + " to " + str(item_price)
+            return f"{self.item_name} has risen above {self.price:,} to {price_formatted}"
         if self.type == "below":
-            return self.item_name + " has fallen below " + str(self.price) + " to " + str(item_price)
-        return "Item price is now " + str(item_price)
+            return f"{self.item_name} has fallen below {self.price:,} to {price_formatted}"
+        return f"Item price is now {price_formatted}"
 
