@@ -97,23 +97,40 @@ class Alert(models.Model):
     groups = models.ManyToManyField(AlertGroup, blank=True, related_name='alerts')
     triggered_at = models.DateTimeField(blank=True, null=True, default=None)
     
+    def _format_time_frame(self):
+        try:
+            minutes = int(self.price) if self.price is not None else None
+        except (TypeError, ValueError):
+            minutes = None
+        if minutes is None or minutes < 0:
+            return "N/A"
+        days, rem = divmod(minutes, 1440)
+        hours, mins = divmod(rem, 60)
+        parts = []
+        if days:
+            parts.append(f"{days} day{'s' if days != 1 else ''}")
+        if hours:
+            parts.append(f"{hours} hour{'s' if hours != 1 else ''}")
+        if mins or not parts:
+            parts.append(f"{mins} minute{'s' if mins != 1 else ''}")
+        return ' '.join(parts)
+
+    @property
+    def time_frame_display(self):
+        return self._format_time_frame()
+    
     def __str__(self):
         if self.type == 'spread':
             if self.is_all_items:
-                min_price = f"{self.minimum_price:,}" if self.minimum_price else "None"
-                max_price = f"{self.maximum_price:,}" if self.maximum_price else "None"
-                return f"All items spread >= {self.percentage}%, minimum price: {min_price}, maximum price: {max_price}"
+                return f"All items spread >= {self.percentage}%"
             return f"{self.item_name} spread >= {self.percentage}%"
         if self.type == 'spike':
+            frame = self._format_time_frame()
+            perc = f"{self.percentage}%" if self.percentage is not None else "N/A"
             if self.is_all_items:
-                frame = f"{self.price}m" if self.price else "N/A"
-                min_price = f"${self.minimum_price:,}" if self.minimum_price is not None else "None"
-                max_price = f"${self.maximum_price:,}" if self.maximum_price is not None else "None"
-                perc = f"{self.percentage:.1f}" if self.percentage is not None else "N/A"
-                return f"All items spike {perc}%, minimum price = {min_price}, maximum price = {max_price}, time frame = {frame}"
-            frame = f"{self.price}m" if self.price else "N/A"
-            ref = self.reference or 'low'
-            return f"{self.item_name} spike {self.percentage}% over {frame} ({ref})"
+                return f"All items spike {perc} within {frame}"
+            target = self.item_name or "Unknown item"
+            return f"{target} spike {perc} within {frame}"
         if self.is_all_items:
             return f"All items {self.type} {self.price:,} ({self.reference})"
         return f"{self.item_name} {self.type} {self.price:,} ({self.reference})"
@@ -130,15 +147,17 @@ class Alert(models.Model):
         if self.type == "below":
             return f"{self.item_name} has fallen below {self.price:,} to {price_formatted}"
         if self.type == "spike":
-            if self.is_all_items:
-                if self.triggered_data:
-                    import json
-                    try:
-                        data = json.loads(self.triggered_data)
-                        count = len(data) if isinstance(data, list) else 0
-                        return f"Spike alert triggered for {count} item(s)"
-                    except Exception:
-                        pass
-                return f"All items spike {self.percentage}% within {self.price}m ({self.reference})"
-            return f"{self.item_name} moved {self.percentage}% within {self.price}m ({self.reference})"
+            frame = self._format_time_frame()
+            perc = f"{self.percentage:.1f}" if self.percentage is not None else "N/A"
+            target = "All items" if self.is_all_items else self.item_name
+            base = f"{target} spike {perc} within {frame}"
+            if self.is_all_items and self.triggered_data:
+                import json
+                try:
+                    data = json.loads(self.triggered_data)
+                    count = len(data) if isinstance(data, list) else 0
+                    return f"{base} ({count} item(s) matched)"
+                except Exception:
+                    pass
+            return base
         return f"Item price is now {price_formatted}"

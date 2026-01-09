@@ -9,7 +9,6 @@
 <div class="alert-tabs">
     <button class="tab-btn active" data-tab="my-alerts">My Alerts</button>
     <button class="tab-btn" data-tab="create-alert">Create Alert</button>
-    <button class="tab-btn" data-tab="edit-delete-alert">Edit Alert</button>
 </div>
 
 <div class="tab-content">
@@ -177,126 +176,7 @@
             <button type="submit" class="btn-create-alert">Create Alert</button>
         </form>
     </div>
-    <div id="edit-delete-alert" class="tab-pane" style="display: none;">
-        {% if all_alerts %}
-            <ul class="alerts-list edit-alerts-list">
-                {% for alert in all_alerts %}
-                    <li class="alert-item clickable-alert" onclick="openEditModal({{ alert.id }}, '{{ alert.type }}', '{{ alert.item_name|default_if_none:"" }}', {{ alert.item_id|default_if_none:"null" }}, {{ alert.price|default_if_none:"null" }}, '{{ alert.reference|default_if_none:"" }}', {{ alert.percentage|default_if_none:"null" }}, {{ alert.is_all_items|yesno:"true,false,false" }}, {{ alert.minimum_price|default_if_none:"null" }}, {{ alert.maximum_price|default_if_none:"null" }}, {{ alert.email_notification|yesno:"true,false,false" }}, {{ alert.price|default_if_none:"null" }}, '{{ alert.direction|default_if_none:"both" }}')">
-                        <span class="alert-icon">🔔</span>
-                        <span class="alert-text">{{ alert }}</span>
-                        <span class="edit-hint">Click to edit</span>
-                    </li>
-                {% endfor %}
-            </ul>
-        {% else %}
-            <p class="no-alerts">No alerts to edit.</p>
-        {% endif %}
-    </div>
 </div>
-
-<!-- Edit Modal -->
-<div id="edit-modal" class="modal" style="display: none;">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2>Edit Alert</h2>
-            <button class="modal-close" onclick="closeEditModal()">&times;</button>
-        </div>
-        <form id="edit-alert-form" class="edit-alert-form">
-            <input type="hidden" id="edit-alert-id">
-            <input type="hidden" id="edit-is-all-items">
-            <div class="form-group">
-                <label for="edit-alert-type">Alert Type</label>
-                <select name="type" id="edit-alert-type" required onchange="handleEditAlertTypeChange()">
-                    <option value="above">Above Threshold</option>
-                    <option value="below">Below Threshold</option>
-                    <option value="spread">Spread</option>
-                    <option value="spike">Spike</option>
-                </select>
-            </div>
-
-            <!-- Number of items (shown for spike only) -->
-            <div class="form-group" id="edit-number-items-group" style="display: none;">
-                <label for="edit-number-of-items">Number of Items</label>
-                <select name="number_of_items" id="edit-number-of-items" onchange="handleEditSpikeScopeChange()">
-                    <option value="one" selected>One</option>
-                    <option value="all">All</option>
-                </select>
-            </div>
-            
-            <!-- Spread-specific fields -->
-            <div class="form-group" id="edit-spread-scope-group" style="display: none;">
-                <label for="edit-spread-scope">Apply To</label>
-                <select name="spread_scope" id="edit-spread-scope" onchange="handleEditSpreadScopeChange()">
-                    <option value="all">All Items</option>
-                    <option value="specific">Specific Item</option>
-                </select>
-            </div>
-            
-            <div class="form-group" id="edit-item-name-group">
-                <label for="edit-item-name">Item Name</label>
-                <input type="text" name="item_name" id="edit-item-name" autocomplete="off">
-                <input type="hidden" name="item_id" id="edit-item-id">
-                <div id="edit-item-suggestions" class="suggestions-dropdown"></div>
-            </div>
-            <div class="form-group" id="edit-price-group">
-                <label for="edit-price">Price Threshold</label>
-                <input type="number" name="price" id="edit-price">
-            </div>
-            <div class="form-group" id="edit-reference-group">
-                <label for="edit-reference">Reference Price</label>
-                <select name="reference" id="edit-reference">
-                    <option value="high">High Price</option>
-                    <option value="low">Low Price</option>
-                </select>
-            </div>
-            
-            <!-- Percentage field (shown for spread or spike) -->
-            <div class="form-group" id="edit-percentage-group" style="display: none;">
-                <label for="edit-percentage">Percentage (%)</label>
-                <input type="number" name="percentage" id="edit-percentage" step="0.001" min="0.001">
-            </div>
-
-            <!-- Time frame field (shown for spike only) -->
-            <div class="form-group" id="edit-time-frame-group" style="display: none;">
-                <label for="edit-time-frame">Time Frame (minutes)</label>
-                <input type="number" name="time_frame" id="edit-time-frame" min="1" step="1" placeholder="e.g. 10">
-            </div>
-            
-            <!-- Direction field (shown for spike only) -->
-            <div class="form-group" id="edit-direction-group" style="display: none;">
-                <label for="edit-direction">Direction</label>
-                <select name="direction" id="edit-direction">
-                    <option value="both">Both</option>
-                    <option value="up">Up</option>
-                    <option value="down">Down</option>
-                </select>
-            </div>
-            
-            <!-- Min/Max price fields (shown for spread all items only) -->
-            <div class="form-group" id="edit-min-price-group" style="display: none;">
-                <label for="edit-minimum-price">Minimum Price</label>
-                <input type="number" name="minimum_price" id="edit-minimum-price" min="0">
-            </div>
-            <div class="form-group" id="edit-max-price-group" style="display: none;">
-                <label for="edit-maximum-price">Maximum Price</label>
-                <input type="number" name="maximum_price" id="edit-maximum-price" min="0">
-            </div>
-            
-            <div class="form-group checkbox-group">
-                <label class="checkbox-label">
-                    <input type="checkbox" name="email_notification" id="edit-email-notification">
-                    Receive Email Notification
-                </label>
-            </div>
-            
-            <div class="modal-buttons">
-                <button type="button" class="btn-save" onclick="saveAlert()">Save</button>
-                <button type="button" class="btn-cancel" onclick="closeEditModal()">Cancel</button>
-            </div>
-        </form>
-    </div>
-</div>
-
 
 <!-- Spread Details Modal -->
 <div id="spread-modal" class="modal" style="display: none;">
@@ -462,6 +342,15 @@
         border-radius: 20px;
         font-size: 0.85rem;
         letter-spacing: 0.5px;
+        flex-shrink: 0;
+    }
+    .alert-threshold {
+        font-weight: 600;
+        color: orange;
+        margin-left: 8px;
+        font-size: 0.9rem;
+        white-space: nowrap;
+        flex-shrink: 0;
     }
     .alert-icon {
         font-size: 1.4rem;
@@ -953,12 +842,6 @@
     .clickable-alert:hover {
         background-color: #b8daff;
     }
-    .edit-hint {
-        font-size: 0.8rem;
-        color: #6c757d;
-        font-style: italic;
-        margin-left: auto;
-    }
     .modal {
         position: fixed;
         top: 0;
@@ -1033,9 +916,6 @@
     .btn-cancel:hover {
         background-color: #5a6268;
     }
-    .edit-alert-form {
-        max-width: 100%;
-    }
     .modal-content-large {
         max-width: 700px;
         max-height: 80vh;
@@ -1086,13 +966,6 @@
     }
     .spread-item-percentage.negative-change {
         color: #dc3545;
-    }
-    .clickable-triggered {
-        cursor: pointer;
-        text-decoration: underline;
-    }
-    .clickable-triggered:hover {
-        opacity: 0.8;
     }
 </style>
 
@@ -1270,37 +1143,6 @@ const AlertsConfig = {
                     direction: '#direction-group',
                     minPrice: '#min-price-group',
                     maxPrice: '#max-price-group'
-                }
-            },
-            // DOM element selectors for the edit form
-        edit: {
-            modal: '#edit-modal',
-            alertId: '#edit-alert-id',
-            alertType: '#edit-alert-type',
-            spreadScope: '#edit-spread-scope',
-            itemName: '#edit-item-name',
-            itemId: '#edit-item-id',
-            isAllItems: '#edit-is-all-items',
-            numberItems: '#edit-number-of-items',
-                price: '#edit-price',
-                reference: '#edit-reference',
-                percentage: '#edit-percentage',
-                direction: '#edit-direction',
-                minimumPrice: '#edit-minimum-price',
-                maximumPrice: '#edit-maximum-price',
-                emailNotification: '#edit-email-notification',
-                suggestions: '#edit-item-suggestions',
-                groups: {
-                    spreadScope: '#edit-spread-scope-group',
-                    numberItems: '#edit-number-items-group',
-                    itemName: '#edit-item-name-group',
-                    price: '#edit-price-group',
-                    reference: '#edit-reference-group',
-                    percentage: '#edit-percentage-group',
-                    timeFrame: '#edit-time-frame-group',
-                    direction: '#edit-direction-group',
-                    minPrice: '#edit-min-price-group',
-                    maxPrice: '#edit-max-price-group'
                 }
             },
         // Other UI elements
@@ -1641,36 +1483,6 @@ const AlertsUI = {
      * - Above/Below: Shows the price movement that triggered the alert
      */
     buildTriggeredText(alert) {
-        const { alertTypes } = AlertsConfig;
-        
-        // Spread alert for all items - show clickable link
-        if (alert.type === alertTypes.SPREAD && alert.is_all_items && alert.triggered_data) {
-            return 'Alert triggered. Click for details';
-        }
-        
-        // Spread alert for single item - show price details
-        if (alert.type === alertTypes.SPREAD && !alert.is_all_items) {
-            if (alert.spread_high && alert.spread_low) {
-                return 'Alert triggered. Low: ' + alert.spread_low.toLocaleString() + 
-                       ', High: ' + alert.spread_high.toLocaleString() + 
-                       ', Spread: ' + alert.spread_percentage + '%';
-            }
-        }
-
-        // Spike alert for all items - show clickable text
-        if (alert.type === alertTypes.SPIKE && alert.is_all_items && alert.triggered_data) {
-            return 'Spike alert triggered. Click here for details';
-        }
-        
-        // Above/Below alert - show price movement
-        if ((alert.type === alertTypes.ABOVE || alert.type === alertTypes.BELOW) && alert.current_price) {
-            const refLabel = alert.reference === 'high' ? 'High' : 'Low';
-            const direction = alert.type === alertTypes.ABOVE ? 'rose above' : 'fell below';
-            return 'Alert triggered. ' + refLabel + ' price ' + direction + ' ' +
-                   alert.price.toLocaleString() + ' to ' + alert.current_price.toLocaleString();
-        }
-        
-        // Default fallback
         return 'Alert triggered.';
     },
     
@@ -1807,7 +1619,7 @@ const AlertsUI = {
         const isSpreadAllItems = this.isSpreadAllItemsAlert(alert);
         const isSpikeAllItems = this.isSpikeAllItemsAlert(alert);
         
-        // Cache spread data if triggered
+        // Cache spread data if triggered (for detail page)
         if (isSpreadAllItems && alert.is_triggered) {
             AlertsState.setSpreadData(alert.id, alert.triggered_data);
         }
@@ -1815,28 +1627,21 @@ const AlertsUI = {
             AlertsState.setSpikeData(alert.id, alert.triggered_data);
         }
         
-        const clickHandler = (isSpreadAllItems && alert.is_triggered)
-            ? 'onclick="ModalManager.showSpreadDetails(' + alert.id + ')"'
-            : ((isSpikeAllItems && alert.is_triggered)
-                ? 'onclick="ModalManager.showSpikeDetails(' + alert.id + ')"'
-                : '');
-        const clickableClass = (isSpreadAllItems || isSpikeAllItems) && alert.is_triggered 
-            ? 'clickable-triggered' 
-            : '';
-        
         // Build triggered badge if needed
         let triggeredBadge = '';
         if (alert.is_triggered) {
             const triggeredText = this.buildTriggeredText(alert);
-            triggeredBadge = '<span class="alert-triggered ' + clickableClass + '" ' + clickHandler + '>' + triggeredText + '</span>';
+            triggeredBadge = '<span class="alert-triggered">' + triggeredText + '</span>';
         }
 
-        // Show threshold percentage for above/below alerts
+        // Show threshold percentage for all alerts
         let thresholdDisplay = '';
         const thresholdDistance = SortManager.getThresholdDistance(alert);
         if (typeof thresholdDistance === 'number' && !Number.isNaN(thresholdDistance)) {
             const formatted = thresholdDistance.toFixed(2);
-            thresholdDisplay = '<span class="alert-threshold" style="color: orange; margin-left: 8px;">Threshold: ' + formatted + '%</span>';
+            thresholdDisplay = '<span class="alert-threshold">Threshold: ' + formatted + '%</span>';
+        } else {
+            thresholdDisplay = '<span class="alert-threshold">Threshold: N/A</span>';
         }
 
         return '<li class="alert-item clickable-alert" data-alert-id="' + alert.id + '" onclick="navigateToAlertDetail(event, ' + alert.id + ')">' +
@@ -2562,7 +2367,7 @@ const FormManager = {
     /**
      * Updates form field visibility based on selected alert type.
      * 
-     * @param {string} formType - Either 'create' or 'edit'
+     * @param {string} formType - 'create' for create form
      */
     handleAlertTypeChange(formType) {
         const selectors = AlertsConfig.selectors[formType];
@@ -2633,7 +2438,7 @@ const FormManager = {
     /**
      * Updates form fields based on spread scope selection.
      * 
-     * @param {string} formType - Either 'create' or 'edit'
+     * @param {string} formType - 'create' for create form
      */
     handleSpreadScopeChange(formType) {
         const selectors = AlertsConfig.selectors[formType];
@@ -2676,69 +2481,6 @@ const FormManager = {
         if (minPriceGroup) minPriceGroup.style.display = isAll ? 'block' : 'none';
         if (maxPriceGroup) maxPriceGroup.style.display = isAll ? 'block' : 'none';
         if (isAllItemsInput) isAllItemsInput.value = isAll ? 'true' : 'false';
-    },
-    
-    /**
-     * Collects all form values for the edit form.
-     */
-    getEditFormData() {
-        const selectors = AlertsConfig.selectors.edit;
-        
-        return {
-            alert_id: document.querySelector(selectors.alertId).value,
-            type: document.querySelector(selectors.alertType).value,
-            item_name: document.querySelector(selectors.itemName).value,
-            item_id: document.querySelector(selectors.itemId).value,
-            price: document.querySelector(selectors.price).value,
-            reference: document.querySelector(selectors.reference).value,
-            percentage: document.querySelector(selectors.percentage).value,
-            time_frame: document.querySelector('#edit-time-frame').value,
-            direction: document.querySelector(selectors.direction).value,
-            is_all_items: document.querySelector(selectors.isAllItems).value === 'true',
-            minimum_price: document.querySelector(selectors.minimumPrice).value,
-            maximum_price: document.querySelector(selectors.maximumPrice).value,
-            email_notification: document.querySelector(selectors.emailNotification).checked
-        };
-    },
-    
-    /**
-     * Populates the edit form with existing alert data.
-     */
-    populateEditForm(alertData) {
-        const selectors = AlertsConfig.selectors.edit;
-        
-        document.querySelector(selectors.alertId).value = alertData.id;
-        document.querySelector(selectors.alertType).value = alertData.type;
-        document.querySelector(selectors.itemName).value = alertData.itemName || '';
-        document.querySelector(selectors.itemId).value = alertData.itemId || '';
-        document.querySelector(selectors.price).value = alertData.price || '';
-        const timeFrameVal = alertData.type === AlertsConfig.alertTypes.SPIKE ? (alertData.timeFrame || alertData.price || '') : '';
-        document.querySelector('#edit-time-frame').value = timeFrameVal;
-        document.querySelector(selectors.reference).value = alertData.reference || 'high';
-        document.querySelector(selectors.percentage).value = alertData.percentage || '';
-        const directionInput = document.querySelector(selectors.direction);
-        if (directionInput) {
-            directionInput.value = alertData.direction || 'both';
-        }
-        document.querySelector(selectors.isAllItems).value = alertData.isAllItems ? 'true' : 'false';
-        const numberItemsSelect = document.querySelector(selectors.numberItems);
-        if (numberItemsSelect) {
-            numberItemsSelect.value = alertData.isAllItems ? 'all' : 'one';
-        }
-        document.querySelector(selectors.minimumPrice).value = alertData.minPrice || '';
-        document.querySelector(selectors.maximumPrice).value = alertData.maxPrice || '';
-        document.querySelector(selectors.emailNotification).checked = alertData.emailNotification || false;
-        
-        // Set spread scope dropdown if spread alert
-        if (alertData.type === AlertsConfig.alertTypes.SPREAD) {
-            document.querySelector(selectors.spreadScope).value = alertData.isAllItems ? 'all' : 'specific';
-        }
-        
-        // Update field visibility
-        this.handleAlertTypeChange('edit');
-        if (alertData.type === AlertsConfig.alertTypes.SPIKE) {
-            this.handleSpikeScopeChange('edit');
-        }
     }
 };
 
@@ -2747,30 +2489,11 @@ const FormManager = {
 // MODAL MANAGEMENT
 // =============================================================================
 /**
- * Controls modal dialogs (edit modal and spread details modal).
+ * Controls modal dialogs (spread details modal and spike details modal).
  * 
  * Why: Modals have common behavior that should be handled consistently.
  */
 const ModalManager = {
-    /**
-     * Opens the edit modal with alert data.
-     */
-    openEditModal(id, type, itemName, itemId, price, reference, percentage, isAllItems, minPrice, maxPrice, emailNotification, timeFrame, direction) {
-        FormManager.populateEditForm({
-            id, type, itemName, itemId, price, reference, 
-            percentage, isAllItems, minPrice, maxPrice, emailNotification, timeFrame, direction
-        });
-        
-        document.querySelector(AlertsConfig.selectors.edit.modal).style.display = 'flex';
-    },
-    
-    /**
-     * Closes the edit modal.
-     */
-    closeEditModal() {
-        document.querySelector(AlertsConfig.selectors.edit.modal).style.display = 'none';
-    },
-    
     /**
      * Opens spread details modal with matching items.
      */
@@ -2905,8 +2628,6 @@ const AlertActions = {
         const success = await AlertsAPI.deleteAlerts(selectedIds);
         if (success) {
             this.clearSelections();
-            // Remove deleted alerts from the Edit Alert tab as well
-            this.removeFromEditTab(selectedIds);
             // Show status notification
             this.showStatusNotification('Alert' + (selectedIds.length > 1 ? 's' : '') + ' deleted');
             await AlertsRefresh.refresh();
@@ -2939,43 +2660,6 @@ const AlertActions = {
             '<button class="dismiss-btn" onclick="dismissStatusNotification(this)">&times;</button>';
         
         container.insertBefore(notification, container.firstChild);
-    },
-    
-    /**
-     * Removes alerts from the Edit Alert tab by their IDs.
-     * 
-     * What: Finds and removes alert items from the edit alerts list
-     * Why: After deletion, alerts should not appear in Edit tab until page refresh
-     * How: Parses onclick handlers to find matching alert IDs and removes elements
-     */
-    removeFromEditTab(alertIds) {
-        const editList = document.querySelector('.edit-alerts-list');
-        if (!editList) return;
-        
-        editList.querySelectorAll('.alert-item').forEach(item => {
-            // Extract alert ID from onclick handler (first parameter)
-            const onclick = item.getAttribute('onclick');
-            if (onclick) {
-                const match = onclick.match(/openEditModal\((\d+)/);
-                if (match && alertIds.includes(match[1])) {
-                    item.classList.add('deleting');
-                    setTimeout(() => item.remove(), 300);
-                }
-            }
-        });
-    },
-    
-    /**
-     * Saves changes from the edit modal.
-     */
-    async save() {
-        const alertData = FormManager.getEditFormData();
-        
-        const success = await AlertsAPI.updateAlert(alertData);
-        if (success) {
-            ModalManager.closeEditModal();
-            location.reload();
-        }
     }
 };
 
@@ -3312,14 +2996,6 @@ const AutocompleteManager = {
             document.querySelector(createSelectors.itemId),
             document.querySelector(createSelectors.suggestions)
         );
-        
-        // Edit form autocomplete
-        const editSelectors = AlertsConfig.selectors.edit;
-        this.setup(
-            document.querySelector(editSelectors.itemName),
-            document.querySelector(editSelectors.itemId),
-            document.querySelector(editSelectors.suggestions)
-        );
     }
 };
 
@@ -3494,10 +3170,8 @@ const EventManager = {
         document.addEventListener('click', function(e) {
             if (!e.target.closest('.form-group')) {
                 const createSuggestions = document.querySelector(AlertsConfig.selectors.create.suggestions);
-                const editSuggestions = document.querySelector(AlertsConfig.selectors.edit.suggestions);
                 
                 if (createSuggestions) createSuggestions.style.display = 'none';
-                if (editSuggestions) editSuggestions.style.display = 'none';
             }
         });
     },
@@ -3532,27 +3206,7 @@ function handleSpikeScopeChange() {
     FormManager.handleSpikeScopeChange('create');
 }
 
-function handleEditAlertTypeChange() {
-    FormManager.handleAlertTypeChange('edit');
-}
-
-function handleEditSpreadScopeChange() {
-    FormManager.handleSpreadScopeChange('edit');
-}
-
-function handleEditSpikeScopeChange() {
-    FormManager.handleSpikeScopeChange('edit');
-}
-
 // Modal handlers
-function openEditModal(id, type, itemName, itemId, price, reference, percentage, isAllItems, minPrice, maxPrice, emailNotification, timeFrame, direction) {
-    ModalManager.openEditModal(id, type, itemName, itemId, price, reference, percentage, isAllItems, minPrice, maxPrice, emailNotification, timeFrame, direction);
-}
-
-function closeEditModal() {
-    ModalManager.closeEditModal();
-}
-
 function closeSpreadModal() {
     ModalManager.closeSpreadModal();
 }
@@ -3571,10 +3225,8 @@ function showSpikeDetails(alertId) {
 
 // Navigate to alert detail page
 function navigateToAlertDetail(event, alertId) {
-    // Don't navigate if clicking on checkbox or triggered badge
-    if (event.target.classList.contains('alert-checkbox') || 
-        event.target.classList.contains('alert-triggered') ||
-        event.target.classList.contains('clickable-triggered')) {
+    // Don't navigate if clicking on checkbox
+    if (event.target.classList.contains('alert-checkbox')) {
         return;
     }
     window.location.href = '/alerts/' + alertId + '/';
@@ -3754,10 +3406,6 @@ function confirmDelete() {
     AlertActions.confirmDelete();
 }
 
-function saveAlert() {
-    AlertActions.save();
-}
-
 
 // =============================================================================
 // INITIALIZATION
@@ -3771,6 +3419,15 @@ function saveAlert() {
     EventManager.init();
     DropdownSizer.init();
     AlertsRefresh.start();
+    
+    // Check for deleted parameter and show notification
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('deleted') === '1') {
+        AlertActions.showStatusNotification('Alert deleted');
+        // Remove the parameter from URL without reload
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+    }
 })();
 </script>
 

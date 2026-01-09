@@ -275,15 +275,11 @@ def item_search(request):
 
 
 def alerts(request):
-    # Sort alphabetically - "All items" alerts (null item_name) sort after named items
-    all_alerts = Alert.objects.all().prefetch_related('groups').order_by(Coalesce('item_name', Value('All items')).asc())
     active_alerts = Alert.objects.filter(is_active=True)
     triggered_alerts = Alert.objects.filter(is_triggered=True, is_dismissed=False).prefetch_related('groups')
     return render(request, 'alerts.html', {
         'active_alerts': active_alerts,
         'triggered_alerts': triggered_alerts,
-        'all_alerts': all_alerts,
-
     })
 
 
@@ -684,8 +680,9 @@ def alert_detail(request, alert_id):
     
     # Get current price data if alert has an item
     current_price_data = {}
+    all_prices = get_all_current_prices()
+    
     if alert.item_id:
-        all_prices = get_all_current_prices()
         price_data = all_prices.get(str(alert.item_id), {})
         current_price_data = {
             'high': price_data.get('high'),
@@ -700,6 +697,52 @@ def alert_detail(request, alert_id):
     groups = list(alert.groups.values_list('name', flat=True))
     all_groups = list(AlertGroup.objects.values_list('name', flat=True))
     
+    # Build triggered data for display
+    triggered_info = None
+    if alert.is_triggered:
+        triggered_info = {
+            'triggered_at': alert.triggered_at,
+            'is_all_items': alert.is_all_items,
+            'alert_type': alert.type,
+        }
+        
+        if alert.is_all_items and alert.triggered_data:
+            # Parse the JSON triggered data for all-items alerts
+            try:
+                triggered_info['items'] = json.loads(alert.triggered_data)
+            except json.JSONDecodeError:
+                triggered_info['items'] = []
+        elif not alert.is_all_items and alert.item_id:
+            # Single item alert - get current price info
+            price_data = all_prices.get(str(alert.item_id), {})
+            
+            if alert.type == 'spread':
+                high = price_data.get('high')
+                low = price_data.get('low')
+                if high and low and low > 0:
+                    triggered_info['spread_high'] = high
+                    triggered_info['spread_low'] = low
+                    triggered_info['spread_percentage'] = round(((high - low) / low) * 100, 2)
+            elif alert.type in ['above', 'below']:
+                triggered_info['threshold_price'] = alert.price
+                triggered_info['reference'] = alert.reference
+                if alert.reference == 'low':
+                    triggered_info['current_price'] = price_data.get('low')
+                else:
+                    triggered_info['current_price'] = price_data.get('high')
+            elif alert.type == 'spike':
+                # For spike alerts, triggered_data contains the spike info
+                if alert.triggered_data:
+                    try:
+                        spike_data = json.loads(alert.triggered_data)
+                        if spike_data and len(spike_data) > 0:
+                            triggered_info['spike_data'] = spike_data[0] if isinstance(spike_data, list) else spike_data
+                    except json.JSONDecodeError:
+                        pass
+    
+    # Check if redirected after save
+    edit_saved = request.GET.get('edit_saved') == '1'
+    
     context = {
         'alert': alert,
         'current_price': current_price_data,
@@ -707,6 +750,8 @@ def alert_detail(request, alert_id):
         'all_groups': all_groups,
         'groups_json': json.dumps(groups),
         'all_groups_json': json.dumps(all_groups),
+        'triggered_info': triggered_info,
+        'edit_saved': edit_saved,
     }
     
     return render(request, 'alert_detail.html', context)

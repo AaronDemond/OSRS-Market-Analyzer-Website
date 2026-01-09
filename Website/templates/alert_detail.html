@@ -97,6 +97,48 @@
         color: white;
     }
     
+    /* Status notification */
+    .status-notification {
+        background-color: #28a745;
+        color: white;
+        padding: 15px 40px 15px 20px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        position: relative;
+        font-weight: 500;
+        transition: opacity 0.3s ease, transform 0.3s ease, max-height 0.3s ease, margin 0.3s ease, padding 0.3s ease;
+        max-height: 100px;
+        overflow: hidden;
+    }
+    
+    .status-notification.dismissing {
+        opacity: 0;
+        transform: translateX(20px);
+        max-height: 0;
+        margin-bottom: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+    
+    .status-notification .dismiss-btn {
+        position: absolute;
+        top: 50%;
+        right: 15px;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: white;
+        font-size: 20px;
+        cursor: pointer;
+        font-weight: bold;
+        line-height: 1;
+        opacity: 0.8;
+    }
+    
+    .status-notification .dismiss-btn:hover {
+        opacity: 1;
+    }
+    
     .alert-title {
         font-size: 1.8rem;
         font-weight: 700;
@@ -631,6 +673,82 @@
         font-size: 1.4rem;
     }
     
+    /* Triggered Data Section */
+    .triggered-card {
+        /* No special border */
+    }
+    
+    .triggered-info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .triggered-info-item {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+    }
+    
+    .triggered-items-list {
+        max-height: 300px;
+        overflow-y: auto;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        background: #f8f9fa;
+    }
+    
+    .triggered-items-list ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+    
+    .triggered-items-list li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .triggered-items-list li:last-child {
+        border-bottom: none;
+    }
+    
+    .triggered-items-list li:hover {
+        background: #e9ecef;
+    }
+    
+    .triggered-item-name {
+        font-weight: 600;
+        color: #333;
+    }
+    
+    .triggered-item-details {
+        font-size: 0.85rem;
+        color: #6c757d;
+        margin-top: 4px;
+    }
+    
+    .triggered-item-percentage {
+        font-weight: 700;
+        color: #28a745;
+        font-size: 1.1rem;
+    }
+    
+    .triggered-item-percentage.negative-change {
+        color: #dc3545;
+    }
+    
+    .no-triggered-data {
+        padding: 20px;
+        text-align: center;
+        color: #6c757d;
+        font-style: italic;
+    }
+    
     /* Timestamps */
     .timestamp-grid {
         display: grid;
@@ -758,6 +876,16 @@
         <h1 class="alert-title" id="alertTitle">{{ alert }}</h1>
     </div>
     
+    <!-- Status Notification Container -->
+    <div id="status-notifications">
+        {% if edit_saved %}
+        <div class="status-notification">
+            Changes saved
+            <button class="dismiss-btn" onclick="dismissStatusNotification(this)">&times;</button>
+        </div>
+        {% endif %}
+    </div>
+    
     <!-- Alert Configuration -->
     <div class="detail-card" id="configCard">
         <div class="detail-card-header">
@@ -831,7 +959,7 @@
                     {% if alert.type == 'spike' %}
                     <div class="detail-item">
                         <span class="detail-label">Time Frame</span>
-                        <span class="detail-value">{% if alert.price %}{{ alert.price }} minutes{% else %}Not Set{% endif %}</span>
+                        <span class="detail-value">{% if alert.price %}{{ alert.time_frame_display }}{% else %}Not Set{% endif %}</span>
                     </div>
                     <div class="detail-item">
                         <span class="detail-label">Direction</span>
@@ -1014,6 +1142,105 @@
     </div>
     {% endif %}
     
+    <!-- Alert Triggered Data -->
+    {% if triggered_info %}
+    <div class="detail-card triggered-card">
+        <div class="detail-card-header">
+            <h3>
+                <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                Alert Triggered Data
+            </h3>
+        </div>
+        <div class="detail-card-body">
+            {% if triggered_info.is_all_items and triggered_info.items %}
+                <!-- All items alert - show scrollable list -->
+                <div class="triggered-info-grid">
+                    <div class="triggered-info-item">
+                        <span class="detail-label">Triggered At</span>
+                        <span class="detail-value">{% if triggered_info.triggered_at %}{{ triggered_info.triggered_at|date:"M d, Y H:i" }}{% else %}N/A{% endif %}</span>
+                    </div>
+                    <div class="triggered-info-item">
+                        <span class="detail-label">Items Triggered</span>
+                        <span class="detail-value highlight">{{ triggered_info.items|length }}</span>
+                    </div>
+                </div>
+                
+                <label style="font-weight: 600; color: #333; margin-bottom: 10px; display: block;">Triggered Items</label>
+                <div class="triggered-items-list">
+                    <ul>
+                    {% for item in triggered_info.items %}
+                        <li>
+                            <div>
+                                <span class="triggered-item-name">{{ item.item_name }}</span>
+                                {% if triggered_info.alert_type == 'spread' %}
+                                <div class="triggered-item-details">
+                                    Low: {{ item.low|intcomma }} | High: {{ item.high|intcomma }}
+                                </div>
+                                {% elif triggered_info.alert_type == 'spike' %}
+                                <div class="triggered-item-details">
+                                    Baseline: {{ item.baseline|intcomma }} | Current: {{ item.current|intcomma }}
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% if triggered_info.alert_type == 'spread' %}
+                            <span class="triggered-item-percentage">{{ item.spread }}%</span>
+                            {% elif triggered_info.alert_type == 'spike' %}
+                            <span class="triggered-item-percentage {% if item.percent_change < 0 %}negative-change{% endif %}">{{ item.percent_change }}%</span>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                    </ul>
+                </div>
+            {% else %}
+                <!-- Single item alert -->
+                <div class="triggered-info-grid">
+                    <div class="triggered-info-item">
+                        <span class="detail-label">Triggered At</span>
+                        <span class="detail-value">{% if triggered_info.triggered_at %}{{ triggered_info.triggered_at|date:"M d, Y H:i" }}{% else %}N/A{% endif %}</span>
+                    </div>
+                    
+                    {% if triggered_info.alert_type == 'spread' %}
+                        <div class="triggered-info-item">
+                            <span class="detail-label">Low Price</span>
+                            <span class="detail-value price negative">{% if triggered_info.spread_low %}{{ triggered_info.spread_low|intcomma }}{% else %}N/A{% endif %}</span>
+                        </div>
+                        <div class="triggered-info-item">
+                            <span class="detail-label">High Price</span>
+                            <span class="detail-value price positive">{% if triggered_info.spread_high %}{{ triggered_info.spread_high|intcomma }}{% else %}N/A{% endif %}</span>
+                        </div>
+                        <div class="triggered-info-item">
+                            <span class="detail-label">Spread Percentage</span>
+                            <span class="detail-value highlight">{% if triggered_info.spread_percentage %}{{ triggered_info.spread_percentage }}%{% else %}N/A{% endif %}</span>
+                        </div>
+                    {% elif triggered_info.alert_type == 'above' or triggered_info.alert_type == 'below' %}
+                        <div class="triggered-info-item">
+                            <span class="detail-label">Threshold Price</span>
+                            <span class="detail-value price">{% if triggered_info.threshold_price %}{{ triggered_info.threshold_price|intcomma }}{% else %}N/A{% endif %}</span>
+                        </div>
+                        <div class="triggered-info-item">
+                            <span class="detail-label">Current {{ triggered_info.reference|title }} Price</span>
+                            <span class="detail-value price {% if triggered_info.alert_type == 'above' %}positive{% else %}negative{% endif %}">{% if triggered_info.current_price %}{{ triggered_info.current_price|intcomma }}{% else %}N/A{% endif %}</span>
+                        </div>
+                    {% elif triggered_info.alert_type == 'spike' and triggered_info.spike_data %}
+                        <div class="triggered-info-item">
+                            <span class="detail-label">Baseline Price</span>
+                            <span class="detail-value price">{% if triggered_info.spike_data.baseline %}{{ triggered_info.spike_data.baseline|intcomma }}{% else %}N/A{% endif %}</span>
+                        </div>
+                        <div class="triggered-info-item">
+                            <span class="detail-label">Current Price</span>
+                            <span class="detail-value price">{% if triggered_info.spike_data.current %}{{ triggered_info.spike_data.current|intcomma }}{% else %}N/A{% endif %}</span>
+                        </div>
+                        <div class="triggered-info-item">
+                            <span class="detail-label">Percentage Change</span>
+                            <span class="detail-value {% if triggered_info.spike_data.percent_change >= 0 %}positive{% else %}negative{% endif %}">{% if triggered_info.spike_data.percent_change %}{{ triggered_info.spike_data.percent_change }}%{% else %}N/A{% endif %}</span>
+                        </div>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+    
     <!-- Groups -->
     <div class="detail-card" id="groupsCard">
         <div class="detail-card-header">
@@ -1112,6 +1339,11 @@ const alertId = {{ alert.id }};
 const csrfToken = '{{ csrf_token }}';
 let isEditMode = false;
 let originalValues = {};
+
+// Clean up URL parameter after page loads
+if (window.location.search.includes('edit_saved=1')) {
+    window.history.replaceState({}, document.title, window.location.pathname);
+}
 
 function enterEditMode() {
     isEditMode = true;
@@ -1310,8 +1542,8 @@ async function saveChanges() {
         const result = await response.json();
         
         if (result.success) {
-            // Reload page to show updated data
-            window.location.reload();
+            // Redirect with edit_saved parameter to show notification
+            window.location.href = window.location.pathname + '?edit_saved=1';
         } else {
             alert('Error saving changes: ' + (result.error || 'Unknown error'));
         }
@@ -1339,7 +1571,7 @@ async function deleteAlert() {
         const result = await response.json();
         
         if (result.success) {
-            window.location.href = '{% url "alerts" %}';
+            window.location.href = '{% url "alerts" %}?deleted=1';
         } else {
             alert('Error deleting alert: ' + (result.error || 'Unknown error'));
         }
@@ -1545,6 +1777,30 @@ async function deleteSelectedGroups() {
     } catch (error) {
         console.error('Error:', error);
         alert('Error deleting groups. Please try again.');
+    }
+}
+
+// =============================================================================
+// STATUS NOTIFICATIONS
+// =============================================================================
+
+function showStatusNotification(message) {
+    const container = document.getElementById('status-notifications');
+    if (!container) return;
+    
+    const notification = document.createElement('div');
+    notification.className = 'status-notification';
+    notification.innerHTML = message + 
+        '<button class="dismiss-btn" onclick="dismissStatusNotification(this)">&times;</button>';
+    
+    container.insertBefore(notification, container.firstChild);
+}
+
+function dismissStatusNotification(button) {
+    const notification = button.closest('.status-notification');
+    if (notification) {
+        notification.classList.add('dismissing');
+        setTimeout(() => notification.remove(), 300);
     }
 }
 </script>
