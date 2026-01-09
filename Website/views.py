@@ -381,7 +381,7 @@ def alerts_api(request):
             'minimum_price': alert.minimum_price,
             'maximum_price': alert.maximum_price,
             'created_at': alert.created_at.isoformat(),
-            'last_triggered_at': getattr(alert, 'triggered_at', None),
+            'last_triggered_at': alert.triggered_at.isoformat() if alert.triggered_at else None,
             'groups': list(alert.groups.values_list('name', flat=True))
         }
 
@@ -634,5 +634,6 @@ def update_alert(request):
                 alert.is_dismissed = False
                 alert.is_active = True
                 alert.triggered_data = None
+                alert.triggered_at = None
                 alert.save()
     return JsonResponse({'success': True})

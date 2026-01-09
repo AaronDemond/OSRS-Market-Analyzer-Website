@@ -9,6 +9,7 @@ import requests
 from django.core.management.base import BaseCommand
 from django.core.mail import send_mail
 from django.conf import settings
+from django.utils import timezone
 
 # Allow running the command directly (outside manage.py) by ensuring the project is on sys.path and Django is configured
 BASE_DIR = Path(__file__).resolve().parents[2]
@@ -325,6 +326,7 @@ class Command(BaseCommand):
                                 alert.is_triggered = True
                                 # Keep is_active = True for all_items spread alerts
                                 alert.is_dismissed = False  # Reset dismissed so notification shows again
+                                alert.triggered_at = timezone.now()
                                 alert.save()
                                 self.stdout.write(
                                     self.style.WARNING(f'TRIGGERED (all items spread): {len(result)} items found')
@@ -337,6 +339,7 @@ class Command(BaseCommand):
                                 alert.is_triggered = True
                                 alert.is_dismissed = False
                                 alert.is_active = True  # keep monitoring
+                                alert.triggered_at = timezone.now()
                                 # Keep active for re-trigger
                                 alert.save()
                                 self.stdout.write(
@@ -349,6 +352,7 @@ class Command(BaseCommand):
                                 # Deactivate alert if it's not for all items
                                 if alert.is_all_items is not True:
                                     alert.is_active = False
+                                alert.triggered_at = timezone.now()
                                 alert.save()
                                 self.stdout.write(
                                     self.style.WARNING(f'TRIGGERED: {alert}')

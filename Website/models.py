@@ -95,6 +95,7 @@ class Alert(models.Model):
     maximum_price = models.IntegerField(blank=True, null=True, default=None)
     email_notification = models.BooleanField(default=False)
     groups = models.ManyToManyField(AlertGroup, blank=True, related_name='alerts')
+    triggered_at = models.DateTimeField(blank=True, null=True, default=None)
     
     def __str__(self):
         if self.type == 'spread':
@@ -106,8 +107,10 @@ class Alert(models.Model):
         if self.type == 'spike':
             if self.is_all_items:
                 frame = f"{self.price}m" if self.price else "N/A"
-                ref = self.reference or 'low'
-                return f"All items spike {self.percentage}% over {frame} ({ref})"
+                min_price = f"${self.minimum_price:,}" if self.minimum_price is not None else "None"
+                max_price = f"${self.maximum_price:,}" if self.maximum_price is not None else "None"
+                perc = f"{self.percentage:.1f}" if self.percentage is not None else "N/A"
+                return f"All items spike {perc}%, minimum price = {min_price}, maximum price = {max_price}, time frame = {frame}"
             frame = f"{self.price}m" if self.price else "N/A"
             ref = self.reference or 'low'
             return f"{self.item_name} spike {self.percentage}% over {frame} ({ref})"
