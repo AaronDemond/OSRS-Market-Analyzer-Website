@@ -279,6 +279,7 @@
         </div>
         <div class="modal-buttons">
             <button type="button" class="btn-save" onclick="GroupManager.save()">Save</button>
+            <button type="button" class="btn-cancel" onclick="GroupManager.deleteSelectedGroups()" style="margin: 0 auto;">Delete Group(s)</button>
             <button type="button" class="btn-cancel" onclick="GroupManager.close()">Cancel</button>
         </div>
     </div>
@@ -1055,6 +1056,7 @@ const AlertsConfig = {
         delete: '/api/alerts/delete/',
         update: '/api/alerts/update/',
         group: '/api/alerts/group/',
+        deleteGroups: '/api/alerts/groups/delete/',
         itemSearch: '/api/items/'
     },
     
@@ -1446,6 +1448,28 @@ const AlertsAPI = {
             return true;
         } catch (error) {
             console.error('Error grouping alerts:', error);
+            return false;
+        }
+    },
+
+    /**
+     * Deletes alert groups by name.
+     */
+    async deleteGroups(groups) {
+        try {
+            const response = await fetch(AlertsConfig.endpoints.deleteGroups, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': AlertsConfig.csrfToken
+                },
+                body: JSON.stringify({ groups })
+            });
+            if (!response.ok) return false;
+            const data = await response.json();
+            return !!data.success;
+        } catch (error) {
+            console.error('Error deleting groups:', error);
             return false;
         }
     },
@@ -2803,6 +2827,29 @@ const GroupManager = {
             AlertActions.clearSelections();
             await AlertsRefresh.refresh();
         }
+    },
+
+    async deleteSelectedGroups() {
+        const selectedGroups = this.getSelectedGroups();
+        if (selectedGroups.length === 0) {
+            alert('Please select at least one group to delete.');
+            return;
+        }
+
+        const confirmed = window.confirm('Delete selected group' + (selectedGroups.length > 1 ? 's' : '') + '? This will remove them from all alerts.');
+        if (!confirmed) return;
+
+        const success = await AlertsAPI.deleteGroups(selectedGroups);
+        if (success) {
+            AlertActions.showStatusNotification('Group' + (selectedGroups.length > 1 ? 's' : '') + ' deleted');
+            // Optimistically remove from local state to reflect immediately
+            const remaining = AlertsState.getAlertGroups().filter(g => !selectedGroups.includes(g));
+            AlertsState.setAlertGroups(remaining);
+            await AlertsRefresh.refresh();
+            this.renderExistingGroups();
+        } else {
+            alert('Failed to delete selected group(s). Please try again.');
+        }
     }
 };
 
@@ -3390,7 +3437,6 @@ function applyPriceFilter() {
         closePriceFilterModal();
         return;
     }
-    AlertsState.setFilterValue(filterId, value);
     FilterManager.activateFilter(filterId, value);
     closePriceFilterModal();
 }

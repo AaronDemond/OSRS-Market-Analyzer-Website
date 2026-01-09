@@ -4,3 +4,4 @@ Website/__pycache__/*
 *.swp
 *~
 Website/migrations/*
+notes.txt

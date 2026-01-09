@@ -449,12 +449,14 @@ def dismiss_triggered_alert(request):
 
 @csrf_exempt
 def delete_alerts(request):
+    print("Delete alerts called")
     """Delete multiple alerts"""
     if request.method == 'POST':
         import json
         data = json.loads(request.body)
         alert_ids = data.get('alert_ids', [])
         if alert_ids:
+            print(alert_ids)
             Alert.objects.filter(id__in=alert_ids).delete()
     return JsonResponse({'success': True})
 
@@ -499,6 +501,36 @@ def group_alerts(request):
         'success': True,
         'groups': group_names
     })
+
+
+@csrf_exempt
+def delete_groups(request):
+    """Delete alert groups by name."""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
+
+    import json
+    try:
+        data = json.loads(request.body or b'{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    groups = data.get('groups', [])
+    if not groups:
+        return JsonResponse({'success': False, 'error': 'No groups provided'}, status=400)
+
+    cleaned = [g.strip() for g in groups if isinstance(g, str) and g.strip()]
+    if not cleaned:
+        return JsonResponse({'success': False, 'error': 'No groups provided'}, status=400)
+
+    deleted_count = 0
+    for name in cleaned:
+        count, _ = AlertGroup.objects.filter(name__iexact=name).delete()
+        deleted_count += count
+
+    if deleted_count == 0:
+        return JsonResponse({'success': False, 'error': 'No groups deleted'}, status=404)
+
+    return JsonResponse({'success': True, 'groups': cleaned})
 
 
 @csrf_exempt
