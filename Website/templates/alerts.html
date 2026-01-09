@@ -31,9 +31,10 @@
         {% if all_alerts %}
         <div class="alert-actions">
             <div class="alert-actions-left">
-                <button class="action-btn delete-btn" onclick="toggleDeleteMode()">Delete Alert(s)</button>
-                <button class="action-btn confirm-delete-btn" onclick="confirmDelete()" style="display: none;">Confirm Delete</button>
-                <button class="action-btn cancel-btn" onclick="cancelDeleteMode()" style="display: none;">Cancel</button>
+                <select id="alert-action-select" class="action-dropdown" onchange="AlertActions.handleAction(this.value); this.value='';">
+                    <option value="">Actions</option>
+                    <option value="delete">Delete</option>
+                </select>
             </div>
             <div class="alert-actions-right" id="active-filters">
                 <select class="filter-dropdown" onchange="addFilter(this.value); this.value='';">
@@ -47,7 +48,7 @@
             <ul class="alerts-list">
                 {% for alert in all_alerts %}
                     <li class="alert-item" data-alert-id="{{ alert.id }}">
-                        <input type="checkbox" class="alert-checkbox" style="display: none;">
+                        <input type="checkbox" class="alert-checkbox">
                         <span class="alert-icon">🔔</span>
                         <span class="alert-text">{{ alert }}</span>
                         {% if alert.is_triggered %}
@@ -328,6 +329,18 @@
         display: flex;
         gap: 10px;
     }
+    .action-dropdown {
+        padding: 10px 14px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        background-color: white;
+    }
+    .action-dropdown:focus {
+        outline: none;
+        border-color: #007bff;
+    }
     .alert-actions-right {
         display: flex;
         align-items: center;
@@ -375,10 +388,7 @@
         height: 20px;
         cursor: pointer;
         accent-color: #dc3545;
-    }
-    .alert-item.delete-mode {
-        background-color: #fff3cd;
-        border-left-color: #dc3545;
+        margin-right: 6px;
     }
     .triggered-notification {
         background-color: #28a745;
@@ -764,7 +774,7 @@
  * 
  * Architecture:
  * - AlertsConfig: Central configuration object for settings and selectors
- * - AlertsState: Manages application state (delete mode, etc.)
+ * - AlertsState: Manages application state (filters, cached data, etc.)
  * - AlertsAPI: Handles all server communication
  * - AlertsUI: Manages DOM updates and rendering
  * - FormManager: Handles form field visibility and validation
@@ -930,7 +940,6 @@ const AlertsConfig = {
  * through consistent patterns.
  */
 const AlertsState = {
-    deleteMode: false,              // Whether delete mode is active
     spreadDataCache: {},            // Cache for spread alert data (keyed by alert ID)
     activeFilters: new Set(),       // Currently active filter IDs
     filterValues: {},               // Values for input-based filters (keyed by filter ID)
@@ -1162,14 +1171,12 @@ const AlertsUI = {
     },
     
     /**
-     * Renders the action buttons (Delete, Confirm, Cancel) and filter dropdown.
+     * Renders the action dropdown and filter dropdown.
      * @param {boolean} hasAlerts - Whether there are alerts to display
      * @param {string} preservedFilterTagsHtml - HTML of preserved filter tags (optional)
      */
     renderActionButtons(hasAlerts, preservedFilterTagsHtml) {
         if (!hasAlerts) return '';
-        
-        const { deleteMode } = AlertsState;
         
         // Build dropdown options (exclude already active filters)
         let options = '<option value="">Add Filter...</option>';
@@ -1194,12 +1201,10 @@ const AlertsUI = {
         
         return '<div class="alert-actions">' +
                '<div class="alert-actions-left">' +
-               '<button class="action-btn delete-btn" onclick="AlertActions.toggleDeleteMode()" ' +
-               'style="' + (deleteMode ? 'display:none' : '') + '">Delete Alert(s)</button>' +
-               '<button class="action-btn confirm-delete-btn" onclick="AlertActions.confirmDelete()" ' +
-               'style="' + (deleteMode ? '' : 'display:none') + '">Confirm Delete</button>' +
-               '<button class="action-btn cancel-btn" onclick="AlertActions.cancelDeleteMode()" ' +
-               'style="' + (deleteMode ? '' : 'display:none') + '">Cancel</button>' +
+               '<select id="alert-action-select" class="action-dropdown" onchange="AlertActions.handleAction(this.value); this.value=\'\';">' +
+               '<option value="">Actions</option>' +
+               '<option value="delete">Delete</option>' +
+               '</select>' +
                '</div>' +
                '<div class="alert-actions-right" id="active-filters">' +
                tags +
@@ -1212,7 +1217,6 @@ const AlertsUI = {
      * Renders a single alert list item.
      */
     renderAlertItem(alert) {
-        const { deleteMode } = AlertsState;
         const isSpreadAllItems = this.isSpreadAllItemsAlert(alert);
         
         // Cache spread data if triggered
@@ -1234,8 +1238,8 @@ const AlertsUI = {
             triggeredBadge = '<span class="alert-triggered ' + clickableClass + '" ' + clickHandler + '>' + triggeredText + '</span>';
         }
         
-        return '<li class="alert-item ' + (deleteMode ? 'delete-mode' : '') + '" data-alert-id="' + alert.id + '">' +
-               '<input type="checkbox" class="alert-checkbox" style="' + (deleteMode ? 'display:block' : 'display:none') + '">' +
+        return '<li class="alert-item" data-alert-id="' + alert.id + '">' +
+               '<input type="checkbox" class="alert-checkbox">' +
                '<span class="alert-icon">🔔</span>' +
                '<span class="alert-text">' + alert.text + '</span>' +
                triggeredBadge +
@@ -1304,15 +1308,27 @@ const AlertsUI = {
         const pane = document.querySelector(AlertsConfig.selectors.myAlertsPane);
         if (!pane) return;
         
+        // Check if any alert checkboxes are checked
+        const hasCheckedAlerts = pane.querySelectorAll('.alert-checkbox:checked').length > 0;
+        
+        // If any checkboxes are checked, skip the update entirely to preserve selection
+        if (hasCheckedAlerts) {
+            return;
+        }
+        
         // Check if filter dropdown is currently open/focused
         const filterDropdown = pane.querySelector('.filter-dropdown');
-        const isDropdownOpen = filterDropdown && document.activeElement === filterDropdown;
+        const isFilterDropdownOpen = filterDropdown && document.activeElement === filterDropdown;
         
-        // If there are active filters, a filter input is open, or dropdown is open, do selective update
+        // Check if actions dropdown is currently open/focused
+        const actionsDropdown = pane.querySelector('.action-dropdown');
+        const isActionsDropdownOpen = actionsDropdown && document.activeElement === actionsDropdown;
+        
+        // If there are active filters, a filter input is open, or any dropdown is open, do selective update
         const hasActiveFilters = AlertsState.activeFilters.size > 0;
         const hasFilterInput = pane.querySelector('.filter-input-container') !== null;
         
-        if (hasActiveFilters || hasFilterInput || isDropdownOpen) {
+        if (hasActiveFilters || hasFilterInput || isFilterDropdownOpen || isActionsDropdownOpen) {
             this.updateMyAlertsPaneSelective(data);
             return;
         }
@@ -1797,6 +1813,15 @@ const ModalManager = {
  */
 const AlertActions = {
     /**
+     * Handles selection from the actions dropdown.
+     */
+    handleAction(action) {
+        if (action === 'delete') {
+            this.confirmDelete();
+        }
+    },
+
+    /**
      * Dismisses a triggered alert notification.
      */
     async dismiss(alertId) {
@@ -1807,45 +1832,6 @@ const AlertActions = {
         }
         
         await AlertsAPI.dismissAlert(alertId);
-    },
-    
-    /**
-     * Toggles delete mode on.
-     */
-    toggleDeleteMode() {
-        AlertsState.deleteMode = true;
-        
-        document.querySelectorAll('.alert-checkbox').forEach(cb => cb.style.display = 'block');
-        document.querySelectorAll('.alert-item').forEach(item => item.classList.add('delete-mode'));
-        
-        const deleteBtn = document.querySelector('.delete-btn');
-        const confirmBtn = document.querySelector('.confirm-delete-btn');
-        const cancelBtn = document.querySelector('.cancel-btn');
-        
-        if (deleteBtn) deleteBtn.style.display = 'none';
-        if (confirmBtn) confirmBtn.style.display = 'inline-block';
-        if (cancelBtn) cancelBtn.style.display = 'inline-block';
-    },
-    
-    /**
-     * Cancels delete mode.
-     */
-    cancelDeleteMode() {
-        AlertsState.deleteMode = false;
-        
-        document.querySelectorAll('.alert-checkbox').forEach(cb => {
-            cb.style.display = 'none';
-            cb.checked = false;
-        });
-        document.querySelectorAll('.alert-item').forEach(item => item.classList.remove('delete-mode'));
-        
-        const deleteBtn = document.querySelector('.delete-btn');
-        const confirmBtn = document.querySelector('.confirm-delete-btn');
-        const cancelBtn = document.querySelector('.cancel-btn');
-        
-        if (deleteBtn) deleteBtn.style.display = 'inline-block';
-        if (confirmBtn) confirmBtn.style.display = 'none';
-        if (cancelBtn) cancelBtn.style.display = 'none';
     },
     
     /**
@@ -1872,6 +1858,11 @@ const AlertActions = {
             alert('Please select at least one alert to delete.');
             return;
         }
+
+        const confirmed = window.confirm('Delete selected alert' + (selectedIds.length > 1 ? 's' : '') + '?');
+        if (!confirmed) {
+            return;
+        }
         
         // Animate items out
         selectedItems.forEach(item => {
@@ -1884,13 +1875,22 @@ const AlertActions = {
         // Call API to delete
         const success = await AlertsAPI.deleteAlerts(selectedIds);
         if (success) {
-            this.cancelDeleteMode();
+            this.clearSelections();
             // Remove deleted alerts from the Edit Alert tab as well
             this.removeFromEditTab(selectedIds);
             // Show status notification
             this.showStatusNotification('Alert' + (selectedIds.length > 1 ? 's' : '') + ' deleted');
             await AlertsRefresh.refresh();
+        } else {
+            selectedItems.forEach(item => item.classList.remove('deleting'));
         }
+    },
+
+    /**
+     * Clears any selected checkboxes.
+     */
+    clearSelections() {
+        document.querySelectorAll('.alert-checkbox').forEach(cb => cb.checked = false);
     },
     
     /**
@@ -2170,9 +2170,6 @@ const AlertsRefresh = {
      * Fetches fresh data and updates the UI.
      */
     async refresh() {
-        // Don't refresh during delete mode
-        if (AlertsState.deleteMode) return;
-        
         const data = await AlertsAPI.fetchAlerts();
         if (data) {
             AlertsUI.updateMyAlertsPane(data);
@@ -2387,14 +2384,6 @@ function handleFilterInputKeydown(event, filterId) {
         event.preventDefault();
         cancelFilterInput(filterId);
     }
-}
-
-function toggleDeleteMode() {
-    AlertActions.toggleDeleteMode();
-}
-
-function cancelDeleteMode() {
-    AlertActions.cancelDeleteMode();
 }
 
 function confirmDelete() {
