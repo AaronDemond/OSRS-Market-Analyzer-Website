@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.db.models import Sum, F
+from django.db.models import Sum, F, Value
+from django.db.models.functions import Coalesce
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 import requests
@@ -274,7 +275,8 @@ def item_search(request):
 
 
 def alerts(request):
-    all_alerts = Alert.objects.all()
+    # Sort alphabetically - "All items" alerts (null item_name) sort after named items
+    all_alerts = Alert.objects.all().order_by(Coalesce('item_name', Value('zzz')).asc())
     active_alerts = Alert.objects.filter(is_active=True)
     triggered_alerts = Alert.objects.filter(is_triggered=True, is_dismissed=False)
     return render(request, 'alerts.html', {
@@ -345,7 +347,7 @@ def alerts_api(request):
     except requests.RequestException:
         pass
     
-    all_alerts = Alert.objects.all()
+    all_alerts = Alert.objects.all().order_by(Coalesce('item_name', Value('zzz')).asc())
     alerts_data = []
     for alert in all_alerts:
         alert_dict = {
