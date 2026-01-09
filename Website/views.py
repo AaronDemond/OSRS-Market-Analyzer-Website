@@ -6,7 +6,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 import requests
 import time
-from .models import Flip, Alert
+from .models import Flip, Alert, AlertGroup
 
 
 # Cache for item mappings
@@ -276,9 +276,9 @@ def item_search(request):
 
 def alerts(request):
     # Sort alphabetically - "All items" alerts (null item_name) sort after named items
-    all_alerts = Alert.objects.all().order_by(Coalesce('item_name', Value('zzz')).asc())
+    all_alerts = Alert.objects.all().prefetch_related('groups').order_by(Coalesce('item_name', Value('zzz')).asc())
     active_alerts = Alert.objects.filter(is_active=True)
-    triggered_alerts = Alert.objects.filter(is_triggered=True, is_dismissed=False)
+    triggered_alerts = Alert.objects.filter(is_triggered=True, is_dismissed=False).prefetch_related('groups')
     return render(request, 'alerts.html', {
         'active_alerts': active_alerts,
         'triggered_alerts': triggered_alerts,
@@ -349,6 +349,7 @@ def alerts_api(request):
     
     all_alerts = Alert.objects.all().order_by(Coalesce('item_name', Value('zzz')).asc())
     alerts_data = []
+    all_groups_set = set()
     for alert in all_alerts:
         alert_dict = {
             'id': alert.id,
@@ -360,8 +361,12 @@ def alerts_api(request):
             'triggered_data': alert.triggered_data,
             'reference': alert.reference,
             'price': alert.price,
-            'minimum_price': alert.minimum_price
+            'minimum_price': alert.minimum_price,
+            'maximum_price': alert.maximum_price,
+            'groups': list(alert.groups.values_list('name', flat=True))
         }
+        for g in alert_dict['groups']:
+            all_groups_set.add(g)
         
         # Add spread data for single item spread alerts
         if alert.type == 'spread' and not alert.is_all_items and alert.item_id and all_prices:
@@ -423,7 +428,8 @@ def alerts_api(request):
         
         triggered_data.append(triggered_dict)
     
-    return JsonResponse({'alerts': alerts_data, 'triggered': triggered_data})
+    all_groups = sorted(all_groups_set)
+    return JsonResponse({'alerts': alerts_data, 'triggered': triggered_data, 'groups': all_groups})
 
 
 @csrf_exempt
@@ -448,6 +454,48 @@ def delete_alerts(request):
         if alert_ids:
             Alert.objects.filter(id__in=alert_ids).delete()
     return JsonResponse({'success': True})
+
+
+@csrf_exempt
+def group_alerts(request):
+    """Assign alerts to one or more groups (creates groups as needed)."""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
+
+    import json
+    data = json.loads(request.body)
+    alert_ids = data.get('alert_ids', [])
+    existing_groups = data.get('groups', [])
+    new_groups = data.get('new_groups', [])
+
+    if not alert_ids:
+        return JsonResponse({'success': False, 'error': 'No alerts selected'}, status=400)
+
+    # Normalize and dedupe group names
+    group_names = []
+    for name in (existing_groups or []) + (new_groups or []):
+        if name and isinstance(name, str):
+            cleaned = name.strip()
+            if cleaned and cleaned not in group_names:
+                group_names.append(cleaned)
+
+    if not group_names:
+        return JsonResponse({'success': False, 'error': 'No groups provided'}, status=400)
+
+    # Ensure groups exist
+    group_objs = []
+    for name in group_names:
+        group_obj, _ = AlertGroup.objects.get_or_create(name=name)
+        group_objs.append(group_obj)
+
+    alerts = Alert.objects.filter(id__in=alert_ids)
+    for alert in alerts:
+        alert.groups.add(*group_objs)
+
+    return JsonResponse({
+        'success': True,
+        'groups': group_names
+    })
 
 
 @csrf_exempt

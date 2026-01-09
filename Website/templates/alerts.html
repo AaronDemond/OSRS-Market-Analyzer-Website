@@ -34,6 +34,7 @@
                 <select id="alert-action-select" class="action-dropdown" onchange="AlertActions.handleAction(this.value); this.value='';">
                     <option value="">Actions</option>
                     <option value="delete">Delete</option>
+                    <option value="group">Add to Group</option>
                 </select>
             </div>
             <div class="alert-actions-right" id="active-filters">
@@ -42,6 +43,8 @@
                     <option value="triggered">Triggered</option>
                     <option value="notTriggered">Not Triggered</option>
                     <option value="minimumPrice">Minimum Price</option>
+                    <option value="maximumPrice">Maximum Price</option>
+                    <option value="myGroups">My Groups</option>
                 </select>
             </div>
         </div>
@@ -224,6 +227,7 @@
     </div>
 </div>
 
+
 <!-- Spread Details Modal -->
 <div id="spread-modal" class="modal" style="display: none;">
     <div class="modal-content modal-content-large">
@@ -239,7 +243,54 @@
         </div>
     </div>
 </div>
+
+<!-- Group Alerts Modal -->
+<div id="group-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Organize Alerts</h2>
+            <button class="modal-close" onclick="GroupManager.close()">&times;</button>
+        </div>
+        <div class="form-group">
+            <label>Existing Groups</label>
+            <div id="group-list" class="group-list"></div>
+        </div>
+        <div class="form-group">
+            <label for="new-group-input">Add New Groups</label>
+            <input type="text" id="new-group-input" placeholder="Comma-separated, e.g. Bossing, Supplies">
+        </div>
+        <div class="modal-buttons">
+            <button type="button" class="btn-save" onclick="GroupManager.save()">Save</button>
+            <button type="button" class="btn-cancel" onclick="GroupManager.close()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Groups Filter Modal -->
+<div id="groups-filter-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Filter by Groups</h2>
+            <button class="modal-close" onclick="closeGroupsFilterModal()">&times;</button>
+        </div>
+        <div class="form-group">
+            <label>Select Groups to Display</label>
+            <div id="groups-filter-list" class="group-list pill-padding"></div>
+            <p id="no-groups-message" class="no-alerts" style="display: none;">No groups available. Create groups by organizing your alerts first.</p>
+        </div>
+        <div class="modal-buttons">
+            <button type="button" class="btn-save" onclick="applyGroupsFilter()">Apply Filter</button>
+            <button type="button" class="btn-cancel" onclick="closeGroupsFilterModal()">Cancel</button>
+        </div>
+    </div>
+</div>
 <style>
+    .pill-padding span {
+        margin-right: 5px;
+        margin-left: 5px;
+        margin-top: 15px;
+    }
+
     .alert-tabs {
         display: flex;
         gap: 10px;
@@ -318,6 +369,17 @@
         padding: 20px;
         text-align: center;
     }
+    .alert-group {
+        margin-bottom: 25px;
+    }
+    .alert-group-header {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #007bff;
+        margin-bottom: 10px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #007bff;
+    }
     .alert-actions {
         display: flex;
         justify-content: space-between;
@@ -330,7 +392,7 @@
         gap: 10px;
     }
     .action-dropdown {
-        padding: 10px 14px;
+        padding: 8px 6px 8px 10px;
         border: 1px solid #ccc;
         border-radius: 6px;
         cursor: pointer;
@@ -429,7 +491,7 @@
     }
     /* Filter UI styles */
     .filter-dropdown {
-        padding: 8px 12px;
+        padding: 8px 6px 8px 10px;
         border: 1px solid #ccc;
         border-radius: 5px;
         font-size: 14px;
@@ -591,6 +653,61 @@
         height: 18px;
         cursor: pointer;
         accent-color: #007bff;
+    }
+    .group-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 5px 0;
+    }
+    .group-checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        border: 1px solid #ccc;
+        border-radius: 20px;
+        background-color: #f8f9fa;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .group-checkbox-label:hover {
+        background-color: #e9ecef;
+    }
+    .group-checkbox-label input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+    }
+    .group-checkbox-label input[type="checkbox"]:checked + span {
+        font-weight: 600;
+        color: #007bff;
+    }
+    .group-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 8px 16px;
+        border: 1px solid #ccc;
+        border-radius: 20px;
+        background-color: #f8f9fa;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        user-select: none;
+    }
+    .group-pill:hover {
+        background-color: #e9ecef;
+        border-color: #adb5bd;
+    }
+    .group-pill.selected {
+        background-color: #fd7e14;
+        border-color: #fd7e14;
+        color: white;
+    }
+    .group-pill.selected:hover {
+        background-color: #e96b02;
+        border-color: #e96b02;
     }
     .btn-create-alert {
         background-color: #007bff;
@@ -804,6 +921,7 @@ const AlertsConfig = {
         dismiss: '/api/alerts/dismiss/',
         delete: '/api/alerts/delete/',
         update: '/api/alerts/update/',
+        group: '/api/alerts/group/',
         itemSearch: '/api/items/'
     },
     
@@ -830,6 +948,7 @@ const AlertsConfig = {
         minimumPrice: {
             id: 'minimumPrice',
             label: 'Minimum Price',
+            shortLabel: 'Min',
             requiresInput: true,
             inputType: 'number',
             inputPlaceholder: 'Enter minimum price...',
@@ -855,11 +974,49 @@ const AlertsConfig = {
                 // Default: use current low price if available
                 return (alert.spread_low || alert.price || 0) >= minPrice;
             }
+        },
+        maximumPrice: {
+            id: 'maximumPrice',
+            label: 'Maximum Price',
+            shortLabel: 'Max',
+            requiresInput: true,
+            inputType: 'number',
+            inputPlaceholder: 'Enter maximum price...',
+            testWithValue: (alert, value) => {
+                const maxPrice = parseInt(value);
+                if (isNaN(maxPrice)) return true;
+                
+                // For above/below alerts, use the price threshold
+                if (alert.type === 'above' || alert.type === 'below') {
+                    return (alert.price || 0) <= maxPrice;
+                }
+                
+                // For spread alerts with all items, use maximum_price field
+                if (alert.type === 'spread' && alert.is_all_items) {
+                    return (alert.maximum_price || 0) <= maxPrice;
+                }
+                
+                // For spread alerts with single item, use current high price
+                if (alert.type === 'spread' && !alert.is_all_items) {
+                    return (alert.spread_high || 0) <= maxPrice;
+                }
+                
+                // Default: use current high price if available
+                return (alert.spread_high || alert.price || 0) <= maxPrice;
+            }
+        },
+        myGroups: {
+            id: 'myGroups',
+            label: 'My Groups',
+            requiresModal: true,
+            testWithValue: (alert, selectedGroups) => {
+                if (!selectedGroups || selectedGroups.length === 0) return true;
+                // Check if alert belongs to any of the selected groups
+                const alertGroups = alert.groups || [];
+                return selectedGroups.some(group => alertGroups.includes(group));
+            }
         }
     },
-
-
-
 
     // DOM element selectors for the create form
     selectors: {
@@ -911,6 +1068,9 @@ const AlertsConfig = {
         myAlertsPane: '#my-alerts',
         spreadModal: '#spread-modal',
         spreadItemsList: '#spread-items-list',
+        groupModal: '#group-modal',
+        groupList: '#group-list',
+        newGroupInput: '#new-group-input',
         tabButtons: '.tab-btn',
         tabPanes: '.tab-pane'
     },
@@ -943,6 +1103,7 @@ const AlertsState = {
     spreadDataCache: {},            // Cache for spread alert data (keyed by alert ID)
     activeFilters: new Set(),       // Currently active filter IDs
     filterValues: {},               // Values for input-based filters (keyed by filter ID)
+    alertGroups: [],                // Known alert groups
     
     /**
      * Stores spread data for a specific alert in the cache.
@@ -958,6 +1119,20 @@ const AlertsState = {
      */
     getSpreadData(alertId) {
         return this.spreadDataCache[alertId] || null;
+    },
+
+    /**
+     * Updates known alert groups from alert data payload.
+     */
+    setAlertGroups(groups) {
+        this.alertGroups = Array.isArray(groups) ? groups : [];
+    },
+
+    /**
+     * Returns known alert groups.
+     */
+    getAlertGroups() {
+        return this.alertGroups || [];
     },
     
     /**
@@ -1039,6 +1214,30 @@ const AlertsAPI = {
             return true;
         } catch (error) {
             console.error('Error deleting alerts:', error);
+            return false;
+        }
+    },
+
+    /**
+     * Adds alerts to groups (creates groups if needed).
+     */
+    async groupAlerts(alertIds, groups, newGroups) {
+        try {
+            await fetch(AlertsConfig.endpoints.group, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': AlertsConfig.csrfToken
+                },
+                body: JSON.stringify({
+                    alert_ids: alertIds,
+                    groups: groups,
+                    new_groups: newGroups
+                })
+            });
+            return true;
+        } catch (error) {
+            console.error('Error grouping alerts:', error);
             return false;
         }
     },
@@ -1204,6 +1403,7 @@ const AlertsUI = {
                '<select id="alert-action-select" class="action-dropdown" onchange="AlertActions.handleAction(this.value); this.value=\'\';">' +
                '<option value="">Actions</option>' +
                '<option value="delete">Delete</option>' +
+               '<option value="group">Add to Group</option>' +
                '</select>' +
                '</div>' +
                '<div class="alert-actions-right" id="active-filters">' +
@@ -1248,6 +1448,7 @@ const AlertsUI = {
     
     /**
      * Renders the complete alerts list.
+     * When groups filter is active, displays alerts grouped by their group names.
      */
     renderAlertsList(alerts) {
         if (!alerts || alerts.length === 0) {
@@ -1261,11 +1462,65 @@ const AlertsUI = {
             return '<p class="no-alerts">No alerts match the current filters.</p>';
         }
         
+        // Check if groups filter is active - if so, render grouped
+        const selectedGroups = AlertsState.getFilterValue('myGroups');
+        if (selectedGroups && selectedGroups.length > 0 && AlertsState.activeFilters.has('myGroups')) {
+            return this.renderGroupedAlertsList(filteredAlerts, selectedGroups);
+        }
+        
         let html = '<ul class="alerts-list">';
         filteredAlerts.forEach(alert => {
             html += this.renderAlertItem(alert);
         });
         html += '</ul>';
+        return html;
+    },
+    
+    /**
+     * Renders alerts grouped by their group names.
+     * Groups are displayed in alphabetical order, each with a header.
+     */
+    renderGroupedAlertsList(alerts, selectedGroups) {
+        // Sort selected groups alphabetically
+        const sortedGroups = [...selectedGroups].sort((a, b) => a.localeCompare(b));
+        
+        // Group alerts by their groups
+        const groupedAlerts = {};
+        sortedGroups.forEach(group => {
+            groupedAlerts[group] = [];
+        });
+        
+        alerts.forEach(alert => {
+            const alertGroups = alert.groups || [];
+            sortedGroups.forEach(group => {
+                if (alertGroups.includes(group)) {
+                    groupedAlerts[group].push(alert);
+                }
+            });
+        });
+        
+        let html = '';
+        sortedGroups.forEach(group => {
+            const groupAlerts = groupedAlerts[group];
+            if (groupAlerts.length > 0) {
+                // Sort alerts within group alphabetically by their text
+                groupAlerts.sort((a, b) => (a.text || '').localeCompare(b.text || ''));
+                
+                html += '<div class="alert-group">';
+                html += '<h3 class="alert-group-header">' + group + '</h3>';
+                html += '<ul class="alerts-list">';
+                groupAlerts.forEach(alert => {
+                    html += this.renderAlertItem(alert);
+                });
+                html += '</ul>';
+                html += '</div>';
+            }
+        });
+        
+        if (!html) {
+            return '<p class="no-alerts">No alerts found in the selected groups.</p>';
+        }
+        
         return html;
     },
     
@@ -1307,6 +1562,10 @@ const AlertsUI = {
     updateMyAlertsPane(data) {
         const pane = document.querySelector(AlertsConfig.selectors.myAlertsPane);
         if (!pane) return;
+
+        if (data && data.groups) {
+            AlertsState.setAlertGroups(data.groups);
+        }
         
         // Check if any alert checkboxes are checked
         const hasCheckedAlerts = pane.querySelectorAll('.alert-checkbox:checked').length > 0;
@@ -1361,6 +1620,10 @@ const AlertsUI = {
     updateMyAlertsPaneSelective(data) {
         const pane = document.querySelector(AlertsConfig.selectors.myAlertsPane);
         if (!pane) return;
+
+        if (data && data.groups) {
+            AlertsState.setAlertGroups(data.groups);
+        }
         
         // Update triggered notifications (preserve status notifications)
         const notificationsContainer = pane.querySelector('#triggered-notifications');
@@ -1374,29 +1637,44 @@ const AlertsUI = {
             notificationsContainer.innerHTML = statusHtml + notificationsHtml;
         }
         
-        // Update alerts list only
+        // Update alerts list only - find the container to replace
         const alertsList = pane.querySelector('.alerts-list');
+        const alertGroup = pane.querySelector('.alert-group');
         const noAlertsMsg = pane.querySelector('.no-alerts');
         
         const filteredAlerts = FilterManager.applyFilters(data.alerts || []);
         
-        if (alertsList) {
-            if (filteredAlerts.length === 0) {
-                alertsList.outerHTML = '<p class="no-alerts">No alerts match the current filters.</p>';
-            } else {
-                let html = '';
-                filteredAlerts.forEach(alert => {
-                    html += this.renderAlertItem(alert);
-                });
-                alertsList.innerHTML = html;
-            }
-        } else if (noAlertsMsg && filteredAlerts.length > 0) {
-            let html = '<ul class="alerts-list">';
+        // Check if groups filter is active
+        const selectedGroups = AlertsState.getFilterValue('myGroups');
+        const isGroupedView = selectedGroups && selectedGroups.length > 0 && AlertsState.activeFilters.has('myGroups');
+        
+        // Build the new HTML
+        let newHtml = '';
+        if (filteredAlerts.length === 0) {
+            newHtml = '<p class="no-alerts">No alerts match the current filters.</p>';
+        } else if (isGroupedView) {
+            newHtml = this.renderGroupedAlertsList(filteredAlerts, selectedGroups);
+        } else {
+            newHtml = '<ul class="alerts-list">';
             filteredAlerts.forEach(alert => {
-                html += this.renderAlertItem(alert);
+                newHtml += this.renderAlertItem(alert);
             });
-            html += '</ul>';
-            noAlertsMsg.outerHTML = html;
+            newHtml += '</ul>';
+        }
+        
+        // Replace the existing content
+        if (alertGroup) {
+            // If we have grouped view, replace all groups
+            const allGroups = pane.querySelectorAll('.alert-group');
+            const firstGroup = allGroups[0];
+            allGroups.forEach((g, i) => { if (i > 0) g.remove(); });
+            if (firstGroup) {
+                firstGroup.outerHTML = newHtml;
+            }
+        } else if (alertsList) {
+            alertsList.outerHTML = newHtml;
+        } else if (noAlertsMsg) {
+            noAlertsMsg.outerHTML = newHtml;
         }
     }
 };
@@ -1429,7 +1707,22 @@ const FilterManager = {
             return;
         }
         
+        // If filter requires modal, show modal instead
+        if (filter.requiresModal) {
+            this.showFilterModal(filterId);
+            return;
+        }
+        
         this.activateFilter(filterId);
+    },
+    
+    /**
+     * Shows a modal for a modal-based filter.
+     */
+    showFilterModal(filterId) {
+        if (filterId === 'myGroups') {
+            openGroupsFilterModal();
+        }
     },
     
     /**
@@ -1507,7 +1800,18 @@ const FilterManager = {
         const container = document.querySelector('#active-filters');
         const dropdown = container ? container.querySelector('.filter-dropdown') : null;
         if (dropdown) {
-            const label = displayValue ? filter.label + ': ' + parseInt(displayValue).toLocaleString() : filter.label;
+            // Format the label based on whether it's a numeric value or not
+            let label;
+            if (displayValue) {
+                const numValue = parseInt(displayValue);
+                if (!isNaN(numValue) && filter.requiresInput) {
+                    label = filter.label + ': ' + numValue.toLocaleString();
+                } else {
+                    label = filter.label + ': ' + displayValue;
+                }
+            } else {
+                label = filter.label;
+            }
             const tagHtml = '<span class="filter-tag" data-filter-id="' + filterId + '">' + label + 
                     '<button class="filter-tag-remove" onclick="removeFilter(\'' + filterId + '\')">&times;</button>' +
                     '</span>';
@@ -1599,8 +1903,8 @@ const FilterManager = {
                 const filter = AlertsConfig.filters[filterId];
                 if (!filter) continue;
                 
-                // Use testWithValue for input-based filters
-                if (filter.requiresInput && filter.testWithValue) {
+                // Use testWithValue for input-based or modal-based filters
+                if ((filter.requiresInput || filter.requiresModal) && filter.testWithValue) {
                     const value = AlertsState.getFilterValue(filterId);
                     if (!filter.testWithValue(alert, value)) {
                         return false;
@@ -1818,6 +2122,8 @@ const AlertActions = {
     handleAction(action) {
         if (action === 'delete') {
             this.confirmDelete();
+        } else if (action === 'group') {
+            GroupManager.open();
         }
     },
 
@@ -1946,6 +2252,124 @@ const AlertActions = {
         if (success) {
             ModalManager.closeEditModal();
             location.reload();
+        }
+    }
+};
+
+
+// =============================================================================
+// GROUP MANAGEMENT
+// =============================================================================
+/**
+ * Handles organizing alerts into groups.
+ */
+const GroupManager = {
+    escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/&/g, '&amp;')
+                  .replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;')
+                  .replace(/"/g, '&quot;')
+                  .replace(/'/g, '&#39;');
+    },
+
+    open() {
+        const selectedIds = this.getSelectedAlertIds();
+        if (selectedIds.length === 0) {
+            alert('Please select at least one alert first.');
+            return;
+        }
+
+        this.renderExistingGroups();
+        this.clearNewGroupInput();
+        const modal = document.querySelector(AlertsConfig.selectors.groupModal);
+        if (modal) {
+            modal.style.display = 'flex';
+        }
+    },
+
+    close() {
+        const modal = document.querySelector(AlertsConfig.selectors.groupModal);
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    },
+
+    clearNewGroupInput() {
+        const input = document.querySelector(AlertsConfig.selectors.newGroupInput);
+        if (input) input.value = '';
+    },
+
+    renderExistingGroups() {
+        const list = document.querySelector(AlertsConfig.selectors.groupList);
+        if (!list) return;
+
+        const groups = AlertsState.getAlertGroups();
+        if (!groups || groups.length === 0) {
+            list.innerHTML = '<p class="no-alerts">No groups yet. Add a new one below.</p>';
+            return;
+        }
+
+        list.innerHTML = '';
+        groups.forEach(name => {
+            const pill = document.createElement('span');
+            pill.className = 'group-pill';
+            pill.dataset.group = name;
+            pill.textContent = name;
+            pill.onclick = function() {
+                this.classList.toggle('selected');
+            };
+            list.appendChild(pill);
+        });
+    },
+
+    getSelectedAlertIds() {
+        const ids = [];
+        document.querySelectorAll('.alert-checkbox:checked').forEach(cb => {
+            const item = cb.closest('.alert-item');
+            if (item && item.dataset.alertId) {
+                ids.push(item.dataset.alertId);
+            }
+        });
+        return ids;
+    },
+
+    parseNewGroups() {
+        const input = document.querySelector(AlertsConfig.selectors.newGroupInput);
+        if (!input || !input.value.trim()) return [];
+        return input.value.split(',')
+            .map(g => g.trim())
+            .filter(g => g.length > 0);
+    },
+
+    getSelectedGroups() {
+        const selected = [];
+        document.querySelectorAll(AlertsConfig.selectors.groupList + ' .group-pill.selected')
+            .forEach(pill => selected.push(pill.dataset.group));
+        return selected;
+    },
+
+    async save() {
+        const alertIds = this.getSelectedAlertIds();
+        if (alertIds.length === 0) {
+            alert('Please select at least one alert first.');
+            return;
+        }
+
+        const existingGroups = this.getSelectedGroups();
+        const newGroups = this.parseNewGroups();
+
+        if (existingGroups.length === 0 && newGroups.length === 0) {
+            alert('Please choose an existing group or add a new one.');
+            return;
+        }
+
+        const success = await AlertsAPI.groupAlerts(alertIds, existingGroups, newGroups);
+        if (success) {
+            AlertActions.showStatusNotification('Alert' + (alertIds.length > 1 ? 's' : '') + ' organized into group(s)');
+            this.close();
+            AlertActions.clearSelections();
+            await AlertsRefresh.refresh();
         }
     }
 };
@@ -2249,12 +2673,22 @@ const EventManager = {
      */
     setupModalEvents() {
         const spreadModal = document.querySelector(AlertsConfig.selectors.spreadModal);
+        const groupModal = document.querySelector(AlertsConfig.selectors.groupModal);
         
         // Close spread modal on backdrop click
         if (spreadModal) {
             spreadModal.addEventListener('click', function(e) {
                 if (e.target.id === 'spread-modal') {
                     ModalManager.closeSpreadModal();
+                }
+            });
+        }
+
+        // Close group modal on backdrop click
+        if (groupModal) {
+            groupModal.addEventListener('click', function(e) {
+                if (e.target.id === 'group-modal') {
+                    GroupManager.close();
                 }
             });
         }
@@ -2265,6 +2699,10 @@ const EventManager = {
                 const spreadModal = document.querySelector(AlertsConfig.selectors.spreadModal);
                 if (spreadModal && spreadModal.style.display === 'flex') {
                     ModalManager.closeSpreadModal();
+                }
+                const groupModal = document.querySelector(AlertsConfig.selectors.groupModal);
+                if (groupModal && groupModal.style.display === 'flex') {
+                    GroupManager.close();
                 }
             }
         });
@@ -2384,6 +2822,76 @@ function handleFilterInputKeydown(event, filterId) {
         event.preventDefault();
         cancelFilterInput(filterId);
     }
+}
+
+// Groups filter modal functions
+function openGroupsFilterModal() {
+    const modal = document.getElementById('groups-filter-modal');
+    const listContainer = document.getElementById('groups-filter-list');
+    const noGroupsMsg = document.getElementById('no-groups-message');
+    
+    const groups = AlertsState.getAlertGroups();
+    const selectedGroups = AlertsState.getFilterValue('myGroups') || [];
+    
+    if (groups.length === 0) {
+        listContainer.style.display = 'none';
+        noGroupsMsg.style.display = 'block';
+    } else {
+        listContainer.style.display = 'block';
+        noGroupsMsg.style.display = 'none';
+        
+        listContainer.innerHTML = '';
+        groups.forEach(group => {
+            const pill = document.createElement('span');
+            pill.className = 'group-pill' + (selectedGroups.includes(group) ? ' selected' : '');
+            pill.textContent = group;
+            pill.dataset.group = group;
+            pill.addEventListener('click', function() {
+                this.classList.toggle('selected');
+            });
+            listContainer.appendChild(pill);
+        });
+    }
+    
+    modal.style.display = 'flex';
+}
+
+function closeGroupsFilterModal() {
+    const modal = document.getElementById('groups-filter-modal');
+    modal.style.display = 'none';
+}
+
+function applyGroupsFilter() {
+    const pills = document.querySelectorAll('#groups-filter-list .group-pill.selected');
+    const selectedGroups = Array.from(pills).map(pill => pill.dataset.group);
+    
+    if (selectedGroups.length === 0) {
+        // If no groups selected, remove the filter if it exists
+        if (AlertsState.activeFilters.has('myGroups')) {
+            FilterManager.removeFilter('myGroups');
+        }
+        closeGroupsFilterModal();
+        return;
+    }
+    
+    AlertsState.setFilterValue('myGroups', selectedGroups);
+    
+    // If filter not already active, activate it
+    if (!AlertsState.activeFilters.has('myGroups')) {
+        const displayValue = selectedGroups.length === 1 ? selectedGroups[0] : selectedGroups.length + ' groups';
+        FilterManager.activateFilter('myGroups', displayValue);
+    } else {
+        // Update the filter tag label
+        const tag = document.querySelector('.filter-tag[data-filter-id="myGroups"]');
+        if (tag) {
+            const displayValue = selectedGroups.length === 1 ? selectedGroups[0] : selectedGroups.length + ' groups';
+            tag.innerHTML = 'My Groups: ' + displayValue + 
+                '<button class="filter-tag-remove" onclick="removeFilter(\'myGroups\')">&times;</button>';
+        }
+        FilterManager.updateAlertsList();
+    }
+    
+    closeGroupsFilterModal();
 }
 
 function confirmDelete() {

@@ -44,6 +44,14 @@ class Flip(models.Model):
         return f"{self.item_name} x{self.quantity}"
 
 
+class AlertGroup(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+
 class Alert(models.Model):
     DIRECTION_CHOICES = [
         ('up', 'Up'),
@@ -84,6 +92,7 @@ class Alert(models.Model):
     minimum_price = models.IntegerField(blank=True, null=True, default=None)
     maximum_price = models.IntegerField(blank=True, null=True, default=None)
     email_notification = models.BooleanField(default=False)
+    groups = models.ManyToManyField(AlertGroup, blank=True, related_name='alerts')
     
     def __str__(self):
         if self.type == 'spread':
@@ -108,4 +117,3 @@ class Alert(models.Model):
         if self.type == "below":
             return f"{self.item_name} has fallen below {self.price:,} to {price_formatted}"
         return f"Item price is now {price_formatted}"
-
