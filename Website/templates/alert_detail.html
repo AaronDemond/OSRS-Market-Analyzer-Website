@@ -291,12 +291,34 @@
         display: block;
     }
     
+    .edit-mode .edit-form .form-grid {
+        display: grid;
+    }
+    
     .edit-mode .display-content {
         display: none;
     }
     
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+    }
+    
+    @media (max-width: 900px) {
+        .form-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+    
+    @media (max-width: 600px) {
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    
     .form-group {
-        margin-bottom: 20px;
+        margin-bottom: 0;
     }
     
     .form-group label {
@@ -328,6 +350,18 @@
     .form-group input:disabled {
         background: #f8f9fa;
         cursor: not-allowed;
+    }
+    
+    .form-group.toggle-group {
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+    }
+    
+    .form-group.toggle-group .toggle-container {
+        height: 46px;
+        display: flex;
+        align-items: center;
     }
     
     /* Toggle Switch */
@@ -659,102 +693,107 @@
             
             <!-- Edit Form (shown when editing) -->
             <div class="edit-form">
-                <!-- Active Toggle -->
-                <div class="form-group" id="active-group">
-                    <div class="toggle-container">
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="edit-is-active" {% if alert.is_active %}checked{% endif %}>
-                            <span class="toggle-slider"></span>
-                        </label>
-                        <span class="toggle-label">Active</span>
+                <div class="form-grid">
+                    <!-- Active Toggle -->
+                    <div class="form-group toggle-group" id="active-group">
+                        <label>Active</label>
+                        <div class="toggle-container">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="edit-is-active" {% if alert.is_active %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="toggle-label">{% if alert.is_active %}Enabled{% else %}Disabled{% endif %}</span>
+                        </div>
                     </div>
-                </div>
-                
-                <!-- Alert Type -->
-                <div class="form-group" id="type-group">
-                    <label for="edit-type">Alert Type</label>
-                    <select id="edit-type" onchange="handleTypeChange()">
-                        <option value="above" {% if alert.type == 'above' %}selected{% endif %}>Above Threshold</option>
-                        <option value="below" {% if alert.type == 'below' %}selected{% endif %}>Below Threshold</option>
-                        <option value="spread" {% if alert.type == 'spread' %}selected{% endif %}>Spread</option>
-                        <option value="spike" {% if alert.type == 'spike' %}selected{% endif %}>Spike</option>
-                    </select>
-                </div>
-                
-                <!-- All Items Toggle (spike/spread only) -->
-                <div class="form-group" id="all-items-group" style="display: none;">
-                    <div class="toggle-container">
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="edit-all-items" {% if alert.is_all_items %}checked{% endif %} onchange="handleScopeChange()">
-                            <span class="toggle-slider"></span>
-                        </label>
-                        <span class="toggle-label">All Items</span>
+                    
+                    <!-- Alert Type -->
+                    <div class="form-group" id="type-group">
+                        <label for="edit-type">Alert Type</label>
+                        <select id="edit-type" onchange="handleTypeChange()">
+                            <option value="above" {% if alert.type == 'above' %}selected{% endif %}>Above Threshold</option>
+                            <option value="below" {% if alert.type == 'below' %}selected{% endif %}>Below Threshold</option>
+                            <option value="spread" {% if alert.type == 'spread' %}selected{% endif %}>Spread</option>
+                            <option value="spike" {% if alert.type == 'spike' %}selected{% endif %}>Spike</option>
+                        </select>
                     </div>
-                    <input type="hidden" id="edit-is-all-items" value="{% if alert.is_all_items %}true{% else %}false{% endif %}">
-                </div>
-                
-                <!-- Item Name -->
-                <div class="form-group" id="item-name-group">
-                    <label for="edit-item-name">Item Name</label>
-                    <input type="text" id="edit-item-name" value="{{ alert.item_name|default:'' }}" placeholder="Enter item name..." autocomplete="off">
-                    <input type="hidden" id="edit-item-id" value="{{ alert.item_id|default:'' }}">
-                </div>
-                
-                <!-- Price Threshold (above/below only) -->
-                <div class="form-group" id="price-group">
-                    <label for="edit-price">Price Threshold</label>
-                    <input type="number" id="edit-price" value="{{ alert.price|default:'' }}" placeholder="Enter price...">
-                </div>
-                
-                <!-- Reference Price (above/below/spike) -->
-                <div class="form-group" id="reference-group">
-                    <label for="edit-reference">Reference Price</label>
-                    <select id="edit-reference">
-                        <option value="high" {% if alert.reference == 'high' %}selected{% endif %}>High Price</option>
-                        <option value="low" {% if alert.reference == 'low' or not alert.reference %}selected{% endif %}>Low Price</option>
-                    </select>
-                </div>
-                
-                <!-- Percentage (spread/spike) -->
-                <div class="form-group" id="percentage-group" style="display: none;">
-                    <label for="edit-percentage">Percentage (%)</label>
-                    <input type="number" id="edit-percentage" value="{{ alert.percentage|default:'' }}" step="0.001" min="0.001" placeholder="Enter percentage...">
-                </div>
-                
-                <!-- Time Frame (spike only) -->
-                <div class="form-group" id="time-frame-group" style="display: none;">
-                    <label for="edit-time-frame">Time Frame (minutes)</label>
-                    <input type="number" id="edit-time-frame" value="{% if alert.type == 'spike' %}{{ alert.price|default:'' }}{% endif %}" min="1" step="1" placeholder="e.g. 10">
-                </div>
-                
-                <!-- Direction (spike only) -->
-                <div class="form-group" id="direction-group" style="display: none;">
-                    <label for="edit-direction">Direction</label>
-                    <select id="edit-direction">
-                        <option value="both" {% if alert.direction == 'both' or not alert.direction %}selected{% endif %}>Both</option>
-                        <option value="up" {% if alert.direction == 'up' %}selected{% endif %}>Up</option>
-                        <option value="down" {% if alert.direction == 'down' %}selected{% endif %}>Down</option>
-                    </select>
-                </div>
-                
-                <!-- Min/Max Price (all items only) -->
-                <div class="form-group" id="min-price-group" style="display: none;">
-                    <label for="edit-minimum-price">Minimum Price</label>
-                    <input type="number" id="edit-minimum-price" value="{{ alert.minimum_price|default:'' }}" min="0" placeholder="Enter minimum price...">
-                </div>
-                <div class="form-group" id="max-price-group" style="display: none;">
-                    <label for="edit-maximum-price">Maximum Price</label>
-                    <input type="number" id="edit-maximum-price" value="{{ alert.maximum_price|default:'' }}" min="0" placeholder="Enter maximum price...">
-                </div>
-                
-                <!-- SMS Notification -->
-                <div class="form-group">
-                    <div class="toggle-container">
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="edit-email-notification" {% if alert.email_notification %}checked{% endif %}>
-                            <span class="toggle-slider"></span>
-                        </label>
-                        <span class="toggle-label">Receive SMS Notification</span>
+                    
+                    <!-- All Items Toggle (spike/spread only) -->
+                    <div class="form-group toggle-group" id="all-items-group" style="display: none;">
+                        <label>All Items</label>
+                        <div class="toggle-container">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="edit-all-items" {% if alert.is_all_items %}checked{% endif %} onchange="handleScopeChange()">
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="toggle-label">{% if alert.is_all_items %}Yes{% else %}No{% endif %}</span>
+                        </div>
+                        <input type="hidden" id="edit-is-all-items" value="{% if alert.is_all_items %}true{% else %}false{% endif %}">
+                    </div>
+                    
+                    <!-- Item Name -->
+                    <div class="form-group" id="item-name-group">
+                        <label for="edit-item-name">Item Name</label>
+                        <input type="text" id="edit-item-name" value="{{ alert.item_name|default:'' }}" placeholder="Enter item name..." autocomplete="off">
+                        <input type="hidden" id="edit-item-id" value="{{ alert.item_id|default:'' }}">
+                    </div>
+                    
+                    <!-- Price Threshold (above/below only) -->
+                    <div class="form-group" id="price-group">
+                        <label for="edit-price">Price Threshold</label>
+                        <input type="number" id="edit-price" value="{{ alert.price|default:'' }}" placeholder="Enter price...">
+                    </div>
+                    
+                    <!-- Reference Price (above/below/spike) -->
+                    <div class="form-group" id="reference-group">
+                        <label for="edit-reference">Reference Price</label>
+                        <select id="edit-reference">
+                            <option value="high" {% if alert.reference == 'high' %}selected{% endif %}>High Price</option>
+                            <option value="low" {% if alert.reference == 'low' or not alert.reference %}selected{% endif %}>Low Price</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Percentage (spread/spike) -->
+                    <div class="form-group" id="percentage-group" style="display: none;">
+                        <label for="edit-percentage">Percentage (%)</label>
+                        <input type="number" id="edit-percentage" value="{{ alert.percentage|default:'' }}" step="0.001" min="0.001" placeholder="Enter percentage...">
+                    </div>
+                    
+                    <!-- Time Frame (spike only) -->
+                    <div class="form-group" id="time-frame-group" style="display: none;">
+                        <label for="edit-time-frame">Time Frame (minutes)</label>
+                        <input type="number" id="edit-time-frame" value="{% if alert.type == 'spike' %}{{ alert.price|default:'' }}{% endif %}" min="1" step="1" placeholder="e.g. 10">
+                    </div>
+                    
+                    <!-- Direction (spike only) -->
+                    <div class="form-group" id="direction-group" style="display: none;">
+                        <label for="edit-direction">Direction</label>
+                        <select id="edit-direction">
+                            <option value="both" {% if alert.direction == 'both' or not alert.direction %}selected{% endif %}>Both</option>
+                            <option value="up" {% if alert.direction == 'up' %}selected{% endif %}>Up</option>
+                            <option value="down" {% if alert.direction == 'down' %}selected{% endif %}>Down</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Min/Max Price (all items only) -->
+                    <div class="form-group" id="min-price-group" style="display: none;">
+                        <label for="edit-minimum-price">Minimum Price</label>
+                        <input type="number" id="edit-minimum-price" value="{{ alert.minimum_price|default:'' }}" min="0" placeholder="Enter minimum price...">
+                    </div>
+                    <div class="form-group" id="max-price-group" style="display: none;">
+                        <label for="edit-maximum-price">Maximum Price</label>
+                        <input type="number" id="edit-maximum-price" value="{{ alert.maximum_price|default:'' }}" min="0" placeholder="Enter maximum price...">
+                    </div>
+                    
+                    <!-- SMS Notification -->
+                    <div class="form-group toggle-group" id="sms-group">
+                        <label>SMS Notification</label>
+                        <div class="toggle-container">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="edit-email-notification" {% if alert.email_notification %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="toggle-label">{% if alert.email_notification %}Enabled{% else %}Disabled{% endif %}</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -998,19 +1037,33 @@ function handleScopeChange() {
     const minPriceGroup = document.getElementById('min-price-group');
     const maxPriceGroup = document.getElementById('max-price-group');
     const isAllItemsInput = document.getElementById('edit-is-all-items');
+    const toggleLabel = document.querySelector('#all-items-group .toggle-label');
     
     if (isAllItems) {
         itemNameGroup.style.display = 'none';
         minPriceGroup.style.display = 'block';
         maxPriceGroup.style.display = 'block';
         isAllItemsInput.value = 'true';
+        if (toggleLabel) toggleLabel.textContent = 'Yes';
     } else {
         itemNameGroup.style.display = 'block';
         minPriceGroup.style.display = 'none';
         maxPriceGroup.style.display = 'none';
         isAllItemsInput.value = 'false';
+        if (toggleLabel) toggleLabel.textContent = 'No';
     }
 }
+
+// Update toggle labels when changed
+document.getElementById('edit-is-active').addEventListener('change', function() {
+    const label = document.querySelector('#active-group .toggle-label');
+    if (label) label.textContent = this.checked ? 'Enabled' : 'Disabled';
+});
+
+document.getElementById('edit-email-notification').addEventListener('change', function() {
+    const label = document.querySelector('#sms-group .toggle-label');
+    if (label) label.textContent = this.checked ? 'Enabled' : 'Disabled';
+});
 
 async function saveChanges() {
     const alertType = document.getElementById('edit-type').value;
