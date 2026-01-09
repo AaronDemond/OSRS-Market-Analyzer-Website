@@ -296,8 +296,9 @@ def create_alert(request):
         reference = request.POST.get('reference')
         percentage = request.POST.get('percentage')
         time_frame = request.POST.get('time_frame')
+        number_of_items = request.POST.get('number_of_items')
         direction = request.POST.get('direction')
-        is_all_items = request.POST.get('is_all_items') == 'true'
+        is_all_items_flag = request.POST.get('is_all_items') == 'true'
         minimum_price = request.POST.get('minimum_price')
         maximum_price = request.POST.get('maximum_price')
         email_notification = request.POST.get('email_notification') == 'on'
@@ -306,6 +307,11 @@ def create_alert(request):
             direction_value = (direction or '').lower()
             if direction_value not in ['up', 'down', 'both']:
                 direction_value = 'both'
+        
+        # Determine all-items flag based on selection
+        is_all_items = is_all_items_flag
+        if alert_type == 'spike' and number_of_items:
+            is_all_items = number_of_items == 'all'
         
         # Look up item ID from name if not provided
         if not item_id and item_name:

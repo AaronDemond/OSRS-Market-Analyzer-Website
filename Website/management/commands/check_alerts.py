@@ -155,7 +155,75 @@ class Command(BaseCommand):
         
         # Handle spike alerts (rolling window percent change)
         if alert.type == 'spike':
-            if not alert.item_id or alert.percentage is None or not alert.reference or not alert.price:
+            if alert.percentage is None or not alert.reference or not alert.price:
+                return False
+
+            try:
+                time_frame_minutes = int(alert.price)
+                print("Time frame (minutes):", time_frame_minutes)
+            except (TypeError, ValueError):
+                return False
+            if time_frame_minutes <= 0:
+                return False
+
+            now = time.time()
+            direction = (alert.direction or 'both').lower()
+            cutoff = now - (time_frame_minutes * 60)
+
+            if alert.is_all_items:
+                item_mapping = self.get_item_mapping()
+                matches = []
+                for item_id, price_data in all_prices.items():
+                    if not price_data:
+                        continue
+                    current_price = price_data.get('high') if alert.reference == 'high' else price_data.get('low')
+                    if current_price is None:
+                        continue
+
+                    key = f"{item_id}:{alert.reference or 'low'}"
+                    history = self.price_history[key]
+                    history.append((now, current_price))
+                    self.price_history[key] = [(ts, val) for ts, val in history if ts >= cutoff]
+                    window = self.price_history[key]
+                    if not window:
+                        continue
+
+                    baseline_price = window[0][1]
+                    if baseline_price in (None, 0):
+                        continue
+
+                    if alert.minimum_price is not None and baseline_price < alert.minimum_price:
+                        continue
+                    if alert.maximum_price is not None and baseline_price > alert.maximum_price:
+                        continue
+
+                    percent_change = ((current_price - baseline_price) / baseline_price) * 100
+                    should_trigger = False
+                    if direction == 'up':
+                        should_trigger = percent_change >= alert.percentage
+                    elif direction == 'down':
+                        should_trigger = percent_change <= -alert.percentage
+                    else:
+                        should_trigger = abs(percent_change) >= alert.percentage
+
+                    if should_trigger:
+                        matches.append({
+                            'item_id': item_id,
+                            'item_name': item_mapping.get(item_id, f'Item {item_id}'),
+                            'baseline': baseline_price,
+                            'current': current_price,
+                            'percent_change': round(percent_change, 2),
+                            'reference': alert.reference,
+                            'direction': direction
+                        })
+
+                if matches:
+                    matches.sort(key=lambda x: x['percent_change'], reverse=True)
+                    alert.triggered_data = json.dumps(matches)
+                    return matches
+                return False
+
+            if not alert.item_id:
                 return False
 
             price_data = all_prices.get(str(alert.item_id))
@@ -167,19 +235,10 @@ class Command(BaseCommand):
             if current_price is None:
                 return False
 
-            try:
-                time_frame_minutes = int(alert.price)
-                print("Time frame (minutes):", time_frame_minutes)
-            except (TypeError, ValueError):
-                return False
-            if time_frame_minutes <= 0:
-                return False
-            now = time.time()
             key = f"{alert.item_id}:{alert.reference or 'low'}"
 
             history = self.price_history[key]
             history.append((now, current_price))
-            cutoff = now - (time_frame_minutes * 60)
             self.price_history[key] = [(ts, val) for ts, val in history if ts >= cutoff]
 
             window = self.price_history[key]
@@ -192,7 +251,6 @@ class Command(BaseCommand):
                 return False
 
             percent_change = ((current_price - baseline_price) / baseline_price) * 100
-            direction = (alert.direction or 'both').lower()
             should_trigger = False
             if direction == 'up':
                 should_trigger = percent_change >= alert.percentage
@@ -244,8 +302,11 @@ class Command(BaseCommand):
         while True:
             # Get all active alerts (include triggered all_items spread alerts for re-check)
             active_alerts = Alert.objects.filter(is_active=True)
-            # Filter to non-triggered OR is_all_items spread (which can re-trigger)
-            alerts_to_check = [a for a in active_alerts if not a.is_triggered or (a.type == 'spread' and a.is_all_items)]
+            # Filter to non-triggered OR is_all_items spread/spike (which can re-trigger)
+            alerts_to_check = [
+                a for a in active_alerts
+                if (not a.is_triggered) or (a.type == 'spread' and a.is_all_items) or (a.type == 'spike' and a.is_all_items)
+            ]
             
             if alerts_to_check:
                 self.stdout.write(f'Checking {len(alerts_to_check)} alerts...')
@@ -269,6 +330,18 @@ class Command(BaseCommand):
                                     self.style.WARNING(f'TRIGGERED (all items spread): {len(result)} items found')
                                 )
                                 # Send email notification if enabled
+                                if alert.email_notification:
+                                    self.send_alert_notification(alert, alert.triggered_text())
+                            elif alert.type == 'spike' and alert.is_all_items and isinstance(result, list):
+                                alert.triggered_data = json.dumps(result)
+                                alert.is_triggered = True
+                                alert.is_dismissed = False
+                                alert.is_active = True  # keep monitoring
+                                # Keep active for re-trigger
+                                alert.save()
+                                self.stdout.write(
+                                    self.style.WARNING(f'TRIGGERED (all items spike): {len(result)} items found')
+                                )
                                 if alert.email_notification:
                                     self.send_alert_notification(alert, alert.triggered_text())
                             else:

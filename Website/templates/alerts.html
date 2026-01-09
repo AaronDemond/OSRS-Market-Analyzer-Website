@@ -94,6 +94,15 @@
                     <option value="spike">Spike</option>
                 </select>
             </div>
+
+            <!-- Number of items (shown for spike only) -->
+            <div class="form-group" id="number-items-group" style="display: none;">
+                <label for="number-of-items">Number of Items</label>
+                <select name="number_of_items" id="number-of-items" onchange="handleSpikeScopeChange()">
+                    <option value="one" selected>One</option>
+                    <option value="all">All</option>
+                </select>
+            </div>
             
             <!-- Spread-specific fields -->
             <div class="form-group" id="spread-scope-group" style="display: none;">
@@ -204,6 +213,15 @@
                     <option value="spike">Spike</option>
                 </select>
             </div>
+
+            <!-- Number of items (shown for spike only) -->
+            <div class="form-group" id="edit-number-items-group" style="display: none;">
+                <label for="edit-number-of-items">Number of Items</label>
+                <select name="number_of_items" id="edit-number-of-items" onchange="handleEditSpikeScopeChange()">
+                    <option value="one" selected>One</option>
+                    <option value="all">All</option>
+                </select>
+            </div>
             
             <!-- Spread-specific fields -->
             <div class="form-group" id="edit-spread-scope-group" style="display: none;">
@@ -292,6 +310,22 @@
         </div>
         <div class="modal-buttons">
             <button type="button" class="btn-cancel" onclick="closeSpreadModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Spike Details Modal -->
+<div id="spike-modal" class="modal" style="display: none;">
+    <div class="modal-content modal-content-large">
+        <div class="modal-header">
+            <h2>Spike Alert Details</h2>
+            <button class="modal-close" onclick="closeSpikeModal()">&times;</button>
+        </div>
+        <div id="spike-modal-body">
+            <ul id="spike-items-list"></ul>
+        </div>
+        <div class="modal-buttons">
+            <button type="button" class="btn-cancel" onclick="closeSpikeModal()">Close</button>
         </div>
     </div>
 </div>
@@ -1203,11 +1237,13 @@ const AlertsConfig = {
             itemName: '#item-name',
             itemId: '#item-id',
             isAllItems: '#is-all-items',
+            numberItems: '#number-of-items',
             direction: '#direction',
             emailNotification: '#email-notification',
             suggestions: '#item-suggestions',
                 groups: {
                     spreadScope: '#spread-scope-group',
+                    numberItems: '#number-items-group',
                     itemName: '#item-name-group',
                     price: '#price-group',
                     reference: '#reference-group',
@@ -1227,6 +1263,7 @@ const AlertsConfig = {
             itemName: '#edit-item-name',
             itemId: '#edit-item-id',
             isAllItems: '#edit-is-all-items',
+            numberItems: '#edit-number-of-items',
                 price: '#edit-price',
                 reference: '#edit-reference',
                 percentage: '#edit-percentage',
@@ -1237,6 +1274,7 @@ const AlertsConfig = {
                 suggestions: '#edit-item-suggestions',
                 groups: {
                     spreadScope: '#edit-spread-scope-group',
+                    numberItems: '#edit-number-items-group',
                     itemName: '#edit-item-name-group',
                     price: '#edit-price-group',
                     reference: '#edit-reference-group',
@@ -1251,6 +1289,8 @@ const AlertsConfig = {
         myAlertsPane: '#my-alerts',
         spreadModal: '#spread-modal',
         spreadItemsList: '#spread-items-list',
+        spikeModal: '#spike-modal',
+        spikeItemsList: '#spike-items-list',
         groupModal: '#group-modal',
         groupList: '#group-list',
         newGroupInput: '#new-group-input',
@@ -1347,6 +1387,7 @@ const DropdownSizer = {
  */
 const AlertsState = {
     spreadDataCache: {},            // Cache for spread alert data (keyed by alert ID)
+    spikeDataCache: {},             // Cache for spike all-items data
     activeFilters: new Set(),       // Currently active filter IDs
     filterValues: {},               // Values for input-based filters (keyed by filter ID)
     alertGroups: [],                // Known alert groups
@@ -1370,6 +1411,14 @@ const AlertsState = {
      */
     getSpreadData(alertId) {
         return this.spreadDataCache[alertId] || null;
+    },
+
+    setSpikeData(alertId, data) {
+        this.spikeDataCache[alertId] = data;
+    },
+
+    getSpikeData(alertId) {
+        return this.spikeDataCache[alertId] || null;
     },
 
     /**
@@ -1589,6 +1638,11 @@ const AlertsUI = {
                        ', Spread: ' + alert.spread_percentage + '%';
             }
         }
+
+        // Spike alert for all items - show clickable text
+        if (alert.type === alertTypes.SPIKE && alert.is_all_items && alert.triggered_data) {
+            return 'Spike alert triggered. Click here for details';
+        }
         
         // Above/Below alert - show price movement
         if ((alert.type === alertTypes.ABOVE || alert.type === alertTypes.BELOW) && alert.current_price) {
@@ -1610,6 +1664,15 @@ const AlertsUI = {
                alert.is_all_items && 
                alert.triggered_data;
     },
+
+    /**
+     * Checks if an alert is a spike-all-items type.
+     */
+    isSpikeAllItemsAlert(alert) {
+        return alert.type === AlertsConfig.alertTypes.SPIKE &&
+               alert.is_all_items &&
+               alert.triggered_data;
+    },
     
     /**
      * Renders the green notification banners for triggered alerts.
@@ -1622,16 +1685,20 @@ const AlertsUI = {
         let html = '';
         triggeredAlerts.forEach(alert => {
             const isSpreadAllItems = this.isSpreadAllItemsAlert(alert);
+            const isSpikeAllItems = this.isSpikeAllItemsAlert(alert);
             
             // Cache spread data for later use in modal
             if (isSpreadAllItems) {
                 AlertsState.setSpreadData(alert.id, alert.triggered_data);
             }
+            if (isSpikeAllItems) {
+                AlertsState.setSpikeData(alert.id, alert.triggered_data);
+            }
             
             const clickHandler = isSpreadAllItems 
                 ? 'onclick="ModalManager.showSpreadDetails(' + alert.id + ')"' 
-                : '';
-            const clickableClass = isSpreadAllItems ? 'clickable-triggered' : '';
+                : (isSpikeAllItems ? 'onclick="ModalManager.showSpikeDetails(' + alert.id + ')"' : '');
+            const clickableClass = (isSpreadAllItems || isSpikeAllItems) ? 'clickable-triggered' : '';
             
             html += '<div class="triggered-notification" data-alert-id="' + alert.id + '">' +
                     '<span class="' + clickableClass + '" ' + clickHandler + '>' + alert.triggered_text + '</span>' +
@@ -1720,16 +1787,22 @@ const AlertsUI = {
      */
     renderAlertItem(alert) {
         const isSpreadAllItems = this.isSpreadAllItemsAlert(alert);
+        const isSpikeAllItems = this.isSpikeAllItemsAlert(alert);
         
         // Cache spread data if triggered
         if (isSpreadAllItems && alert.is_triggered) {
             AlertsState.setSpreadData(alert.id, alert.triggered_data);
         }
+        if (isSpikeAllItems && alert.is_triggered) {
+            AlertsState.setSpikeData(alert.id, alert.triggered_data);
+        }
         
-        const clickHandler = isSpreadAllItems && alert.is_triggered 
-            ? 'onclick="ModalManager.showSpreadDetails(' + alert.id + ')"' 
-            : '';
-        const clickableClass = isSpreadAllItems && alert.is_triggered 
+        const clickHandler = (isSpreadAllItems && alert.is_triggered)
+            ? 'onclick="ModalManager.showSpreadDetails(' + alert.id + ')"'
+            : ((isSpikeAllItems && alert.is_triggered)
+                ? 'onclick="ModalManager.showSpikeDetails(' + alert.id + ')"'
+                : '');
+        const clickableClass = (isSpreadAllItems || isSpikeAllItems) && alert.is_triggered 
             ? 'clickable-triggered' 
             : '';
         
@@ -1848,6 +1921,26 @@ const AlertsUI = {
                     '<div class="spread-item-details">Low: ' + lowPrice + ' | High: ' + highPrice + '</div>' +
                     '</div>' +
                     '<span class="spread-item-percentage">' + item.spread + '%</span>' +
+                    '</li>';
+        });
+        return html;
+    },
+
+    /**
+     * Renders spike items list for all-items spike alerts.
+     */
+    renderSpikeItemsList(items) {
+        let html = '';
+        items.forEach(item => {
+            const baseline = item.baseline ? item.baseline.toLocaleString() : 'N/A';
+            const current = item.current ? item.current.toLocaleString() : 'N/A';
+            const percent = item.percent_change != null ? item.percent_change.toFixed(2) : 'N/A';
+            html += '<li>' +
+                    '<div>' +
+                    '<span class="spread-item-name">' + item.item_name + '</span>' +
+                    '<div class="spread-item-details">Baseline: ' + baseline + ' | Current: ' + current + '</div>' +
+                    '</div>' +
+                    '<span class="spread-item-percentage">' + percent + '%</span>' +
                     '</li>';
         });
         return html;
@@ -2458,6 +2551,7 @@ const FormManager = {
         // Get all form group elements
         const elements = {
             spreadScope: document.querySelector(groups.spreadScope),
+            numberItems: document.querySelector(groups.numberItems),
             itemName: document.querySelector(groups.itemName),
             price: document.querySelector(groups.price),
             reference: document.querySelector(groups.reference),
@@ -2471,6 +2565,7 @@ const FormManager = {
         if (alertType === AlertsConfig.alertTypes.SPREAD) {
             // Spread alerts: show spread-specific fields
             elements.spreadScope.style.display = 'block';
+            if (elements.numberItems) elements.numberItems.style.display = 'none';
             elements.price.style.display = 'none';
             elements.reference.style.display = 'none';
             elements.percentage.style.display = 'block';
@@ -2482,20 +2577,19 @@ const FormManager = {
         } else if (alertType === AlertsConfig.alertTypes.SPIKE) {
             // Spike alerts: single item, show percentage + time frame, hide spread fields
             elements.spreadScope.style.display = 'none';
+            if (elements.numberItems) elements.numberItems.style.display = 'block';
             elements.itemName.style.display = 'block';
             elements.price.style.display = 'none';
             elements.reference.style.display = 'block';
             elements.percentage.style.display = 'block';
             elements.timeFrame.style.display = 'block';
             elements.direction.style.display = 'block';
-            elements.minPrice.style.display = 'none';
-            elements.maxPrice.style.display = 'none';
-            
-            // Reset is_all_items
-            document.querySelector(selectors.isAllItems).value = 'false';
+            // Spike uses min/max only when all items selected; handled in handleSpikeScopeChange
+            this.handleSpikeScopeChange(formType);
         } else {
             // Above/Below alerts: show threshold fields
             elements.spreadScope.style.display = 'none';
+            if (elements.numberItems) elements.numberItems.style.display = 'none';
             elements.itemName.style.display = 'block';
             elements.price.style.display = 'block';
             elements.reference.style.display = 'block';
@@ -2544,6 +2638,26 @@ const FormManager = {
     },
     
     /**
+     * Updates form fields based on spike number-of-items selection.
+     */
+    handleSpikeScopeChange(formType) {
+        const selectors = AlertsConfig.selectors[formType];
+        const numberItemsSelect = document.querySelector(selectors.numberItems);
+        const groups = selectors.groups;
+        const itemNameGroup = document.querySelector(groups.itemName);
+        const minPriceGroup = document.querySelector(groups.minPrice);
+        const maxPriceGroup = document.querySelector(groups.maxPrice);
+        const isAllItemsInput = document.querySelector(selectors.isAllItems);
+        
+        const selection = numberItemsSelect ? numberItemsSelect.value : 'one';
+        const isAll = selection === 'all';
+        if (itemNameGroup) itemNameGroup.style.display = isAll ? 'none' : 'block';
+        if (minPriceGroup) minPriceGroup.style.display = isAll ? 'block' : 'none';
+        if (maxPriceGroup) maxPriceGroup.style.display = isAll ? 'block' : 'none';
+        if (isAllItemsInput) isAllItemsInput.value = isAll ? 'true' : 'false';
+    },
+    
+    /**
      * Collects all form values for the edit form.
      */
     getEditFormData() {
@@ -2586,6 +2700,10 @@ const FormManager = {
             directionInput.value = alertData.direction || 'both';
         }
         document.querySelector(selectors.isAllItems).value = alertData.isAllItems ? 'true' : 'false';
+        const numberItemsSelect = document.querySelector(selectors.numberItems);
+        if (numberItemsSelect) {
+            numberItemsSelect.value = alertData.isAllItems ? 'all' : 'one';
+        }
         document.querySelector(selectors.minimumPrice).value = alertData.minPrice || '';
         document.querySelector(selectors.maximumPrice).value = alertData.maxPrice || '';
         document.querySelector(selectors.emailNotification).checked = alertData.emailNotification || false;
@@ -2597,6 +2715,9 @@ const FormManager = {
         
         // Update field visibility
         this.handleAlertTypeChange('edit');
+        if (alertData.type === AlertsConfig.alertTypes.SPIKE) {
+            this.handleSpikeScopeChange('edit');
+        }
     }
 };
 
@@ -2652,6 +2773,40 @@ const ModalManager = {
      */
     closeSpreadModal() {
         document.querySelector(AlertsConfig.selectors.spreadModal).style.display = 'none';
+    },
+
+    /**
+     * Opens spike details modal with matching items.
+     */
+    showSpikeDetails(alertId) {
+        const dataStr = AlertsState.getSpikeData(alertId);
+        
+        if (!dataStr) {
+            console.error('No spike data found for alert', alertId);
+            return;
+        }
+        
+        let data = [];
+        try {
+            data = JSON.parse(dataStr);
+        } catch (e) {
+            console.error('Failed to parse spike data', e);
+            return;
+        }
+        const list = document.getElementById('spike-items-list');
+        if (list) {
+            list.innerHTML = AlertsUI.renderSpikeItemsList(data);
+        }
+        
+        document.getElementById('spike-modal').style.display = 'flex';
+    },
+
+    /**
+     * Closes the spike details modal.
+     */
+    closeSpikeModal() {
+        const modal = document.getElementById('spike-modal');
+        if (modal) modal.style.display = 'none';
     }
 };
 
@@ -3263,12 +3418,22 @@ const EventManager = {
     setupModalEvents() {
         const spreadModal = document.querySelector(AlertsConfig.selectors.spreadModal);
         const groupModal = document.querySelector(AlertsConfig.selectors.groupModal);
+        const spikeModal = document.querySelector(AlertsConfig.selectors.spikeModal);
         
         // Close spread modal on backdrop click
         if (spreadModal) {
             spreadModal.addEventListener('click', function(e) {
                 if (e.target.id === 'spread-modal') {
                     ModalManager.closeSpreadModal();
+                }
+            });
+        }
+
+        // Close spike modal on backdrop click
+        if (spikeModal) {
+            spikeModal.addEventListener('click', function(e) {
+                if (e.target.id === 'spike-modal') {
+                    ModalManager.closeSpikeModal();
                 }
             });
         }
@@ -3288,6 +3453,10 @@ const EventManager = {
                 const spreadModal = document.querySelector(AlertsConfig.selectors.spreadModal);
                 if (spreadModal && spreadModal.style.display === 'flex') {
                     ModalManager.closeSpreadModal();
+                }
+                const spikeModal = document.querySelector(AlertsConfig.selectors.spikeModal);
+                if (spikeModal && spikeModal.style.display === 'flex') {
+                    ModalManager.closeSpikeModal();
                 }
                 const groupModal = document.querySelector(AlertsConfig.selectors.groupModal);
                 if (groupModal && groupModal.style.display === 'flex') {
@@ -3338,12 +3507,20 @@ function handleSpreadScopeChange() {
     FormManager.handleSpreadScopeChange('create');
 }
 
+function handleSpikeScopeChange() {
+    FormManager.handleSpikeScopeChange('create');
+}
+
 function handleEditAlertTypeChange() {
     FormManager.handleAlertTypeChange('edit');
 }
 
 function handleEditSpreadScopeChange() {
     FormManager.handleSpreadScopeChange('edit');
+}
+
+function handleEditSpikeScopeChange() {
+    FormManager.handleSpikeScopeChange('edit');
 }
 
 // Modal handlers
@@ -3361,6 +3538,14 @@ function closeSpreadModal() {
 
 function showSpreadDetails(alertId) {
     ModalManager.showSpreadDetails(alertId);
+}
+
+function closeSpikeModal() {
+    ModalManager.closeSpikeModal();
+}
+
+function showSpikeDetails(alertId) {
+    ModalManager.showSpikeDetails(alertId);
 }
 
 // Alert action handlers

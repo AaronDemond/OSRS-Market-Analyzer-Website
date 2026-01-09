@@ -104,6 +104,10 @@ class Alert(models.Model):
                 return f"All items spread >= {self.percentage}%, minimum price: {min_price}, maximum price: {max_price}"
             return f"{self.item_name} spread >= {self.percentage}%"
         if self.type == 'spike':
+            if self.is_all_items:
+                frame = f"{self.price}m" if self.price else "N/A"
+                ref = self.reference or 'low'
+                return f"All items spike {self.percentage}% over {frame} ({ref})"
             frame = f"{self.price}m" if self.price else "N/A"
             ref = self.reference or 'low'
             return f"{self.item_name} spike {self.percentage}% over {frame} ({ref})"
@@ -123,5 +127,15 @@ class Alert(models.Model):
         if self.type == "below":
             return f"{self.item_name} has fallen below {self.price:,} to {price_formatted}"
         if self.type == "spike":
+            if self.is_all_items:
+                if self.triggered_data:
+                    import json
+                    try:
+                        data = json.loads(self.triggered_data)
+                        count = len(data) if isinstance(data, list) else 0
+                        return f"Spike alert triggered for {count} item(s)"
+                    except Exception:
+                        pass
+                return f"All items spike {self.percentage}% within {self.price}m ({self.reference})"
             return f"{self.item_name} moved {self.percentage}% within {self.price}m ({self.reference})"
         return f"Item price is now {price_formatted}"
