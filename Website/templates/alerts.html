@@ -847,7 +847,10 @@ const AlertsConfig = {
             }
         }
     },
-    
+
+
+
+
     // DOM element selectors for the create form
     selectors: {
         create: {
@@ -1301,11 +1304,15 @@ const AlertsUI = {
         const pane = document.querySelector(AlertsConfig.selectors.myAlertsPane);
         if (!pane) return;
         
-        // If there are active filters OR a filter input is open, do a selective update to avoid flashing
+        // Check if filter dropdown is currently open/focused
+        const filterDropdown = pane.querySelector('.filter-dropdown');
+        const isDropdownOpen = filterDropdown && document.activeElement === filterDropdown;
+        
+        // If there are active filters, a filter input is open, or dropdown is open, do selective update
         const hasActiveFilters = AlertsState.activeFilters.size > 0;
         const hasFilterInput = pane.querySelector('.filter-input-container') !== null;
         
-        if (hasActiveFilters || hasFilterInput) {
+        if (hasActiveFilters || hasFilterInput || isDropdownOpen) {
             this.updateMyAlertsPaneSelective(data);
             return;
         }
