@@ -295,6 +295,7 @@ def create_alert(request):
         price = request.POST.get('price')
         reference = request.POST.get('reference')
         percentage = request.POST.get('percentage')
+        time_frame = request.POST.get('time_frame')
         is_all_items = request.POST.get('is_all_items') == 'true'
         minimum_price = request.POST.get('minimum_price')
         maximum_price = request.POST.get('maximum_price')
@@ -312,7 +313,7 @@ def create_alert(request):
             type=alert_type,
             item_name=item_name if not is_all_items else None,
             item_id=int(item_id) if item_id and not is_all_items else None,
-            price=int(price) if price else None,
+            price=int(time_frame if alert_type == 'spike' else price) if (time_frame if alert_type == 'spike' else price) else None,
             reference=reference if reference else None,
             percentage=float(percentage) if percentage else None,
             is_all_items=is_all_items,
@@ -362,12 +363,14 @@ def alerts_api(request):
             'reference': alert.reference,
             'price': alert.price,
             'percentage': alert.percentage,
+            'time_frame': alert.price if alert.type == 'spike' else None,
             'minimum_price': alert.minimum_price,
             'maximum_price': alert.maximum_price,
             'created_at': alert.created_at.isoformat(),
             'last_triggered_at': getattr(alert, 'triggered_at', None),
             'groups': list(alert.groups.values_list('name', flat=True))
         }
+
         for g in alert_dict['groups']:
             all_groups_set.add(g)
         
@@ -384,7 +387,7 @@ def alerts_api(request):
                     alert_dict['spread_percentage'] = spread
         
         # Add current price for above/below alerts
-        if alert.type in ['above', 'below'] and alert.item_id and all_prices:
+        if alert.type in ['above', 'below', 'spike'] and alert.item_id and all_prices:
             price_data = all_prices.get(str(alert.item_id))
             if price_data:
                 if alert.reference == 'high':
@@ -405,8 +408,11 @@ def alerts_api(request):
             'is_all_items': alert.is_all_items,
             'triggered_data': alert.triggered_data,
             'reference': alert.reference,
-            'price': alert.price
+            'price': alert.price,
+            'time_frame': alert.price if alert.type == 'spike' else None,
+            'percentage': alert.percentage
         }
+
         
         # Add spread data for single item spread alerts
         if alert.type == 'spread' and not alert.is_all_items and alert.item_id and all_prices:
@@ -421,7 +427,7 @@ def alerts_api(request):
                     triggered_dict['spread_percentage'] = spread
         
         # Add current price for above/below alerts
-        if alert.type in ['above', 'below'] and alert.item_id and all_prices:
+        if alert.type in ['above', 'below', 'spike'] and alert.item_id and all_prices:
             price_data = all_prices.get(str(alert.item_id))
             if price_data:
                 if alert.reference == 'high':
@@ -565,17 +571,18 @@ def update_alert(request):
                             alert.item_id = item_data['id']
                             alert.item_name = item_data['name']
                 
-                # Handle price/reference for above/below alerts
-                price = data.get('price')
-                if price:
-                    alert.price = int(price)
+                # Handle price/reference for alerts
+                if alert.type == 'spike':
+                    time_frame = data.get('time_frame') or data.get('price')
+                    alert.price = int(time_frame) if time_frame else None
                 else:
-                    alert.price = None
+                    price = data.get('price')
+                    alert.price = int(price) if price else None
                     
                 reference = data.get('reference')
                 alert.reference = reference if reference else None
                 
-                # Handle percentage for spread alerts
+                # Handle percentage for spread or spike alerts
                 percentage = data.get('percentage')
                 if percentage:
                     alert.percentage = float(percentage)

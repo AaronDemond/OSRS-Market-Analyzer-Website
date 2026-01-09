@@ -91,6 +91,7 @@
                     <option value="above" selected>Above Threshold</option>
                     <option value="below">Below Threshold</option>
                     <option value="spread">Spread</option>
+                    <option value="spike">Spike</option>
                 </select>
             </div>
             
@@ -125,10 +126,16 @@
                 </select>
             </div>
             
-            <!-- Percentage field (shown for spread only) -->
+            <!-- Percentage field (shown for spread or spike) -->
             <div class="form-group" id="percentage-group" style="display: none;">
-                <label for="percentage">Spread Percentage (%)</label>
-                <input type="number" name="percentage" id="percentage" step="0.1" min="0">
+                <label for="percentage">Percentage (%)</label>
+                <input type="number" name="percentage" id="percentage" step="0.001" min="0.001">
+            </div>
+
+            <!-- Time frame field (shown for spike only) -->
+            <div class="form-group" id="time-frame-group" style="display: none;">
+                <label for="time-frame">Time Frame (minutes)</label>
+                <input type="number" name="time_frame" id="time-frame" min="1" step="1" placeholder="e.g. 10">
             </div>
             
             <!-- Min/Max price fields (shown for spread all items only) -->
@@ -155,7 +162,7 @@
         {% if all_alerts %}
             <ul class="alerts-list edit-alerts-list">
                 {% for alert in all_alerts %}
-                    <li class="alert-item clickable-alert" onclick="openEditModal({{ alert.id }}, '{{ alert.type }}', '{{ alert.item_name|default_if_none:"" }}', {{ alert.item_id|default_if_none:"null" }}, {{ alert.price|default_if_none:"null" }}, '{{ alert.reference|default_if_none:"" }}', {{ alert.percentage|default_if_none:"null" }}, {{ alert.is_all_items|yesno:"true,false,false" }}, {{ alert.minimum_price|default_if_none:"null" }}, {{ alert.maximum_price|default_if_none:"null" }}, {{ alert.email_notification|yesno:"true,false,false" }})">
+                    <li class="alert-item clickable-alert" onclick="openEditModal({{ alert.id }}, '{{ alert.type }}', '{{ alert.item_name|default_if_none:"" }}', {{ alert.item_id|default_if_none:"null" }}, {{ alert.price|default_if_none:"null" }}, '{{ alert.reference|default_if_none:"" }}', {{ alert.percentage|default_if_none:"null" }}, {{ alert.is_all_items|yesno:"true,false,false" }}, {{ alert.minimum_price|default_if_none:"null" }}, {{ alert.maximum_price|default_if_none:"null" }}, {{ alert.email_notification|yesno:"true,false,false" }}, {{ alert.price|default_if_none:"null" }})">
                         <span class="alert-icon">🔔</span>
                         <span class="alert-text">{{ alert }}</span>
                         <span class="edit-hint">Click to edit</span>
@@ -184,6 +191,7 @@
                     <option value="above">Above Threshold</option>
                     <option value="below">Below Threshold</option>
                     <option value="spread">Spread</option>
+                    <option value="spike">Spike</option>
                 </select>
             </div>
             
@@ -214,10 +222,16 @@
                 </select>
             </div>
             
-            <!-- Percentage field (shown for spread only) -->
+            <!-- Percentage field (shown for spread or spike) -->
             <div class="form-group" id="edit-percentage-group" style="display: none;">
-                <label for="edit-percentage">Spread Percentage (%)</label>
-                <input type="number" name="percentage" id="edit-percentage" step="0.1" min="0">
+                <label for="edit-percentage">Percentage (%)</label>
+                <input type="number" name="percentage" id="edit-percentage" step="0.001" min="0.001">
+            </div>
+
+            <!-- Time frame field (shown for spike only) -->
+            <div class="form-group" id="edit-time-frame-group" style="display: none;">
+                <label for="edit-time-frame">Time Frame (minutes)</label>
+                <input type="number" name="time_frame" id="edit-time-frame" min="1" step="1" placeholder="e.g. 10">
             </div>
             
             <!-- Min/Max price fields (shown for spread all items only) -->
@@ -1177,6 +1191,7 @@ const AlertsConfig = {
                 price: '#price-group',
                 reference: '#reference-group',
                 percentage: '#percentage-group',
+                timeFrame: '#time-frame-group',
                 minPrice: '#min-price-group',
                 maxPrice: '#max-price-group'
             }
@@ -1203,6 +1218,7 @@ const AlertsConfig = {
                 price: '#edit-price-group',
                 reference: '#edit-reference-group',
                 percentage: '#edit-percentage-group',
+                timeFrame: '#edit-time-frame-group',
                 minPrice: '#edit-min-price-group',
                 maxPrice: '#edit-max-price-group'
             }
@@ -1222,7 +1238,8 @@ const AlertsConfig = {
     alertTypes: {
         ABOVE: 'above',
         BELOW: 'below',
-        SPREAD: 'spread'
+        SPREAD: 'spread',
+        SPIKE: 'spike'
     },
     
     // CSRF token for Django POST requests
@@ -2404,6 +2421,7 @@ const FormManager = {
             price: document.querySelector(groups.price),
             reference: document.querySelector(groups.reference),
             percentage: document.querySelector(groups.percentage),
+            timeFrame: document.querySelector(groups.timeFrame),
             minPrice: document.querySelector(groups.minPrice),
             maxPrice: document.querySelector(groups.maxPrice)
         };
@@ -2414,9 +2432,23 @@ const FormManager = {
             elements.price.style.display = 'none';
             elements.reference.style.display = 'none';
             elements.percentage.style.display = 'block';
+            elements.timeFrame.style.display = 'none';
             
             // Let scope change handler determine remaining visibility
             this.handleSpreadScopeChange(formType);
+        } else if (alertType === AlertsConfig.alertTypes.SPIKE) {
+            // Spike alerts: single item, show percentage + time frame, hide spread fields
+            elements.spreadScope.style.display = 'none';
+            elements.itemName.style.display = 'block';
+            elements.price.style.display = 'none';
+            elements.reference.style.display = 'block';
+            elements.percentage.style.display = 'block';
+            elements.timeFrame.style.display = 'block';
+            elements.minPrice.style.display = 'none';
+            elements.maxPrice.style.display = 'none';
+            
+            // Reset is_all_items
+            document.querySelector(selectors.isAllItems).value = 'false';
         } else {
             // Above/Below alerts: show threshold fields
             elements.spreadScope.style.display = 'none';
@@ -2424,6 +2456,7 @@ const FormManager = {
             elements.price.style.display = 'block';
             elements.reference.style.display = 'block';
             elements.percentage.style.display = 'none';
+            elements.timeFrame.style.display = 'none';
             elements.minPrice.style.display = 'none';
             elements.maxPrice.style.display = 'none';
             
@@ -2474,6 +2507,7 @@ const FormManager = {
             price: document.querySelector(selectors.price).value,
             reference: document.querySelector(selectors.reference).value,
             percentage: document.querySelector(selectors.percentage).value,
+            time_frame: document.querySelector('#edit-time-frame').value,
             is_all_items: document.querySelector(selectors.isAllItems).value === 'true',
             minimum_price: document.querySelector(selectors.minimumPrice).value,
             maximum_price: document.querySelector(selectors.maximumPrice).value,
@@ -2492,6 +2526,8 @@ const FormManager = {
         document.querySelector(selectors.itemName).value = alertData.itemName || '';
         document.querySelector(selectors.itemId).value = alertData.itemId || '';
         document.querySelector(selectors.price).value = alertData.price || '';
+        const timeFrameVal = alertData.type === AlertsConfig.alertTypes.SPIKE ? (alertData.timeFrame || alertData.price || '') : '';
+        document.querySelector('#edit-time-frame').value = timeFrameVal;
         document.querySelector(selectors.reference).value = alertData.reference || 'high';
         document.querySelector(selectors.percentage).value = alertData.percentage || '';
         document.querySelector(selectors.isAllItems).value = alertData.isAllItems ? 'true' : 'false';
@@ -2522,10 +2558,10 @@ const ModalManager = {
     /**
      * Opens the edit modal with alert data.
      */
-    openEditModal(id, type, itemName, itemId, price, reference, percentage, isAllItems, minPrice, maxPrice, emailNotification) {
+    openEditModal(id, type, itemName, itemId, price, reference, percentage, isAllItems, minPrice, maxPrice, emailNotification, timeFrame) {
         FormManager.populateEditForm({
             id, type, itemName, itemId, price, reference, 
-            percentage, isAllItems, minPrice, maxPrice, emailNotification
+            percentage, isAllItems, minPrice, maxPrice, emailNotification, timeFrame
         });
         
         document.querySelector(AlertsConfig.selectors.edit.modal).style.display = 'flex';

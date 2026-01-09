@@ -2,6 +2,7 @@ import os
 import sys
 import time
 import json
+from collections import defaultdict
 from pathlib import Path
 
 import requests
@@ -31,6 +32,7 @@ class Command(BaseCommand):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.item_mapping = None
+        self.price_history = defaultdict(list)  # key: itemId:reference, value: list[(ts, price)]
 
     def get_item_mapping(self):
         """Fetch and cache item ID to name mapping"""
@@ -150,6 +152,56 @@ class Command(BaseCommand):
                 if spread is not None and spread >= alert.percentage:
                     return True
                 return False
+        
+        # Handle spike alerts (rolling window percent change)
+        if alert.type == 'spike':
+            if not alert.item_id or alert.percentage is None or not alert.reference or not alert.price:
+                return False
+
+            price_data = all_prices.get(str(alert.item_id))
+            if not price_data:
+                return False
+
+            current_price = price_data.get('high') if alert.reference == 'high' else price_data.get('low')
+            print("Current observed price:", current_price)
+            if current_price is None:
+                return False
+
+            try:
+                time_frame_minutes = int(alert.price)
+                print("Time frame (minutes):", time_frame_minutes)
+            except (TypeError, ValueError):
+                return False
+            if time_frame_minutes <= 0:
+                return False
+            now = time.time()
+            key = f"{alert.item_id}:{alert.reference or 'low'}"
+
+            history = self.price_history[key]
+            history.append((now, current_price))
+            cutoff = now - (time_frame_minutes * 60)
+            self.price_history[key] = [(ts, val) for ts, val in history if ts >= cutoff]
+
+            window = self.price_history[key]
+            if not window:
+                return False
+
+            baseline_price = window[0][1]
+            print("Baseline price from history:", baseline_price)
+            if baseline_price in (None, 0):
+                return False
+
+            percent_change = ((current_price - baseline_price) / baseline_price) * 100
+            if abs(percent_change) >= alert.percentage:
+                alert.triggered_data = json.dumps({
+                    'baseline': baseline_price,
+                    'current': current_price,
+                    'percent_change': percent_change,
+                    'time_frame_minutes': time_frame_minutes,
+                    'reference': alert.reference
+                })
+                return True
+            return False
         
         # Handle above/below alerts
         if not alert.item_id or not alert.price or not alert.reference:

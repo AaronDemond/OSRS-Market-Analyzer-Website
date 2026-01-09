@@ -71,7 +71,8 @@ class Alert(models.Model):
     ALERT_CHOICES = [
             ('above', 'Above Threshold'),
             ('below', 'Below Threshold'),
-            ('spread', 'Spread')
+            ('spread', 'Spread'),
+            ('spike', 'Spike')
     ]
     
     type = models.CharField(max_length=10, null=True, choices=ALERT_CHOICES, default='above')
@@ -101,6 +102,10 @@ class Alert(models.Model):
                 max_price = f"{self.maximum_price:,}" if self.maximum_price else "None"
                 return f"All items spread >= {self.percentage}%, minimum price: {min_price}, maximum price: {max_price}"
             return f"{self.item_name} spread >= {self.percentage}%"
+        if self.type == 'spike':
+            frame = f"{self.price}m" if self.price else "N/A"
+            ref = self.reference or 'low'
+            return f"{self.item_name} spike {self.percentage}% over {frame} ({ref})"
         if self.is_all_items:
             return f"All items {self.type} {self.price:,} ({self.reference})"
         return f"{self.item_name} {self.type} {self.price:,} ({self.reference})"
@@ -116,4 +121,6 @@ class Alert(models.Model):
             return f"{self.item_name} has risen above {self.price:,} to {price_formatted}"
         if self.type == "below":
             return f"{self.item_name} has fallen below {self.price:,} to {price_formatted}"
+        if self.type == "spike":
+            return f"{self.item_name} moved {self.percentage}% within {self.price}m ({self.reference})"
         return f"Item price is now {price_formatted}"
