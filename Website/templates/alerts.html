@@ -27,7 +27,7 @@
                 </div>
             {% endfor %}
         </div>
-        {% if all_alerts %}
+        {% if has_alerts %}
         <div class="alert-actions-wrapper">
             <div class="alert-actions">
                 <div class="alert-actions-left">
@@ -65,18 +65,12 @@
                 <div class="sort-tag-holder"></div>
             </div>
         </div>
-            <ul class="alerts-list">
-                {% for alert in all_alerts %}
-                    <li class="alert-item clickable-alert" data-alert-id="{{ alert.id }}" onclick="navigateToAlertDetail(event, {{ alert.id }})">
-                        <input type="checkbox" class="alert-checkbox" onclick="event.stopPropagation()">
-                        <span class="alert-icon">🔔</span>
-                        <span class="alert-text">{{ alert }}</span>
-                        {% if alert.is_triggered %}
-                            <span class="alert-triggered">TRIGGERED: {{alert.triggered_text}} </span>
-                        {% endif %}
-                    </li>
-                {% endfor %}
-            </ul>
+        <div id="alerts-list-container">
+            <div class="loading-container">
+                <div class="loading-spinner"></div>
+                <span class="loading-text">Loading</span>
+            </div>
+        </div>
         {% elif not triggered_alerts %}
             <p class="no-alerts">No active alerts. Create one to get started!</p>
         {% endif %}
@@ -365,6 +359,38 @@
         padding: 20px;
         text-align: center;
     }
+    
+    /* Loading Indicator */
+    .loading-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 60px 20px;
+        gap: 16px;
+    }
+    
+    .loading-spinner {
+        width: 48px;
+        height: 48px;
+        border: 4px solid #e9ecef;
+        border-top: 4px solid #667eea;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .loading-text {
+        font-size: 1.1rem;
+        font-weight: 500;
+        color: #6c757d;
+        letter-spacing: 0.5px;
+    }
+    
     .alert-group {
         margin-bottom: 25px;
     }
@@ -1873,6 +1899,8 @@ const AlertsUI = {
         const alertsList = pane.querySelector('.alerts-list');
         const alertGroup = pane.querySelector('.alert-group');
         const noAlertsMsg = pane.querySelector('.no-alerts');
+        const loadingContainer = pane.querySelector('.loading-container');
+        const alertsListContainer = pane.querySelector('#alerts-list-container');
         
         const filteredAlerts = FilterManager.applyFilters(data.alerts || []);
         
@@ -1905,6 +1933,12 @@ const AlertsUI = {
             }
         } else if (alertsList) {
             alertsList.outerHTML = newHtml;
+        } else if (alertsListContainer) {
+            // Replace the loading container with alerts
+            alertsListContainer.outerHTML = newHtml;
+        } else if (loadingContainer) {
+            // Replace standalone loading container
+            loadingContainer.outerHTML = newHtml;
         } else if (noAlertsMsg) {
             noAlertsMsg.outerHTML = newHtml;
         }

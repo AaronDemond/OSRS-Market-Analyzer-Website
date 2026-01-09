@@ -277,9 +277,11 @@ def item_search(request):
 def alerts(request):
     active_alerts = Alert.objects.filter(is_active=True)
     triggered_alerts = Alert.objects.filter(is_triggered=True, is_dismissed=False).prefetch_related('groups')
+    has_alerts = Alert.objects.exists()
     return render(request, 'alerts.html', {
         'active_alerts': active_alerts,
         'triggered_alerts': triggered_alerts,
+        'has_alerts': has_alerts,
     })
 
 
