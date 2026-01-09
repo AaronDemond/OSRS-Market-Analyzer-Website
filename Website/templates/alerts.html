@@ -359,7 +359,9 @@
         display: flex;
         align-items: center;
         gap: 12px;
-        padding: 15px 20px;
+       /* padding: 15px 20px; */
+        padding-left: 6px;
+        padding-right: 6px;
         margin-bottom: 10px;
         background-color: #cce5ff;
         border-left: 4px solid #007bff;
@@ -1088,8 +1090,11 @@ const AlertsConfig = {
                 const minPrice = parseInt(value);
                 if (isNaN(minPrice)) return true;
                 
-                // For above/below alerts, use the price threshold
+                // For above/below alerts, use the current price for the chosen reference (high/low)
                 if (alert.type === 'above' || alert.type === 'below') {
+                    if (alert.current_price != null) {
+                        return alert.current_price >= minPrice;
+                    }
                     return (alert.price || 0) >= minPrice;
                 }
                 
@@ -1119,8 +1124,11 @@ const AlertsConfig = {
                 const maxPrice = parseInt(value);
                 if (isNaN(maxPrice)) return true;
                 
-                // For above/below alerts, use the price threshold
+                // For above/below alerts, use the current price for the chosen reference (high/low)
                 if (alert.type === 'above' || alert.type === 'below') {
+                    if (alert.current_price != null) {
+                        return alert.current_price <= maxPrice;
+                    }
                     return (alert.price || 0) <= maxPrice;
                 }
                 
@@ -1667,11 +1675,20 @@ const AlertsUI = {
             triggeredBadge = '<span class="alert-triggered ' + clickableClass + '" ' + clickHandler + '>' + triggeredText + '</span>';
         }
 
+        // Show threshold percentage for above/below alerts
+        let thresholdDisplay = '';
+        const thresholdDistance = SortManager.getThresholdDistance(alert);
+        if (typeof thresholdDistance === 'number' && !Number.isNaN(thresholdDistance)) {
+            const formatted = thresholdDistance.toFixed(2);
+            thresholdDisplay = '<span class="alert-threshold" style="color: orange; margin-left: 8px;">Threshold: ' + formatted + '%</span>';
+        }
+
         return '<li class="alert-item" data-alert-id="' + alert.id + '">' +
                '<input type="checkbox" class="alert-checkbox">' +
                '<span class="alert-icon">🔔</span>' +
                '<span class="alert-text">' + alert.text + '</span>' +
                triggeredBadge +
+               thresholdDisplay +
                '</li>';
     },
     
@@ -3373,6 +3390,7 @@ function applyPriceFilter() {
         closePriceFilterModal();
         return;
     }
+    AlertsState.setFilterValue(filterId, value);
     FilterManager.activateFilter(filterId, value);
     closePriceFilterModal();
 }
