@@ -1373,8 +1373,29 @@ const AlertActions = {
             this.cancelDeleteMode();
             // Remove deleted alerts from the Edit Alert tab as well
             this.removeFromEditTab(selectedIds);
+            // Show status notification
+            this.showStatusNotification('Alert' + (selectedIds.length > 1 ? 's' : '') + ' deleted');
             await AlertsRefresh.refresh();
         }
+    },
+    
+    /**
+     * Shows a status notification at the top of the alerts pane.
+     * 
+     * What: Creates and displays a dismissible status message
+     * Why: Provides user feedback for actions like delete
+     * How: Inserts notification HTML into triggered-notifications container
+     */
+    showStatusNotification(message) {
+        const container = document.getElementById('triggered-notifications');
+        if (!container) return;
+        
+        const notification = document.createElement('div');
+        notification.className = 'triggered-notification status-notification';
+        notification.innerHTML = message + 
+            '<button class="dismiss-btn" onclick="dismissStatusNotification(this)">&times;</button>';
+        
+        container.insertBefore(notification, container.firstChild);
     },
     
     /**
