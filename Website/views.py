@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.db.models import Sum, F
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib import messages
 import requests
 import time
 from .models import Flip, Alert
@@ -319,6 +320,8 @@ def create_alert(request):
             is_active=True,
             is_triggered=False
         )
+        messages.success(request, 'Alert created')
+        return redirect('alerts')
     
     return redirect('alerts')
 

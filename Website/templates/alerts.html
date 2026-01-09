@@ -15,6 +15,12 @@
 <div class="tab-content">
     <div id="my-alerts" class="tab-pane active">
         <div id="triggered-notifications">
+            {% for message in messages %}
+                <div class="triggered-notification status-notification">
+                    {{ message }}
+                    <button class="dismiss-btn" onclick="dismissStatusNotification(this)">&times;</button>
+                </div>
+            {% endfor %}
             {% for alert in triggered_alerts %}
                 <div class="triggered-notification" data-alert-id="{{ alert.id }}">
                     {{ alert.triggered_text }}
@@ -1056,6 +1062,13 @@ const AlertsUI = {
         const pane = document.querySelector(AlertsConfig.selectors.myAlertsPane);
         if (!pane) return;
         
+        // Preserve any status notifications (e.g., "Alert created")
+        const existingStatusNotifications = pane.querySelectorAll('.status-notification');
+        let statusHtml = '';
+        existingStatusNotifications.forEach(n => {
+            statusHtml += n.outerHTML;
+        });
+        
         const notificationsHtml = this.renderTriggeredNotifications(data.triggered);
         const actionsHtml = this.renderActionButtons(data.alerts && data.alerts.length > 0);
         
@@ -1066,7 +1079,7 @@ const AlertsUI = {
             alertsHtml = this.renderAlertsList([]);
         }
         
-        pane.innerHTML = '<div id="triggered-notifications">' + notificationsHtml + '</div>' +
+        pane.innerHTML = '<div id="triggered-notifications">' + statusHtml + notificationsHtml + '</div>' +
                         actionsHtml + alertsHtml;
     }
 };
@@ -1794,6 +1807,14 @@ function showSpreadDetails(alertId) {
 // Alert action handlers
 function dismissAlert(alertId) {
     AlertActions.dismiss(alertId);
+}
+
+function dismissStatusNotification(button) {
+    const notification = button.closest('.triggered-notification');
+    if (notification) {
+        notification.classList.add('dismissing');
+        setTimeout(() => notification.remove(), 300);
+    }
 }
 
 function toggleDeleteMode() {
