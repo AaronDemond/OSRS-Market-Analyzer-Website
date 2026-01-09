@@ -276,7 +276,7 @@ def item_search(request):
 
 def alerts(request):
     # Sort alphabetically - "All items" alerts (null item_name) sort after named items
-    all_alerts = Alert.objects.all().prefetch_related('groups').order_by(Coalesce('item_name', Value('zzz')).asc())
+    all_alerts = Alert.objects.all().prefetch_related('groups').order_by(Coalesce('item_name', Value('All items')).asc())
     active_alerts = Alert.objects.filter(is_active=True)
     triggered_alerts = Alert.objects.filter(is_triggered=True, is_dismissed=False).prefetch_related('groups')
     return render(request, 'alerts.html', {
@@ -361,7 +361,7 @@ def alerts_api(request):
     except requests.RequestException:
         pass
     
-    all_alerts = Alert.objects.all().order_by(Coalesce('item_name', Value('zzz')).asc())
+    all_alerts = Alert.objects.all().order_by(Coalesce('item_name', Value('All items')).asc())
     alerts_data = []
     all_groups_set = set()
     for alert in all_alerts:
