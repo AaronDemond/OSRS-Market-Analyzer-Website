@@ -1183,7 +1183,7 @@ const AlertsConfig = {
                     if (alert.current_price != null) {
                         return alert.current_price >= minPrice;
                     }
-                    return (alert.price || 0) >= minPrice;
+                    return false;
                 }
                 
                 // For spread alerts with all items, use minimum_price field
@@ -1217,7 +1217,7 @@ const AlertsConfig = {
                     if (alert.current_price != null) {
                         return alert.current_price <= maxPrice;
                     }
-                    return (alert.price || 0) <= maxPrice;
+                    return false;
                 }
                 
                 // For spread alerts with all items, use maximum_price field
@@ -3734,6 +3734,7 @@ function applyPriceFilter() {
         closePriceFilterModal();
         return;
     }
+    AlertsState.setFilterValue(filterId, value);
     FilterManager.activateFilter(filterId, value);
     closePriceFilterModal();
 }

@@ -404,10 +404,10 @@ def alerts_api(request):
         if alert.type in ['above', 'below', 'spike'] and alert.item_id and all_prices:
             price_data = all_prices.get(str(alert.item_id))
             if price_data:
-                if alert.reference == 'high':
-                    alert_dict['current_price'] = price_data.get('high')
-                else:
+                if alert.reference == 'low':
                     alert_dict['current_price'] = price_data.get('low')
+                else:
+                    alert_dict['current_price'] = price_data.get('high')
         
         alerts_data.append(alert_dict)
     
@@ -445,10 +445,10 @@ def alerts_api(request):
         if alert.type in ['above', 'below', 'spike'] and alert.item_id and all_prices:
             price_data = all_prices.get(str(alert.item_id))
             if price_data:
-                if alert.reference == 'high':
-                    triggered_dict['current_price'] = price_data.get('high')
-                else:
+                if alert.reference == 'low':
                     triggered_dict['current_price'] = price_data.get('low')
+                else:
+                    triggered_dict['current_price'] = price_data.get('high')
         
         triggered_data.append(triggered_dict)
     
