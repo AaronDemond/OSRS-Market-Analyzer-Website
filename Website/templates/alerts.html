@@ -23,7 +23,6 @@
             {% for alert in triggered_alerts %}
                 <div class="triggered-notification" data-alert-id="{{ alert.id }}">
                     {{ alert.triggered_text }}
-                    <button class="dismiss-btn" onclick="dismissAlert({{ alert.id }})">&times;</button>
                 </div>
             {% endfor %}
         </div>
@@ -1558,7 +1557,6 @@ const AlertsUI = {
             
             html += '<div class="triggered-notification" data-alert-id="' + alert.id + '">' +
                     '<span class="' + clickableClass + '" ' + clickHandler + '>' + alert.triggered_text + '</span>' +
-                    '<button class="dismiss-btn" onclick="event.stopPropagation(); AlertActions.dismiss(' + alert.id + ')">&times;</button>' +
                     '</div>';
         });
         
@@ -1854,7 +1852,17 @@ const AlertsUI = {
         const existingStatusNotifications = pane.querySelectorAll('.status-notification');
         let statusHtml = '';
         existingStatusNotifications.forEach(n => {
-            statusHtml += n.outerHTML;
+            const clone = n.cloneNode(true);
+            clone.querySelectorAll('.notification-line[data-kind="triggered"]').forEach(l => l.remove());
+
+            const check = clone.cloneNode(true);
+            const btn = check.querySelector('.dismiss-btn');
+            if (btn) btn.remove();
+
+            const hasContent = check.textContent.trim().length > 0 || check.querySelector('.notification-line');
+            if (hasContent) {
+                statusHtml += clone.outerHTML;
+            }
         });
         
         const notificationsHtml = this.renderTriggeredNotifications(data.triggered);
@@ -1869,6 +1877,7 @@ const AlertsUI = {
         
         pane.innerHTML = '<div id="triggered-notifications">' + statusHtml + notificationsHtml + '</div>' +
                         actionsHtml + alertsHtml;
+        AlertActions.mergeTriggeredNotificationsIntoStatus();
     },
     
     /**
@@ -1889,10 +1898,21 @@ const AlertsUI = {
             const existingStatusNotifications = notificationsContainer.querySelectorAll('.status-notification');
             let statusHtml = '';
             existingStatusNotifications.forEach(n => {
-                statusHtml += n.outerHTML;
+                const clone = n.cloneNode(true);
+                clone.querySelectorAll('.notification-line[data-kind="triggered"]').forEach(l => l.remove());
+
+                const check = clone.cloneNode(true);
+                const btn = check.querySelector('.dismiss-btn');
+                if (btn) btn.remove();
+
+                const hasContent = check.textContent.trim().length > 0 || check.querySelector('.notification-line');
+                if (hasContent) {
+                    statusHtml += clone.outerHTML;
+                }
             });
             const notificationsHtml = this.renderTriggeredNotifications(data.triggered);
             notificationsContainer.innerHTML = statusHtml + notificationsHtml;
+            AlertActions.mergeTriggeredNotificationsIntoStatus();
         }
         
         // Update alerts list only - find the container to replace
@@ -2612,11 +2632,26 @@ const AlertActions = {
      */
     async dismiss(alertId) {
         // Animate out immediately for responsive feedback
-        const notification = document.querySelector('.triggered-notification[data-alert-id="' + alertId + '"]');
-        if (notification) {
-            notification.classList.add('dismissing');
+        const banner = document.querySelector('.triggered-notification[data-alert-id="' + alertId + '"]');
+        if (banner) {
+            banner.classList.add('dismissing');
+            setTimeout(() => banner.remove(), 300);
         }
-        
+
+        const line = document.querySelector('.status-notification .notification-line[data-kind="triggered"][data-alert-id="' + alertId + '"]');
+        if (line) {
+            const box = line.closest('.status-notification');
+            line.remove();
+            if (box) {
+                const hasLines = box.querySelector('.notification-line');
+                // If no lines remain (status or triggered), remove box.
+                if (!hasLines) {
+                    box.classList.add('dismissing');
+                    setTimeout(() => box.remove(), 300);
+                }
+            }
+        }
+
         await AlertsAPI.dismissAlert(alertId);
     },
     
@@ -2684,16 +2719,176 @@ const AlertActions = {
      * Why: Provides user feedback for actions like delete
      * How: Inserts notification HTML into triggered-notifications container
      */
+    clearStatusNotifications() {
+        const container = document.getElementById('triggered-notifications');
+        if (!container) return;
+
+        container.querySelectorAll('.status-notification').forEach(box => {
+            // Remove only status lines; keep triggered lines.
+            box.querySelectorAll('.notification-line[data-kind="status"]').forEach(l => l.remove());
+
+            // Remove legacy plain text (server messages) and <br> (treat as status).
+            Array.from(box.childNodes).forEach(node => {
+                if (node.nodeType === 3 && node.textContent.trim()) node.remove();
+                if (node.nodeType === 1 && node.tagName === 'BR') node.remove();
+            });
+
+            const hasTriggered = box.querySelector('.notification-line[data-kind="triggered"]');
+            if (!hasTriggered) {
+                box.remove();
+            }
+        });
+    },
+
+    normalizeStatusNotifications() {
+        const container = document.getElementById('triggered-notifications');
+        if (!container) return;
+
+        const existingAll = container.querySelectorAll('.status-notification');
+        if (existingAll.length === 0) return;
+
+        const toStatusLine = (box, message) => {
+            const btn = box.querySelector('.dismiss-btn');
+            const line = document.createElement('div');
+            line.className = 'notification-line';
+            line.dataset.kind = 'status';
+            const span = document.createElement('span');
+            span.textContent = message;
+            line.appendChild(span);
+            if (btn) box.insertBefore(line, btn);
+            else box.appendChild(line);
+        };
+
+        // Convert any legacy plain-text status messages into status lines.
+        existingAll.forEach(box => {
+            const plainText = Array.from(box.childNodes)
+                .filter(node => !(node.nodeType === 1 && node.classList && node.classList.contains('dismiss-btn')))
+                .filter(node => !(node.nodeType === 1 && node.classList && node.classList.contains('notification-line')))
+                .filter(node => node.nodeType === 3 || (node.nodeType === 1 && node.tagName === 'BR'))
+                .map(node => (node.textContent || '').trim())
+                .filter(Boolean)
+                .join(' ');
+
+            // Remove those legacy nodes.
+            Array.from(box.childNodes).forEach(node => {
+                const isBtn = node.nodeType === 1 && node.classList && node.classList.contains('dismiss-btn');
+                const isLine = node.nodeType === 1 && node.classList && node.classList.contains('notification-line');
+                if (isBtn || isLine) return;
+                if (node.nodeType === 3 || (node.nodeType === 1 && node.tagName === 'BR')) {
+                    node.remove();
+                }
+            });
+
+            if (plainText) {
+                toStatusLine(box, plainText);
+            }
+        });
+
+        if (existingAll.length <= 1) return;
+
+        const first = existingAll[0];
+        const firstBtn = first.querySelector('.dismiss-btn');
+
+        for (let i = 1; i < existingAll.length; i++) {
+            const n = existingAll[i];
+            // Move status lines into the first box.
+            n.querySelectorAll('.notification-line[data-kind="status"]').forEach(line => {
+                if (firstBtn) first.insertBefore(line.cloneNode(true), firstBtn);
+                else first.appendChild(line.cloneNode(true));
+            });
+            n.remove();
+        }
+    },
+
+    mergeTriggeredNotificationsIntoStatus() {
+        const container = document.getElementById('triggered-notifications');
+        if (!container) return;
+
+        this.normalizeStatusNotifications();
+
+        const triggered = Array.from(container.querySelectorAll('.triggered-notification:not(.status-notification)'));
+        if (triggered.length === 0) return;
+
+        let statusBox = container.querySelector('.status-notification');
+        if (!statusBox) {
+            statusBox = document.createElement('div');
+            statusBox.className = 'triggered-notification status-notification';
+
+            const btn = document.createElement('button');
+            btn.className = 'dismiss-btn';
+            btn.innerHTML = '&times;';
+            btn.setAttribute('onclick', 'dismissStatusNotification(this)');
+            statusBox.appendChild(btn);
+
+            container.insertBefore(statusBox, container.firstChild);
+        }
+
+        const globalBtn = statusBox.querySelector('.dismiss-btn');
+
+        triggered.forEach(n => {
+            const alertId = n.dataset.alertId;
+            const span = n.querySelector('span');
+
+            const line = document.createElement('div');
+            line.className = 'notification-line';
+            line.dataset.kind = 'triggered';
+            if (alertId) line.dataset.alertId = alertId;
+
+            if (span) {
+                line.appendChild(span.cloneNode(true));
+            } else {
+                const msg = Array.from(n.childNodes)
+                    .filter(node => !(node.nodeType === 1 && node.classList && node.classList.contains('dismiss-btn')))
+                    .map(node => (node.textContent || '').trim())
+                    .filter(Boolean)
+                    .join(' ');
+                const s = document.createElement('span');
+                s.textContent = msg;
+                line.appendChild(s);
+            }
+
+
+            if (globalBtn) statusBox.insertBefore(line, globalBtn);
+            else statusBox.appendChild(line);
+
+            n.remove();
+        });
+    },
+
     showStatusNotification(message) {
         const container = document.getElementById('triggered-notifications');
         if (!container) return;
-        
-        const notification = document.createElement('div');
-        notification.className = 'triggered-notification status-notification';
-        notification.innerHTML = message + 
-            '<button class="dismiss-btn" onclick="dismissStatusNotification(this)">&times;</button>';
-        
-        container.insertBefore(notification, container.firstChild);
+
+        this.normalizeStatusNotifications();
+
+        let statusBox = container.querySelector('.status-notification');
+        if (!statusBox) {
+            statusBox = document.createElement('div');
+            statusBox.className = 'triggered-notification status-notification';
+
+            const btn = document.createElement('button');
+            btn.className = 'dismiss-btn';
+            btn.innerHTML = '&times;';
+            btn.setAttribute('onclick', 'dismissStatusNotification(this)');
+            statusBox.appendChild(btn);
+
+            container.insertBefore(statusBox, container.firstChild);
+        }
+
+        const globalBtn = statusBox.querySelector('.dismiss-btn');
+
+        const line = document.createElement('div');
+        line.className = 'notification-line';
+        line.dataset.kind = 'status';
+        const span = document.createElement('span');
+        span.textContent = message;
+        line.appendChild(span);
+
+        if (globalBtn) statusBox.insertBefore(line, globalBtn);
+        else statusBox.appendChild(line);
+
+        // Keep triggered + status in one visible box.
+        this.mergeTriggeredNotificationsIntoStatus();
     }
 };
 
@@ -3109,6 +3304,12 @@ const TabManager = {
      * Switches to a specific tab.
      */
     switchTo(tabId) {
+        const activeBtn = document.querySelector(AlertsConfig.selectors.tabButtons + '.active');
+        const currentTab = activeBtn ? activeBtn.getAttribute('data-tab') : null;
+        if (currentTab === 'my-alerts' && tabId !== 'my-alerts') {
+            AlertActions.clearStatusNotifications();
+        }
+
         document.querySelectorAll(AlertsConfig.selectors.tabButtons).forEach(btn => {
             btn.classList.remove('active');
             if (btn.getAttribute('data-tab') === tabId) {
@@ -3120,6 +3321,10 @@ const TabManager = {
             pane.style.display = 'none';
         });
         document.getElementById(tabId).style.display = 'block';
+
+        if (tabId === 'my-alerts') {
+            AlertActions.mergeTriggeredNotificationsIntoStatus();
+        }
     },
     
     /**
@@ -3273,10 +3478,26 @@ function dismissAlert(alertId) {
 
 function dismissStatusNotification(button) {
     const notification = button.closest('.triggered-notification');
-    if (notification) {
-        notification.classList.add('dismissing');
-        setTimeout(() => notification.remove(), 300);
+    if (!notification) return;
+
+    if (notification.classList.contains('status-notification')) {
+        // Dismiss all triggered alerts referenced in this box.
+        const alertIds = new Set();
+        notification.querySelectorAll('.notification-line[data-kind="triggered"][data-alert-id]').forEach(l => {
+            alertIds.add(l.dataset.alertId);
+        });
+        // Also handle any unmerged triggered banners that may still be in the container.
+        const container = notification.parentElement;
+        if (container) {
+            container.querySelectorAll('.triggered-notification[data-alert-id]:not(.status-notification)').forEach(n => {
+                alertIds.add(n.dataset.alertId);
+            });
+        }
+        alertIds.forEach(id => AlertActions.dismiss(id));
     }
+
+    notification.classList.add('dismissing');
+    setTimeout(() => notification.remove(), 300);
 }
 
 function addFilter(filterId) {
@@ -3454,6 +3675,17 @@ function confirmDelete() {
     DropdownSizer.init();
     AlertsRefresh.start();
     
+    // If the page is restored from the back/forward cache, clear transient status notifications.
+    window.addEventListener('pageshow', function(e) {
+        if (e.persisted) {
+            AlertActions.clearStatusNotifications();
+        }
+    });
+
+    // Ensure only one status notification box (merge server-side messages if any).
+    AlertActions.normalizeStatusNotifications();
+    AlertActions.mergeTriggeredNotificationsIntoStatus();
+
     // Check for deleted parameter and show notification
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('deleted') === '1') {

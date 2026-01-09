@@ -197,6 +197,19 @@
     .triggered-notification .dismiss-btn:hover {
         opacity: 1;
     }
+
+    /* Single notification box lines (status + triggered merged) */
+    .notification-line {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 4px;
+    }
+    .notification-line:first-child {
+        margin-top: 0;
+    }
+
     /* Filter UI styles */
     .filter-dropdown {
         padding: 8px 6px 8px 10px;
