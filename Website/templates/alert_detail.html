@@ -88,8 +88,13 @@
     }
     
     .status-triggered {
-        background: #ffc107;
-        color: #212529;
+        background: #28a745;
+        color: white;
+    }
+    
+    .status-not-triggered {
+        background: #6c757d;
+        color: white;
     }
     
     .alert-title {
@@ -317,7 +322,7 @@
     .form-actions {
         display: flex;
         justify-content: flex-end;
-        gap: 10px;
+        gap: 8px;
         margin-top: 24px;
         padding-top: 20px;
         border-top: 1px solid #e9ecef;
@@ -328,14 +333,14 @@
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        padding: 10px 20px;
-        font-size: 0.9rem;
+        padding: 6px 14px;
+        font-size: 0.85rem;
     }
     
     .form-actions .btn-save svg,
     .form-actions .btn-cancel svg {
-        width: 16px;
-        height: 16px;
+        width: 14px;
+        height: 14px;
     }
     
     .form-grid {
@@ -483,45 +488,119 @@
         font-style: italic;
     }
     
-    .groups-edit-container {
-        display: none;
-        flex-wrap: wrap;
-        gap: 10px;
-    }
-    
-    .edit-mode .groups-edit-container {
+    /* Group Controls in header */
+    .group-controls {
         display: flex;
-    }
-    
-    .edit-mode .groups-display {
-        display: none;
-    }
-    
-    .group-checkbox-label {
-        display: flex;
-        align-items: center;
         gap: 8px;
-        padding: 8px 14px;
+        margin-left: auto;
+    }
+    
+    .group-edit-mode .group-controls .btn-edit {
+        display: none;
+    }
+    
+    .group-edit-mode .groups-display {
+        display: none;
+    }
+    
+    .group-edit-mode .groups-edit-mode {
+        display: block !important;
+    }
+    
+    /* Group pills list for editing */
+    .group-pills-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        min-height: 40px;
+        padding: 12px;
+        background: #f8f9fa;
+        border-radius: 8px;
         border: 2px solid #e9ecef;
-        border-radius: 20px;
+    }
+    
+    .group-pills-list .group-pill {
+        background: #212529;
+        color: white;
+        border: 2px solid #fff;
         cursor: pointer;
         transition: all 0.2s ease;
-        font-size: 0.9rem;
+        user-select: none;
     }
     
-    .group-checkbox-label:hover {
-        border-color: #667eea;
+    .group-pills-list .group-pill:hover {
+        background: #343a40;
+        border-color: #adb5bd;
     }
     
-    .group-checkbox-label input {
-        width: 16px;
-        height: 16px;
-        accent-color: #667eea;
+    .group-pills-list .group-pill.selected {
+        background: #fd7e14;
+        border-color: #fd7e14;
+        color: white;
     }
     
-    .group-checkbox-label input:checked ~ span {
-        color: #667eea;
+    .group-pills-list .group-pill.selected:hover {
+        background: #e96b02;
+        border-color: #e96b02;
+    }
+    
+    .group-pills-list .no-groups-msg {
+        color: #6c757d;
+        font-style: italic;
+        padding: 4px;
+    }
+    
+    .form-hint {
+        font-size: 0.8rem;
+        color: #6c757d;
+        margin: -4px 0 8px 0;
+    }
+    
+    /* Unlink button */
+    .btn-unlink {
+        background: #ffc107;
+        color: #212529;
+        border: none;
+        padding: 6px 14px;
+        border-radius: 6px;
         font-weight: 600;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .btn-unlink:hover {
+        background: #e0a800;
+    }
+    
+    .btn-unlink svg {
+        width: 14px;
+        height: 14px;
+    }
+    
+    .group-subsection {
+        margin-top: 20px;
+    }
+    
+    .groups-edit-mode .form-actions {
+        justify-content: flex-end;
+    }
+    
+    .groups-edit-mode .form-actions .btn-unlink {
+        margin-right: auto;
+    }
+    
+    .groups-edit-mode .form-actions .btn-delete {
+        margin-right: 0;
+    }
+    
+    .groups-edit-mode .form-actions .btn-save,
+    .groups-edit-mode .form-actions .btn-cancel,
+    .groups-edit-mode .form-actions .btn-delete,
+    .groups-edit-mode .form-actions .btn-unlink {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
     }
     
     /* Price Card */
@@ -584,8 +663,53 @@
             grid-template-columns: 1fr;
         }
         
+        .detail-card-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        
         .edit-controls {
+            margin-left: 0;
+            justify-content: flex-start;
+        }
+        
+        .group-controls {
+            margin-left: 0;
+            justify-content: flex-start;
+        }
+        
+        .form-actions {
+            justify-content: flex-start !important;
+        }
+        
+        .groups-edit-mode .form-actions {
             flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .groups-edit-mode .form-actions .btn-unlink {
+            margin-right: 0;
+            order: 1;
+        }
+        
+        .groups-edit-mode .form-actions .btn-delete {
+            order: 2;
+        }
+        
+        .groups-edit-mode .form-actions::after {
+            content: "";
+            flex-basis: 100%;
+            order: 2;
+        }
+        
+        .groups-edit-mode .form-actions .btn-save {
+            order: 3;
+            flex-basis: auto;
+        }
+        
+        .groups-edit-mode .form-actions .btn-cancel {
+            order: 4;
         }
     }
 </style>
@@ -626,11 +750,12 @@
                 {% endif %}
                 {% if alert.is_triggered %}
                     <span class="status-pill status-triggered">Triggered</span>
+                {% else %}
+                    <span class="status-pill status-not-triggered">Not Triggered</span>
                 {% endif %}
             </div>
         </div>
         <h1 class="alert-title" id="alertTitle">{{ alert }}</h1>
-        <p class="alert-subtitle">Alert ID: #{{ alert.id }}</p>
     </div>
     
     <!-- Alert Configuration -->
@@ -896,8 +1021,15 @@
                 <svg fill="currentColor" viewBox="0 0 20 20"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"/></svg>
                 Alert Groups
             </h3>
+            <div class="group-controls" id="groupControls">
+                <button class="btn-edit" onclick="enterGroupEditMode()">
+                    <svg fill="currentColor" viewBox="0 0 20 20"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg>
+                    Edit
+                </button>
+            </div>
         </div>
         <div class="detail-card-body">
+            <!-- Display mode -->
             <div class="groups-display">
                 {% if groups %}
                 <div class="groups-container">
@@ -909,15 +1041,41 @@
                 <span class="no-groups">No groups assigned</span>
                 {% endif %}
             </div>
-            <div class="groups-edit-container">
-                {% for group in all_groups %}
-                <label class="group-checkbox-label">
-                    <input type="checkbox" name="groups" value="{{ group }}" {% if group in groups %}checked{% endif %}>
-                    <span>{{ group }}</span>
-                </label>
-                {% empty %}
-                <span class="no-groups">No groups available</span>
-                {% endfor %}
+            
+            <!-- Edit mode -->
+            <div class="groups-edit-mode" style="display: none;">
+                <div class="form-group">
+                    <label>This Alert's Group(s)</label>
+                    <p class="form-hint">Groups this alert currently belongs to. Select to unlink.</p>
+                    <div id="current-groups-list" class="group-pills-list"></div>
+                </div>
+                <div class="form-group group-subsection">
+                    <label>All Groups</label>
+                    <p class="form-hint">Click to select groups to add to this alert</p>
+                    <div id="group-pills-list" class="group-pills-list"></div>
+                </div>
+                <div class="form-group group-subsection">
+                    <label for="new-group-input">Add New Group</label>
+                    <input type="text" id="new-group-input" placeholder="Enter new group name...">
+                </div>
+                <div class="form-actions">
+                    <button class="btn-unlink" onclick="unlinkSelectedGroups()">
+                        <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clip-rule="evenodd"/></svg>
+                        Unlink Selected.
+                    </button>
+                    <button class="btn-delete" onclick="deleteSelectedGroups()">
+                        <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                        Delete Selected
+                    </button>
+                    <button class="btn-save" onclick="saveGroups()">
+                        <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                        Save
+                    </button>
+                    <button class="btn-cancel" onclick="cancelGroupEdit()">
+                        <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                        Cancel
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -1188,6 +1346,205 @@ async function deleteAlert() {
     } catch (error) {
         console.error('Error:', error);
         alert('Error deleting alert. Please try again.');
+    }
+}
+
+// =============================================================================
+// GROUP MANAGEMENT
+// =============================================================================
+
+// Store all groups and current alert's groups
+const allGroups = {{ all_groups_json|safe }};
+const currentGroups = {{ groups_json|safe }};
+let originalGroups = [...currentGroups];
+
+function enterGroupEditMode() {
+    document.getElementById('groupsCard').classList.add('group-edit-mode');
+    renderCurrentGroupPills();
+    renderAllGroupPills();
+    document.getElementById('new-group-input').value = '';
+}
+
+function cancelGroupEdit() {
+    document.getElementById('groupsCard').classList.remove('group-edit-mode');
+}
+
+function renderCurrentGroupPills() {
+    const container = document.getElementById('current-groups-list');
+    container.innerHTML = '';
+    
+    if (currentGroups.length === 0) {
+        container.innerHTML = '<span class="no-groups-msg">This alert is not in any groups.</span>';
+        return;
+    }
+    
+    currentGroups.forEach(group => {
+        const pill = document.createElement('span');
+        pill.className = 'group-pill';
+        pill.dataset.group = group;
+        pill.textContent = group;
+        
+        pill.onclick = function() {
+            this.classList.toggle('selected');
+        };
+        
+        container.appendChild(pill);
+    });
+}
+
+function renderAllGroupPills() {
+    const container = document.getElementById('group-pills-list');
+    container.innerHTML = '';
+    
+    // Filter out groups that this alert already belongs to
+    const availableGroups = allGroups.filter(g => !currentGroups.includes(g));
+    
+    if (availableGroups.length === 0) {
+        container.innerHTML = '<span class="no-groups-msg">No additional groups available. Add a new one below.</span>';
+        return;
+    }
+    
+    availableGroups.forEach(group => {
+        const pill = document.createElement('span');
+        pill.className = 'group-pill';
+        pill.dataset.group = group;
+        pill.textContent = group;
+        
+        pill.onclick = function() {
+            this.classList.toggle('selected');
+        };
+        
+        container.appendChild(pill);
+    });
+}
+
+function getSelectedGroupPills() {
+    const selected = [];
+    document.querySelectorAll('#group-pills-list .group-pill.selected').forEach(pill => {
+        selected.push(pill.dataset.group);
+    });
+    return selected;
+}
+
+function getSelectedCurrentGroupPills() {
+    const selected = [];
+    document.querySelectorAll('#current-groups-list .group-pill.selected').forEach(pill => {
+        selected.push(pill.dataset.group);
+    });
+    return selected;
+}
+
+async function saveGroups() {
+    const selectedGroups = getSelectedGroupPills();
+    const newGroupInput = document.getElementById('new-group-input').value.trim();
+    
+    // Parse new groups (comma-separated)
+    const newGroups = newGroupInput ? newGroupInput.split(',').map(g => g.trim()).filter(g => g.length > 0) : [];
+    
+    if (selectedGroups.length === 0 && newGroups.length === 0) {
+        alert('Please select existing groups or enter a new group name.');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/alerts/group/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                alert_ids: [alertId],
+                groups: selectedGroups,
+                new_groups: newGroups
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            window.location.reload();
+        } else {
+            alert('Error saving groups: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error saving groups. Please try again.');
+    }
+}
+
+async function unlinkSelectedGroups() {
+    const selectedGroups = getSelectedCurrentGroupPills();
+    
+    if (selectedGroups.length === 0) {
+        alert('Please select at least one group from "This Alert\'s Group(s)" to unlink.');
+        return;
+    }
+    
+    if (!confirm('Unlink this alert from the selected group(s)?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/alerts/unlink-groups/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                alert_id: alertId,
+                groups: selectedGroups
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            window.location.reload();
+        } else {
+            alert('Error unlinking groups: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error unlinking groups. Please try again.');
+    }
+}
+
+async function deleteSelectedGroups() {
+    const selectedGroups = getSelectedGroupPills();
+    
+    if (selectedGroups.length === 0) {
+        alert('Please select at least one group from "All Groups" to delete.');
+        return;
+    }
+    
+    if (!confirm('Delete selected group(s)? This will remove them from all alerts.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/alerts/groups/delete/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                groups: selectedGroups
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            window.location.reload();
+        } else {
+            alert('Error deleting groups: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error deleting groups. Please try again.');
     }
 }
 </script>

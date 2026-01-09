@@ -555,6 +555,42 @@ def delete_groups(request):
 
 
 @csrf_exempt
+def unlink_groups(request):
+    """Unlink an alert from specified groups (remove alert from groups without deleting groups)."""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
+
+    import json
+    try:
+        data = json.loads(request.body or b'{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    
+    alert_id = data.get('alert_id')
+    groups = data.get('groups', [])
+    
+    if not alert_id:
+        return JsonResponse({'success': False, 'error': 'No alert_id provided'}, status=400)
+    
+    if not groups:
+        return JsonResponse({'success': False, 'error': 'No groups provided'}, status=400)
+
+    try:
+        alert = Alert.objects.get(id=alert_id)
+    except Alert.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Alert not found'}, status=404)
+
+    # Find the group objects and remove them from the alert
+    cleaned = [g.strip() for g in groups if isinstance(g, str) and g.strip()]
+    group_objs = AlertGroup.objects.filter(name__in=cleaned)
+    
+    for group in group_objs:
+        alert.groups.remove(group)
+
+    return JsonResponse({'success': True, 'unlinked_groups': cleaned})
+
+
+@csrf_exempt
 def update_alert(request):
     """Update an existing alert"""
     if request.method == 'POST':
@@ -642,6 +678,7 @@ def update_alert(request):
 def alert_detail(request, alert_id):
     """Display detailed view of a single alert"""
     from django.shortcuts import get_object_or_404
+    import json
     
     alert = get_object_or_404(Alert, id=alert_id)
     
@@ -668,6 +705,8 @@ def alert_detail(request, alert_id):
         'current_price': current_price_data,
         'groups': groups,
         'all_groups': all_groups,
+        'groups_json': json.dumps(groups),
+        'all_groups_json': json.dumps(all_groups),
     }
     
     return render(request, 'alert_detail.html', context)
