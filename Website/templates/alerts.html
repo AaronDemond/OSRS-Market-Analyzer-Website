@@ -1211,6 +1211,10 @@
         margin-bottom: 16px;
     }
     
+    .actions-error-container {
+        margin-bottom: 12px;
+    }
+    
     .form-group {
         margin-bottom: 18px;
         position: relative;
@@ -1592,43 +1596,58 @@
         color: #dc3545;
     }
 
-    /* Mobile Responsive Styles */
-    @media (max-width: 955px) {
-        /* Stack all dropdowns vertically */
+    /* Tablet/Mobile Responsive Styles */
+    @media (max-width: 950px) {
         .alert-actions {
-            flex-direction: column;
-            align-items: stretch;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: auto auto;
+            gap: 10px;
             width: 100%;
         }
         
-        .alert-actions-left,
-        .alert-actions-right {
-            width: 100%;
-            flex-direction: column;
-        }
-        
-        /* Stack left side: Search first, then Actions */
+        /* Row 1: Search takes full width (spans all 3 columns) */
         .alert-actions-left {
-            display: flex;
-            flex-direction: column;
+            grid-column: 1 / -1;
+            grid-row: 1;
+            display: contents;
         }
         
         .alert-actions-left .alert-search-wrapper {
-             order: -1;
+            grid-column: 1 / -1;
+            grid-row: 1;
+            width: 100%;
+        }
+        
+        /* Actions dropdown - first item in row 2 */
+        .alert-actions-left .custom-dropdown-wrapper {
+            grid-column: 1;
+            grid-row: 2;
+        }
+        
+        /* Row 2: Sort and Filters */
+        .alert-actions-right {
+            display: contents;
         }
         
         .alert-actions-controls {
-            flex-direction: column;
-            width: 100%;
+            display: contents;
         }
         
         .sort-controls {
-            width: 100%;
-            flex-direction: column;
+            display: contents;
         }
         
-        .custom-dropdown-wrapper {
-            width: 100%;
+        /* Sort dropdown - second item in row 2 */
+        .sort-controls .custom-dropdown-wrapper {
+            grid-column: 2;
+            grid-row: 2;
+        }
+        
+        /* Filter dropdown - third item in row 2 */
+        .alert-actions-controls > .custom-dropdown-wrapper {
+            grid-column: 3;
+            grid-row: 2;
         }
         
         .btn-dropdown {
@@ -1636,39 +1655,35 @@
             justify-content: center;
         }
         
-        /* Reset dropdown alignment to left on mobile (full width) */
+        .alert-search-input {
+            width: 100%;
+        }
+        
+        /* Reset dropdown alignment */
         .custom-dropdown-menu,
-        #sortDropdownMenu,
-        #filterDropdownMenu {
+        #sortDropdownMenu {
             width: 100%;
             left: 0;
             right: 0;
         }
         
+        /* Filter dropdown right-aligned */
+        #filterDropdownMenu {
+            width: auto;
+            min-width: 180px;
+            left: auto;
+            right: 0;
+        }
+        
         .sort-indicator-wrapper {
-            width: 100%;
+            display: none;
         }
         
-        .sort-indicator {
-            width: 100%;
-            justify-content: center;
-        }
-        
-        /* Search bar full width on mobile */
-        .alert-search-wrapper {
-            width: 100%;
-        }
-        
-        .alert-search-input {
-            width: 100%;
-        }
-        
-        /* Hide bell icon on mobile */
+        /* Hide bell icon */
         .alert-icon {
             display: none;
         }
         
-        /* Hide "Threshold:" label on mobile */
         .alert-threshold-label {
             display: none;
         }
@@ -3489,7 +3504,7 @@ const AlertActions = {
         });
         
         if (selectedIds.length === 0) {
-            alert('Please select at least one alert to delete.');
+            AlertActions.showErrorNotification('Please select at least one alert to delete.');
             return;
         }
         
@@ -3731,6 +3746,66 @@ const AlertActions = {
 
         // Keep triggered + status in one visible box.
         this.mergeTriggeredNotificationsIntoStatus();
+    },
+    
+    /**
+     * Shows an error notification above the actions area.
+     * @param {string} message - The error message to display
+     */
+    showErrorNotification(message) {
+        const actionsWrapper = document.querySelector('.alert-actions-wrapper');
+        if (!actionsWrapper) return;
+        
+        // Pause refresh while error notification is shown
+        AlertsRefresh.errorNotificationActive = true;
+        
+        // Find or create error container above actions
+        let errorContainer = actionsWrapper.querySelector('.actions-error-container');
+        if (!errorContainer) {
+            errorContainer = document.createElement('div');
+            errorContainer.className = 'actions-error-container';
+            actionsWrapper.insertBefore(errorContainer, actionsWrapper.firstChild);
+        }
+        
+        // Remove any existing error notifications
+        errorContainer.querySelectorAll('.triggered-notification.error-notification').forEach(n => n.remove());
+        
+        // Create error notification
+        const notification = document.createElement('div');
+        notification.className = 'triggered-notification error-notification';
+        notification.innerHTML = message + '<button class="dismiss-btn" type="button">&times;</button>';
+        
+        // Function to clear error state
+        const clearErrorState = () => {
+            AlertsRefresh.errorNotificationActive = false;
+        };
+        
+        // Add click handler for dismiss button
+        const dismissBtn = notification.querySelector('.dismiss-btn');
+        if (dismissBtn) {
+            dismissBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                notification.classList.add('dismissing');
+                setTimeout(() => {
+                    notification.remove();
+                    clearErrorState();
+                }, 300);
+            });
+        }
+        
+        errorContainer.appendChild(notification);
+        
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.classList.add('dismissing');
+                setTimeout(() => {
+                    notification.remove();
+                    clearErrorState();
+                }, 300);
+            }
+        }, 5000);
     }
 };
 
@@ -3754,7 +3829,7 @@ const GroupManager = {
     open() {
         const selectedIds = this.getSelectedAlertIds();
         if (selectedIds.length === 0) {
-            alert('Please select at least one alert first.');
+            AlertActions.showErrorNotification('Please select at least one alert first.');
             return;
         }
 
@@ -3830,7 +3905,7 @@ const GroupManager = {
     async save() {
         const alertIds = this.getSelectedAlertIds();
         if (alertIds.length === 0) {
-            alert('Please select at least one alert first.');
+            AlertActions.showErrorNotification('Please select at least one alert first.');
             return;
         }
 
@@ -3838,7 +3913,7 @@ const GroupManager = {
         const newGroups = this.parseNewGroups();
 
         if (existingGroups.length === 0 && newGroups.length === 0) {
-            alert('Please choose an existing group or add a new one.');
+            AlertActions.showErrorNotification('Please choose an existing group or add a new one.');
             return;
         }
 
@@ -3854,7 +3929,7 @@ const GroupManager = {
     async deleteSelectedGroups() {
         const selectedGroups = this.getSelectedGroups();
         if (selectedGroups.length === 0) {
-            alert('Please select at least one group to delete.');
+            AlertActions.showErrorNotification('Please select at least one group to delete.');
             return;
         }
 
@@ -3870,7 +3945,7 @@ const GroupManager = {
             await AlertsRefresh.refresh();
             this.renderExistingGroups();
         } else {
-            alert('Failed to delete selected group(s). Please try again.');
+            AlertActions.showErrorNotification('Failed to delete selected group(s). Please try again.');
         }
     }
 };
@@ -4083,6 +4158,7 @@ const AutocompleteManager = {
 const AlertsRefresh = {
     intervalId: null,
     pausedForSort: false,
+    errorNotificationActive: false,
     
     /**
      * Checks if any dropdown is currently open or search is active.
@@ -4095,6 +4171,10 @@ const AlertsRefresh = {
         // Check if search input is focused
         const searchInput = document.getElementById('alertSearchInput');
         if (searchInput && document.activeElement === searchInput) {
+            return true;
+        }
+        // Check if error notification is active
+        if (this.errorNotificationActive) {
             return true;
         }
         return false;

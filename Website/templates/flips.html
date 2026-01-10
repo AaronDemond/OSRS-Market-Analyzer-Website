@@ -1031,7 +1031,119 @@
     }
     
     /* Mobile styles */
-    @media (max-width: 768px) {
+    @media (max-width: 1100px) {
+        .stats-row {
+            flex-direction: row;
+            gap: 0.5rem;
+            width: fit-content;
+        }
+        .stat-card {
+            padding: 8px 12px;
+            flex-direction: row;
+            align-items: center;
+            gap: 0.5rem;
+            border-radius: 10px;
+        }
+        .stat-label {
+            font-size: 10px;
+            margin-bottom: 0;
+        }
+        .stat-value {
+            font-size: 16px;
+        }
+        
+        /* Hide columns on mobile: Price Paid, High Price, Low Price */
+        #flipsTable th:nth-child(2),
+        #flipsTable td:nth-child(2),
+        #flipsTable th:nth-child(4),
+        #flipsTable td:nth-child(4),
+        #flipsTable th:nth-child(5),
+        #flipsTable td:nth-child(5) {
+            display: none;
+        }
+        
+        #flipsTable {
+            font-size: 0.75rem;
+            width: 100%;
+            max-width: 100%;
+            table-layout: fixed;
+        }
+        
+        .main-content {
+            overflow-x: hidden;
+        }
+        
+        #flipsTable th,
+        #flipsTable td {
+            padding: 0.4rem 0.25rem;
+        }
+        
+        /* Filter dropdown aligns left on mobile */
+        .filter-dropdown-menu {
+            right: auto;
+            left: 0;
+        }
+        
+        /* Mobile controls layout */
+        .controls-row {
+            flex-direction: column;
+            align-items: stretch !important;
+            gap: 0.75rem !important;
+        }
+        
+        .buttons-row {
+            justify-content: flex-start;
+        }
+        
+        .search-filter-row {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 0.75rem !important;
+            margin-right: 1rem;
+        }
+        
+        /* Search bar full width on mobile */
+        .filter-search-wrapper {
+            width: 100%;
+            order: -1;
+        }
+        
+        .filter-search-input {
+            width: 100%;
+            font-size: 14px;
+            padding: 8px 12px;
+        }
+        
+        /* Hide desktop sort indicator on mobile */
+        .desktop-sort {
+            display: none !important;
+        }
+        
+        /* Show mobile sort indicator inline with filter when wrapper has active class */
+        .sort-indicator-mobile-wrapper.active {
+            display: block !important;
+        }
+        
+        /* The sort-indicator inside mobile wrapper should always display when wrapper is visible */
+        .sort-indicator-mobile-wrapper .sort-indicator {
+            display: inline-flex !important;
+        }
+        
+        .sort-indicator {
+            padding: 6px 10px;
+            font-size: 12px;
+            gap: 4px;
+            white-space: nowrap;
+        }
+        
+        .sort-indicator-arrow {
+            padding: 2px 5px;
+            font-size: 12px;
+        }
+    }
+
+    /* Mobile styles */
+    @media (max-width: 900px) {
         .stats-row {
             flex-direction: column;
             gap: 0.5rem;
@@ -1139,6 +1251,9 @@
         .sort-indicator-arrow {
             padding: 2px 5px;
             font-size: 12px;
+        }
+        .search-filter-row {
+            margin-right: 0;
         }
     }
 </style>
