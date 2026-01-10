@@ -148,6 +148,15 @@
                     </div>
                 </div>
             </div>
+            <!-- Mobile sort indicator row (shown on smaller screens) -->
+            <div class="sort-indicator-mobile-row" id="sortIndicatorMobileRow">
+                <div class="sort-indicator" id="sortIndicatorMobile">
+                    <span class="sort-indicator-label">Sorted by:</span>
+                    <span class="sort-indicator-value" id="sortIndicatorValueMobile"></span>
+                    <span class="sort-indicator-arrow" id="sortIndicatorArrowMobile" title="Toggle sort order">↓</span>
+                    <span class="sort-indicator-clear" id="sortIndicatorClearMobile" title="Clear sort">×</span>
+                </div>
+            </div>
             <div class="alert-indicators">
                 <div class="filter-tags"></div>
                 <div class="sort-tag-holder"></div>
@@ -930,6 +939,19 @@
     .sort-indicator-clear:hover {
         background: rgba(239, 68, 68, 0.15);
     }
+    
+    /* Mobile sort indicator row - hidden by default, shown at smaller breakpoints */
+    .sort-indicator-mobile-row {
+        display: none;
+    }
+    
+    .sort-indicator-mobile-row .sort-indicator {
+        display: none;
+    }
+    
+    .sort-indicator-mobile-row .sort-indicator.active {
+        display: inline-flex;
+    }
 
     /* Filter and sort tags */
     .alert-indicators {
@@ -1594,6 +1616,38 @@
     }
     .spread-item-percentage.negative-change {
         color: #dc3545;
+    }
+
+    /* Medium screen - sort indicator on separate row */
+    @media (max-width: 1250px) {
+        .alert-actions-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .alert-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: nowrap;
+            width: 100%;
+        }
+        
+        /* Hide sort indicator from its normal position */
+        .sort-controls .sort-indicator-wrapper {
+            display: none;
+        }
+        
+        /* Show sort indicator in mobile row */
+        .sort-indicator-mobile-row {
+            display: block;
+        }
+        
+        .sort-indicator-mobile-row .sort-indicator.active {
+            display: inline-flex;
+        }
     }
 
     /* Tablet/Mobile Responsive Styles */
@@ -2307,8 +2361,11 @@ const AlertsUI = {
             }
         }
 
-        // Build sort indicator HTML
+        // Build sort indicator HTML (desktop)
         let sortIndicatorHtml = '';
+        // Build mobile sort indicator HTML
+        let mobileSortIndicatorHtml = '';
+        
         if (AlertsState.sorting.sortKey) {
             const sortOption = SortManager.options[AlertsState.sorting.sortKey];
             const label = sortOption ? sortOption.label : 'Sort';
@@ -2321,6 +2378,14 @@ const AlertsUI = {
                 '<span class="sort-indicator-clear" id="sortIndicatorClear" title="Clear sort">×</span>' +
                 '</div>' +
                 '</div>';
+            mobileSortIndicatorHtml = '<div class="sort-indicator-mobile-row" id="sortIndicatorMobileRow">' +
+                '<div class="sort-indicator active" id="sortIndicatorMobile">' +
+                '<span class="sort-indicator-label">Sorted by:</span>' +
+                '<span class="sort-indicator-value" id="sortIndicatorValueMobile">' + label + '</span>' +
+                '<span class="sort-indicator-arrow" id="sortIndicatorArrowMobile" title="Toggle sort order">' + arrow + '</span>' +
+                '<span class="sort-indicator-clear" id="sortIndicatorClearMobile" title="Clear sort">×</span>' +
+                '</div>' +
+                '</div>';
         } else {
             sortIndicatorHtml = '<div class="sort-indicator-wrapper" id="sortIndicatorWrapper">' +
                 '<div class="sort-indicator" id="sortIndicator">' +
@@ -2328,6 +2393,14 @@ const AlertsUI = {
                 '<span class="sort-indicator-value" id="sortIndicatorValue"></span>' +
                 '<span class="sort-indicator-arrow" id="sortIndicatorArrow" title="Toggle sort order">↓</span>' +
                 '<span class="sort-indicator-clear" id="sortIndicatorClear" title="Clear sort">×</span>' +
+                '</div>' +
+                '</div>';
+            mobileSortIndicatorHtml = '<div class="sort-indicator-mobile-row" id="sortIndicatorMobileRow">' +
+                '<div class="sort-indicator" id="sortIndicatorMobile">' +
+                '<span class="sort-indicator-label">Sorted by:</span>' +
+                '<span class="sort-indicator-value" id="sortIndicatorValueMobile"></span>' +
+                '<span class="sort-indicator-arrow" id="sortIndicatorArrowMobile" title="Toggle sort order">↓</span>' +
+                '<span class="sort-indicator-clear" id="sortIndicatorClearMobile" title="Clear sort">×</span>' +
                 '</div>' +
                 '</div>';
         }
@@ -2412,6 +2485,7 @@ const AlertsUI = {
                '</div>' +
                '</div>' +
                '</div>' +
+               mobileSortIndicatorHtml +
                '<div class="alert-indicators">' +
                '<div class="filter-tags">' + tags + '</div>' +
                '</div>' +
@@ -2918,15 +2992,31 @@ const SortManager = {
         const valueEl = document.getElementById('sortIndicatorValue');
         const arrowEl = document.getElementById('sortIndicatorArrow');
         
+        // Mobile sort indicator elements
+        const mobileRow = document.getElementById('sortIndicatorMobileRow');
+        const mobileIndicator = document.getElementById('sortIndicatorMobile');
+        const mobileValueEl = document.getElementById('sortIndicatorValueMobile');
+        const mobileArrowEl = document.getElementById('sortIndicatorArrowMobile');
+        
         if (!indicator) return;
         
         if (AlertsState.sorting.sortKey) {
             const option = this.options[AlertsState.sorting.sortKey];
-            if (valueEl) valueEl.textContent = option ? option.label : 'Sort';
-            if (arrowEl) arrowEl.textContent = AlertsState.sorting.sortOrder === 'asc' ? '↑' : '↓';
+            const label = option ? option.label : 'Sort';
+            const arrow = AlertsState.sorting.sortOrder === 'asc' ? '↑' : '↓';
+            
+            // Update desktop indicator
+            if (valueEl) valueEl.textContent = label;
+            if (arrowEl) arrowEl.textContent = arrow;
             indicator.classList.add('active');
+            
+            // Update mobile indicator
+            if (mobileValueEl) mobileValueEl.textContent = label;
+            if (mobileArrowEl) mobileArrowEl.textContent = arrow;
+            if (mobileIndicator) mobileIndicator.classList.add('active');
         } else {
             indicator.classList.remove('active');
+            if (mobileIndicator) mobileIndicator.classList.remove('active');
         }
         
         // Update dropdown active states
@@ -4485,14 +4575,16 @@ const EventManager = {
             }
             
             // Handle sort indicator arrow click (toggle order)
-            if (e.target.id === 'sortIndicatorArrow' || e.target.closest('#sortIndicatorArrow')) {
+            if (e.target.id === 'sortIndicatorArrow' || e.target.closest('#sortIndicatorArrow') ||
+                e.target.id === 'sortIndicatorArrowMobile' || e.target.closest('#sortIndicatorArrowMobile')) {
                 e.stopPropagation();
                 SortManager.toggleSortOrder();
                 return;
             }
             
             // Handle sort indicator clear click
-            if (e.target.id === 'sortIndicatorClear' || e.target.closest('#sortIndicatorClear')) {
+            if (e.target.id === 'sortIndicatorClear' || e.target.closest('#sortIndicatorClear') ||
+                e.target.id === 'sortIndicatorClearMobile' || e.target.closest('#sortIndicatorClearMobile')) {
                 e.stopPropagation();
                 clearSort();
                 return;
