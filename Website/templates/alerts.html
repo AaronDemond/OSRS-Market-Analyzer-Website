@@ -57,6 +57,13 @@
                             </div>
                         </div>
                     </div>
+                    <div class="alert-search-wrapper">
+                        <svg class="alert-search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                        <input type="text" class="alert-search-input" id="alertSearchInput" placeholder="Search alerts..." autocomplete="off">
+                        <button type="button" class="alert-search-clear" id="alertSearchClear" title="Clear search">×</button>
+                    </div>
                 </div>
                 <div class="alert-actions-right" id="active-filters">
                     <div class="alert-actions-controls">
@@ -78,6 +85,10 @@
                                 </button>
                                 <div class="custom-dropdown-menu" id="sortDropdownMenu">
                                     <div class="custom-dropdown-header">Sort by</div>
+                                    <div class="custom-dropdown-item" data-sort="alphabetically">
+                                        <span>Alphabetically</span>
+                                        <span class="sort-check">✓</span>
+                                    </div>
                                     <div class="custom-dropdown-item" data-sort="lastTriggered">
                                         <span>Last Triggered Time</span>
                                         <span class="sort-check">✓</span>
@@ -340,6 +351,29 @@
         </div>
     </div>
 </div>
+
+<!-- Delete Confirmation Modal -->
+<div id="delete-confirm-modal" class="modal delete-confirm-modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Confirm Delete</h2>
+            <button class="modal-close" onclick="closeDeleteConfirmModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="delete-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+            </div>
+            <p id="delete-confirm-message">Are you sure you want to delete the selected alerts?</p>
+            <p class="delete-warning">This action cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-cancel" onclick="closeDeleteConfirmModal()">Cancel</button>
+            <button type="button" class="btn-confirm-delete" onclick="executeDelete()">Delete</button>
+        </div>
+    </div>
+</div>
 <style>
     :root {
         /* Neutrals */
@@ -479,10 +513,43 @@
         padding-bottom: 0;
     }
     
-    .alert-text {
+    .alert-content {
         flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 0;
+    }
+    
+    .alert-text {
         font-size: 0.95rem;
         color: var(--text);
+    }
+    
+    .alert-sort-info {
+        font-size: 0.8rem;
+        color: var(--muted);
+        font-style: italic;
+    }
+    
+    .alert-status {
+        font-weight: 600;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        letter-spacing: 0.3px;
+        flex-shrink: 0;
+        margin-right: 8px;
+    }
+    
+    .alert-status-active {
+        color: #16A34A;
+        background: #DCFCE7;
+    }
+    
+    .alert-status-inactive {
+        color: #DC2626;
+        background: #FEE2E2;
     }
     
     .alert-triggered {
@@ -493,15 +560,6 @@
         border-radius: 20px;
         font-size: 0.8rem;
         letter-spacing: 0.3px;
-        flex-shrink: 0;
-    }
-    
-    .alert-threshold {
-        font-weight: 600;
-        color: var(--warning);
-        margin-left: 8px;
-        font-size: 0.85rem;
-        white-space: nowrap;
         flex-shrink: 0;
     }
     
@@ -573,7 +631,7 @@
 
     /* Actions wrapper */
     .alert-actions-wrapper {
-        margin-bottom: 16px;
+        margin-bottom: 8px;
     }
     
     .alert-actions {
@@ -581,12 +639,73 @@
         justify-content: space-between;
         align-items: center;
         gap: 12px;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
     }
     
     .alert-actions-left {
         display: flex;
         gap: 10px;
+        align-items: center;
+        flex-shrink: 0;
+    }
+    
+    /* Search Bar */
+    .alert-search-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+    
+    .alert-search-icon {
+        position: absolute;
+        left: 10px;
+        width: 16px;
+        height: 16px;
+        color: var(--text-muted);
+        pointer-events: none;
+    }
+    
+    .alert-search-input {
+        padding: 8px 32px 8px 32px;
+        background: var(--surface);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 14px;
+        width: 300px;
+        transition: all 0.15s;
+    }
+    
+    .alert-search-input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+    
+    .alert-search-input::placeholder {
+        color: var(--text-muted);
+    }
+    
+    .alert-search-clear {
+        position: absolute;
+        right: 8px;
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        font-size: 16px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        display: none;
+    }
+    
+    .alert-search-clear:hover {
+        background: rgba(239, 68, 68, 0.1);
+        color: var(--danger);
+    }
+    
+    .alert-search-wrapper.has-value .alert-search-clear {
+        display: block;
     }
     
     .alert-actions-right {
@@ -923,6 +1042,115 @@
         opacity: 1;
     }
 
+    /* Delete Confirmation Modal */
+    .delete-confirm-modal .modal-content {
+        max-width: 400px;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    
+    .delete-confirm-modal .modal-header {
+        background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
+        color: white;
+        padding: 16px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .delete-confirm-modal .modal-header h2 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+    
+    .delete-confirm-modal .modal-close {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 24px;
+        cursor: pointer;
+        opacity: 0.8;
+        line-height: 1;
+    }
+    
+    .delete-confirm-modal .modal-close:hover {
+        opacity: 1;
+    }
+    
+    .delete-confirm-modal .modal-body {
+        padding: 24px;
+        text-align: center;
+    }
+    
+    .delete-confirm-modal .delete-icon {
+        width: 64px;
+        height: 64px;
+        background: #FEE2E2;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 16px;
+    }
+    
+    .delete-confirm-modal .delete-icon svg {
+        width: 32px;
+        height: 32px;
+        color: #DC2626;
+    }
+    
+    .delete-confirm-modal .modal-body p {
+        color: var(--text);
+        margin: 0 0 8px 0;
+    }
+    
+    .delete-confirm-modal .delete-warning {
+        color: var(--muted);
+        font-size: 13px;
+        margin-top: 8px;
+    }
+    
+    .delete-confirm-modal .modal-footer {
+        padding: 16px 24px;
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        border-top: 1px solid var(--border);
+    }
+    
+    .delete-confirm-modal .btn-cancel {
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        color: var(--text);
+        padding: 10px 24px;
+        border-radius: 8px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+    
+    .delete-confirm-modal .btn-cancel:hover {
+        background: var(--surface);
+        border-color: var(--muted);
+    }
+    
+    .delete-confirm-modal .btn-confirm-delete {
+        background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
+        border: none;
+        color: white;
+        padding: 10px 24px;
+        border-radius: 8px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+    
+    .delete-confirm-modal .btn-confirm-delete:hover {
+        background: linear-gradient(135deg, #B91C1C 0%, #991B1B 100%);
+        transform: translateY(-1px);
+    }
+
     /* Success notifications */
     .triggered-notification {
         background: linear-gradient(135deg, #22C55E 0%, #16A34A 100%);
@@ -964,6 +1192,11 @@
     .triggered-notification .dismiss-btn:hover {
         opacity: 1;
     }
+    
+    /* Error notification variant (red) */
+    .triggered-notification.error-notification {
+        background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+    }
 
     /* Create alert form */
     .create-alert-form {
@@ -972,6 +1205,10 @@
         padding: 24px;
         border-radius: 12px;
         border: 1px solid var(--border);
+    }
+    
+    .form-error-container {
+        margin-bottom: 16px;
     }
     
     .form-group {
@@ -1356,16 +1593,28 @@
     }
 
     /* Mobile Responsive Styles */
-    @media (max-width: 768px) {
+    @media (max-width: 955px) {
         /* Stack all dropdowns vertically */
         .alert-actions {
             flex-direction: column;
             align-items: stretch;
+            width: 100%;
         }
         
         .alert-actions-left,
         .alert-actions-right {
             width: 100%;
+            flex-direction: column;
+        }
+        
+        /* Stack left side: Search first, then Actions */
+        .alert-actions-left {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .alert-actions-left .alert-search-wrapper {
+             order: -1;
         }
         
         .alert-actions-controls {
@@ -1405,12 +1654,21 @@
             justify-content: center;
         }
         
+        /* Search bar full width on mobile */
+        .alert-search-wrapper {
+            width: 100%;
+        }
+        
+        .alert-search-input {
+            width: 100%;
+        }
+        
         /* Hide bell icon on mobile */
         .alert-icon {
             display: none;
         }
         
-        /* Hide "Threshold:" label on mobile - handled via JS */
+        /* Hide "Threshold:" label on mobile */
         .alert-threshold-label {
             display: none;
         }
@@ -1700,6 +1958,7 @@ const AlertsState = {
     filterValues: {},               // Values for input-based filters (keyed by filter ID)
     alertGroups: [],                // Known alert groups
     cachedAlerts: [],               // Cached alerts data for instant filtering/sorting
+    searchQuery: '',                // Current search query
     sorting: {                      // Current sorting state
         sortKey: null,
         sortOrder: null,
@@ -1946,7 +2205,7 @@ const AlertsUI = {
      * - Above/Below: Shows the price movement that triggered the alert
      */
     buildTriggeredText(alert) {
-        return 'Alert triggered.';
+        return 'Triggered';
     },
     
     /**
@@ -2061,6 +2320,7 @@ const AlertsUI = {
         // Build sort dropdown items
         const currentSortKey = AlertsState.sorting.sortKey;
         const sortItems = '' +
+            '<div class="custom-dropdown-item' + (currentSortKey === 'alphabetically' ? ' active' : '') + '" data-sort="alphabetically"><span>Alphabetically</span><span class="sort-check">✓</span></div>' +
             '<div class="custom-dropdown-item' + (currentSortKey === 'lastTriggered' ? ' active' : '') + '" data-sort="lastTriggered"><span>Last Triggered Time</span><span class="sort-check">✓</span></div>' +
             '<div class="custom-dropdown-item' + (currentSortKey === 'alertType' ? ' active' : '') + '" data-sort="alertType"><span>Alert Type</span><span class="sort-check">✓</span></div>' +
             '<div class="custom-dropdown-item' + (currentSortKey === 'thresholdDistance' ? ' active' : '') + '" data-sort="thresholdDistance"><span>Threshold Distance</span><span class="sort-check">✓</span></div>' +
@@ -2072,6 +2332,18 @@ const AlertsUI = {
             ? '<span class="filter-badge" id="filterBadge">' + activeCount + '</span>'
             : '<span class="filter-badge" id="filterBadge" style="display: none;">0</span>';
         const filterBtnClass = activeCount > 0 ? 'btn-dropdown btn-filter has-active' : 'btn-dropdown btn-filter';
+        
+        // Build search bar with current value preserved
+        const searchValue = AlertsState.searchQuery || '';
+        const searchHasValue = searchValue.length > 0 ? ' has-value' : '';
+        const searchBarHtml = '' +
+            '<div class="alert-search-wrapper' + searchHasValue + '">' +
+            '<svg class="alert-search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>' +
+            '</svg>' +
+            '<input type="text" class="alert-search-input" id="alertSearchInput" placeholder="Search alerts..." autocomplete="off" value="' + searchValue.replace(/"/g, '&quot;') + '">' +
+            '<button type="button" class="alert-search-clear" id="alertSearchClear" title="Clear search">×</button>' +
+            '</div>';
         
         return '<div class="alert-actions-wrapper">' +
                '<div class="alert-actions">' +
@@ -2090,6 +2362,7 @@ const AlertsUI = {
                '<div class="custom-dropdown-item" data-action="group"><span>Add to Group</span></div>' +
                '</div>' +
                '</div>' +
+               searchBarHtml +
                '</div>' +
                '<div class="alert-actions-right" id="active-filters">' +
                '<div class="alert-actions-controls">' +
@@ -2152,22 +2425,55 @@ const AlertsUI = {
             triggeredBadge = '<span class="alert-triggered">' + triggeredText + '</span>';
         }
 
-        // Show threshold percentage for all alerts
-        let thresholdDisplay = '';
-        const thresholdDistance = SortManager.getThresholdDistance(alert);
-        if (typeof thresholdDistance === 'number' && !Number.isNaN(thresholdDistance)) {
-            const formatted = thresholdDistance.toFixed(2);
-            thresholdDisplay = '<span class="alert-threshold"><span class="alert-threshold-label">Threshold: </span>' + formatted + '%</span>';
-        } else {
-            thresholdDisplay = '<span class="alert-threshold"><span class="alert-threshold-label">Threshold: </span>N/A</span>';
+        // Build active/inactive status display
+        const isActive = alert.is_active !== false; // Default to active if not specified
+        const statusDisplay = isActive 
+            ? '<span class="alert-status alert-status-active">Active</span>'
+            : '<span class="alert-status alert-status-inactive">Inactive</span>';
+        
+        // Build sort info text based on current sort
+        let sortInfoHtml = '';
+        const currentSort = AlertsState.sorting.sortKey;
+        if (currentSort === 'lastTriggered') {
+            const ts = alert.last_triggered_at || alert.triggered_at || alert.triggered_time || alert.last_triggered_time;
+            let timeText = 'Never';
+            if (ts) {
+                const date = new Date(ts);
+                if (!isNaN(date.getTime())) {
+                    timeText = date.toLocaleString();
+                }
+            }
+            sortInfoHtml = '<div class="alert-sort-info">Last triggered: ' + timeText + '</div>';
+        } else if (currentSort === 'createdDate') {
+            let timeText = 'Unknown';
+            if (alert.created_at) {
+                const date = new Date(alert.created_at);
+                if (!isNaN(date.getTime())) {
+                    timeText = date.toLocaleString();
+                }
+            }
+            sortInfoHtml = '<div class="alert-sort-info">Created: ' + timeText + '</div>';
+        } else if (currentSort === 'alertType') {
+            const typeText = alert.type ? alert.type.charAt(0).toUpperCase() + alert.type.slice(1) : 'Unknown';
+            sortInfoHtml = '<div class="alert-sort-info">Type: ' + typeText + '</div>';
+        } else if (currentSort === 'thresholdDistance') {
+            const thresholdDistance = SortManager.getThresholdDistance(alert);
+            let distText = 'N/A';
+            if (typeof thresholdDistance === 'number' && !Number.isNaN(thresholdDistance)) {
+                distText = thresholdDistance.toFixed(2) + '%';
+            }
+            sortInfoHtml = '<div class="alert-sort-info">Threshold distance: ' + distText + '</div>';
         }
 
-        return '<li class="alert-item clickable-alert" data-alert-id="' + alert.id + '" onclick="navigateToAlertDetail(event, ' + alert.id + ')">' +
+        return '<li class="alert-item clickable-alert" data-alert-id="' + alert.id + '" data-alert-text="' + (alert.text || '').replace(/"/g, '&quot;') + '" onclick="navigateToAlertDetail(event, ' + alert.id + ')">' +
                '<input type="checkbox" class="alert-checkbox" onclick="event.stopPropagation()">' +
                '<span class="alert-icon">🔔</span>' +
+               '<div class="alert-content">' +
                '<span class="alert-text">' + alert.text + '</span>' +
+               sortInfoHtml +
+               '</div>' +
                triggeredBadge +
-               thresholdDisplay +
+               statusDisplay +
                '</li>';
     },
     
@@ -2470,6 +2776,7 @@ const AlertsUI = {
 // =============================================================================
 const SortManager = {
     options: {
+        alphabetically: { id: 'alphabetically', label: 'Alphabetically', defaultOrder: 'asc' },
         lastTriggered: { id: 'lastTriggered', label: 'Last Triggered Time', defaultOrder: 'desc' },
         alertType: { id: 'alertType', label: 'Alert Type', defaultOrder: 'asc' },
         thresholdDistance: { id: 'thresholdDistance', label: 'Threshold Distance', defaultOrder: 'asc' },
@@ -2478,6 +2785,8 @@ const SortManager = {
 
     getSortValue(alert, sortKey) {
         switch (sortKey) {
+            case 'alphabetically':
+                return (alert.text || '').toLowerCase();
             case 'lastTriggered': {
                 const ts = alert.last_triggered_at || alert.triggered_at || alert.triggered_time || alert.last_triggered_time;
                 return this.parseDateValue(ts);
@@ -2877,11 +3186,23 @@ const FilterManager = {
      * Returns only alerts that pass ALL active filter tests.
      */
     applyFilters(alerts) {
-        if (AlertsState.activeFilters.size === 0) {
-            return alerts;
+        let result = alerts;
+        
+        // Apply search filter first
+        if (AlertsState.searchQuery && AlertsState.searchQuery.trim()) {
+            const query = AlertsState.searchQuery.toLowerCase().trim();
+            result = result.filter(alert => {
+                const text = (alert.text || '').toLowerCase();
+                return text.includes(query);
+            });
         }
         
-        return alerts.filter(alert => {
+        // Apply active filters
+        if (AlertsState.activeFilters.size === 0) {
+            return result;
+        }
+        
+        return result.filter(alert => {
             for (const filterId of AlertsState.activeFilters) {
                 const filter = AlertsConfig.filters[filterId];
                 if (!filter) continue;
@@ -3153,13 +3474,9 @@ const AlertActions = {
     
     /**
      * Confirms deletion of selected alerts.
-     * 
-     * What: Deletes selected alerts with smooth animation
-     * Why: Provides visual feedback and smooth UX when removing alerts
-     * How: Animates selected items out, waits for animation, then calls API
-     *      and refreshes the list
+     * Opens the delete confirmation modal instead of browser confirm.
      */
-    async confirmDelete() {
+    confirmDelete() {
         const selectedItems = [];
         const selectedIds = [];
         
@@ -3175,11 +3492,36 @@ const AlertActions = {
             alert('Please select at least one alert to delete.');
             return;
         }
-
-        const confirmed = window.confirm('Delete selected alert' + (selectedIds.length > 1 ? 's' : '') + '?');
-        if (!confirmed) {
+        
+        // Store selected items and IDs for later use
+        this.pendingDeleteItems = selectedItems;
+        this.pendingDeleteIds = selectedIds;
+        
+        // Update modal message
+        const message = document.getElementById('delete-confirm-message');
+        if (message) {
+            const count = selectedIds.length;
+            message.textContent = 'Are you sure you want to delete ' + count + ' selected alert' + (count > 1 ? 's' : '') + '?';
+        }
+        
+        // Show modal
+        document.getElementById('delete-confirm-modal').style.display = 'flex';
+    },
+    
+    /**
+     * Executes the delete after modal confirmation.
+     */
+    async executeDelete() {
+        const selectedItems = this.pendingDeleteItems || [];
+        const selectedIds = this.pendingDeleteIds || [];
+        
+        if (selectedIds.length === 0) {
+            closeDeleteConfirmModal();
             return;
         }
+        
+        // Close modal first
+        closeDeleteConfirmModal();
         
         // Animate items out
         selectedItems.forEach(item => {
@@ -3199,6 +3541,10 @@ const AlertActions = {
         } else {
             selectedItems.forEach(item => item.classList.remove('deleting'));
         }
+        
+        // Clear pending state
+        this.pendingDeleteItems = null;
+        this.pendingDeleteIds = null;
     },
 
     /**
@@ -3739,10 +4085,19 @@ const AlertsRefresh = {
     pausedForSort: false,
     
     /**
-     * Checks if any dropdown is currently open.
+     * Checks if any dropdown is currently open or search is active.
      */
     isDropdownOpen() {
-        return document.querySelector('.custom-dropdown-menu.show') !== null;
+        // Check if any dropdown menu is open
+        if (document.querySelector('.custom-dropdown-menu.show') !== null) {
+            return true;
+        }
+        // Check if search input is focused
+        const searchInput = document.getElementById('alertSearchInput');
+        if (searchInput && document.activeElement === searchInput) {
+            return true;
+        }
+        return false;
     },
     
     /**
@@ -3851,6 +4206,66 @@ const TabManager = {
 
 
 // =============================================================================
+// FORM VALIDATION
+// =============================================================================
+/**
+ * Handles form validation and error display for the create alert form.
+ */
+const FormValidation = {
+    /**
+     * Shows an error notification in the triggered-notifications area.
+     * @param {string} message - The error message to display
+     */
+    showError(message) {
+        // Try to show in create-alert tab's notification area, or fall back to My Alerts tab
+        let container = document.getElementById('create-alert');
+        let notificationsContainer = container ? container.querySelector('.form-error-container') : null;
+        
+        // If no dedicated error container, create one at the top of the create alert form
+        if (!notificationsContainer) {
+            const form = document.querySelector('.create-alert-form');
+            if (form) {
+                notificationsContainer = document.createElement('div');
+                notificationsContainer.className = 'form-error-container';
+                form.insertBefore(notificationsContainer, form.firstChild);
+            }
+        }
+        
+        if (!notificationsContainer) return;
+        
+        // Remove any existing error notifications
+        notificationsContainer.querySelectorAll('.triggered-notification.error-notification').forEach(n => n.remove());
+        
+        // Create error notification
+        const notification = document.createElement('div');
+        notification.className = 'triggered-notification error-notification';
+        notification.innerHTML = message + '<button class="dismiss-btn" type="button">&times;</button>';
+        
+        // Add click handler for dismiss button
+        const dismissBtn = notification.querySelector('.dismiss-btn');
+        if (dismissBtn) {
+            dismissBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                notification.classList.add('dismissing');
+                setTimeout(() => notification.remove(), 300);
+            });
+        }
+        
+        notificationsContainer.appendChild(notification);
+        
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.classList.add('dismissing');
+                setTimeout(() => notification.remove(), 300);
+            }
+        }, 5000);
+    }
+};
+
+
+// =============================================================================
 // EVENT MANAGEMENT
 // =============================================================================
 /**
@@ -3892,6 +4307,16 @@ const EventManager = {
             });
         }
         
+        // Close delete confirm modal on backdrop click
+        const deleteModal = document.getElementById('delete-confirm-modal');
+        if (deleteModal) {
+            deleteModal.addEventListener('click', function(e) {
+                if (e.target.id === 'delete-confirm-modal') {
+                    closeDeleteConfirmModal();
+                }
+            });
+        }
+        
         // Close modals on Escape key
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
@@ -3906,6 +4331,10 @@ const EventManager = {
                 const groupModal = document.querySelector(AlertsConfig.selectors.groupModal);
                 if (groupModal && groupModal.style.display === 'flex') {
                     GroupManager.close();
+                }
+                const deleteModal = document.getElementById('delete-confirm-modal');
+                if (deleteModal && deleteModal.style.display === 'flex') {
+                    closeDeleteConfirmModal();
                 }
             }
         });
@@ -3999,6 +4428,7 @@ const EventManager = {
                     filterItem.classList.remove('active');
                     removeFilter(filterId);
                     updateFilterBadge();
+                    document.getElementById('filterDropdownMenu')?.classList.remove('show');
                     return;
                 }
                 
@@ -4033,12 +4463,132 @@ const EventManager = {
     },
     
     /**
+     * Sets up search input event handlers using event delegation.
+     */
+    setupSearchEvents() {
+        // Use event delegation so events work after DOM re-render
+        document.addEventListener('input', function(e) {
+            if (e.target.id === 'alertSearchInput') {
+                AlertsState.searchQuery = e.target.value;
+                const searchWrapper = e.target.closest('.alert-search-wrapper');
+                if (searchWrapper) {
+                    searchWrapper.classList.toggle('has-value', e.target.value.length > 0);
+                }
+                FilterManager.updateAlertsList();
+            }
+        });
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.target.id === 'alertSearchInput') {
+                if (e.key === 'Escape') {
+                    e.target.value = '';
+                    AlertsState.searchQuery = '';
+                    const searchWrapper = e.target.closest('.alert-search-wrapper');
+                    if (searchWrapper) {
+                        searchWrapper.classList.remove('has-value');
+                    }
+                    FilterManager.updateAlertsList();
+                    e.target.blur();
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    e.target.blur();
+                }
+            }
+        });
+        
+        document.addEventListener('click', function(e) {
+            if (e.target.id === 'alertSearchClear' || e.target.closest('#alertSearchClear')) {
+                const searchInput = document.getElementById('alertSearchInput');
+                if (searchInput) {
+                    searchInput.value = '';
+                    AlertsState.searchQuery = '';
+                    const searchWrapper = searchInput.closest('.alert-search-wrapper');
+                    if (searchWrapper) {
+                        searchWrapper.classList.remove('has-value');
+                    }
+                    FilterManager.updateAlertsList();
+                }
+            }
+        });
+    },
+    
+    /**
      * Initializes all event listeners.
      */
     init() {
         this.setupModalEvents();
         this.setupAutocompleteEvents();
         this.setupDropdownEvents();
+        this.setupSearchEvents();
+        this.setupFormValidation();
+    },
+    
+    /**
+     * Sets up form validation for the create alert form.
+     */
+    setupFormValidation() {
+        const form = document.querySelector('.create-alert-form');
+        if (!form) return;
+        
+        // Prevent Enter from submitting unless the Create Alert button is focused
+        form.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                const submitBtn = form.querySelector('button[type="submit"]');
+                if (document.activeElement !== submitBtn) {
+                    e.preventDefault();
+                }
+            }
+        });
+        
+        // Validate on submit
+        form.addEventListener('submit', function(e) {
+            const alertType = document.getElementById('alert-type').value;
+            const errors = [];
+            
+            // Check item name for types that need it
+            const itemNameGroup = document.getElementById('item-name-group');
+            const itemNameVisible = itemNameGroup && itemNameGroup.style.display !== 'none';
+            
+            if (itemNameVisible) {
+                const itemName = document.getElementById('item-name').value.trim();
+                const itemId = document.getElementById('item-id').value.trim();
+                
+                if (!itemName) {
+                    errors.push('Item name is required');
+                } else if (!itemId) {
+                    errors.push('Please select a valid item from the suggestions');
+                }
+            }
+            
+            // Check price for above/below types
+            if (alertType === 'above' || alertType === 'below') {
+                const price = document.getElementById('price').value;
+                if (!price || price <= 0) {
+                    errors.push('Price threshold is required');
+                }
+            }
+            
+            // Check percentage for spread/spike types
+            if (alertType === 'spread' || alertType === 'spike') {
+                const percentage = document.getElementById('percentage').value;
+                if (!percentage || percentage <= 0) {
+                    errors.push('Percentage is required');
+                }
+            }
+            
+            // Check time frame for spike type
+            if (alertType === 'spike') {
+                const timeFrame = document.getElementById('time-frame').value;
+                if (!timeFrame || timeFrame <= 0) {
+                    errors.push('Time frame is required');
+                }
+            }
+            
+            if (errors.length > 0) {
+                e.preventDefault();
+                FormValidation.showError(errors[0]);
+            }
+        });
     }
 };
 
@@ -4097,6 +4647,13 @@ function dismissAlert(alertId) {
 function dismissStatusNotification(button) {
     const notification = button.closest('.triggered-notification');
     if (!notification) return;
+
+    // For error notifications, just dismiss immediately
+    if (notification.classList.contains('error-notification')) {
+        notification.classList.add('dismissing');
+        setTimeout(() => notification.remove(), 300);
+        return;
+    }
 
     if (notification.classList.contains('status-notification')) {
         // Dismiss all triggered alerts referenced in this box.
@@ -4327,6 +4884,15 @@ function applyPriceFilter() {
     closePriceFilterModal();
     syncFilterDropdownState();
     updateFilterBadge();
+}
+
+function closeDeleteConfirmModal() {
+    const modal = document.getElementById('delete-confirm-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+function executeDelete() {
+    AlertActions.executeDelete();
 }
 
 function confirmDelete() {
