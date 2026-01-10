@@ -256,18 +256,48 @@
     .btn-delete-flip:active {
         transform: translateY(1px);
     }
-    .btn-delete-flip.active {
-        background: #DC2626;
+    .btn-delete-flip.delete-mode-active {
+        background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+        color: #fff;
+    }
+    .btn-delete-flip.delete-mode-active:hover {
+        background: linear-gradient(135deg, #D97706 0%, #B45309 100%);
     }
     
     #flipsTable.delete-mode tbody tr {
         cursor: pointer;
     }
     #flipsTable.delete-mode tbody tr:hover {
-        background: linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%);
+        background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%) !important;
+    }
+    #flipsTable.delete-mode tbody tr:hover td {
+        color: white;
     }
     #flipsTable.delete-mode tbody tr:hover a {
-        color: var(--danger);
+        color: white;
+    }
+    #flipsTable.delete-mode tbody tr.selected-for-delete {
+        background: linear-gradient(135deg, #B91C1C 0%, #991B1B 100%) !important;
+    }
+    #flipsTable.delete-mode tbody tr.selected-for-delete td {
+        color: white;
+    }
+    #flipsTable.delete-mode tbody tr.selected-for-delete a {
+        color: white;
+    }
+    /* Selected row styling - works even after delete-mode is removed */
+    #flipsTable tbody tr.selected-for-delete,
+    #flipsTable tbody tr.selected-for-delete:hover {
+        background: linear-gradient(135deg, #B91C1C 0%, #991B1B 100%) !important;
+    }
+    #flipsTable tbody tr.selected-for-delete td,
+    #flipsTable tbody tr.selected-for-delete:hover td {
+        color: white !important;
+        background: transparent !important;
+    }
+    #flipsTable tbody tr.selected-for-delete a,
+    #flipsTable tbody tr.selected-for-delete:hover a {
+        color: white !important;
     }
     
     /* Filter search bar */
@@ -733,6 +763,172 @@
         transform: translateY(-1px);
     }
     
+    /* New Flip Modal styling */
+    .new-flip-modal .modal-content {
+        border-radius: 12px;
+        border: none;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    }
+    .new-flip-modal .modal-header {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        color: white;
+        border-radius: 12px 12px 0 0;
+        border: none;
+        padding: 1rem 1.5rem;
+    }
+    .new-flip-modal .modal-header .modal-title {
+        font-weight: 600;
+    }
+    .new-flip-modal .modal-header .btn-close {
+        filter: brightness(0) invert(1);
+        opacity: 0.8;
+    }
+    .new-flip-modal .modal-header .btn-close:hover {
+        opacity: 1;
+    }
+    .new-flip-modal .modal-body {
+        padding: 1.5rem;
+        font-size: 16px;
+    }
+    .new-flip-modal .modal-body .flip-icon {
+        width: 56px;
+        height: 56px;
+        background: rgba(17, 153, 142, 0.1);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+    }
+    .new-flip-modal .modal-body .flip-icon svg {
+        width: 28px;
+        height: 28px;
+        color: #11998e;
+    }
+    .new-flip-modal .form-row {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    .new-flip-modal .form-row .form-group {
+        flex: 1;
+    }
+    .new-flip-modal .form-row .form-group.full-width {
+        flex: 1 1 100%;
+    }
+    .new-flip-modal .form-label {
+        font-weight: 500;
+        color: var(--text);
+        font-size: 15px;
+        margin-bottom: 0.5rem;
+    }
+    .new-flip-modal .form-control,
+    .new-flip-modal .form-select {
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        padding: 0.625rem 0.875rem;
+        font-size: 16px;
+        transition: all 0.15s;
+    }
+    .new-flip-modal .form-control:focus,
+    .new-flip-modal .form-select:focus {
+        border-color: #11998e;
+        box-shadow: 0 0 0 3px rgba(17, 153, 142, 0.15);
+    }
+    .new-flip-modal .form-control::placeholder {
+        color: var(--text-muted);
+        opacity: 0.7;
+    }
+    .new-flip-modal .modal-footer {
+        border: none;
+        padding: 1rem 1.5rem;
+        gap: 0.75rem;
+        justify-content: flex-end;
+    }
+    .new-flip-modal .btn-cancel {
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        color: var(--text);
+        padding: 0.5rem 1.25rem;
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.15s;
+    }
+    .new-flip-modal .btn-cancel:hover {
+        background: var(--surface);
+        border-color: var(--text-muted);
+    }
+    .new-flip-modal .btn-add-flip {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        border: none;
+        color: white;
+        padding: 0.5rem 1.25rem;
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.15s;
+    }
+    .new-flip-modal .btn-add-flip:hover {
+        background: linear-gradient(135deg, #0e8377 0%, #2dd36f 100%);
+        transform: translateY(-1px);
+    }
+    .new-flip-modal .autocomplete-wrapper {
+        position: relative;
+    }
+    .new-flip-modal .autocomplete-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1050;
+        display: none;
+    }
+    .new-flip-modal .autocomplete-results.show {
+        display: block;
+    }
+    .new-flip-modal .autocomplete-item {
+        padding: 0.625rem 0.875rem;
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s;
+        font-size: 16px;
+    }
+    .new-flip-modal .autocomplete-item:hover {
+        background: rgba(30, 58, 138, 0.1);
+    }
+    .new-flip-modal .autocomplete-item.active {
+        background: #1E3A8A;
+        color: white;
+    }
+    .new-flip-modal .date-input-wrapper {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+    .new-flip-modal .date-input-wrapper .form-control {
+        flex: 1;
+    }
+    .new-flip-modal .btn-now {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        border: none;
+        color: white;
+        padding: 0.625rem 0.75rem;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s;
+        white-space: nowrap;
+    }
+    .new-flip-modal .btn-now:hover {
+        background: linear-gradient(135deg, #0e8377 0%, #2dd36f 100%);
+        transform: translateY(-1px);
+    }
+    
     /* Filter modals styling */
     .filter-modal .modal-content {
         border-radius: 12px;
@@ -1057,8 +1253,8 @@
 </div>
 
 <!-- New Flip Modal -->
-<div class="modal fade" id="newFlipModal" tabindex="-1" aria-labelledby="newFlipModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+<div class="modal fade new-flip-modal" id="newFlipModal" tabindex="-1" aria-labelledby="newFlipModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="newFlipModalLabel">New Flip</h5>
@@ -1067,34 +1263,51 @@
             <form method="post" action="{% url 'add_flip' %}">
                 {% csrf_token %}
                 <div class="modal-body">
-                    <div class="mb-3 autocomplete-wrapper">
-                        <label for="itemName" class="form-label">Item Name</label>
-                        <input type="text" class="form-control" id="itemName" name="item_name" autocomplete="off" required>
-                        <div class="autocomplete-results" id="autocompleteResults"></div>
+                    <div class="flip-icon">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
                     </div>
-                    <div class="mb-3">
-                        <label for="price" class="form-label">Price</label>
-                        <input type="number" class="form-control" id="price" name="price" required>
+                    
+                    <div class="form-row">
+                        <div class="form-group full-width autocomplete-wrapper">
+                            <label for="itemName" class="form-label">Item Name</label>
+                            <input type="text" class="form-control" id="itemName" name="item_name" autocomplete="off" placeholder="Search for an item..." required>
+                            <div class="autocomplete-results" id="autocompleteResults"></div>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label for="date" class="form-label">Date</label>
-                        <input type="datetime-local" class="form-control" id="date" name="date" required>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="price" class="form-label">Price</label>
+                            <input type="number" class="form-control" id="price" name="price" placeholder="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="quantity" class="form-label">Quantity</label>
+                            <input type="number" class="form-control" id="quantity" name="quantity" placeholder="0" required>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label for="quantity" class="form-label">Total Quantity</label>
-                        <input type="number" class="form-control" id="quantity" name="quantity" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="type" class="form-label">Type</label>
-                        <select class="form-select" id="type" name="type" required>
-                            <option value="buy">Buy</option>
-                            <option value="sell">Sell</option>
-                        </select>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="date" class="form-label">Date</label>
+                            <div class="date-input-wrapper">
+                                <input type="datetime-local" class="form-control" id="date" name="date" required>
+                                <button type="button" class="btn-now" id="setNowBtn" title="Set to current time">Now</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="type" class="form-label">Type</label>
+                            <select class="form-select" id="type" name="type" required>
+                                <option value="buy">Buy</option>
+                                <option value="sell">Sell</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Add Flip</button>
+                    <button type="button" class="btn-cancel" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn-add-flip">Add Flip</button>
                 </div>
             </form>
         </div>
@@ -1897,8 +2110,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const max = timeHeldMax.value !== '' ? parseFloat(timeHeldMax.value) : null;
         
         activeFilters['time-held'] = { min, max };
+        columnSortActive = false;
+        currentSortFilter = 'time-held';
+        clearColumnSortStyling();
         updateFilterUI();
         applyFilters();
+        
+        // Trigger flash animation
+        sortIndicator.classList.remove('flash');
+        void sortIndicator.offsetWidth;
+        sortIndicator.classList.add('flash');
+        syncMobileSortIndicator();
         
         bootstrap.Modal.getInstance(timeHeldModal).hide();
     });
@@ -1929,8 +2151,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const max = unrealizedMax.value !== '' ? parseFloat(unrealizedMax.value) : null;
         
         activeFilters['unrealized-range'] = { min, max };
+        columnSortActive = false;
+        currentSortFilter = 'unrealized-range';
+        clearColumnSortStyling();
         updateFilterUI();
         applyFilters();
+        
+        // Trigger flash animation
+        sortIndicator.classList.remove('flash');
+        void sortIndicator.offsetWidth;
+        sortIndicator.classList.add('flash');
+        syncMobileSortIndicator();
         
         bootstrap.Modal.getInstance(unrealizedModal).hide();
     });
@@ -1961,8 +2192,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const max = realizedMax.value !== '' ? parseFloat(realizedMax.value) : null;
         
         activeFilters['realized-range'] = { min, max };
+        columnSortActive = false;
+        currentSortFilter = 'realized-range';
+        clearColumnSortStyling();
         updateFilterUI();
         applyFilters();
+        
+        // Trigger flash animation
+        sortIndicator.classList.remove('flash');
+        void sortIndicator.offsetWidth;
+        sortIndicator.classList.add('flash');
+        syncMobileSortIndicator();
         
         bootstrap.Modal.getInstance(realizedModal).hide();
     });
@@ -1993,8 +2233,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const max = positionSizeMax.value !== '' ? parseFloat(positionSizeMax.value) : null;
         
         activeFilters['position-size'] = { min, max };
+        columnSortActive = false;
+        currentSortFilter = 'position-size';
+        clearColumnSortStyling();
         updateFilterUI();
         applyFilters();
+        
+        // Trigger flash animation
+        sortIndicator.classList.remove('flash');
+        void sortIndicator.offsetWidth;
+        sortIndicator.classList.add('flash');
+        syncMobileSortIndicator();
         
         bootstrap.Modal.getInstance(positionSizeModal).hide();
     });
@@ -2025,8 +2274,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const max = quantityMax.value !== '' ? parseFloat(quantityMax.value) : null;
         
         activeFilters['quantity'] = { min, max };
+        columnSortActive = false;
+        currentSortFilter = 'quantity';
+        clearColumnSortStyling();
         updateFilterUI();
         applyFilters();
+        
+        // Trigger flash animation
+        sortIndicator.classList.remove('flash');
+        void sortIndicator.offsetWidth;
+        sortIndicator.classList.add('flash');
+        syncMobileSortIndicator();
         
         bootstrap.Modal.getInstance(quantityModal).hide();
     });
@@ -2217,6 +2475,62 @@ document.addEventListener('DOMContentLoaded', function() {
             results.classList.remove('show');
         }
     });
+    
+    // Date "Now" button and default date
+    const dateInput = document.getElementById('date');
+    const setNowBtn = document.getElementById('setNowBtn');
+    
+    function setDateToNow() {
+        const now = new Date();
+        // Format for datetime-local input: YYYY-MM-DDTHH:MM
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        dateInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+    
+    setNowBtn.addEventListener('click', setDateToNow);
+    
+    // Set default date and auto-focus when modal opens
+    const newFlipModal = document.getElementById('newFlipModal');
+    newFlipModal.addEventListener('shown.bs.modal', function() {
+        setDateToNow();
+        input.focus();
+    });
+    
+    // Clear form when modal closes
+    newFlipModal.addEventListener('hidden.bs.modal', function() {
+        input.value = '';
+        document.getElementById('price').value = '';
+        document.getElementById('quantity').value = '';
+        document.getElementById('type').value = 'buy';
+        dateInput.value = '';
+        results.classList.remove('show');
+        activeIndex = -1;
+    });
+    
+    // Prevent Enter from submitting form unless Add Flip button is focused
+    newFlipModal.querySelector('form').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            const activeElement = document.activeElement;
+            const submitBtn = newFlipModal.querySelector('.btn-add-flip');
+            // Allow Enter only if submit button is focused or in autocomplete selection
+            if (activeElement !== submitBtn && activeElement.id !== 'itemName') {
+                e.preventDefault();
+            }
+            // If in autocomplete and selecting item, don't submit
+            if (activeElement.id === 'itemName' && results.classList.contains('show')) {
+                e.preventDefault();
+            }
+            // If on date input, show the picker instead of submitting
+            if (activeElement.id === 'date') {
+                e.preventDefault();
+                activeElement.showPicker();
+            }
+        }
+    });
 
     // Table sorting
     const table = document.getElementById('flipsTable');
@@ -2279,13 +2593,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const deleteBtn = document.getElementById('deleteFlipBtn');
     let deleteMode = false;
     let isProcessing = false;
+    let selectedRow = null;
     
     deleteBtn.addEventListener('click', function() {
         if (!deleteMode) {
             deleteMode = true;
             deleteBtn.textContent = 'Click a row to delete';
-            deleteBtn.classList.add('btn-warning');
-            deleteBtn.classList.remove('btn-danger');
+            deleteBtn.classList.add('delete-mode-active');
             table.classList.add('delete-mode');
         } else {
             cancelDeleteMode();
@@ -2296,9 +2610,13 @@ document.addEventListener('DOMContentLoaded', function() {
         deleteMode = false;
         isProcessing = false;
         deleteBtn.textContent = 'Delete Flip';
-        deleteBtn.classList.remove('btn-warning');
-        deleteBtn.classList.add('btn-danger');
+        deleteBtn.classList.remove('delete-mode-active');
         table.classList.remove('delete-mode');
+        // Clear any selected row
+        if (selectedRow) {
+            selectedRow.classList.remove('selected-for-delete');
+            selectedRow = null;
+        }
     }
 
     table.querySelector('tbody').addEventListener('click', function(e) {
@@ -2312,6 +2630,10 @@ document.addEventListener('DOMContentLoaded', function() {
         
         isProcessing = true;
         deleteMode = false;
+        
+        // Highlight the selected row
+        row.classList.add('selected-for-delete');
+        selectedRow = row;
         
         const itemName = row.dataset.itemName;
         const itemId = row.dataset.itemId;
