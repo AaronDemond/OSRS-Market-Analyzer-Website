@@ -82,7 +82,7 @@
         user-select: none;
     }
     .sortable:hover {
-        background-color: rgba(255, 255, 255, 0.1);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     }
     .sort-icon::after {
         content: '⇅';
@@ -99,29 +99,13 @@
     }
     .stats-row {
         display: flex;
+        flex-direction: row;
         gap: 1.5rem;
         margin-bottom: 1.5rem;
     }
     .stat-card {
         padding: 1rem 1.5rem;
-        border-radius: 8px;
-        display: flex;
-        flex-direction: column;
-    }
-    .stat-label {
-        font-size: 0.85rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        opacity: 0.9;
-        margin-bottom: 0.25rem;
-    }
-    .stat-value {
-        font-size: 1.25rem;
-        font-weight: 600;
-    }
-    .stat-card {
-        padding: 1rem 1.5rem;
-        border-radius: 8px;
+        border-radius: 0;
         display: flex;
         flex-direction: column;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -142,6 +126,10 @@
         letter-spacing: 0.5px;
         opacity: 0.9;
         margin-bottom: 0.25rem;
+    }
+    .stat-value {
+        font-size: 1.25rem;
+        font-weight: 600;
     }
     .btn-new-flip {
         padding: 0.6rem 1.2rem;
@@ -190,59 +178,46 @@
     #flipsTable.delete-mode tbody tr:hover a {
         color: #fff;
     }
-    .time-filter {
-        display: flex;
-        gap: 0;
-        border-radius: 12px;
-        overflow: hidden;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-    }
-    .time-filter-btn {
-        padding: 0.6rem 1.2rem;
-        border: none;
-        background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
-        color: rgba(255, 255, 255, 0.7);
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        position: relative;
-    }
-    .time-filter-btn:hover {
-        color: #fff;
-        background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
-    }
-    .time-filter-btn.active {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: #fff;
-    }
-    .time-filter-btn:first-child {
-        border-radius: 12px 0 0 12px;
-    }
-    .time-filter-btn:last-child {
-        border-radius: 0 12px 12px 0;
-    }
-    .filter-row {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        margin-bottom: 1.5rem;
-    }
-    .filter-label {
-        font-weight: 600;
-        color: #4a5568;
-        text-transform: uppercase;
-        font-size: 0.85rem;
-        letter-spacing: 0.5px;
-    }
-    .time-filter-dropdown {
-        display: none;
-    }
-    @media (max-width: 1010px) {
-        .time-filter {
+    
+    /* Mobile styles */
+    @media (max-width: 768px) {
+        .stats-row {
+            flex-direction: column;
+            gap: 0.5rem;
+            width: fit-content;
+        }
+        .stat-card {
+            padding: 0.3rem 0.6rem;
+            flex-direction: row;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .stat-label {
+            font-size: 0.6rem;
+            margin-bottom: 0;
+        }
+        .stat-value {
+            font-size: 0.85rem;
+        }
+        
+        /* Hide columns on mobile: Price Paid, High Price, Low Price */
+        #flipsTable th:nth-child(2),
+        #flipsTable td:nth-child(2),
+        #flipsTable th:nth-child(4),
+        #flipsTable td:nth-child(4),
+        #flipsTable th:nth-child(5),
+        #flipsTable td:nth-child(5) {
             display: none;
         }
-        .time-filter-dropdown {
-            display: block;
+        
+        #flipsTable {
+            font-size: 0.75rem;
+            margin-right: 1rem;
+        }
+        
+        #flipsTable th,
+        #flipsTable td {
+            padding: 0.4rem 0.25rem;
         }
     }
 </style>
@@ -276,32 +251,14 @@
     </div>
 </div>
 
-<hr style="border: none; border-top: 1px solid #e0e0e0; margin: 1.5rem 0;">
 
-<div class="d-flex flex-column flex-md-row justify-content-md-between align-items-md-center gap-3 mb-3">
-    <div class="d-flex gap-3">
-        <button type="button" class="btn-new-flip" data-bs-toggle="modal" data-bs-target="#newFlipModal">
-            New Flip
-        </button>
-        <button type="button" class="btn-delete-flip" id="deleteFlipBtn">
-            Delete Flip
-        </button>
-    </div>
-    <div class="filter-row mb-0">
-        <span class="filter-label">Compare To:</span>
-        <div class="time-filter">
-            <button class="time-filter-btn {% if time_filter == 'current' or not time_filter %}active{% endif %}" data-filter="current">Current</button>
-            <button class="time-filter-btn {% if time_filter == 'week' %}active{% endif %}" data-filter="week">Week</button>
-            <button class="time-filter-btn {% if time_filter == 'month' %}active{% endif %}" data-filter="month">Month</button>
-            <button class="time-filter-btn {% if time_filter == 'year' %}active{% endif %}" data-filter="year">Year</button>
-        </div>
-        <select class="form-select time-filter-dropdown" id="timeFilterDropdown">
-            <option value="current" {% if time_filter == 'current' or not time_filter %}selected{% endif %}>Current</option>
-            <option value="week" {% if time_filter == 'week' %}selected{% endif %}>Week</option>
-            <option value="month" {% if time_filter == 'month' %}selected{% endif %}>Month</option>
-            <option value="year" {% if time_filter == 'year' %}selected{% endif %}>Year</option>
-        </select>
-    </div>
+<div class="d-flex gap-3 mb-3">
+    <button type="button" class="btn-new-flip" data-bs-toggle="modal" data-bs-target="#newFlipModal">
+        New Flip
+    </button>
+    <button type="button" class="btn-delete-flip" id="deleteFlipBtn">
+        Delete Flip
+    </button>
 </div>
 
 <!-- New Flip Modal -->
@@ -354,11 +311,11 @@
         <tr>
             <th class="sortable" data-col="0" data-type="string">Item <span class="sort-icon"></span></th>
             <th class="sortable" data-col="1" data-type="number">Price Paid<span class="sort-icon"></span></th>
-            <th class="sortable" data-col="2" data-type="number">Quantity Holding <span class="sort-icon"></span></th>
+            <th class="sortable" data-col="2" data-type="number"><span class="d-none d-md-inline">Quantity Holding</span><span class="d-md-none">Qty</span> <span class="sort-icon"></span></th>
             <th class="sortable" data-col="3" data-type="number">High Price <span class="sort-icon"></span></th>
             <th class="sortable" data-col="4" data-type="number">Low Price <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="5" data-type="number">Unrealized Net <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="6" data-type="number">Realized Net <span class="sort-icon"></span></th>
+            <th class="sortable" data-col="5" data-type="number"><span class="d-none d-md-inline">Unrealized Net</span><span class="d-md-none">Unreal.</span> <span class="sort-icon"></span></th>
+            <th class="sortable" data-col="6" data-type="number"><span class="d-none d-md-inline">Realized Net</span><span class="d-md-none">Real.</span> <span class="sort-icon"></span></th>
         </tr>
     </thead>
     <tbody>
@@ -575,24 +532,6 @@ document.addEventListener('DOMContentLoaded', function() {
             cancelDeleteMode();
         }
     });
-
-    // Time filter functionality
-    const filterBtns = document.querySelectorAll('.time-filter-btn');
-    filterBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const filter = this.dataset.filter;
-            window.location.href = `/flips/?filter=${filter}`;
-        });
-    });
-
-    // Dropdown filter functionality
-    const filterDropdown = document.getElementById('timeFilterDropdown');
-    if (filterDropdown) {
-        filterDropdown.addEventListener('change', function() {
-            const filter = this.value;
-            window.location.href = `/flips/?filter=${filter}`;
-        });
-    }
 });
 </script>
 {% endblock %}
