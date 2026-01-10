@@ -39,32 +39,101 @@
         <div class="alert-actions-wrapper">
             <div class="alert-actions">
                 <div class="alert-actions-left">
-                    <select id="alert-action-select" class="action-dropdown" onchange="AlertActions.handleAction(this.value); this.value='';">
-                        <option value="">Actions</option>
-                        <option value="delete">Delete</option>
-                        <option value="group">Add to Group</option>
-                    </select>
+                    <div class="custom-dropdown-wrapper">
+                        <button type="button" class="btn-dropdown btn-actions" id="actionsDropdownBtn">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                            Actions
+                        </button>
+                        <div class="custom-dropdown-menu" id="actionsDropdownMenu">
+                            <div class="custom-dropdown-header">Actions</div>
+                            <div class="custom-dropdown-item" data-action="delete">
+                                <span>Delete</span>
+                            </div>
+                            <div class="custom-dropdown-item" data-action="group">
+                                <span>Add to Group</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="alert-actions-right" id="active-filters">
                     <div class="alert-actions-controls">
                         <div class="sort-controls">
-                            <select class="sort-dropdown" onchange="handleSortSelection(this.value); this.value='';">
-                                <option value="">Sort...</option>
-                                <option value="lastTriggered">Last Triggered Time</option>
-                                <option value="alertType">Alert Type</option>
-                                <option value="thresholdDistance">Threshold Distance</option>
-                                <option value="createdDate">Created Date</option>
-                            </select>
-                            <div id="sort-order-picker" class="sort-order-picker" style="display: none;"></div>
+                            <div class="sort-indicator-wrapper" id="sortIndicatorWrapper">
+                                <div class="sort-indicator" id="sortIndicator">
+                                    <span class="sort-indicator-label">Sorted by:</span>
+                                    <span class="sort-indicator-value" id="sortIndicatorValue"></span>
+                                    <span class="sort-indicator-arrow" id="sortIndicatorArrow" title="Toggle sort order">↓</span>
+                                    <span class="sort-indicator-clear" id="sortIndicatorClear" title="Clear sort">×</span>
+                                </div>
+                            </div>
+                            <div class="custom-dropdown-wrapper">
+                                <button type="button" class="btn-dropdown btn-sort" id="sortDropdownBtn">
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"/>
+                                    </svg>
+                                    Sort
+                                </button>
+                                <div class="custom-dropdown-menu" id="sortDropdownMenu">
+                                    <div class="custom-dropdown-header">Sort by</div>
+                                    <div class="custom-dropdown-item" data-sort="lastTriggered">
+                                        <span>Last Triggered Time</span>
+                                        <span class="sort-check">✓</span>
+                                    </div>
+                                    <div class="custom-dropdown-item" data-sort="alertType">
+                                        <span>Alert Type</span>
+                                        <span class="sort-check">✓</span>
+                                    </div>
+                                    <div class="custom-dropdown-item" data-sort="thresholdDistance">
+                                        <span>Threshold Distance</span>
+                                        <span class="sort-check">✓</span>
+                                    </div>
+                                    <div class="custom-dropdown-item" data-sort="createdDate">
+                                        <span>Created Date</span>
+                                        <span class="sort-check">✓</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <select class="filter-dropdown" onchange="addFilter(this.value); this.value='';">
-                            <option value="">Add Filter...</option>
-                            <option value="triggered">Triggered</option>
-                            <option value="notTriggered">Not Triggered</option>
-                            <option value="minimumPrice">Minimum Price</option>
-                            <option value="maximumPrice">Maximum Price</option>
-                            <option value="myGroups">My Groups</option>
-                        </select>
+                        <div class="custom-dropdown-wrapper">
+                            <button type="button" class="btn-dropdown btn-filter" id="filterDropdownBtn">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                                </svg>
+                                Filters
+                                <span class="filter-badge" id="filterBadge" style="display: none;">0</span>
+                            </button>
+                            <div class="custom-dropdown-menu" id="filterDropdownMenu">
+                                <div class="custom-dropdown-header">Filter by</div>
+                                <div class="custom-dropdown-item" data-filter="triggered">
+                                    <span>Triggered</span>
+                                    <span class="filter-check">✓</span>
+                                    <span class="filter-clear" title="Clear filter">×</span>
+                                </div>
+                                <div class="custom-dropdown-item" data-filter="notTriggered">
+                                    <span>Not Triggered</span>
+                                    <span class="filter-check">✓</span>
+                                    <span class="filter-clear" title="Clear filter">×</span>
+                                </div>
+                                <div class="custom-dropdown-item" data-filter="minimumPrice">
+                                    <span>Minimum Price</span>
+                                    <span class="filter-check">✓</span>
+                                    <span class="filter-clear" title="Clear filter">×</span>
+                                </div>
+                                <div class="custom-dropdown-item" data-filter="maximumPrice">
+                                    <span>Maximum Price</span>
+                                    <span class="filter-check">✓</span>
+                                    <span class="filter-clear" title="Clear filter">×</span>
+                                </div>
+                                <div class="custom-dropdown-item" data-filter="myGroups">
+                                    <span>My Groups</span>
+                                    <span class="filter-check">✓</span>
+                                    <span class="filter-clear" title="Clear filter">×</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -532,32 +601,144 @@
         gap: 10px;
     }
 
-    /* Dropdowns */
-    .action-dropdown,
-    .filter-dropdown,
-    .sort-dropdown {
-        padding: 8px 12px;
+    /* Custom Dropdowns */
+    .custom-dropdown-wrapper {
+        position: relative;
+    }
+    
+    .btn-dropdown {
+        padding: 8px 14px;
+        background: var(--surface);
+        color: var(--text);
         border: 1px solid var(--border);
         border-radius: 8px;
+        font-weight: 500;
         cursor: pointer;
-        background: var(--surface);
+        transition: all 0.15s;
+        display: flex;
+        align-items: center;
+        gap: 6px;
         font-size: 14px;
-        color: var(--text);
+    }
+    
+    .btn-dropdown:hover {
+        background: var(--surface-2);
+        border-color: var(--primary);
+    }
+    
+    .btn-dropdown.has-active {
+        background: rgba(99, 102, 241, 0.1);
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+    
+    .btn-dropdown svg {
+        width: 16px;
+        height: 16px;
+    }
+    
+    .filter-badge {
+        background: var(--primary);
+        color: white;
+        font-size: 11px;
+        padding: 2px 6px;
+        border-radius: 10px;
+        margin-left: 4px;
+    }
+    
+    .custom-dropdown-menu {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        margin-top: 6px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        min-width: 180px;
+        z-index: 1000;
+        display: none;
+        padding: 6px;
+    }
+    
+    /* Right-align sort and filter dropdowns on desktop */
+    #sortDropdownMenu,
+    #filterDropdownMenu {
+        left: auto;
+        right: 0;
+    }
+    
+    .custom-dropdown-menu.show {
+        display: block;
+    }
+    
+    .custom-dropdown-header {
+        padding: 8px 10px 6px;
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 6px;
+    }
+    
+    .custom-dropdown-item {
+        padding: 10px 12px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        transition: all 0.15s;
+        border-radius: 6px;
+        margin: 2px 0;
+        background: var(--surface-2);
+        border: 1px solid transparent;
+    }
+    
+    .custom-dropdown-item:hover {
+        background: linear-gradient(135deg, rgba(234, 179, 140, 0.3), rgba(216, 155, 108, 0.25));
+        border-color: rgba(200, 140, 90, 0.3);
+    }
+    
+    .custom-dropdown-item.active {
+        background: rgba(99, 102, 241, 0.15);
+        border-color: rgba(99, 102, 241, 0.3);
+        color: var(--primary);
+    }
+    
+    .custom-dropdown-item.active:hover {
+        background: rgba(99, 102, 241, 0.25);
+    }
+    
+    .custom-dropdown-item .filter-check,
+    .custom-dropdown-item .sort-check {
+        color: var(--primary);
+        display: none;
+        font-weight: 600;
+    }
+    
+    .custom-dropdown-item.active .sort-check {
+        display: inline;
+    }
+    
+    .custom-dropdown-item .filter-clear {
+        display: none;
+        color: var(--danger);
+        font-size: 18px;
+        font-weight: 600;
+        line-height: 1;
+        padding: 0 2px;
+        border-radius: 4px;
         transition: all 0.15s;
     }
     
-    .action-dropdown:hover,
-    .filter-dropdown:hover,
-    .sort-dropdown:hover {
-        border-color: var(--primary);
+    .custom-dropdown-item.active .filter-clear {
+        display: inline;
     }
     
-    .action-dropdown:focus,
-    .filter-dropdown:focus,
-    .sort-dropdown:focus {
-        outline: none;
-        border-color: var(--primary);
-        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    .custom-dropdown-item .filter-clear:hover {
+        background: rgba(239, 68, 68, 0.15);
     }
 
     /* Sort controls */
@@ -567,37 +748,68 @@
         gap: 8px;
     }
     
-    .sort-order-picker {
-        display: flex;
+    /* Sort indicator - styled like flips page */
+    .sort-indicator-wrapper {
+        position: relative;
+    }
+    
+    .sort-indicator {
+        display: none;
         align-items: center;
-        gap: 6px;
-        padding: 6px 10px;
-        background: rgba(249, 115, 22, 0.1);
-        border: 1px solid var(--hover-orange);
-        border-radius: 8px;
-    }
-    
-    .sort-order-label {
-        font-weight: 600;
-        color: var(--hover-orange);
-        font-size: 13px;
-    }
-    
-    .sort-order-btn {
-        padding: 4px 10px;
-        border: 1px solid var(--hover-orange);
+        gap: 8px;
+        padding: 6px 12px;
         background: var(--surface);
-        color: var(--hover-orange);
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: 600;
-        font-size: 12px;
-        transition: all 0.15s;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 13px;
+        color: var(--text);
+        transition: all 0.3s ease;
     }
     
-    .sort-order-btn:hover {
-        background: var(--hover-orange);
-        color: white;
+    .sort-indicator.active {
+        display: inline-flex;
+    }
+    
+    .sort-indicator-label {
+        color: var(--text-muted);
+    }
+    
+    .sort-indicator-value {
+        font-weight: 500;
+        color: var(--primary);
+    }
+    
+    .sort-indicator-arrow {
+        cursor: pointer;
+        padding: 2px 8px;
+        border-radius: 4px;
+        transition: all 0.15s;
+        font-size: 14px;
+        user-select: none;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        margin-left: 4px;
+    }
+    
+    .sort-indicator-arrow:hover {
+        background: linear-gradient(135deg, rgba(234, 179, 140, 0.3), rgba(216, 155, 108, 0.25));
+        border-color: rgba(200, 140, 90, 0.4);
+    }
+    
+    .sort-indicator-clear {
+        cursor: pointer;
+        color: var(--danger);
+        font-size: 16px;
+        font-weight: 600;
+        line-height: 1;
+        padding: 0 4px;
+        border-radius: 4px;
+        transition: all 0.15s;
+        margin-left: 4px;
+    }
+    
+    .sort-indicator-clear:hover {
+        background: rgba(239, 68, 68, 0.15);
     }
 
     /* Filter and sort tags */
@@ -1166,13 +1378,29 @@
             flex-direction: column;
         }
         
-        .action-dropdown,
-        .filter-dropdown,
-        .sort-dropdown {
+        .custom-dropdown-wrapper {
             width: 100%;
         }
         
-        .sort-order-picker {
+        .btn-dropdown {
+            width: 100%;
+            justify-content: center;
+        }
+        
+        /* Reset dropdown alignment to left on mobile (full width) */
+        .custom-dropdown-menu,
+        #sortDropdownMenu,
+        #filterDropdownMenu {
+            width: 100%;
+            left: 0;
+            right: 0;
+        }
+        
+        .sort-indicator-wrapper {
+            width: 100%;
+        }
+        
+        .sort-indicator {
             width: 100%;
             justify-content: center;
         }
@@ -1471,6 +1699,7 @@ const AlertsState = {
     activeFilters: new Set(),       // Currently active filter IDs
     filterValues: {},               // Values for input-based filters (keyed by filter ID)
     alertGroups: [],                // Known alert groups
+    cachedAlerts: [],               // Cached alerts data for instant filtering/sorting
     sorting: {                      // Current sorting state
         sortKey: null,
         sortOrder: null,
@@ -1513,6 +1742,20 @@ const AlertsState = {
      */
     getAlertGroups() {
         return this.alertGroups || [];
+    },
+    
+    /**
+     * Caches the alerts array for instant filtering/sorting.
+     */
+    setCachedAlerts(alerts) {
+        this.cachedAlerts = Array.isArray(alerts) ? alerts : [];
+    },
+    
+    /**
+     * Returns the cached alerts array.
+     */
+    getCachedAlerts() {
+        return this.cachedAlerts || [];
     },
     
     /**
@@ -1766,12 +2009,15 @@ const AlertsUI = {
     renderActionButtons(hasAlerts, preservedFilterTagsHtml) {
         if (!hasAlerts) return '';
         
-        // Build dropdown options (exclude already active filters)
-        let options = '<option value="">Add Filter...</option>';
+        // Build filter dropdown items
+        let filterItems = '';
         for (const [id, filter] of Object.entries(AlertsConfig.filters)) {
-            if (!FilterManager.isActive(id)) {
-                options += '<option value="' + id + '">' + filter.label + '</option>';
-            }
+            const isActive = FilterManager.isActive(id);
+            filterItems += '<div class="custom-dropdown-item' + (isActive ? ' active' : '') + '" data-filter="' + id + '">' +
+                '<span>' + filter.label + '</span>' +
+                '<span class="filter-check">✓</span>' +
+                '<span class="filter-clear" title="Clear filter">×</span>' +
+                '</div>';
         }
         
         // Use preserved filter tags if provided, otherwise build from state
@@ -1787,46 +2033,99 @@ const AlertsUI = {
             }
         }
 
-        let sortTag = '';
+        // Build sort indicator HTML
+        let sortIndicatorHtml = '';
         if (AlertsState.sorting.sortKey) {
             const sortOption = SortManager.options[AlertsState.sorting.sortKey];
-            const orderLabel = AlertsState.sorting.sortOrder === 'asc' ? 'Ascending' : 'Descending';
             const label = sortOption ? sortOption.label : 'Sort';
-            sortTag = '<span class="sort-tag" data-sort-id="' + AlertsState.sorting.sortKey + '">' +
-                label + ': ' + orderLabel +
-                '<button class="sort-tag-remove" onclick="clearSort()">&times;</button>' +
-                '</span>';
+            const arrow = AlertsState.sorting.sortOrder === 'asc' ? '↑' : '↓';
+            sortIndicatorHtml = '<div class="sort-indicator-wrapper" id="sortIndicatorWrapper">' +
+                '<div class="sort-indicator active" id="sortIndicator">' +
+                '<span class="sort-indicator-label">Sorted by:</span>' +
+                '<span class="sort-indicator-value" id="sortIndicatorValue">' + label + '</span>' +
+                '<span class="sort-indicator-arrow" id="sortIndicatorArrow" title="Toggle sort order">' + arrow + '</span>' +
+                '<span class="sort-indicator-clear" id="sortIndicatorClear" title="Clear sort">×</span>' +
+                '</div>' +
+                '</div>';
+        } else {
+            sortIndicatorHtml = '<div class="sort-indicator-wrapper" id="sortIndicatorWrapper">' +
+                '<div class="sort-indicator" id="sortIndicator">' +
+                '<span class="sort-indicator-label">Sorted by:</span>' +
+                '<span class="sort-indicator-value" id="sortIndicatorValue"></span>' +
+                '<span class="sort-indicator-arrow" id="sortIndicatorArrow" title="Toggle sort order">↓</span>' +
+                '<span class="sort-indicator-clear" id="sortIndicatorClear" title="Clear sort">×</span>' +
+                '</div>' +
+                '</div>';
         }
 
-        const sortOptions = '' +
-            '<option value="">Sort...</option>' +
-            '<option value="lastTriggered">Last Triggered Time</option>' +
-            '<option value="alertType">Alert Type</option>' +
-            '<option value="thresholdDistance">Threshold Distance</option>' +
-            '<option value="createdDate">Created Date</option>';
+        // Build sort dropdown items
+        const currentSortKey = AlertsState.sorting.sortKey;
+        const sortItems = '' +
+            '<div class="custom-dropdown-item' + (currentSortKey === 'lastTriggered' ? ' active' : '') + '" data-sort="lastTriggered"><span>Last Triggered Time</span><span class="sort-check">✓</span></div>' +
+            '<div class="custom-dropdown-item' + (currentSortKey === 'alertType' ? ' active' : '') + '" data-sort="alertType"><span>Alert Type</span><span class="sort-check">✓</span></div>' +
+            '<div class="custom-dropdown-item' + (currentSortKey === 'thresholdDistance' ? ' active' : '') + '" data-sort="thresholdDistance"><span>Threshold Distance</span><span class="sort-check">✓</span></div>' +
+            '<div class="custom-dropdown-item' + (currentSortKey === 'createdDate' ? ' active' : '') + '" data-sort="createdDate"><span>Created Date</span><span class="sort-check">✓</span></div>';
+
+        // Calculate filter badge
+        const activeCount = AlertsState.activeFilters.size;
+        const filterBadge = activeCount > 0 
+            ? '<span class="filter-badge" id="filterBadge">' + activeCount + '</span>'
+            : '<span class="filter-badge" id="filterBadge" style="display: none;">0</span>';
+        const filterBtnClass = activeCount > 0 ? 'btn-dropdown btn-filter has-active' : 'btn-dropdown btn-filter';
         
         return '<div class="alert-actions-wrapper">' +
                '<div class="alert-actions">' +
                '<div class="alert-actions-left">' +
-               '<select id="alert-action-select" class="action-dropdown" onchange="AlertActions.handleAction(this.value); this.value=\'\';">' +
-               '<option value="">Actions</option>' +
-               '<option value="delete">Delete</option>' +
-               '<option value="group">Add to Group</option>' +
-               '</select>' +
+               '<div class="custom-dropdown-wrapper">' +
+               '<button type="button" class="btn-dropdown btn-actions" id="actionsDropdownBtn">' +
+               '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+               '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>' +
+               '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>' +
+               '</svg>' +
+               'Actions' +
+               '</button>' +
+               '<div class="custom-dropdown-menu" id="actionsDropdownMenu">' +
+               '<div class="custom-dropdown-header">Actions</div>' +
+               '<div class="custom-dropdown-item" data-action="delete"><span>Delete</span></div>' +
+               '<div class="custom-dropdown-item" data-action="group"><span>Add to Group</span></div>' +
+               '</div>' +
+               '</div>' +
                '</div>' +
                '<div class="alert-actions-right" id="active-filters">' +
                '<div class="alert-actions-controls">' +
                '<div class="sort-controls">' +
-               '<select class="sort-dropdown" onchange="handleSortSelection(this.value); this.value=\'\';">' + sortOptions + '</select>' +
-               '<div id="sort-order-picker" class="sort-order-picker" style="display: none;"></div>' +
+               sortIndicatorHtml +
+               '<div class="custom-dropdown-wrapper">' +
+               '<button type="button" class="btn-dropdown btn-sort" id="sortDropdownBtn">' +
+               '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+               '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"/>' +
+               '</svg>' +
+               'Sort' +
+               '</button>' +
+               '<div class="custom-dropdown-menu" id="sortDropdownMenu">' +
+               '<div class="custom-dropdown-header">Sort by</div>' +
+               sortItems +
                '</div>' +
-               '<select class="filter-dropdown" onchange="addFilter(this.value); this.value=\'\';">' + options + '</select>' +
+               '</div>' +
+               '</div>' +
+               '<div class="custom-dropdown-wrapper">' +
+               '<button type="button" class="' + filterBtnClass + '" id="filterDropdownBtn">' +
+               '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+               '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>' +
+               '</svg>' +
+               'Filters' +
+               filterBadge +
+               '</button>' +
+               '<div class="custom-dropdown-menu" id="filterDropdownMenu">' +
+               '<div class="custom-dropdown-header">Filter by</div>' +
+               filterItems +
+               '</div>' +
+               '</div>' +
                '</div>' +
                '</div>' +
                '</div>' +
                '<div class="alert-indicators">' +
                '<div class="filter-tags">' + tags + '</div>' +
-               '<div class="sort-tag-holder">' + sortTag + '</div>' +
                '</div>' +
                '</div>';
     },
@@ -2012,6 +2311,11 @@ const AlertsUI = {
 
         if (data && data.groups) {
             AlertsState.setAlertGroups(data.groups);
+        }
+        
+        // Cache alerts data for instant filtering/sorting
+        if (data && data.alerts) {
+            AlertsState.setCachedAlerts(data.alerts);
         }
         
         // Check if any alert checkboxes are checked
@@ -2262,27 +2566,47 @@ const SortManager = {
 
     handleSortSelection(sortKey) {
         if (!sortKey) return;
-        AlertsState.sorting.pendingKey = sortKey;
         const defaultOrder = this.options[sortKey]?.defaultOrder || 'asc';
-        this.showOrderPicker(sortKey, defaultOrder);
+        
+        // If same sort is already active, just toggle order
+        if (AlertsState.sorting.sortKey === sortKey) {
+            this.toggleSortOrder();
+            return;
+        }
+        
+        // Apply new sort with default order
+        AlertsState.sorting.sortKey = sortKey;
+        AlertsState.sorting.sortOrder = defaultOrder;
+        AlertsState.sorting.pendingKey = null;
+        this.updateSortIndicator();
+        FilterManager.updateAlertsList();
     },
 
-    showOrderPicker(sortKey, defaultOrder) {
-        const picker = document.getElementById('sort-order-picker');
-        if (!picker) return;
-        AlertsRefresh.pauseForSort();
-        picker.innerHTML = '' +
-            '<span class="sort-order-label">Order:</span>' +
-            '<button class="sort-order-btn" onclick="applySortOrder(\'asc\')">Ascending</button>' +
-            '<button class="sort-order-btn" onclick="applySortOrder(\'desc\')">Descending</button>';
-        picker.style.display = 'flex';
+    toggleSortOrder() {
+        if (!AlertsState.sorting.sortKey) return;
+        AlertsState.sorting.sortOrder = AlertsState.sorting.sortOrder === 'asc' ? 'desc' : 'asc';
+        this.updateSortIndicator();
+        FilterManager.updateAlertsList();
+    },
 
-        // Preselect by applying default immediately if we already have this sort active
-        if (AlertsState.sorting.sortKey === sortKey && AlertsState.sorting.sortOrder) {
-            // no-op, waiting for user click
+    updateSortIndicator() {
+        const indicator = document.getElementById('sortIndicator');
+        const valueEl = document.getElementById('sortIndicatorValue');
+        const arrowEl = document.getElementById('sortIndicatorArrow');
+        
+        if (!indicator) return;
+        
+        if (AlertsState.sorting.sortKey) {
+            const option = this.options[AlertsState.sorting.sortKey];
+            if (valueEl) valueEl.textContent = option ? option.label : 'Sort';
+            if (arrowEl) arrowEl.textContent = AlertsState.sorting.sortOrder === 'asc' ? '↑' : '↓';
+            indicator.classList.add('active');
         } else {
-            AlertsState.sorting.sortOrder = defaultOrder;
+            indicator.classList.remove('active');
         }
+        
+        // Update dropdown active states
+        syncSortDropdownState();
     },
 
     applySortOrder(order) {
@@ -2291,42 +2615,20 @@ const SortManager = {
         AlertsState.sorting.sortKey = sortKey;
         AlertsState.sorting.sortOrder = order || this.options[sortKey]?.defaultOrder || 'asc';
         AlertsState.sorting.pendingKey = null;
-        this.hideOrderPicker();
-        this.renderSortTag();
+        this.updateSortIndicator();
         FilterManager.updateAlertsList();
-        AlertsRefresh.resumeAfterSort();
-    },
-
-    hideOrderPicker() {
-        const picker = document.getElementById('sort-order-picker');
-        if (picker) picker.style.display = 'none';
         AlertsRefresh.resumeAfterSort();
     },
 
     clearSort() {
         AlertsState.sorting = { sortKey: null, sortOrder: null, pendingKey: null };
-        this.hideOrderPicker();
-        this.renderSortTag();
+        this.updateSortIndicator();
         FilterManager.updateAlertsList();
     },
 
     renderSortTag() {
-        const container = document.querySelector('.alert-indicators .sort-tag-holder') || document.querySelector('.alert-indicators');
-        if (!container) return;
-        const existing = container.querySelector('.sort-tag');
-        if (existing) existing.remove();
-
-        if (!AlertsState.sorting.sortKey) return;
-
-        const option = this.options[AlertsState.sorting.sortKey];
-        const label = option ? option.label : 'Sort';
-        const orderLabel = AlertsState.sorting.sortOrder === 'asc' ? 'Ascending' : 'Descending';
-        const tagHtml = '<span class="sort-tag" data-sort-id="' + AlertsState.sorting.sortKey + '">' +
-            label + ': ' + orderLabel +
-            '<button class="sort-tag-remove" onclick="clearSort()">&times;</button>' +
-            '</span>';
-
-        container.insertAdjacentHTML('beforeend', tagHtml);
+        // No longer using sort tags - using sort indicator instead
+        // Keep this method for compatibility but do nothing
     }
 };
 
@@ -2520,11 +2822,10 @@ const FilterManager = {
     
     /**
      * Updates just the alerts list based on current filters.
-     * Does not touch the action bar or filter tags.
+     * Uses cached alerts data for instant response - no network request.
      */
-    async updateAlertsList() {
-        const data = await AlertsAPI.fetchAlerts();
-        if (!data) return;
+    updateAlertsList() {
+        const alerts = AlertsState.getCachedAlerts();
         
         const pane = document.querySelector('#my-alerts');
         if (!pane) return;
@@ -2532,7 +2833,7 @@ const FilterManager = {
         const alertsList = pane.querySelector('.alerts-list');
         const alertGroup = pane.querySelector('.alert-group');
         const noAlertsMsg = pane.querySelector('.no-alerts');
-        const filteredAlerts = this.applyFilters(data.alerts || []);
+        const filteredAlerts = this.applyFilters(alerts);
         const sortedAlerts = SortManager.applySort(filteredAlerts);
         const selectedGroups = AlertsState.getFilterValue('myGroups');
         const isGroupedView = selectedGroups && selectedGroups.length > 0 && AlertsState.activeFilters.has('myGroups');
@@ -3438,9 +3739,22 @@ const AlertsRefresh = {
     pausedForSort: false,
     
     /**
+     * Checks if any dropdown is currently open.
+     */
+    isDropdownOpen() {
+        return document.querySelector('.custom-dropdown-menu.show') !== null;
+    },
+    
+    /**
      * Fetches fresh data and updates the UI.
+     * Skips refresh if a dropdown is open to prevent UI disruption.
      */
     async refresh() {
+        // Don't refresh if any dropdown is open
+        if (this.isDropdownOpen()) {
+            return;
+        }
+        
         const data = await AlertsAPI.fetchAlerts();
         if (data) {
             AlertsUI.updateMyAlertsPane(data);
@@ -3611,11 +3925,120 @@ const EventManager = {
     },
     
     /**
+     * Sets up custom dropdown toggle and click outside behavior.
+     * Uses event delegation to handle dynamically rendered dropdowns.
+     */
+    setupDropdownEvents() {
+        // Toggle dropdown menus on button click (event delegation)
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest('.btn-dropdown');
+            if (btn) {
+                e.stopPropagation();
+                const wrapper = btn.closest('.custom-dropdown-wrapper');
+                const menu = wrapper.querySelector('.custom-dropdown-menu');
+                const isOpen = menu.classList.contains('show');
+                
+                // Close all other dropdowns
+                document.querySelectorAll('.custom-dropdown-menu.show').forEach(m => {
+                    m.classList.remove('show');
+                });
+                
+                // Toggle this dropdown
+                if (!isOpen) {
+                    menu.classList.add('show');
+                }
+                return;
+            }
+            
+            // Handle actions dropdown item clicks
+            const actionItem = e.target.closest('#actionsDropdownMenu .custom-dropdown-item');
+            if (actionItem) {
+                const action = actionItem.dataset.action;
+                AlertActions.handleAction(action);
+                document.getElementById('actionsDropdownMenu')?.classList.remove('show');
+                return;
+            }
+            
+            // Handle sort dropdown item clicks
+            const sortItem = e.target.closest('#sortDropdownMenu .custom-dropdown-item');
+            if (sortItem) {
+                const sortKey = sortItem.dataset.sort;
+                
+                // Update active state visually
+                document.querySelectorAll('#sortDropdownMenu .custom-dropdown-item').forEach(i => {
+                    i.classList.remove('active');
+                });
+                sortItem.classList.add('active');
+                
+                handleSortSelection(sortKey);
+                document.getElementById('sortDropdownMenu')?.classList.remove('show');
+                return;
+            }
+            
+            // Handle sort indicator arrow click (toggle order)
+            if (e.target.id === 'sortIndicatorArrow' || e.target.closest('#sortIndicatorArrow')) {
+                e.stopPropagation();
+                SortManager.toggleSortOrder();
+                return;
+            }
+            
+            // Handle sort indicator clear click
+            if (e.target.id === 'sortIndicatorClear' || e.target.closest('#sortIndicatorClear')) {
+                e.stopPropagation();
+                clearSort();
+                return;
+            }
+            
+            // Handle filter dropdown item clicks
+            const filterItem = e.target.closest('#filterDropdownMenu .custom-dropdown-item');
+            if (filterItem) {
+                const filterId = filterItem.dataset.filter;
+                
+                // Check if clicking the clear button
+                if (e.target.classList.contains('filter-clear')) {
+                    filterItem.classList.remove('active');
+                    removeFilter(filterId);
+                    updateFilterBadge();
+                    return;
+                }
+                
+                // Check if this filter requires a modal (don't toggle active state yet)
+                const filter = AlertsConfig.filters[filterId];
+                const requiresModal = filter && filter.requiresModal;
+                
+                // Toggle filter
+                if (filterItem.classList.contains('active')) {
+                    filterItem.classList.remove('active');
+                    removeFilter(filterId);
+                    updateFilterBadge();
+                } else {
+                    // Only mark as active immediately if it doesn't require a modal
+                    if (!requiresModal) {
+                        filterItem.classList.add('active');
+                        updateFilterBadge();
+                    }
+                    addFilter(filterId);
+                }
+                document.getElementById('filterDropdownMenu')?.classList.remove('show');
+                return;
+            }
+            
+            // Close dropdowns on outside click
+            if (!e.target.closest('.custom-dropdown-wrapper')) {
+                document.querySelectorAll('.custom-dropdown-menu.show').forEach(m => {
+                    m.classList.remove('show');
+                });
+            }
+        });
+    },
+    
+    /**
      * Initializes all event listeners.
      */
     init() {
         this.setupModalEvents();
         this.setupAutocompleteEvents();
+        this.setupDropdownEvents();
     }
 };
 
@@ -3698,6 +4121,8 @@ function dismissStatusNotification(button) {
 function addFilter(filterId) {
     if (filterId) {
         FilterManager.addFilter(filterId);
+        updateFilterBadge();
+        syncFilterDropdownState();
     }
 }
 
@@ -3708,10 +4133,42 @@ function removeFilter(filterId) {
         tag.classList.add('removing');
         setTimeout(() => {
             FilterManager.removeFilter(filterId);
+            updateFilterBadge();
+            syncFilterDropdownState();
         }, 300);
     } else {
         FilterManager.removeFilter(filterId);
+        updateFilterBadge();
+        syncFilterDropdownState();
     }
+}
+
+function updateFilterBadge() {
+    const badge = document.getElementById('filterBadge');
+    const btn = document.getElementById('filterDropdownBtn');
+    const activeCount = AlertsState.activeFilters.size;
+    
+    if (badge) {
+        if (activeCount > 0) {
+            badge.textContent = activeCount;
+            badge.style.display = 'inline';
+            if (btn) btn.classList.add('has-active');
+        } else {
+            badge.style.display = 'none';
+            if (btn) btn.classList.remove('has-active');
+        }
+    }
+}
+
+function syncFilterDropdownState() {
+    document.querySelectorAll('#filterDropdownMenu .custom-dropdown-item').forEach(item => {
+        const filterId = item.dataset.filter;
+        if (AlertsState.activeFilters.has(filterId)) {
+            item.classList.add('active');
+        } else {
+            item.classList.remove('active');
+        }
+    });
 }
 
 function confirmFilterInput(filterId) {
@@ -3735,14 +4192,28 @@ function handleFilterInputKeydown(event, filterId) {
 // Sort handlers
 function handleSortSelection(sortKey) {
     SortManager.handleSortSelection(sortKey);
+    syncSortDropdownState();
 }
 
 function applySortOrder(order) {
     SortManager.applySortOrder(order);
+    syncSortDropdownState();
 }
 
 function clearSort() {
     SortManager.clearSort();
+    syncSortDropdownState();
+}
+
+function syncSortDropdownState() {
+    const currentSortKey = AlertsState.sorting.sortKey;
+    document.querySelectorAll('#sortDropdownMenu .custom-dropdown-item').forEach(item => {
+        if (item.dataset.sort === currentSortKey) {
+            item.classList.add('active');
+        } else {
+            item.classList.remove('active');
+        }
+    });
 }
 
 // Groups filter modal functions
@@ -3793,6 +4264,8 @@ function applyGroupsFilter() {
             FilterManager.removeFilter('myGroups');
         }
         closeGroupsFilterModal();
+        syncFilterDropdownState();
+        updateFilterBadge();
         return;
     }
     
@@ -3814,6 +4287,8 @@ function applyGroupsFilter() {
     }
     
     closeGroupsFilterModal();
+    syncFilterDropdownState();
+    updateFilterBadge();
 }
 
 function openPriceFilterModal(filterId) {
@@ -3850,6 +4325,8 @@ function applyPriceFilter() {
     AlertsState.setFilterValue(filterId, value);
     FilterManager.activateFilter(filterId, value);
     closePriceFilterModal();
+    syncFilterDropdownState();
+    updateFilterBadge();
 }
 
 function confirmDelete() {
