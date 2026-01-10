@@ -11,19 +11,42 @@
     }
     
     .page-header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
         margin-bottom: 30px;
     }
     
-    .page-header h1 {
-        font-size: 2rem;
-        font-weight: 700;
-        color: #333;
-        margin: 0 0 8px 0;
+    .page-header-icon {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
     }
     
-    .page-header p {
+    .page-header-icon svg {
+        width: 24px;
+        height: 24px;
+        color: white;
+    }
+    
+    .page-header-text h1 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #1a1a2e;
+        margin: 0 0 2px 0;
+        letter-spacing: -0.02em;
+    }
+    
+    .page-header-text p {
         color: #6c757d;
         margin: 0;
+        font-size: 0.95rem;
     }
     
     /* Search Section */
@@ -33,6 +56,7 @@
         padding: 24px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
         margin-bottom: 30px;
+        width: fit-content;
     }
     
     .search-container {
@@ -459,8 +483,15 @@
 {% block content %}
 <div class="item-search-container">
     <div class="page-header">
-        <h1>Item Search</h1>
-        <p>Search for OSRS items and view detailed price data and history</p>
+        <div class="page-header-icon">
+            <svg fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/>
+            </svg>
+        </div>
+        <div class="page-header-text">
+            <h1>Item Search</h1>
+            <p>Search for OSRS items and view detailed price data and history</p>
+        </div>
     </div>
     
     <!-- Search Section -->
