@@ -294,6 +294,7 @@ def add_flip(request):
                 
                 flip_profit.save()
     
+    messages.success(request, 'Flip added successfully')
     return redirect('flips')
 
 
@@ -355,6 +356,7 @@ def delete_flip(request, item_id):
         Flip.objects.filter(item_id=item_id).delete()
         # Also delete the FlipProfit for this item
         FlipProfit.objects.filter(item_id=item_id).delete()
+        messages.success(request, 'Flip deleted successfully')
     return redirect('flips')
 
 
