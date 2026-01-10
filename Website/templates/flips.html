@@ -314,6 +314,206 @@
         display: block;
     }
     
+    /* Filter dropdown */
+    .filter-dropdown-wrapper {
+        position: relative;
+    }
+    .btn-filter {
+        padding: 8px 14px;
+        background: var(--surface);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .btn-filter:hover {
+        background: var(--surface-2);
+        border-color: var(--primary);
+    }
+    .btn-filter.has-active {
+        background: rgba(99, 102, 241, 0.1);
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+    .btn-filter svg {
+        width: 16px;
+        height: 16px;
+    }
+    .filter-badge {
+        background: var(--primary);
+        color: white;
+        font-size: 11px;
+        padding: 2px 6px;
+        border-radius: 10px;
+        margin-left: 4px;
+    }
+    .filter-dropdown-menu {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        margin-top: 6px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        min-width: 180px;
+        z-index: 1000;
+        display: none;
+        padding: 6px;
+    }
+    .filter-dropdown-menu.show {
+        display: block;
+    }
+    .filter-dropdown-header {
+        padding: 8px 10px 6px;
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 6px;
+    }
+    .filter-dropdown-item {
+        padding: 10px 12px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        transition: all 0.15s;
+        border-radius: 6px;
+        margin: 2px 0;
+        background: var(--surface-2);
+        border: 1px solid transparent;
+    }
+    .filter-dropdown-item:hover {
+        background: linear-gradient(135deg, rgba(234, 179, 140, 0.3), rgba(216, 155, 108, 0.25));
+        border-color: rgba(200, 140, 90, 0.3);
+    }
+    .filter-dropdown-item.active {
+        background: rgba(99, 102, 241, 0.15);
+        border-color: rgba(99, 102, 241, 0.3);
+        color: var(--primary);
+    }
+    .filter-dropdown-item.active:hover {
+        background: rgba(99, 102, 241, 0.25);
+    }
+    .filter-dropdown-item .filter-check {
+        color: var(--primary);
+        display: none;
+        font-weight: 600;
+    }
+    .filter-dropdown-item.active .filter-check {
+        display: none;
+    }
+    .filter-dropdown-item .filter-clear {
+        display: none;
+        color: var(--danger);
+        font-size: 18px;
+        font-weight: 600;
+        line-height: 1;
+        padding: 0 2px;
+        border-radius: 4px;
+        transition: all 0.15s;
+    }
+    .filter-dropdown-item.active .filter-clear {
+        display: inline;
+    }
+    .filter-dropdown-item .filter-clear:hover {
+        background: rgba(239, 68, 68, 0.15);
+    }
+    
+    /* Sort indicator */
+    .sort-indicator {
+        display: none;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 13px;
+        color: var(--text);
+    }
+    .sort-indicator.active {
+        display: inline-flex;
+    }
+    .sort-indicator-label {
+        color: var(--text-muted);
+    }
+    .sort-indicator-value {
+        font-weight: 500;
+        color: var(--primary);
+    }
+    .sort-indicator-arrow {
+        cursor: pointer;
+        padding: 2px 6px;
+        border-radius: 4px;
+        transition: all 0.15s;
+        font-size: 14px;
+        user-select: none;
+    }
+    .sort-indicator-arrow:hover {
+        background: var(--surface-2);
+    }
+    
+    /* Sort selector in dropdown */
+    .filter-dropdown-divider {
+        height: 1px;
+        background: var(--border);
+        margin: 6px 0;
+    }
+    .filter-dropdown-section {
+        padding: 6px 10px;
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .sort-by-item {
+        padding: 8px 12px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        transition: all 0.15s;
+        border-radius: 6px;
+        margin: 2px 0;
+        font-size: 13px;
+    }
+    .sort-by-item:hover {
+        background: var(--surface-2);
+    }
+    .sort-by-item.active {
+        background: rgba(99, 102, 241, 0.1);
+        color: var(--primary);
+    }
+    .sort-by-item .sort-radio {
+        width: 14px;
+        height: 14px;
+        border: 2px solid var(--border);
+        border-radius: 50%;
+        transition: all 0.15s;
+    }
+    .sort-by-item.active .sort-radio {
+        border-color: var(--primary);
+        background: var(--primary);
+        box-shadow: inset 0 0 0 3px var(--surface);
+    }
+    
+    /* Time held subtext */
+    .time-held-subtext {
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 2px;
+    }
+    
     /* P&L colors for table - muted green/red */
     .pnl-pos {
         color: #16A34A;
@@ -405,7 +605,7 @@
 
 
 <div class="d-flex gap-3 mb-3 align-items-center justify-content-between flex-wrap">
-    <div class="d-flex gap-3">
+    <div class="d-flex gap-3 align-items-center">
         <button type="button" class="btn-new-flip" data-bs-toggle="modal" data-bs-target="#newFlipModal">
             New Flip
         </button>
@@ -413,9 +613,46 @@
             Delete Flip
         </button>
     </div>
-    <div class="filter-search-wrapper" id="filterSearchWrapper">
-        <input type="text" class="filter-search-input" id="filterSearchInput" placeholder="Filter items...">
-        <button type="button" class="filter-search-clear" id="filterSearchClear">&times;</button>
+    <div class="d-flex gap-3 align-items-center">
+        <div class="sort-indicator" id="sortIndicator">
+            <span class="sort-indicator-label">Sorted by:</span>
+            <span class="sort-indicator-value" id="sortIndicatorValue">Time Held</span>
+            <span class="sort-indicator-arrow" id="sortIndicatorArrow" title="Toggle sort order">↓</span>
+        </div>
+        <div class="filter-search-wrapper" id="filterSearchWrapper">
+            <input type="text" class="filter-search-input" id="filterSearchInput" placeholder="Search...">
+            <button type="button" class="filter-search-clear" id="filterSearchClear">&times;</button>
+        </div>
+        <div class="filter-dropdown-wrapper">
+            <button type="button" class="btn-filter" id="filterDropdownBtn">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                </svg>
+                Filters
+                <span class="filter-badge" id="filterBadge" style="display: none;">0</span>
+            </button>
+            <div class="filter-dropdown-menu" id="filterDropdownMenu">
+                <div class="filter-dropdown-header">Filter by</div>
+                <div class="filter-dropdown-item" data-filter="time-held">
+                    <span>Time Held</span>
+                    <span class="filter-check">✓</span>
+                    <span class="filter-clear" title="Clear filter">×</span>
+                </div>
+                <div class="filter-dropdown-item" data-filter="unrealized-range">
+                    <span>Unrealized Range</span>
+                    <span class="filter-check">✓</span>
+                    <span class="filter-clear" title="Clear filter">×</span>
+                </div>
+                <div class="filter-dropdown-item" data-filter="realized-range">
+                    <span>Realized Range</span>
+                    <span class="filter-check">✓</span>
+                    <span class="filter-clear" title="Clear filter">×</span>
+                </div>
+                <div class="filter-dropdown-divider" id="sortByDivider" style="display: none;"></div>
+                <div class="filter-dropdown-section" id="sortBySection" style="display: none;">Sort by</div>
+                <div id="sortByOptions"></div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -464,6 +701,87 @@
     </div>
 </div>
 
+<!-- Time Held Filter Modal -->
+<div class="modal fade" id="timeHeldFilterModal" tabindex="-1" aria-labelledby="timeHeldFilterModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="timeHeldFilterModalLabel">Filter by Time Held</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">Show items held for a specific range of days.</p>
+                <div class="mb-3">
+                    <label for="timeHeldMin" class="form-label">Minimum Days</label>
+                    <input type="number" class="form-control" id="timeHeldMin" min="0" step="0.1" placeholder="No minimum">
+                </div>
+                <div class="mb-3">
+                    <label for="timeHeldMax" class="form-label">Maximum Days</label>
+                    <input type="number" class="form-control" id="timeHeldMax" min="0" step="0.1" placeholder="No maximum">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" id="clearTimeHeldFilter">Clear</button>
+                <button type="button" class="btn btn-primary" id="applyTimeHeldFilter">Apply Filter</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Unrealized Range Filter Modal -->
+<div class="modal fade" id="unrealizedRangeFilterModal" tabindex="-1" aria-labelledby="unrealizedRangeFilterModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="unrealizedRangeFilterModalLabel">Filter by Unrealized</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">Show items with unrealized profit in a specific range.</p>
+                <div class="mb-3">
+                    <label for="unrealizedMin" class="form-label">Minimum</label>
+                    <input type="number" class="form-control" id="unrealizedMin" placeholder="No minimum">
+                </div>
+                <div class="mb-3">
+                    <label for="unrealizedMax" class="form-label">Maximum</label>
+                    <input type="number" class="form-control" id="unrealizedMax" placeholder="No maximum">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" id="clearUnrealizedFilter">Clear</button>
+                <button type="button" class="btn btn-primary" id="applyUnrealizedFilter">Apply Filter</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Realized Range Filter Modal -->
+<div class="modal fade" id="realizedRangeFilterModal" tabindex="-1" aria-labelledby="realizedRangeFilterModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="realizedRangeFilterModalLabel">Filter by Realized</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">Show items with realized profit in a specific range.</p>
+                <div class="mb-3">
+                    <label for="realizedMin" class="form-label">Minimum</label>
+                    <input type="number" class="form-control" id="realizedMin" placeholder="No minimum">
+                </div>
+                <div class="mb-3">
+                    <label for="realizedMax" class="form-label">Maximum</label>
+                    <input type="number" class="form-control" id="realizedMax" placeholder="No maximum">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" id="clearRealizedFilter">Clear</button>
+                <button type="button" class="btn btn-primary" id="applyRealizedFilter">Apply Filter</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <table class="table" id="flipsTable">
     <thead>
         <tr>
@@ -478,8 +796,11 @@
     </thead>
     <tbody>
         {% for item in items %}
-        <tr data-item-id="{{ item.item_id }}" data-item-name="{{ item.name }}">
-            <td><a href="{% url 'item_detail' item.item_id %}">{{ item.name }}</a></td>
+        <tr data-item-id="{{ item.item_id }}" data-item-name="{{ item.name }}" data-first-buy="{{ item.first_buy_timestamp|default:'' }}">
+            <td>
+                <a href="{% url 'item_detail' item.item_id %}">{{ item.name }}</a>
+                <div class="time-held-subtext" style="display: none;"></div>
+            </td>
             <td data-value="{{ item.avg_price }}">{{ item.avg_price|intcomma }}</td>
             <td data-value="{{ item.quantity_holding }}">{{ item.quantity_holding|intcomma }}</td>
             <td data-value="{{ item.high_price|default:0 }}">{% if item.high_price %}{{ item.high_price|intcomma }}{% else %}-{% endif %}</td>
@@ -495,6 +816,8 @@
     </tbody>
 </table>
 
+{% endblock %}
+
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -503,11 +826,465 @@ document.addEventListener('DOMContentLoaded', function() {
         window.location.reload();
     }, 5 * 60 * 1000);
     
-    // Filter search functionality
+    // =========================================================================
+    // FILTER SYSTEM
+    // =========================================================================
+    
+    const activeFilters = {};
+    let currentSortFilter = null;
+    let sortAscending = false; // Default descending
+    
+    const filterDropdownBtn = document.getElementById('filterDropdownBtn');
+    const filterDropdownMenu = document.getElementById('filterDropdownMenu');
+    const filterBadge = document.getElementById('filterBadge');
+    const tableBody = document.querySelector('#flipsTable tbody');
+    const sortIndicator = document.getElementById('sortIndicator');
+    const sortIndicatorValue = document.getElementById('sortIndicatorValue');
+    const sortIndicatorArrow = document.getElementById('sortIndicatorArrow');
+    const sortByDivider = document.getElementById('sortByDivider');
+    const sortBySection = document.getElementById('sortBySection');
+    const sortByOptions = document.getElementById('sortByOptions');
+    
+    // Modal elements - declare early so click handlers can access them
+    const timeHeldModal = document.getElementById('timeHeldFilterModal');
+    const timeHeldMin = document.getElementById('timeHeldMin');
+    const timeHeldMax = document.getElementById('timeHeldMax');
+    const unrealizedModal = document.getElementById('unrealizedRangeFilterModal');
+    const unrealizedMin = document.getElementById('unrealizedMin');
+    const unrealizedMax = document.getElementById('unrealizedMax');
+    const realizedModal = document.getElementById('realizedRangeFilterModal');
+    const realizedMin = document.getElementById('realizedMin');
+    const realizedMax = document.getElementById('realizedMax');
+    
+    const filterDisplayNames = {
+        'time-held': 'Time Held',
+        'unrealized-range': 'Unrealized',
+        'realized-range': 'Realized'
+    };
+    
+    if (!filterDropdownBtn || !filterDropdownMenu) {
+        console.error('Filter elements not found!');
+    }
+    
+    // Format time held in human-readable format
+    function formatTimeHeld(seconds) {
+        if (seconds < 0) return 'N/A';
+        
+        const minutes = Math.floor(seconds / 60);
+        const hours = Math.floor(seconds / 3600);
+        const days = Math.floor(seconds / 86400);
+        const weeks = Math.floor(days / 7);
+        const months = Math.floor(days / 30);
+        
+        if (seconds < 3600) {
+            return minutes === 1 ? '1 minute' : `${minutes} minutes`;
+        } else if (seconds < 86400) {
+            const remainingMins = minutes % 60;
+            if (remainingMins > 0) {
+                return hours === 1 ? `1 hour and ${remainingMins} min` : `${hours} hours and ${remainingMins} min`;
+            }
+            return hours === 1 ? '1 hour' : `${hours} hours`;
+        } else if (days < 14) {
+            const remainingHours = hours % 24;
+            if (remainingHours > 0 && days < 7) {
+                return days === 1 ? `1 day and ${remainingHours} hr` : `${days} days and ${remainingHours} hr`;
+            }
+            return days === 1 ? '1 day' : `${days} days`;
+        } else if (days < 60) {
+            const remainingDays = days % 7;
+            if (remainingDays > 0) {
+                return weeks === 1 ? `1 week and ${remainingDays} day${remainingDays > 1 ? 's' : ''}` : `${weeks} weeks and ${remainingDays} day${remainingDays > 1 ? 's' : ''}`;
+            }
+            return weeks === 1 ? '1 week' : `${weeks} weeks`;
+        } else {
+            const remainingDays = days % 30;
+            if (remainingDays > 0) {
+                return months === 1 ? `1 month and ${remainingDays} day${remainingDays > 1 ? 's' : ''}` : `${months} months and ${remainingDays} day${remainingDays > 1 ? 's' : ''}`;
+            }
+            return months === 1 ? '1 month' : `${months} months`;
+        }
+    }
+    
+    // Calculate time held in days for a row
+    function getTimeHeldDays(row) {
+        const firstBuy = row.dataset.firstBuy;
+        if (!firstBuy) return null;
+        const now = Date.now() / 1000;
+        const seconds = now - parseFloat(firstBuy);
+        return seconds / 86400;
+    }
+    
+    // Get sort value for a row based on filter type
+    function getSortValue(row, filterName) {
+        if (filterName === 'time-held') {
+            return getTimeHeldDays(row) || 0;
+        } else if (filterName === 'unrealized-range') {
+            const cell = row.querySelector('td:nth-child(6)');
+            return parseFloat(cell?.dataset.value) || 0;
+        } else if (filterName === 'realized-range') {
+            const cell = row.querySelector('td:nth-child(7)');
+            return parseFloat(cell?.dataset.value) || 0;
+        }
+        return 0;
+    }
+    
+    // Sort the table by current sort filter
+    function sortTableByFilter() {
+        if (!currentSortFilter) return;
+        
+        const rows = Array.from(tableBody.querySelectorAll('tr[data-item-name]'));
+        
+        rows.sort((a, b) => {
+            const valA = getSortValue(a, currentSortFilter);
+            const valB = getSortValue(b, currentSortFilter);
+            return sortAscending ? valA - valB : valB - valA;
+        });
+        
+        rows.forEach(row => tableBody.appendChild(row));
+    }
+    
+    // Update sort-by options in dropdown
+    function updateSortByOptions() {
+        const filterKeys = Object.keys(activeFilters);
+        
+        if (filterKeys.length === 0) {
+            sortByDivider.style.display = 'none';
+            sortBySection.style.display = 'none';
+            sortByOptions.innerHTML = '';
+            sortIndicator.classList.remove('active');
+            currentSortFilter = null;
+            return;
+        }
+        
+        // Show sort section
+        sortByDivider.style.display = 'block';
+        sortBySection.style.display = 'block';
+        sortIndicator.classList.add('active');
+        
+        // If no current sort or current sort filter was removed, use first filter
+        if (!currentSortFilter || !activeFilters[currentSortFilter]) {
+            currentSortFilter = filterKeys[0];
+        }
+        
+        // Update sort indicator
+        sortIndicatorValue.textContent = filterDisplayNames[currentSortFilter];
+        sortIndicatorArrow.textContent = sortAscending ? '↑' : '↓';
+        
+        // Build sort-by options
+        sortByOptions.innerHTML = filterKeys.map(filterName => `
+            <div class="sort-by-item ${filterName === currentSortFilter ? 'active' : ''}" data-sort="${filterName}">
+                <span>${filterDisplayNames[filterName]}</span>
+                <span class="sort-radio"></span>
+            </div>
+        `).join('');
+        
+        // Add click handlers
+        sortByOptions.querySelectorAll('.sort-by-item').forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.stopPropagation();
+                currentSortFilter = this.dataset.sort;
+                updateSortByOptions();
+                sortTableByFilter();
+                filterDropdownMenu.classList.remove('show');
+            });
+        });
+    }
+    
+    // Update filter badge and button state
+    function updateFilterUI() {
+        const count = Object.keys(activeFilters).length;
+        if (count > 0) {
+            filterBadge.textContent = count;
+            filterBadge.style.display = 'inline';
+            filterDropdownBtn.classList.add('has-active');
+        } else {
+            filterBadge.style.display = 'none';
+            filterDropdownBtn.classList.remove('has-active');
+        }
+        
+        // Update dropdown item states
+        document.querySelectorAll('.filter-dropdown-item').forEach(item => {
+            const filterName = item.dataset.filter;
+            if (activeFilters[filterName]) {
+                item.classList.add('active');
+            } else {
+                item.classList.remove('active');
+            }
+        });
+        
+        updateSortByOptions();
+    }
+    
+    // Apply all active filters
+    function applyFilters() {
+        // Ensure sort filter is set before sorting
+        const filterKeys = Object.keys(activeFilters);
+        if (filterKeys.length > 0 && (!currentSortFilter || !activeFilters[currentSortFilter])) {
+            currentSortFilter = filterKeys[0];
+        } else if (filterKeys.length === 0) {
+            currentSortFilter = null;
+        }
+        
+        const rows = tableBody.querySelectorAll('tr[data-item-name]');
+        const timeHeldActive = activeFilters['time-held'];
+        const unrealizedActive = activeFilters['unrealized-range'];
+        const realizedActive = activeFilters['realized-range'];
+        
+        rows.forEach(row => {
+            let show = true;
+            const subtext = row.querySelector('.time-held-subtext');
+            
+            // Time held filter
+            if (timeHeldActive) {
+                const daysHeld = getTimeHeldDays(row);
+                if (daysHeld === null) {
+                    show = false;
+                } else {
+                    const min = timeHeldActive.min !== null ? timeHeldActive.min : -Infinity;
+                    const max = timeHeldActive.max !== null ? timeHeldActive.max : Infinity;
+                    if (daysHeld < min || daysHeld > max) {
+                        show = false;
+                    }
+                }
+                
+                if (subtext && daysHeld !== null) {
+                    const seconds = daysHeld * 86400;
+                    subtext.textContent = 'Held: ' + formatTimeHeld(seconds);
+                    subtext.style.display = 'block';
+                }
+            } else {
+                if (subtext) {
+                    subtext.style.display = 'none';
+                }
+            }
+            
+            // Unrealized range filter
+            if (show && unrealizedActive) {
+                const cell = row.querySelector('td:nth-child(6)');
+                const value = parseFloat(cell?.dataset.value) || 0;
+                const min = unrealizedActive.min !== null ? unrealizedActive.min : -Infinity;
+                const max = unrealizedActive.max !== null ? unrealizedActive.max : Infinity;
+                if (value < min || value > max) {
+                    show = false;
+                }
+            }
+            
+            // Realized range filter
+            if (show && realizedActive) {
+                const cell = row.querySelector('td:nth-child(7)');
+                const value = parseFloat(cell?.dataset.value) || 0;
+                const min = realizedActive.min !== null ? realizedActive.min : -Infinity;
+                const max = realizedActive.max !== null ? realizedActive.max : Infinity;
+                if (value < min || value > max) {
+                    show = false;
+                }
+            }
+            
+            row.style.display = show ? '' : 'none';
+        });
+        
+        // Sort after filtering
+        sortTableByFilter();
+    }
+    
+    // Toggle sort direction
+    sortIndicatorArrow.addEventListener('click', function() {
+        sortAscending = !sortAscending;
+        this.textContent = sortAscending ? '↑' : '↓';
+        sortTableByFilter();
+    });
+    
+    // Toggle dropdown
+    filterDropdownBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        filterDropdownMenu.classList.toggle('show');
+    });
+    
+    // Prevent dropdown from closing when clicking inside it
+    filterDropdownMenu.addEventListener('click', function(e) {
+        e.stopPropagation();
+    });
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function() {
+        filterDropdownMenu.classList.remove('show');
+    });
+    
+    // Handle filter item clicks
+    document.querySelectorAll('.filter-dropdown-item').forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const filterName = this.dataset.filter;
+            
+            // Check if clicking the clear button
+            if (e.target.classList.contains('filter-clear')) {
+                delete activeFilters[filterName];
+                if (filterName === 'time-held') {
+                    timeHeldMin.value = '';
+                    timeHeldMax.value = '';
+                } else if (filterName === 'unrealized-range') {
+                    unrealizedMin.value = '';
+                    unrealizedMax.value = '';
+                } else if (filterName === 'realized-range') {
+                    realizedMin.value = '';
+                    realizedMax.value = '';
+                }
+                updateFilterUI();
+                applyFilters();
+                filterDropdownMenu.classList.remove('show');
+                return;
+            }
+            
+            // Open appropriate modal
+            if (filterName === 'time-held') {
+                const modal = new bootstrap.Modal(document.getElementById('timeHeldFilterModal'));
+                modal.show();
+            } else if (filterName === 'unrealized-range') {
+                const modal = new bootstrap.Modal(document.getElementById('unrealizedRangeFilterModal'));
+                modal.show();
+            } else if (filterName === 'realized-range') {
+                const modal = new bootstrap.Modal(document.getElementById('realizedRangeFilterModal'));
+                modal.show();
+            }
+            filterDropdownMenu.classList.remove('show');
+        });
+    });
+    
+    // Time held filter modal
+    const applyTimeHeldBtn = document.getElementById('applyTimeHeldFilter');
+    const clearTimeHeldBtn = document.getElementById('clearTimeHeldFilter');
+    
+    applyTimeHeldBtn.addEventListener('click', function() {
+        const min = timeHeldMin.value !== '' ? parseFloat(timeHeldMin.value) : null;
+        const max = timeHeldMax.value !== '' ? parseFloat(timeHeldMax.value) : null;
+        
+        activeFilters['time-held'] = { min, max };
+        updateFilterUI();
+        applyFilters();
+        
+        bootstrap.Modal.getInstance(timeHeldModal).hide();
+    });
+    
+    clearTimeHeldBtn.addEventListener('click', function() {
+        delete activeFilters['time-held'];
+        timeHeldMin.value = '';
+        timeHeldMax.value = '';
+        updateFilterUI();
+        applyFilters();
+        
+        bootstrap.Modal.getInstance(timeHeldModal).hide();
+    });
+    
+    timeHeldModal.addEventListener('show.bs.modal', function() {
+        if (activeFilters['time-held']) {
+            timeHeldMin.value = activeFilters['time-held'].min !== null ? activeFilters['time-held'].min : '';
+            timeHeldMax.value = activeFilters['time-held'].max !== null ? activeFilters['time-held'].max : '';
+        }
+    });
+    
+    // Unrealized range filter modal
+    const applyUnrealizedBtn = document.getElementById('applyUnrealizedFilter');
+    const clearUnrealizedBtn = document.getElementById('clearUnrealizedFilter');
+    
+    applyUnrealizedBtn.addEventListener('click', function() {
+        const min = unrealizedMin.value !== '' ? parseFloat(unrealizedMin.value) : null;
+        const max = unrealizedMax.value !== '' ? parseFloat(unrealizedMax.value) : null;
+        
+        activeFilters['unrealized-range'] = { min, max };
+        updateFilterUI();
+        applyFilters();
+        
+        bootstrap.Modal.getInstance(unrealizedModal).hide();
+    });
+    
+    clearUnrealizedBtn.addEventListener('click', function() {
+        delete activeFilters['unrealized-range'];
+        unrealizedMin.value = '';
+        unrealizedMax.value = '';
+        updateFilterUI();
+        applyFilters();
+        
+        bootstrap.Modal.getInstance(unrealizedModal).hide();
+    });
+    
+    unrealizedModal.addEventListener('show.bs.modal', function() {
+        if (activeFilters['unrealized-range']) {
+            unrealizedMin.value = activeFilters['unrealized-range'].min !== null ? activeFilters['unrealized-range'].min : '';
+            unrealizedMax.value = activeFilters['unrealized-range'].max !== null ? activeFilters['unrealized-range'].max : '';
+        }
+    });
+    
+    // Realized range filter modal
+    const applyRealizedBtn = document.getElementById('applyRealizedFilter');
+    const clearRealizedBtn = document.getElementById('clearRealizedFilter');
+    
+    applyRealizedBtn.addEventListener('click', function() {
+        const min = realizedMin.value !== '' ? parseFloat(realizedMin.value) : null;
+        const max = realizedMax.value !== '' ? parseFloat(realizedMax.value) : null;
+        
+        activeFilters['realized-range'] = { min, max };
+        updateFilterUI();
+        applyFilters();
+        
+        bootstrap.Modal.getInstance(realizedModal).hide();
+    });
+    
+    clearRealizedBtn.addEventListener('click', function() {
+        delete activeFilters['realized-range'];
+        realizedMin.value = '';
+        realizedMax.value = '';
+        updateFilterUI();
+        applyFilters();
+        
+        bootstrap.Modal.getInstance(realizedModal).hide();
+    });
+    
+    realizedModal.addEventListener('show.bs.modal', function() {
+        if (activeFilters['realized-range']) {
+            realizedMin.value = activeFilters['realized-range'].min !== null ? activeFilters['realized-range'].min : '';
+            realizedMax.value = activeFilters['realized-range'].max !== null ? activeFilters['realized-range'].max : '';
+        }
+    });
+    
+    // =========================================================================
+    // TEXT SEARCH FILTER
+    // =========================================================================
+    
     const filterInput = document.getElementById('filterSearchInput');
     const filterClear = document.getElementById('filterSearchClear');
     const filterWrapper = document.getElementById('filterSearchWrapper');
-    const tableBody = document.querySelector('#flipsTable tbody');
+    
+    // Check if a row passes all active dropdown filters
+    function passesDropdownFilters(row) {
+        // Time held filter
+        if (activeFilters['time-held']) {
+            const daysHeld = getTimeHeldDays(row);
+            if (daysHeld === null) return false;
+            const min = activeFilters['time-held'].min !== null ? activeFilters['time-held'].min : -Infinity;
+            const max = activeFilters['time-held'].max !== null ? activeFilters['time-held'].max : Infinity;
+            if (daysHeld < min || daysHeld > max) return false;
+        }
+        
+        // Unrealized range filter
+        if (activeFilters['unrealized-range']) {
+            const cell = row.querySelector('td:nth-child(6)');
+            const value = parseFloat(cell?.dataset.value) || 0;
+            const min = activeFilters['unrealized-range'].min !== null ? activeFilters['unrealized-range'].min : -Infinity;
+            const max = activeFilters['unrealized-range'].max !== null ? activeFilters['unrealized-range'].max : Infinity;
+            if (value < min || value > max) return false;
+        }
+        
+        // Realized range filter
+        if (activeFilters['realized-range']) {
+            const cell = row.querySelector('td:nth-child(7)');
+            const value = parseFloat(cell?.dataset.value) || 0;
+            const min = activeFilters['realized-range'].min !== null ? activeFilters['realized-range'].min : -Infinity;
+            const max = activeFilters['realized-range'].max !== null ? activeFilters['realized-range'].max : Infinity;
+            if (value < min || value > max) return false;
+        }
+        
+        return true;
+    }
     
     filterInput.addEventListener('input', function() {
         const query = this.value.toLowerCase().trim();
@@ -519,28 +1296,27 @@ document.addEventListener('DOMContentLoaded', function() {
             filterWrapper.classList.remove('has-value');
         }
         
-        // Filter table rows
+        // Filter table rows (combined with other filters)
         const rows = tableBody.querySelectorAll('tr[data-item-name]');
         rows.forEach(row => {
             const itemName = row.dataset.itemName.toLowerCase();
-            if (itemName.includes(query)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
+            const matchesSearch = itemName.includes(query);
+            const passesFilters = passesDropdownFilters(row);
+            
+            row.style.display = (matchesSearch && passesFilters) ? '' : 'none';
         });
     });
     
     filterClear.addEventListener('click', function() {
         filterInput.value = '';
         filterWrapper.classList.remove('has-value');
-        // Show all rows
-        const rows = tableBody.querySelectorAll('tr[data-item-name]');
-        rows.forEach(row => {
-            row.style.display = '';
-        });
+        applyFilters(); // Reapply just the dropdown filters
         filterInput.focus();
     });
+    
+    // =========================================================================
+    // AUTOCOMPLETE FOR NEW FLIP MODAL
+    // =========================================================================
     
     const input = document.getElementById('itemName');
     const results = document.getElementById('autocompleteResults');
@@ -731,5 +1507,4 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
-{% endblock %}
 {% endblock %}

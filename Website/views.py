@@ -159,6 +159,10 @@ def flips(request):
         item_unrealized = flip_profit.unrealized_net if flip_profit else 0
         item_realized = flip_profit.realized_net if flip_profit else 0
         
+        # Get first buy date for time held calculation
+        first_buy = buys.order_by('date').first()
+        first_buy_timestamp = first_buy.date.timestamp() if first_buy else None
+        
         items.append({
             'item_id': item_id,
             'name': item_name,
@@ -171,6 +175,7 @@ def flips(request):
             'total_sold': total_sold,
             'unrealized_net': item_unrealized,
             'realized_net': item_realized,
+            'first_buy_timestamp': first_buy_timestamp,
         })
     
     return render(request, 'flips.html', {
