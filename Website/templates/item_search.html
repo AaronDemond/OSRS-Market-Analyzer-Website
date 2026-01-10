@@ -54,30 +54,33 @@
         display: flex;
         gap: 20px;
         margin-bottom: 30px;
-        align-items: stretch;
+        align-items: flex-start;
     }
     
-    /* 1) Let the search-section participate in flex sizing (remove fit-content + allow shrink) */
-.search-section {
-    background: white;
-    border-radius: 12px;
-    padding: 24px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-
-    width: auto;          /* was fit-content */
-    flex: 0 1 55vw;      /* allow shrinking */
-max-width: 900px;        /* optional cap (adjust/remove if you want) */
-    min-width: 300px; 
-    /* remove flex-shrink: 0; */
-}
+    .search-section {
+        background: white;
+        border-radius: 12px;
+        padding: 16px 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        width: auto;
+        flex: 0 1 55vw;
+        max-width: 900px;
+        min-width: 300px;
+    }
     /* 3) Make sure the container itself can shrink too */
 .search-container {
     display: flex;
+    flex-direction: column;
     gap: 12px;
     align-items: stretch;
-width: 100%;
-    min-width: 0;         /* helps prevent overflow in some layouts */
-    /* max-width: 900px;  (keep if you want) */
+    width: 100%;
+    min-width: 0;
+}
+
+.search-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
 }
     .previous-searches-card {
         background: white;
@@ -86,6 +89,7 @@ width: 100%;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
         flex: 1;
         min-width: 200px;
+        overflow: hidden;
     }
     
     .previous-searches-header {
@@ -94,21 +98,20 @@ width: 100%;
         color: #6c757d;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        margin-bottom: 12px;
+        margin-bottom: 8px;
     }
     
     .previous-searches-list {
         display: flex;
         flex-direction: column;
         flex-wrap: wrap;
-        gap: 4px;
-        height: 120px;
+        gap: 2px;
         align-content: flex-start;
         overflow: hidden;
     }
     
     .previous-search-item {
-        font-size: 0.95rem;
+        font-size: 0.9rem;
         color: #1a73e8;
         cursor: pointer;
         padding: 2px 8px;
@@ -117,7 +120,7 @@ width: 100%;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        max-width: 230px;
+        max-width: 200px;
         text-decoration: underline;
         text-decoration-color: #1a73e8;
         text-underline-offset: 3px;
@@ -144,55 +147,13 @@ width: 100%;
         .search-row {
             margin-bottom: 30px;
         }
-        
-        .search-container {
-            flex-wrap: wrap;
-        }
-        
-        .search-wrapper {
-            flex: 1 1 100%;
-            min-width: 200px;
-        }
-        
-        .search-btn, .randomize-btn {
-            padding: 8px 14px;
-            font-size: 0.85rem;
-            flex: 1;
-        }
-    }
-    
-    /* Previous searches column control based on window width */
-    @media (min-width: 1051px) and (max-width: 1300px) {
-        .previous-searches-list {
-            max-width: 230px;
-        }
-    }
-    
-    @media (min-width: 1301px) and (max-width: 1550px) {
-        .previous-searches-list {
-            max-width: 460px;
-        }
-    }
-    
-    @media (min-width: 1551px) and (max-width: 1800px) {
-        .previous-searches-list {
-            max-width: 690px;
-        }
-    }
-    
-    @media (min-width: 1801px) {
-        .previous-searches-list {
-            max-width: 920px;
-        }
     }
     
     /* 2) Give the input area a preferred width, but allow it to shrink */
 .search-wrapper {
     position: relative;
-
-    flex: 1 1 550px;      /* preferred/default width (adjust this) */
-    min-width: 0;         /* CRITICAL: allows flex item to shrink */
-    max-width: 100%;
+    width: 100%;
+    min-width: 0;
 }
     .search-input {
         width: 100%;
@@ -222,17 +183,16 @@ width: 100%;
     }
     
     .search-btn {
-        padding: 0 20px;
+        padding: 6px 12px;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
         border: none;
-        border-radius: 10px;
-        font-size: 1rem;
+        border-radius: 6px;
+        font-size: 0.8rem;
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s ease;
         white-space: nowrap;
- flex-shrink: 0;
     }
     
     .search-btn:hover {
@@ -241,13 +201,12 @@ width: 100%;
     }
     
     .randomize-btn {
- flex-shrink: 0;
-        padding: 0 20px;
+        padding: 6px 12px;
         background: linear-gradient(135deg, #e65c00 0%, #c0392b 100%);
         color: white;
         border: none;
-        border-radius: 10px;
-        font-size: 1rem;
+        border-radius: 6px;
+        font-size: 0.8rem;
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s ease;
@@ -630,8 +589,10 @@ width: 100%;
                     <input type="text" id="item-search-input" class="search-input" placeholder="Search for an item..." autocomplete="off">
                     <div id="search-suggestions" class="suggestions-dropdown"></div>
                 </div>
-                <button id="search-btn" class="search-btn">Search</button>
-                <button id="randomize-btn" class="randomize-btn">Randomize</button>
+                <div class="search-buttons">
+                    <button id="search-btn" class="search-btn">Search</button>
+                    <button id="randomize-btn" class="randomize-btn">Randomize</button>
+                </div>
             </div>
         </div>
         
@@ -747,14 +708,49 @@ const ItemSearch = {
     selectedIndex: -1,
     fullHistoryData: null,
     previousSearches: [],
-    maxPreviousSearches: 12,
+    maxPreviousSearches: 20,
     
     init() {
         this.loadPreviousSearches();
         this.setupSearch();
         this.setupChartControls();
         this.setupPreviousSearches();
+        this.syncPreviousSearchesHeight();
         this.restoreLastItem();
+        
+        // Re-sync on window resize
+        window.addEventListener('resize', () => this.syncPreviousSearchesHeight());
+    },
+    
+    syncPreviousSearchesHeight() {
+        const searchSection = document.querySelector('.search-section');
+        const prevCard = document.querySelector('.previous-searches-card');
+        const prevList = document.getElementById('previous-searches-list');
+        const prevHeader = document.querySelector('.previous-searches-header');
+        
+        if (!searchSection || !prevCard || !prevList) return;
+        
+        // Match the card height to search section
+        const searchHeight = searchSection.offsetHeight;
+        prevCard.style.height = searchHeight + 'px';
+        
+        // Calculate available height for the list
+        const headerHeight = prevHeader ? prevHeader.offsetHeight + 8 : 0; // 8px margin
+        const padding = 32; // 16px top + 16px bottom
+        const listHeight = searchHeight - headerHeight - padding;
+        prevList.style.height = listHeight + 'px';
+        
+        // Calculate max-width based on window width (columns every 250px above 1050px)
+        const windowWidth = window.innerWidth;
+        const columnWidth = 210; // 200px max-width + some gap
+        
+        if (windowWidth > 1050) {
+            const extraWidth = windowWidth - 1050;
+            const numColumns = 1 + Math.floor(extraWidth / 250);
+            prevList.style.maxWidth = (numColumns * columnWidth) + 'px';
+        } else {
+            prevList.style.maxWidth = columnWidth + 'px';
+        }
     },
     
     // =========================================================================
@@ -802,6 +798,9 @@ const ItemSearch = {
         container.innerHTML = this.previousSearches.map(item => 
             `<div class="previous-search-item" data-id="${item.id}" data-name="${item.name}">${item.name}</div>`
         ).join('');
+        
+        // Re-sync height after rendering
+        this.syncPreviousSearchesHeight();
     },
     
     setupPreviousSearches() {
