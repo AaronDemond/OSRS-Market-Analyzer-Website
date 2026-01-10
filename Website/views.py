@@ -609,10 +609,20 @@ def alerts_api(request):
     except requests.RequestException:
         pass
     
+    # Get item mapping for icons
+    mapping = get_item_mapping()
+    
     all_alerts = Alert.objects.all().order_by(Coalesce('item_name', Value('All items')).asc())
     alerts_data = []
     all_groups_set = set()
     for alert in all_alerts:
+        # Get icon for item if available
+        icon = None
+        if alert.item_name and mapping:
+            item_data = mapping.get(alert.item_name.lower())
+            if item_data:
+                icon = item_data.get('icon')
+        
         alert_dict = {
             'id': alert.id,
             'text': str(alert),
@@ -630,7 +640,9 @@ def alerts_api(request):
             'maximum_price': alert.maximum_price,
             'created_at': alert.created_at.isoformat(),
             'last_triggered_at': alert.triggered_at.isoformat() if alert.triggered_at else None,
-            'groups': list(alert.groups.values_list('name', flat=True))
+            'groups': list(alert.groups.values_list('name', flat=True)),
+            'item_id': alert.item_id,
+            'icon': icon
         }
 
         for g in alert_dict['groups']:

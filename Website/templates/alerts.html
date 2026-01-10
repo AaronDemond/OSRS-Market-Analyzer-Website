@@ -580,7 +580,20 @@
     }
     
     .alert-icon {
+        width: 32px;
+        height: 32px;
+        object-fit: contain;
+        flex-shrink: 0;
+    }
+    
+    .alert-icon-placeholder {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         font-size: 1.3rem;
+        flex-shrink: 0;
     }
     
     .alert-checkbox {
@@ -1850,8 +1863,9 @@
             display: none;
         }
         
-        /* Hide bell icon */
-        .alert-icon {
+        /* Hide item icon on small screens */
+        .alert-icon,
+        .alert-icon-placeholder {
             display: none;
         }
         
@@ -2131,6 +2145,7 @@ const AlertsState = {
     alertGroups: [],                // Known alert groups
     cachedAlerts: [],               // Cached alerts data for instant filtering/sorting
     searchQuery: '',                // Current search query
+    iconCache: {},                  // Cache for item icons (keyed by item_id)
     sorting: {                      // Current sorting state
         sortKey: null,
         sortOrder: null,
@@ -2657,9 +2672,26 @@ const AlertsUI = {
             sortInfoHtml = '<div class="alert-sort-info">Threshold distance: ' + distText + '</div>';
         }
 
+        // Build icon HTML - use item image if available, otherwise placeholder
+        let iconHtml;
+        if (alert.icon) {
+            // Cache the icon for this item
+            if (alert.item_id) {
+                AlertsState.iconCache[alert.item_id] = alert.icon;
+            }
+            const iconUrl = 'https://oldschool.runescape.wiki/images/' + encodeURIComponent(alert.icon.replace(/ /g, '_'));
+            iconHtml = '<img class="alert-icon" src="' + iconUrl + '" alt="" loading="lazy">';
+        } else if (alert.is_all_items) {
+            // "All items" alerts get a stack icon
+            iconHtml = '<span class="alert-icon-placeholder">📊</span>';
+        } else {
+            // Fallback bell for items without icons
+            iconHtml = '<span class="alert-icon-placeholder">🔔</span>';
+        }
+
         return '<li class="alert-item clickable-alert" data-alert-id="' + alert.id + '" data-alert-text="' + (alert.text || '').replace(/"/g, '&quot;') + '" onclick="navigateToAlertDetail(event, ' + alert.id + ')">' +
                '<input type="checkbox" class="alert-checkbox" onclick="event.stopPropagation()">' +
-               '<span class="alert-icon">🔔</span>' +
+               iconHtml +
                '<div class="alert-content">' +
                '<span class="alert-text">' + alert.text + '</span>' +
                sortInfoHtml +
