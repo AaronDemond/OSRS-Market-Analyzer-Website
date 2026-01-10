@@ -2,7 +2,59 @@
 
 {% block title %}Dashboard - GE Tools{% endblock %}
 
+{% block extra_css %}
+<style>
+    .page-header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 30px;
+    }
+    
+    .page-header-icon {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        box-shadow: 0 4px 12px rgba(17, 153, 142, 0.3);
+    }
+    
+    .page-header-icon svg {
+        width: 24px;
+        height: 24px;
+        color: white;
+    }
+    
+    .page-header-text h1 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #1a1a2e;
+        margin: 0 0 2px 0;
+        letter-spacing: -0.02em;
+    }
+    
+    .page-header-text p {
+        color: #6c757d;
+        margin: 0;
+        font-size: 0.95rem;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<h1>Dashboard</h1>
-<p>Welcome to your GE Tools dashboard.</p>
+<div class="page-header">
+    <div class="page-header-icon">
+        <svg fill="currentColor" viewBox="0 0 20 20">
+            <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
+        </svg>
+    </div>
+    <div class="page-header-text">
+        <h1>Dashboard</h1>
+        <p>Welcome to your GE Tools dashboard</p>
+    </div>
+</div>
 {% endblock %}

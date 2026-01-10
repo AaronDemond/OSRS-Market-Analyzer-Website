@@ -1,10 +1,19 @@
 {% extends 'base.html' %}
 
-{% block title %}Alerts - OSRS Market Tracker{% endblock %}
+{% block title %}Alerts - GE Tools{% endblock %}
 
 {% block content %}
-<h1>Alerts</h1>
-<hr>
+<div class="page-header">
+    <div class="page-header-icon">
+        <svg fill="currentColor" viewBox="0 0 20 20">
+            <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"/>
+        </svg>
+    </div>
+    <div class="page-header-text">
+        <h1>Alerts</h1>
+        <p>Set up price alerts and get notified when items hit your targets</p>
+    </div>
+</div>
 
 <div class="alert-tabs">
     <button class="tab-btn active" data-tab="my-alerts">My Alerts</button>
@@ -263,6 +272,45 @@
     </div>
 </div>
 <style>
+    .page-header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 30px;
+    }
+    
+    .page-header-icon {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        box-shadow: 0 4px 12px rgba(17, 153, 142, 0.3);
+    }
+    
+    .page-header-icon svg {
+        width: 24px;
+        height: 24px;
+        color: white;
+    }
+    
+    .page-header-text h1 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #1a1a2e;
+        margin: 0 0 2px 0;
+        letter-spacing: -0.02em;
+    }
+    
+    .page-header-text p {
+        color: #6c757d;
+        margin: 0;
+        font-size: 0.95rem;
+    }
+
     .pill-padding span {
         margin-right: 5px;
         margin-left: 5px;

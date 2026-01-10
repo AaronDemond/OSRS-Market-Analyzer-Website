@@ -6,7 +6,7 @@
 {% block extra_css %}
 <style>
     .item-search-container {
-        max-width: 1200px;
+        max-width: none;
         margin: 0 auto;
     }
     
@@ -20,13 +20,13 @@
     .page-header-icon {
         width: 48px;
         height: 48px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
         border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        box-shadow: 0 4px 12px rgba(17, 153, 142, 0.3);
     }
     
     .page-header-icon svg {
@@ -50,27 +50,150 @@
     }
     
     /* Search Section */
-    .search-section {
+    .search-row {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 30px;
+        align-items: stretch;
+    }
+    
+    /* 1) Let the search-section participate in flex sizing (remove fit-content + allow shrink) */
+.search-section {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+
+    width: auto;          /* was fit-content */
+    flex: 0 1 55vw;      /* allow shrinking */
+max-width: 900px;        /* optional cap (adjust/remove if you want) */
+    min-width: 300px; 
+    /* remove flex-shrink: 0; */
+}
+    /* 3) Make sure the container itself can shrink too */
+.search-container {
+    display: flex;
+    gap: 12px;
+    align-items: stretch;
+width: 100%;
+    min-width: 0;         /* helps prevent overflow in some layouts */
+    /* max-width: 900px;  (keep if you want) */
+}
+    .previous-searches-card {
         background: white;
         border-radius: 12px;
-        padding: 24px;
+        padding: 16px 20px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        margin-bottom: 30px;
-        width: fit-content;
-    }
-    
-    .search-container {
-        display: flex;
-        gap: 12px;
-        align-items: stretch;
-        max-width: 600px;
-    }
-    
-    .search-wrapper {
-        position: relative;
         flex: 1;
+        min-width: 200px;
     }
     
+    .previous-searches-header {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 12px;
+    }
+    
+    .previous-searches-list {
+        display: flex;
+        flex-direction: column;
+        flex-wrap: wrap;
+        gap: 4px;
+        height: 120px;
+        align-content: flex-start;
+        overflow: hidden;
+    }
+    
+    .previous-search-item {
+        font-size: 0.95rem;
+        color: #1a73e8;
+        cursor: pointer;
+        padding: 2px 8px;
+        border-radius: 6px;
+        transition: background-color 0.15s ease;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 230px;
+        text-decoration: underline;
+        text-decoration-color: #1a73e8;
+        text-underline-offset: 3px;
+        text-decoration-thickness: 1.5px;
+    }
+    
+    .previous-search-item:hover {
+        background-color: #f0f4ff;
+        color: #667eea;
+        text-decoration-color: #667eea;
+    }
+    
+    .previous-searches-empty {
+        color: #adb5bd;
+        font-size: 0.9rem;
+        font-style: italic;
+    }
+    
+    @media (max-width: 1050px) {
+        .previous-searches-card {
+            display: none;
+        }
+        
+        .search-row {
+            margin-bottom: 30px;
+        }
+        
+        .search-container {
+            flex-wrap: wrap;
+        }
+        
+        .search-wrapper {
+            flex: 1 1 100%;
+            min-width: 200px;
+        }
+        
+        .search-btn, .randomize-btn {
+            padding: 8px 14px;
+            font-size: 0.85rem;
+            flex: 1;
+        }
+    }
+    
+    /* Previous searches column control based on window width */
+    @media (min-width: 1051px) and (max-width: 1300px) {
+        .previous-searches-list {
+            max-width: 230px;
+        }
+    }
+    
+    @media (min-width: 1301px) and (max-width: 1550px) {
+        .previous-searches-list {
+            max-width: 460px;
+        }
+    }
+    
+    @media (min-width: 1551px) and (max-width: 1800px) {
+        .previous-searches-list {
+            max-width: 690px;
+        }
+    }
+    
+    @media (min-width: 1801px) {
+        .previous-searches-list {
+            max-width: 920px;
+        }
+    }
+    
+    /* 2) Give the input area a preferred width, but allow it to shrink */
+.search-wrapper {
+    position: relative;
+
+    flex: 1 1 550px;      /* preferred/default width (adjust this) */
+    min-width: 0;         /* CRITICAL: allows flex item to shrink */
+    max-width: 100%;
+}
     .search-input {
         width: 100%;
         padding: 14px 20px 14px 50px;
@@ -109,6 +232,7 @@
         cursor: pointer;
         transition: all 0.2s ease;
         white-space: nowrap;
+ flex-shrink: 0;
     }
     
     .search-btn:hover {
@@ -117,8 +241,9 @@
     }
     
     .randomize-btn {
+ flex-shrink: 0;
         padding: 0 20px;
-        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        background: linear-gradient(135deg, #e65c00 0%, #c0392b 100%);
         color: white;
         border: none;
         border-radius: 10px;
@@ -131,7 +256,7 @@
     
     .randomize-btn:hover {
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+        box-shadow: 0 4px 12px rgba(192, 57, 43, 0.4);
     }
     
     .suggestions-dropdown {
@@ -495,17 +620,26 @@
     </div>
     
     <!-- Search Section -->
-    <div class="search-section">
-        <div class="search-container">
-            <div class="search-wrapper">
-                <svg class="search-icon" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/>
-                </svg>
-                <input type="text" id="item-search-input" class="search-input" placeholder="Search for an item..." autocomplete="off">
-                <div id="search-suggestions" class="suggestions-dropdown"></div>
+    <div class="search-row">
+        <div class="search-section">
+            <div class="search-container">
+                <div class="search-wrapper">
+                    <svg class="search-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/>
+                    </svg>
+                    <input type="text" id="item-search-input" class="search-input" placeholder="Search for an item..." autocomplete="off">
+                    <div id="search-suggestions" class="suggestions-dropdown"></div>
+                </div>
+                <button id="search-btn" class="search-btn">Search</button>
+                <button id="randomize-btn" class="randomize-btn">Randomize</button>
             </div>
-            <button id="search-btn" class="search-btn">Search</button>
-            <button id="randomize-btn" class="randomize-btn">Randomize</button>
+        </div>
+        
+        <div class="previous-searches-card">
+            <div class="previous-searches-header">Previous Searches</div>
+            <div id="previous-searches-list" class="previous-searches-list">
+                <span class="previous-searches-empty">No recent searches</span>
+            </div>
         </div>
     </div>
     
@@ -612,11 +746,73 @@ const ItemSearch = {
     chart: null,
     selectedIndex: -1,
     fullHistoryData: null,
+    previousSearches: [],
+    maxPreviousSearches: 12,
     
     init() {
+        this.loadPreviousSearches();
         this.setupSearch();
         this.setupChartControls();
+        this.setupPreviousSearches();
         this.restoreLastItem();
+    },
+    
+    // =========================================================================
+    // PREVIOUS SEARCHES
+    // =========================================================================
+    
+    loadPreviousSearches() {
+        const saved = localStorage.getItem('previousSearches');
+        if (saved) {
+            try {
+                this.previousSearches = JSON.parse(saved);
+            } catch (e) {
+                this.previousSearches = [];
+            }
+        }
+        this.renderPreviousSearches();
+    },
+    
+    savePreviousSearches() {
+        localStorage.setItem('previousSearches', JSON.stringify(this.previousSearches));
+    },
+    
+    addToPreviousSearches(id, name) {
+        // Remove if already exists
+        this.previousSearches = this.previousSearches.filter(s => s.id !== id);
+        // Add to front
+        this.previousSearches.unshift({ id, name });
+        // Limit size
+        if (this.previousSearches.length > this.maxPreviousSearches) {
+            this.previousSearches = this.previousSearches.slice(0, this.maxPreviousSearches);
+        }
+        this.savePreviousSearches();
+        this.renderPreviousSearches();
+    },
+    
+    renderPreviousSearches() {
+        const container = document.getElementById('previous-searches-list');
+        if (!container) return;
+        
+        if (this.previousSearches.length === 0) {
+            container.innerHTML = '<span class="previous-searches-empty">No recent searches</span>';
+            return;
+        }
+        
+        container.innerHTML = this.previousSearches.map(item => 
+            `<div class="previous-search-item" data-id="${item.id}" data-name="${item.name}">${item.name}</div>`
+        ).join('');
+    },
+    
+    setupPreviousSearches() {
+        const container = document.getElementById('previous-searches-list');
+        if (!container) return;
+        
+        container.addEventListener('click', (e) => {
+            if (e.target.classList.contains('previous-search-item')) {
+                this.selectItem(e.target.dataset.id, e.target.dataset.name);
+            }
+        });
     },
     
     // =========================================================================
@@ -766,6 +962,9 @@ const ItemSearch = {
         // Save to localStorage for persistence
         localStorage.setItem('lastItemId', id);
         localStorage.setItem('lastItemName', name);
+        
+        // Add to previous searches
+        this.addToPreviousSearches(id, name);
         
         this.loadItemData(id);
     },
