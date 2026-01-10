@@ -85,7 +85,7 @@
     .previous-searches-card {
         background: white;
         border-radius: 12px;
-        padding: 16px 20px;
+        padding: 10px 20px 8px 20px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
         flex: 1;
         min-width: 200px;
@@ -98,16 +98,18 @@
         color: #6c757d;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        margin-bottom: 8px;
+        margin-bottom: 4px;
     }
     
     .previous-searches-list {
         display: flex;
         flex-direction: column;
         flex-wrap: wrap;
-        gap: 2px;
+        gap: 2px 20px;
         align-content: flex-start;
         overflow: hidden;
+        width: 100%;
+        max-width: 220px;
     }
     
     .previous-search-item {
@@ -120,7 +122,8 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        max-width: 200px;
+        width: 200px;
+        flex-shrink: 0;
         text-decoration: underline;
         text-decoration-color: #1a73e8;
         text-underline-offset: 3px;
@@ -139,13 +142,41 @@
         font-style: italic;
     }
     
-    @media (max-width: 1050px) {
+    @media (max-width: 1100px) {
         .previous-searches-card {
             display: none;
         }
         
         .search-row {
             margin-bottom: 30px;
+        }
+    }
+    
+    /* 2 columns at 1350px+ */
+    @media (min-width: 1350px) {
+        .previous-searches-list {
+            max-width: 440px;
+        }
+    }
+    
+    /* 3 columns at 1700px+ */
+    @media (min-width: 1700px) {
+        .previous-searches-list {
+            max-width: 660px;
+        }
+    }
+    
+    /* 4 columns at 2050px+ */
+    @media (min-width: 2050px) {
+        .previous-searches-list {
+            max-width: 880px;
+        }
+    }
+    
+    /* 5 columns at 2400px+ */
+    @media (min-width: 2400px) {
+        .previous-searches-list {
+            max-width: 1100px;
         }
     }
     
@@ -746,6 +777,7 @@ const ItemSearch = {
     chart: null,
     selectedIndex: -1,
     fullHistoryData: null,
+    currentTimestep: null,
     previousSearches: [],
     maxPreviousSearches: 20,
     
@@ -755,7 +787,16 @@ const ItemSearch = {
         this.setupChartControls();
         this.setupPreviousSearches();
         this.syncPreviousSearchesHeight();
-        this.restoreLastItem();
+        
+        // Only restore if this is a refresh (not a fresh navigation)
+        const navType = performance.getEntriesByType('navigation')[0]?.type;
+        if (navType === 'reload') {
+            this.restoreLastItem();
+        } else {
+            // Clear any stored item on fresh navigation
+            sessionStorage.removeItem('lastItemId');
+            sessionStorage.removeItem('lastItemName');
+        }
         
         // Re-sync on window resize
         window.addEventListener('resize', () => this.syncPreviousSearchesHeight());
@@ -774,22 +815,10 @@ const ItemSearch = {
         prevCard.style.height = searchHeight + 'px';
         
         // Calculate available height for the list
-        const headerHeight = prevHeader ? prevHeader.offsetHeight + 8 : 0; // 8px margin
-        const padding = 32; // 16px top + 16px bottom
+        const headerHeight = prevHeader ? prevHeader.offsetHeight + 4 : 0; // 4px margin
+        const padding = 18; // 10px top + 8px bottom
         const listHeight = searchHeight - headerHeight - padding;
         prevList.style.height = listHeight + 'px';
-        
-        // Calculate max-width based on window width (columns every 250px above 1050px)
-        const windowWidth = window.innerWidth;
-        const columnWidth = 210; // 200px max-width + some gap
-        
-        if (windowWidth > 1050) {
-            const extraWidth = windowWidth - 1050;
-            const numColumns = 1 + Math.floor(extraWidth / 250);
-            prevList.style.maxWidth = (numColumns * columnWidth) + 'px';
-        } else {
-            prevList.style.maxWidth = columnWidth + 'px';
-        }
     },
     
     // =========================================================================
@@ -991,15 +1020,15 @@ const ItemSearch = {
         const input = document.getElementById('item-search-input');
         const dropdown = document.getElementById('search-suggestions');
         
-        input.value = name;
+        input.value = '';
         dropdown.style.display = 'none';
         this.selectedIndex = -1;
         this.currentItemId = id;
         this.currentItemName = name;
         
-        // Save to localStorage for persistence
-        localStorage.setItem('lastItemId', id);
-        localStorage.setItem('lastItemName', name);
+        // Save to sessionStorage for persistence on refresh only
+        sessionStorage.setItem('lastItemId', id);
+        sessionStorage.setItem('lastItemName', name);
         
         // Add to previous searches
         this.addToPreviousSearches(id, name);
@@ -1033,12 +1062,11 @@ const ItemSearch = {
     },
     
     restoreLastItem() {
-        const lastItemId = localStorage.getItem('lastItemId');
-        const lastItemName = localStorage.getItem('lastItemName');
+        const lastItemId = sessionStorage.getItem('lastItemId');
+        const lastItemName = sessionStorage.getItem('lastItemName');
         
         if (lastItemId && lastItemName) {
-            const input = document.getElementById('item-search-input');
-            input.value = lastItemName;
+            // Don't fill in the search bar - leave it empty for easy new searches
             this.currentItemId = lastItemId;
             this.currentItemName = lastItemName;
             this.loadItemData(lastItemId);
@@ -1165,7 +1193,7 @@ const ItemSearch = {
                 btn.classList.add('active');
                 
                 if (this.fullHistoryData) {
-                    this.filterAndDisplayChart(btn.dataset.range);
+                    this.switchChartRange(btn.dataset.range);
                 }
             });
         });
@@ -1176,17 +1204,29 @@ const ItemSearch = {
         loading.style.display = 'flex';
         
         try {
-            // Use 24h timestep to get up to 365 days of data
-            const response = await fetch('/api/item/history/?id=' + itemId + '&timestep=24h');
+            // Get active range to determine which timestep to use
+            const activeBtn = document.querySelector('.chart-btn.active');
+            const range = activeBtn ? activeBtn.dataset.range : 'month';
+            
+            // Choose timestep based on range for optimal detail
+            // 5m: 288 points/day, max ~1.3 days
+            // 1h: 24 points/day, max ~15 days  
+            // 24h: 1 point/day, max 365 days
+            let timestep;
+            if (range === 'day') {
+                timestep = '5m';
+            } else if (range === 'week') {
+                timestep = '1h';
+            } else {
+                timestep = '24h';
+            }
+            
+            const response = await fetch('/api/item/history/?id=' + itemId + '&timestep=' + timestep);
             const data = await response.json();
             
             if (data.data && data.data.length > 0) {
                 this.fullHistoryData = data.data;
-                
-                // Get active range
-                const activeBtn = document.querySelector('.chart-btn.active');
-                const range = activeBtn ? activeBtn.dataset.range : 'month';
-                
+                this.currentTimestep = timestep;
                 this.filterAndDisplayChart(range);
             } else {
                 this.displayEmptyChart();
@@ -1199,34 +1239,81 @@ const ItemSearch = {
         }
     },
     
+    async switchChartRange(range) {
+        // Determine required timestep for this range
+        let requiredTimestep;
+        if (range === 'day') {
+            requiredTimestep = '5m';
+        } else if (range === 'week') {
+            requiredTimestep = '1h';
+        } else {
+            requiredTimestep = '24h';
+        }
+        
+        // If we need different data, reload it
+        if (this.currentTimestep !== requiredTimestep && this.currentItemId) {
+            const loading = document.getElementById('chart-loading');
+            loading.style.display = 'flex';
+            
+            try {
+                const response = await fetch('/api/item/history/?id=' + this.currentItemId + '&timestep=' + requiredTimestep);
+                const data = await response.json();
+                
+                if (data.data && data.data.length > 0) {
+                    this.fullHistoryData = data.data;
+                    this.currentTimestep = requiredTimestep;
+                }
+            } catch (error) {
+                console.error('Error loading price history:', error);
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+        
+        this.filterAndDisplayChart(range);
+    },
+    
     filterAndDisplayChart(range) {
         if (!this.fullHistoryData) return;
         
         const now = Date.now() / 1000;
         let filteredData = this.fullHistoryData;
+        let minTime, maxTime;
+        
+        // Set max time to now, min time based on range
+        maxTime = new Date();
         
         switch (range) {
             case 'day':
+                // 24 hours = 86400 seconds
                 filteredData = this.fullHistoryData.filter(d => d.timestamp > now - 86400);
+                minTime = new Date(Date.now() - 86400 * 1000);
                 break;
             case 'week':
+                // 7 days = 604800 seconds
                 filteredData = this.fullHistoryData.filter(d => d.timestamp > now - 604800);
+                minTime = new Date(Date.now() - 604800 * 1000);
                 break;
             case 'month':
+                // 30 days = 2592000 seconds
                 filteredData = this.fullHistoryData.filter(d => d.timestamp > now - 2592000);
+                minTime = new Date(Date.now() - 2592000 * 1000);
                 break;
             case '6month':
+                // 180 days = 15552000 seconds
                 filteredData = this.fullHistoryData.filter(d => d.timestamp > now - 15552000);
+                minTime = new Date(Date.now() - 15552000 * 1000);
                 break;
             case 'year':
                 // Use all available data (up to 365 days from 24h timestep)
+                minTime = new Date(Date.now() - 365 * 86400 * 1000);
                 break;
         }
         
-        this.displayChart(filteredData);
+        this.displayChart(filteredData, minTime, maxTime);
     },
     
-    displayChart(data) {
+    displayChart(data, minTime, maxTime) {
         const ctx = document.getElementById('price-chart').getContext('2d');
         
         // Destroy existing chart
@@ -1252,8 +1339,10 @@ const ItemSearch = {
                         borderWidth: 2,
                         pointRadius: 0,
                         pointHoverRadius: 5,
-                        tension: 0.1,
-                        fill: false
+                        pointHitRadius: 10,
+                        tension: 0.3,
+                        fill: false,
+                        spanGaps: true
                     },
                     {
                         label: 'Instant Sell (Low)',
@@ -1263,14 +1352,22 @@ const ItemSearch = {
                         borderWidth: 2,
                         pointRadius: 0,
                         pointHoverRadius: 5,
-                        tension: 0.1,
-                        fill: false
+                        pointHitRadius: 10,
+                        tension: 0.3,
+                        fill: false,
+                        spanGaps: true
                     }
                 ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                layout: {
+                    padding: {
+                        left: 10,
+                        right: 20
+                    }
+                },
                 interaction: {
                     mode: 'index',
                     intersect: false
@@ -1302,6 +1399,8 @@ const ItemSearch = {
                 scales: {
                     x: {
                         type: 'time',
+                        min: minTime,
+                        max: maxTime,
                         time: {
                             displayFormats: {
                                 hour: 'MMM d, HH:mm',
