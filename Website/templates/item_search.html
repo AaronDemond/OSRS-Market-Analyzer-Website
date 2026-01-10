@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load humanize %}
 
-{% block title %}Item Search - GE Tracker{% endblock %}
+{% block title %}GE Tools{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -35,9 +35,16 @@
         margin-bottom: 30px;
     }
     
+    .search-container {
+        display: flex;
+        gap: 12px;
+        align-items: stretch;
+        max-width: 600px;
+    }
+    
     .search-wrapper {
         position: relative;
-        max-width: 500px;
+        flex: 1;
     }
     
     .search-input {
@@ -48,6 +55,7 @@
         border-radius: 10px;
         outline: none;
         transition: all 0.2s ease;
+        box-sizing: border-box;
     }
     
     .search-input:focus {
@@ -64,6 +72,42 @@
         height: 22px;
         color: #adb5bd;
         pointer-events: none;
+    }
+    
+    .search-btn {
+        padding: 0 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+    
+    .search-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    
+    .randomize-btn {
+        padding: 0 20px;
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+    
+    .randomize-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
     }
     
     .suggestions-dropdown {
@@ -111,7 +155,7 @@
     .item-header {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         border-radius: 16px;
-        padding: 30px;
+        padding: 24px 30px;
         margin-bottom: 30px;
         color: white;
         box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
@@ -120,14 +164,14 @@
     .item-header-content {
         display: flex;
         align-items: center;
-        gap: 24px;
+        gap: 20px;
     }
     
     .item-icon-wrapper {
-        width: 80px;
-        height: 80px;
+        width: 64px;
+        height: 64px;
         background: rgba(255, 255, 255, 0.2);
-        border-radius: 16px;
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -135,67 +179,94 @@
     }
     
     .item-icon {
-        max-width: 60px;
-        max-height: 60px;
+        max-width: 48px;
+        max-height: 48px;
         image-rendering: pixelated;
     }
     
+    .item-info {
+        flex: 1;
+    }
+    
+    .item-name-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    
     .item-info h2 {
-        font-size: 1.8rem;
+        font-size: 1.6rem;
         font-weight: 700;
-        margin: 0 0 8px 0;
+        margin: 0;
     }
     
     .item-examine {
         opacity: 0.9;
-        font-size: 1rem;
-        margin: 0;
-    }
-    
-    .item-badges {
-        display: flex;
-        gap: 10px;
-        margin-top: 12px;
+        font-size: 0.95rem;
+        margin: 6px 0 0 0;
     }
     
     .item-badge {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
+        gap: 5px;
         background: rgba(255, 255, 255, 0.2);
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-size: 0.85rem;
+        padding: 4px 10px;
+        border-radius: 15px;
+        font-size: 0.75rem;
         font-weight: 500;
     }
     
-    /* Stats Cards */
+    /* Stats Cards - 2 column layout */
     .stats-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 20px;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
         margin-bottom: 30px;
+    }
+    
+    .stats-column {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .stats-row {
+        display: flex;
+        gap: 12px;
+    }
+    
+    .stats-row .stat-card {
+        flex: 1;
     }
     
     .stat-card {
         background: white;
-        border-radius: 12px;
-        padding: 24px;
+        border-radius: 10px;
+        padding: 14px 12px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
         text-align: center;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    
+    .stat-card.tall {
+        flex: 1;
     }
     
     .stat-label {
-        font-size: 0.85rem;
+        font-size: 0.7rem;
         font-weight: 600;
         color: #6c757d;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 8px;
+        letter-spacing: 0.3px;
+        margin-bottom: 4px;
     }
     
     .stat-value {
-        font-size: 1.8rem;
+        font-size: 1.2rem;
         font-weight: 700;
         color: #333;
     }
@@ -213,9 +284,9 @@
     }
     
     .stat-time {
-        font-size: 0.8rem;
+        font-size: 0.7rem;
         color: #adb5bd;
-        margin-top: 4px;
+        margin-top: 2px;
     }
     
     /* Chart Section */
@@ -343,12 +414,20 @@
             text-align: center;
         }
         
-        .item-badges {
+        .item-name-row {
             justify-content: center;
         }
         
         .stats-grid {
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: 1fr;
+        }
+        
+        .stats-row {
+            flex-direction: row;
+        }
+        
+        .stat-value {
+            font-size: 1.1rem;
         }
         
         .chart-header {
@@ -362,8 +441,16 @@
     }
     
     @media (max-width: 480px) {
-        .stats-grid {
-            grid-template-columns: 1fr;
+        .stats-row {
+            flex-direction: column;
+        }
+        
+        .stat-card {
+            padding: 12px 10px;
+        }
+        
+        .stat-value {
+            font-size: 1rem;
         }
     }
 </style>
@@ -378,12 +465,16 @@
     
     <!-- Search Section -->
     <div class="search-section">
-        <div class="search-wrapper">
-            <svg class="search-icon" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/>
-            </svg>
-            <input type="text" id="item-search-input" class="search-input" placeholder="Search for an item..." autocomplete="off">
-            <div id="search-suggestions" class="suggestions-dropdown"></div>
+        <div class="search-container">
+            <div class="search-wrapper">
+                <svg class="search-icon" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/>
+                </svg>
+                <input type="text" id="item-search-input" class="search-input" placeholder="Search for an item..." autocomplete="off">
+                <div id="search-suggestions" class="suggestions-dropdown"></div>
+            </div>
+            <button id="search-btn" class="search-btn">Search</button>
+            <button id="randomize-btn" class="randomize-btn">Randomize</button>
         </div>
     </div>
     
@@ -405,39 +496,51 @@
                     <img id="item-icon" class="item-icon" src="" alt="">
                 </div>
                 <div class="item-info">
-                    <h2 id="item-name">Item Name</h2>
-                    <p id="item-examine" class="item-examine">Examine text</p>
-                    <div class="item-badges">
+                    <div class="item-name-row">
+                        <h2 id="item-name">Item Name</h2>
                         <span id="members-badge" class="item-badge">
-                            <svg width="14" height="14" fill="currentColor" viewBox="0 0 20 20">
+                            <svg width="12" height="12" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
                             </svg>
                             Members
                         </span>
                     </div>
+                    <p id="item-examine" class="item-examine">Examine text</p>
                 </div>
             </div>
         </div>
         
         <!-- Stats Grid -->
         <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-label">Instant Buy (High)</div>
-                <div id="stat-high" class="stat-value positive">--</div>
-                <div id="stat-high-time" class="stat-time"></div>
+            <!-- Left column: High and Low (tall cards) -->
+            <div class="stats-column">
+                <div class="stat-card tall">
+                    <div class="stat-label">Instant Buy (High)</div>
+                    <div id="stat-high" class="stat-value positive">--</div>
+                    <div id="stat-high-time" class="stat-time"></div>
+                </div>
+                <div class="stat-card tall">
+                    <div class="stat-label">Instant Sell (Low)</div>
+                    <div id="stat-low" class="stat-value negative">--</div>
+                    <div id="stat-low-time" class="stat-time"></div>
+                </div>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">Instant Sell (Low)</div>
-                <div id="stat-low" class="stat-value negative">--</div>
-                <div id="stat-low-time" class="stat-time"></div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Hourly Volume</div>
-                <div id="stat-volume" class="stat-value highlight">--</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">GE Buy Limit</div>
-                <div id="stat-limit" class="stat-value">--</div>
+            <!-- Right column: Volume, Limit (top row), Profit (bottom row) -->
+            <div class="stats-column">
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div class="stat-label">Hourly Volume</div>
+                        <div id="stat-volume" class="stat-value highlight">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">GE Buy Limit</div>
+                        <div id="stat-limit" class="stat-value">--</div>
+                    </div>
+                </div>
+                <div class="stat-card tall">
+                    <div class="stat-label">Profit (After Tax)</div>
+                    <div id="stat-profit" class="stat-value">--</div>
+                </div>
             </div>
         </div>
         
@@ -474,6 +577,7 @@
 
 const ItemSearch = {
     currentItemId: null,
+    currentItemName: null,
     chart: null,
     selectedIndex: -1,
     fullHistoryData: null,
@@ -481,6 +585,7 @@ const ItemSearch = {
     init() {
         this.setupSearch();
         this.setupChartControls();
+        this.restoreLastItem();
     },
     
     // =========================================================================
@@ -490,6 +595,13 @@ const ItemSearch = {
     setupSearch() {
         const input = document.getElementById('item-search-input');
         const dropdown = document.getElementById('search-suggestions');
+        const searchBtn = document.getElementById('search-btn');
+        const randomizeBtn = document.getElementById('randomize-btn');
+        
+        // Randomize button click
+        randomizeBtn.addEventListener('click', () => {
+            this.loadRandomItem();
+        });
         
         // Handle input
         input.addEventListener('input', async () => {
@@ -516,6 +628,20 @@ const ItemSearch = {
                 }
             } catch (error) {
                 console.error('Search error:', error);
+            }
+        });
+        
+        // Search button click
+        searchBtn.addEventListener('click', () => {
+            this.searchByName(input.value.trim());
+        });
+        
+        // Enter key in input (when no dropdown selection)
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && (dropdown.style.display === 'none' || this.selectedIndex < 0)) {
+                e.preventDefault();
+                this.searchByName(input.value.trim());
+                return;
             }
         });
         
@@ -579,7 +705,7 @@ const ItemSearch = {
         
         // Close on outside click
         document.addEventListener('click', (e) => {
-            if (!e.target.closest('.search-wrapper')) {
+            if (!e.target.closest('.search-container')) {
                 dropdown.style.display = 'none';
             }
         });
@@ -604,8 +730,63 @@ const ItemSearch = {
         dropdown.style.display = 'none';
         this.selectedIndex = -1;
         this.currentItemId = id;
+        this.currentItemName = name;
+        
+        // Save to localStorage for persistence
+        localStorage.setItem('lastItemId', id);
+        localStorage.setItem('lastItemName', name);
         
         this.loadItemData(id);
+    },
+    
+    async searchByName(query) {
+        if (query.length < 2) return;
+        
+        try {
+            const response = await fetch('/api/items/?q=' + encodeURIComponent(query));
+            const items = await response.json();
+            
+            if (items.length > 0) {
+                // Find exact match (case-insensitive)
+                const exactMatch = items.find(item => 
+                    item.name.toLowerCase() === query.toLowerCase()
+                );
+                
+                if (exactMatch) {
+                    this.selectItem(exactMatch.id, exactMatch.name);
+                } else {
+                    // No exact match found - could show a message or select first result
+                    // For now, do nothing if no exact match
+                }
+            }
+        } catch (error) {
+            console.error('Search error:', error);
+        }
+    },
+    
+    restoreLastItem() {
+        const lastItemId = localStorage.getItem('lastItemId');
+        const lastItemName = localStorage.getItem('lastItemName');
+        
+        if (lastItemId && lastItemName) {
+            const input = document.getElementById('item-search-input');
+            input.value = lastItemName;
+            this.currentItemId = lastItemId;
+            this.currentItemName = lastItemName;
+            this.loadItemData(lastItemId);
+        }
+    },
+    
+    async loadRandomItem() {
+        try {
+            const response = await fetch('/api/items/random/');
+            const item = await response.json();
+            if (item.id && item.name) {
+                this.selectItem(item.id, item.name);
+            }
+        } catch (error) {
+            console.error('Error loading random item:', error);
+        }
     },
     
     // =========================================================================
@@ -633,6 +814,9 @@ const ItemSearch = {
     },
     
     displayItemData(data) {
+        // Update page title
+        document.title = data.name;
+        
         // Item header
         document.getElementById('item-name').textContent = data.name;
         document.getElementById('item-examine').textContent = data.examine || 'No examine text available';
@@ -656,6 +840,18 @@ const ItemSearch = {
         document.getElementById('stat-low').textContent = data.low ? data.low.toLocaleString() + ' gp' : 'N/A';
         document.getElementById('stat-volume').textContent = data.volume !== null ? data.volume.toLocaleString() : 'N/A';
         document.getElementById('stat-limit').textContent = data.limit ? data.limit.toLocaleString() : 'N/A';
+        
+        // Calculate and display profit
+        const profitEl = document.getElementById('stat-profit');
+        if (data.high && data.low) {
+            const tax = Math.min(data.high * 0.02, 5000000);
+            const profit = (data.high - data.low) - tax;
+            profitEl.textContent = profit.toLocaleString() + ' gp';
+            profitEl.className = 'stat-value ' + (profit >= 0 ? 'positive' : 'negative');
+        } else {
+            profitEl.textContent = 'N/A';
+            profitEl.className = 'stat-value';
+        }
         
         // Times
         if (data.highTime) {

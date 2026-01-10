@@ -10,7 +10,7 @@ def get_item_price(item_id, reference):
     try:
         response = requests.get(
             'https://prices.runescape.wiki/api/v1/osrs/latest',
-            headers={'User-Agent': 'GE Tracker'}
+            headers={'User-Agent': 'GE Tools'}
         )
         if response.status_code == 200:
             data = response.json()

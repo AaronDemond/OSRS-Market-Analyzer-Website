@@ -20,7 +20,7 @@ def get_item_mapping():
         try:
             response = requests.get(
                 'https://prices.runescape.wiki/api/v1/osrs/mapping',
-                headers={'User-Agent': 'GE Tracker'}
+                headers={'User-Agent': 'GE Tools'}
             )
             if response.status_code == 200:
                 data = response.json()
@@ -35,7 +35,7 @@ def get_all_current_prices():
     try:
         response = requests.get(
             'https://prices.runescape.wiki/api/v1/osrs/latest',
-            headers={'User-Agent': 'GE Tracker'}
+            headers={'User-Agent': 'GE Tools'}
         )
         if response.status_code == 200:
             data = response.json()
@@ -51,7 +51,7 @@ def get_historical_price(item_id, time_filter):
     try:
         response = requests.get(
             f'https://prices.runescape.wiki/api/v1/osrs/timeseries?timestep=24h&id={item_id}',
-            headers={'User-Agent': 'GE Tracker'}
+            headers={'User-Agent': 'GE Tools'}
         )
         if response.status_code == 200:
             data = response.json()
@@ -258,6 +258,18 @@ def item_search_api(request):
     return JsonResponse(matches, safe=False)
 
 
+def random_item_api(request):
+    """API endpoint to get a random item"""
+    import random
+    mapping = get_item_mapping()
+    if not mapping:
+        return JsonResponse({'error': 'No items available'}, status=500)
+    
+    items = list(mapping.values())
+    random_item = random.choice(items)
+    return JsonResponse({'name': random_item['name'], 'id': random_item['id']})
+
+
 def item_detail(request, item_id):
     """Show all flips for a specific item"""
     flips = Flip.objects.filter(item_id=item_id).order_by('-date')
@@ -301,7 +313,7 @@ def item_data_api(request):
         try:
             response = requests.get(
                 'https://prices.runescape.wiki/api/v1/osrs/1h',
-                headers={'User-Agent': 'GE Tracker'}
+                headers={'User-Agent': 'GE Tools'}
             )
             if response.status_code == 200:
                 hour_data = response.json()
@@ -347,7 +359,7 @@ def item_history_api(request):
     try:
         response = requests.get(
             f'https://prices.runescape.wiki/api/v1/osrs/timeseries?timestep={timestep}&id={item_id}',
-            headers={'User-Agent': 'GE Tracker'}
+            headers={'User-Agent': 'GE Tools'}
         )
         if response.status_code == 200:
             data = response.json()
@@ -434,7 +446,7 @@ def alerts_api(request):
     try:
         response = requests.get(
             'https://prices.runescape.wiki/api/v1/osrs/latest',
-            headers={'User-Agent': 'GE Tracker'}
+            headers={'User-Agent': 'GE Tools'}
         )
         if response.status_code == 200:
             data = response.json()
