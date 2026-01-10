@@ -38,13 +38,13 @@
     .page-header-icon {
         width: 48px;
         height: 48px;
-        background: var(--primary);
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
         border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+        box-shadow: 0 4px 12px rgba(17, 153, 142, 0.3);
     }
     
     .page-header-icon svg {
@@ -222,42 +222,38 @@
     }
     
     /* Buttons */
-    .btn-new-flip {
-        padding: 10px 16px;
-        background: var(--primary);
-        color: #fff;
-        border: 1px solid transparent;
-        border-radius: 10px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: background 0.15s, transform 0.05s;
-    }
-    .btn-new-flip:hover {
-        background: var(--primary-hover);
-        color: #fff;
-    }
-    .btn-new-flip:active {
-        transform: translateY(1px);
-    }
+    .btn-new-flip,
     .btn-delete-flip {
-        padding: 10px 16px;
-        background: var(--danger);
-        color: #fff;
-        border: 1px solid transparent;
-        border-radius: 10px;
-        font-weight: 600;
+        padding: 8px 14px;
+        background: var(--surface);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-weight: 500;
+        font-size: 14px;
         cursor: pointer;
-        transition: background 0.15s, transform 0.05s;
+        transition: all 0.15s;
+        display: flex;
+        align-items: center;
+        gap: 6px;
     }
+    .btn-new-flip:hover,
     .btn-delete-flip:hover {
-        background: #DC2626;
-        color: #fff;
+        background: var(--surface-2);
+        border-color: var(--primary);
     }
+    .btn-new-flip:active,
     .btn-delete-flip:active {
         transform: translateY(1px);
     }
+    .btn-new-flip svg,
+    .btn-delete-flip svg {
+        width: 16px;
+        height: 16px;
+    }
     .btn-delete-flip.delete-mode-active {
         background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+        border-color: transparent;
         color: #fff;
     }
     .btn-delete-flip.delete-mode-active:hover {
@@ -300,10 +296,33 @@
         color: white !important;
     }
     
-    /* Filter search bar */
+    /* Controls container - stacks buttons row and search/filter row */
+    .controls-container {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+    
+    .buttons-row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+    
+    /*
+    .search-filter-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+    */
+    
+    /* Filter search bar - stretches to fill available space */
     .filter-search-wrapper {
         position: relative;
-        width: 250px;
+        flex: 1;
+        min-width: 0;
     }
     .filter-search-input {
         width: 100%;
@@ -598,8 +617,13 @@
     }
     
     /* Desktop sort indicator - inline with search/filter row */
+    /* Only shows when sort indicator inside is active */
     .desktop-sort {
         position: relative;
+        display: none;
+    }
+    .desktop-sort:has(.sort-indicator.active) {
+        display: block;
     }
     
     /* Filter and sort group - keeps filter dropdown and mobile sort indicator together */
@@ -607,11 +631,17 @@
         display: flex;
         align-items: center;
         gap: 0.75rem;
+        flex-shrink: 0;
     }
     
-    /* Mobile sort indicator - hidden on desktop, shown on mobile */
-    .sort-indicator-mobile-wrapper {
+    /* Mobile sort indicator row - hidden on desktop, shown on mobile */
+    .sort-indicator-mobile-row {
         display: none;
+    }
+    
+    /* Mobile sort indicator should always display when row is visible */
+    .sort-indicator-mobile-row .sort-indicator {
+        display: inline-flex;
     }
     
     /* Time held subtext */
@@ -1078,34 +1108,26 @@
             padding: 0.4rem 0.25rem;
         }
         
-        /* Filter dropdown aligns left on mobile */
-        .filter-dropdown-menu {
-            right: auto;
-            left: 0;
-        }
-        
         /* Mobile controls layout */
-        .controls-row {
-            flex-direction: column;
-            align-items: stretch !important;
-            gap: 0.75rem !important;
+        .controls-container {
+            gap: 0.75rem;
         }
         
         .buttons-row {
             justify-content: flex-start;
         }
         
+        /*
         .search-filter-row {
-            flex-direction: column;
-            align-items: flex-start !important;
-            gap: 0.75rem !important;
-            margin-right: 1rem;
+            flex-direction: row;
+            gap: 0.5rem;
         }
+        */
         
-        /* Search bar full width on mobile */
+        /* Search bar stretches on mobile */
         .filter-search-wrapper {
-            width: 100%;
-            order: -1;
+            flex: 1;
+            min-width: 0;
         }
         
         .filter-search-input {
@@ -1114,19 +1136,14 @@
             padding: 8px 12px;
         }
         
-        /* Hide desktop sort indicator on mobile */
+        /* Hide desktop sort indicator at 1100px */
         .desktop-sort {
             display: none !important;
         }
         
-        /* Show mobile sort indicator inline with filter when wrapper has active class */
-        .sort-indicator-mobile-wrapper.active {
-            display: block !important;
-        }
-        
-        /* The sort-indicator inside mobile wrapper should always display when wrapper is visible */
-        .sort-indicator-mobile-wrapper .sort-indicator {
-            display: inline-flex !important;
+        /* Show mobile sort indicator as its own row starting at 1100px - only when active */
+        .sort-indicator-mobile-row.active {
+            display: block;
         }
         
         .sort-indicator {
@@ -1147,7 +1164,7 @@
         .stats-row {
             flex-direction: column;
             gap: 0.5rem;
-            width: fit-content;
+            align-self: flex-start;
         }
         .stat-card {
             padding: 8px 12px;
@@ -1155,6 +1172,7 @@
             align-items: center;
             gap: 0.5rem;
             border-radius: 10px;
+            min-width: 220px;
         }
         .stat-label {
             font-size: 10px;
@@ -1190,17 +1208,9 @@
             padding: 0.4rem 0.25rem;
         }
         
-        /* Filter dropdown aligns left on mobile */
-        .filter-dropdown-menu {
-            right: auto;
-            left: 0;
-        }
-        
         /* Mobile controls layout */
-        .controls-row {
-            flex-direction: column;
-            align-items: stretch !important;
-            gap: 0.75rem !important;
+        .controls-container {
+            gap: 0.75rem;
         }
         
         .buttons-row {
@@ -1208,16 +1218,14 @@
         }
         
         .search-filter-row {
-            flex-direction: column;
-            align-items: flex-start !important;
-            gap: 0.75rem !important;
-            margin-right: 1rem;
+            flex-direction: row;
+            gap: 0.5rem;
         }
         
-        /* Search bar full width on mobile */
+        /* Search bar stretches on mobile */
         .filter-search-wrapper {
-            width: 100%;
-            order: -1;
+            flex: 1;
+            min-width: 0;
         }
         
         .filter-search-input {
@@ -1231,14 +1239,9 @@
             display: none !important;
         }
         
-        /* Show mobile sort indicator inline with filter when wrapper has active class */
-        .sort-indicator-mobile-wrapper.active {
-            display: block !important;
-        }
-        
-        /* The sort-indicator inside mobile wrapper should always display when wrapper is visible */
-        .sort-indicator-mobile-wrapper .sort-indicator {
-            display: inline-flex !important;
+        /* Show mobile sort indicator as its own row on mobile - only when active */
+        .sort-indicator-mobile-row.active {
+            display: block;
         }
         
         .sort-indicator {
@@ -1251,9 +1254,6 @@
         .sort-indicator-arrow {
             padding: 2px 5px;
             font-size: 12px;
-        }
-        .search-filter-row {
-            margin-right: 0;
         }
     }
 </style>
@@ -1288,12 +1288,18 @@
 </div>
 
 
-<div class="d-flex gap-3 mb-3 align-items-center justify-content-between flex-wrap controls-row">
+<div class="controls-container">
     <div class="d-flex gap-3 align-items-center buttons-row">
         <button type="button" class="btn-new-flip" data-bs-toggle="modal" data-bs-target="#newFlipModal">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
             New Flip
         </button>
         <button type="button" class="btn-delete-flip" id="deleteFlipBtn">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
             Delete Flip
         </button>
     </div>
@@ -1355,14 +1361,14 @@
                     <div id="sortByOptions"></div>
                 </div>
             </div>
-            <!-- Mobile sort indicator (shown inline with filter on mobile) -->
-            <div class="sort-indicator-mobile-wrapper" id="sortIndicatorMobileWrapper">
-                <div class="sort-indicator" id="sortIndicatorMobile">
-                    <span class="sort-indicator-label">Sorted by:</span>
-                    <span class="sort-indicator-value" id="sortIndicatorValueMobile">Time Held</span>
-                    <span class="sort-indicator-arrow" id="sortIndicatorArrowMobile" title="Toggle sort order">↓</span>
-                </div>
-            </div>
+        </div>
+    </div>
+    <!-- Mobile sort indicator row (shown below search/filter on mobile) -->
+    <div class="sort-indicator-mobile-row" id="sortIndicatorMobileRow">
+        <div class="sort-indicator" id="sortIndicatorMobile">
+            <span class="sort-indicator-label">Sorted by:</span>
+            <span class="sort-indicator-value" id="sortIndicatorValueMobile">Time Held</span>
+            <span class="sort-indicator-arrow" id="sortIndicatorArrowMobile" title="Toggle sort order">↓</span>
         </div>
     </div>
 </div>
@@ -1695,7 +1701,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const sortByOptions = document.getElementById('sortByOptions');
     
     // Mobile sort indicator elements
-    const sortIndicatorMobileWrapper = document.getElementById('sortIndicatorMobileWrapper');
+    const sortIndicatorMobileRow = document.getElementById('sortIndicatorMobileRow');
     const sortIndicatorMobile = document.getElementById('sortIndicatorMobile');
     const sortIndicatorValueMobile = document.getElementById('sortIndicatorValueMobile');
     const sortIndicatorArrowMobile = document.getElementById('sortIndicatorArrowMobile');
@@ -1761,18 +1767,20 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Sync mobile sort indicator with desktop
     function syncMobileSortIndicator() {
+        // Sync active state - mobile row only shows when sort is active
         if (sortIndicator.classList.contains('active')) {
-            sortIndicatorMobileWrapper.classList.add('active');
-            sortIndicatorValueMobile.textContent = sortIndicatorValue.textContent;
-            sortIndicatorArrowMobile.textContent = sortIndicatorArrow.textContent;
-            // Copy flash animation
-            if (sortIndicator.classList.contains('flash')) {
-                sortIndicatorMobile.classList.add('flash');
-            } else {
-                sortIndicatorMobile.classList.remove('flash');
-            }
+            sortIndicatorMobileRow.classList.add('active');
         } else {
-            sortIndicatorMobileWrapper.classList.remove('active');
+            sortIndicatorMobileRow.classList.remove('active');
+        }
+        // Sync content
+        sortIndicatorValueMobile.textContent = sortIndicatorValue.textContent;
+        sortIndicatorArrowMobile.textContent = sortIndicatorArrow.textContent;
+        // Copy flash animation
+        if (sortIndicator.classList.contains('flash')) {
+            sortIndicatorMobile.classList.add('flash');
+        } else {
+            sortIndicatorMobile.classList.remove('flash');
         }
     }
     
@@ -1883,6 +1891,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!columnSortActive) {
                 sortTableAlphabetically();
             }
+            syncMobileSortIndicator();
             return;
         }
         
@@ -2805,6 +2814,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }, 5000);
     });
+    
+    // Initialize mobile sort indicator state on page load
+    syncMobileSortIndicator();
 });
 </script>
 {% endblock %}
