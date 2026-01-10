@@ -1,6 +1,9 @@
 from django.contrib import admin
-from .models import Flip, Alert, AlertGroup
+from .models import Flip, Alert, AlertGroup, FlipProfit
 
+@admin.register(FlipProfit)
+class FlipProfitAdmin(admin.ModelAdmin):
+    list_display = ('item_id', 'item_name', 'average_cost', 'unrealized_net', 'realized_net', 'quantity_held')
 
 @admin.register(Flip)
 class FlipAdmin(admin.ModelAdmin):

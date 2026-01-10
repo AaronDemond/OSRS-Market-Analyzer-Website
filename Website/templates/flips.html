@@ -116,23 +116,68 @@
         margin-bottom: 0.25rem;
     }
     .stat-value {
-        font-size: 1.5rem;
+        font-size: 1.25rem;
         font-weight: 600;
     }
-    .stat-net-positive {
-        background: linear-gradient(135deg, rgba(40, 167, 69, 0.15) 0%, rgba(40, 167, 69, 0.25) 100%);
-        border: 1px solid rgba(40, 167, 69, 0.3);
-        color: #28a745;
+    .stat-card {
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
     }
-    .stat-net-negative {
-        background: linear-gradient(135deg, rgba(220, 53, 69, 0.15) 0%, rgba(220, 53, 69, 0.25) 100%);
-        border: 1px solid rgba(220, 53, 69, 0.3);
-        color: #dc3545;
+    .stat-card.positive {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
     }
-    .stat-position {
-        background: linear-gradient(135deg, rgba(255, 152, 0, 0.15) 0%, rgba(255, 152, 0, 0.25) 100%);
-        border: 1px solid rgba(255, 152, 0, 0.3);
-        color: #ff9800;
+    .stat-card.negative {
+        background: linear-gradient(135deg, #cb2d3e 0%, #ef473a 100%);
+    }
+    .stat-card.zero {
+        background: linear-gradient(135deg, #606c88 0%, #3f4c6b 100%);
+    }
+    .stat-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        opacity: 0.9;
+        margin-bottom: 0.25rem;
+    }
+    .btn-new-flip {
+        padding: 0.6rem 1.2rem;
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 8px rgba(17, 153, 142, 0.3);
+    }
+    .btn-new-flip:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(17, 153, 142, 0.4);
+        color: white;
+    }
+    .btn-delete-flip {
+        padding: 0.6rem 1.2rem;
+        background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 8px rgba(247, 151, 30, 0.3);
+    }
+    .btn-delete-flip:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(247, 151, 30, 0.4);
+        color: white;
+    }
+    .btn-delete-flip.active {
+        background: linear-gradient(135deg, #cb2d3e 0%, #ef473a 100%);
+        box-shadow: 0 4px 12px rgba(203, 45, 62, 0.4);
     }
     #flipsTable.delete-mode tbody tr {
         cursor: pointer;
@@ -217,22 +262,28 @@
 </div>
 
 <div class="stats-row">
-    <div class="stat-card {% if total_net >= 0 %}stat-net-positive{% else %}stat-net-negative{% endif %}">
-        <span class="stat-label">Total Net</span>
-        <span class="stat-value">{% if total_net >= 0 %}+{% endif %}{{ total_net|intcomma }} gp</span>
+    <div class="stat-card {% if total_unrealized > 0 %}positive{% elif total_unrealized < 0 %}negative{% else %}zero{% endif %}">
+        <span class="stat-label">Unrealized Net</span>
+        <span class="stat-value">{% if total_unrealized >= 0 %}+{% endif %}{{ total_unrealized|floatformat:0|intcomma }} gp</span>
     </div>
-    <div class="stat-card stat-position">
+    <div class="stat-card {% if total_realized > 0 %}positive{% elif total_realized < 0 %}negative{% else %}zero{% endif %}">
+        <span class="stat-label">Realized Net</span>
+        <span class="stat-value">{% if total_realized >= 0 %}+{% endif %}{{ total_realized|floatformat:0|intcomma }} gp</span>
+    </div>
+    <div class="stat-card">
         <span class="stat-label">Position Size</span>
-        <span class="stat-value">{{ position_size|intcomma }} gp</span>
+        <span class="stat-value">{{ position_size|floatformat:0|intcomma }} gp</span>
     </div>
 </div>
 
+<hr style="border: none; border-top: 1px solid #e0e0e0; margin: 1.5rem 0;">
+
 <div class="d-flex flex-column flex-md-row justify-content-md-between align-items-md-center gap-3 mb-3">
     <div class="d-flex gap-3">
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newFlipModal">
+        <button type="button" class="btn-new-flip" data-bs-toggle="modal" data-bs-target="#newFlipModal">
             New Flip
         </button>
-        <button type="button" class="btn btn-danger" id="deleteFlipBtn">
+        <button type="button" class="btn-delete-flip" id="deleteFlipBtn">
             Delete Flip
         </button>
     </div>
@@ -306,7 +357,8 @@
             <th class="sortable" data-col="2" data-type="number">Quantity Holding <span class="sort-icon"></span></th>
             <th class="sortable" data-col="3" data-type="number">High Price <span class="sort-icon"></span></th>
             <th class="sortable" data-col="4" data-type="number">Low Price <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="5" data-type="number">Net <span class="sort-icon"></span></th>
+            <th class="sortable" data-col="5" data-type="number">Unrealized Net <span class="sort-icon"></span></th>
+            <th class="sortable" data-col="6" data-type="number">Realized Net <span class="sort-icon"></span></th>
         </tr>
     </thead>
     <tbody>
@@ -317,11 +369,12 @@
             <td data-value="{{ item.quantity_holding }}">{{ item.quantity_holding|intcomma }}</td>
             <td data-value="{{ item.high_price|default:0 }}">{% if item.high_price %}{{ item.high_price|intcomma }}{% else %}-{% endif %}</td>
             <td data-value="{{ item.low_price|default:0 }}">{% if item.low_price %}{{ item.low_price|intcomma }}{% else %}-{% endif %}</td>
-            <td data-value="{{ item.net }}" class="{% if item.net >= 0 %}text-success{% else %}text-danger{% endif %}">{% if item.net >= 0 %}+{% endif %}{{ item.net|intcomma }}</td>
+            <td data-value="{{ item.unrealized_net }}" class="{% if item.unrealized_net > 0 %}text-success{% elif item.unrealized_net < 0 %}text-danger{% endif %}">{% if item.unrealized_net >= 0 %}+{% endif %}{{ item.unrealized_net|floatformat:0|intcomma }}</td>
+            <td data-value="{{ item.realized_net }}" class="{% if item.realized_net > 0 %}text-success{% elif item.realized_net < 0 %}text-danger{% endif %}">{% if item.realized_net >= 0 %}+{% endif %}{{ item.realized_net|floatformat:0|intcomma }}</td>
         </tr>
         {% empty %}
         <tr>
-            <td colspan="6" class="text-center">No flips recorded yet.</td>
+            <td colspan="7" class="text-center">No flips recorded yet.</td>
         </tr>
         {% endfor %}
     </tbody>
@@ -330,6 +383,11 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Auto-refresh page every 5 minutes
+    setInterval(function() {
+        window.location.reload();
+    }, 5 * 60 * 1000);
+    
     const input = document.getElementById('itemName');
     const results = document.getElementById('autocompleteResults');
     let activeIndex = -1;

@@ -387,9 +387,11 @@
         color: #dc3545;
     }
     
+    /*
     .stat-value.highlight {
         color: #667eea;
     }
+    */
     
     .stat-time {
         font-size: 0.7rem;
@@ -488,6 +490,16 @@
     .loading-text {
         font-size: 1rem;
         color: #6c757d;
+    }
+    
+    /* Page Loading State */
+    .page-loading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 80px 20px;
+        gap: 16px;
     }
     
     /* Empty State */
@@ -623,6 +635,12 @@
                 <span class="previous-searches-empty">No recent searches</span>
             </div>
         </div>
+    </div>
+    
+    <!-- Page Loading State -->
+    <div id="page-loading" class="page-loading" style="display: none;">
+        <div class="loading-spinner"></div>
+        <span class="loading-text">Loading</span>
     </div>
     
     <!-- Empty State -->
@@ -1044,8 +1062,10 @@ const ItemSearch = {
     // =========================================================================
     
     async loadItemData(itemId) {
+        // Hide content and show loading
         document.getElementById('empty-state').style.display = 'none';
-        document.getElementById('item-display').classList.add('active');
+        document.getElementById('item-display').classList.remove('active');
+        document.getElementById('page-loading').style.display = 'flex';
         
         try {
             const response = await fetch('/api/item/data/?id=' + itemId);
@@ -1053,13 +1073,19 @@ const ItemSearch = {
             
             if (data.error) {
                 console.error('Error loading item:', data.error);
+                document.getElementById('page-loading').style.display = 'none';
                 return;
             }
             
             this.displayItemData(data);
-            this.loadPriceHistory(itemId);
+            await this.loadPriceHistory(itemId);
+            
+            // Hide loading and show content
+            document.getElementById('page-loading').style.display = 'none';
+            document.getElementById('item-display').classList.add('active');
         } catch (error) {
             console.error('Error loading item data:', error);
+            document.getElementById('page-loading').style.display = 'none';
         }
     },
     

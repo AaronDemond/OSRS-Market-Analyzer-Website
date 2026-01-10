@@ -6,7 +6,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 import requests
 import time
-from .models import Flip, Alert, AlertGroup
+from .models import Flip, FlipProfit, Alert, AlertGroup
 
 
 # Cache for item mappings
@@ -100,9 +100,24 @@ def flips(request):
     # Fetch all current prices in one API call
     all_prices = get_all_current_prices()
     
+    # Recalculate unrealized_net for all FlipProfit objects
+    for flip_profit in FlipProfit.objects.all():
+        current_high = None
+        if str(flip_profit.item_id) in all_prices:
+            current_high = all_prices[str(flip_profit.item_id)].get('high')
+        
+        if current_high and flip_profit.quantity_held > 0:
+            flip_profit.unrealized_net = flip_profit.quantity_held * ((current_high * 0.98) - flip_profit.average_cost)
+        else:
+            flip_profit.unrealized_net = 0
+        flip_profit.save()
+    
     items = []
-    total_net = 0
-    position_size = 0
+    
+    # Calculate totals from FlipProfit
+    total_unrealized = FlipProfit.objects.aggregate(total=Sum('unrealized_net'))['total'] or 0
+    total_realized = FlipProfit.objects.aggregate(total=Sum('realized_net'))['total'] or 0
+    position_size = FlipProfit.objects.aggregate(total=Sum(F('quantity_held') * F('average_cost')))['total'] or 0
     
     for item_id in item_ids:
         item_flips = Flip.objects.filter(item_id=item_id)
@@ -116,8 +131,6 @@ def flips(request):
         # Calculate total sold and revenue (with tax)
         sells = item_flips.filter(type='sell')
         total_sold = sells.aggregate(total=Sum('quantity'))['total'] or 0
-        total_sell_revenue = sells.aggregate(total=Sum(F('quantity') * F('price')))['total'] or 0
-        total_sell_revenue_after_tax = int(total_sell_revenue * 0.98)
         
         # Average price (of buys)
         avg_price = total_spent // total_bought if total_bought > 0 else 0
@@ -141,17 +154,10 @@ def flips(request):
             if hist_low is not None:
                 low_price = hist_low
         
-        # Calculate unrealized value of remaining items (with tax)
-        unrealized_value = 0
-        if high_price and quantity_held > 0:
-            unrealized_value = int(quantity_held * high_price * 0.98)
-        
-        # Calculate net for this item: (realized sells + unrealized value) - total spent
-        item_net = (total_sell_revenue_after_tax + unrealized_value) - total_spent
-        total_net += item_net
-        
-        # Position size is the cost basis of remaining items
-        position_size += avg_price * quantity_held
+        # Get FlipProfit for this item
+        flip_profit = FlipProfit.objects.filter(item_id=item_id).first()
+        item_unrealized = flip_profit.unrealized_net if flip_profit else 0
+        item_realized = flip_profit.realized_net if flip_profit else 0
         
         items.append({
             'item_id': item_id,
@@ -163,12 +169,14 @@ def flips(request):
             'quantity_holding': quantity_held,
             'total_bought': total_bought,
             'total_sold': total_sold,
-            'net': item_net,
+            'unrealized_net': item_unrealized,
+            'realized_net': item_realized,
         })
     
     return render(request, 'flips.html', {
         'items': items,
-        'total_net': total_net,
+        'total_unrealized': total_unrealized,
+        'total_realized': total_realized,
         'position_size': position_size,
         'time_filter': time_filter,
     })
@@ -202,14 +210,145 @@ def add_flip(request):
             quantity=quantity,
             type=flip_type
         )
+        
+        # Handle FlipProfit tracking for buys
+        if flip_type == 'buy' and item_id != 0:
+            flip_profit = FlipProfit.objects.filter(item_id=item_id).first()
+            
+            if not flip_profit:
+                # Get current high price from API
+                current_high = None
+                all_prices = get_all_current_prices()
+                if str(item_id) in all_prices:
+                    current_high = all_prices[str(item_id)].get('high')
+                
+                # Calculate unrealized net: quantity_held * ((currentHigh * 0.98) - average_cost)
+                if current_high:
+                    unrealized_net = quantity * ((current_high * 0.98) - price)
+                else:
+                    unrealized_net = 0
+                
+                # Create new FlipProfit
+                FlipProfit.objects.create(
+                    item_id=item_id,
+                    average_cost=price,
+                    unrealized_net=unrealized_net,
+                    realized_net=0,
+                    quantity_held=quantity
+                )
+            else:
+                # FlipProfit exists - recalculate average_cost and quantity_held
+                # New average_cost = ((old_qty * old_avg) + (new_qty * new_price)) / (old_qty + new_qty)
+                new_average_cost = ((flip_profit.quantity_held * flip_profit.average_cost) + (quantity * price)) / (flip_profit.quantity_held + quantity)
+                new_quantity_held = flip_profit.quantity_held + quantity
+                
+                flip_profit.average_cost = new_average_cost
+                flip_profit.quantity_held = new_quantity_held
+                
+                # Recalculate unrealized_net with updated values
+                all_prices = get_all_current_prices()
+                current_high = None
+                if str(item_id) in all_prices:
+                    current_high = all_prices[str(item_id)].get('high')
+                
+                if current_high:
+                    flip_profit.unrealized_net = new_quantity_held * ((current_high * 0.98) - new_average_cost)
+                else:
+                    flip_profit.unrealized_net = 0
+                
+                flip_profit.save()
+        
+        # Handle FlipProfit tracking for sells
+        if flip_type == 'sell' and item_id != 0:
+            flip_profit = FlipProfit.objects.filter(item_id=item_id).first()
+            
+            if flip_profit:
+                # Calculate realized gain/loss
+                # realized_gain = quantity * (sell_price - average_cost)
+                current_realized = flip_profit.realized_net
+                realized_gain = quantity * ((price * 0.98) - flip_profit.average_cost)
+                new_realized_net = current_realized + realized_gain
+                
+                # Update quantity_held
+                new_quantity_held = flip_profit.quantity_held - quantity
+                
+                flip_profit.realized_net = new_realized_net
+                flip_profit.quantity_held = new_quantity_held
+                
+                # Recalculate unrealized_net with updated quantity_held
+                all_prices = get_all_current_prices()
+                current_high = None
+                if str(item_id) in all_prices:
+                    current_high = all_prices[str(item_id)].get('high')
+                
+                if current_high and new_quantity_held > 0:
+                    flip_profit.unrealized_net = new_quantity_held * ((current_high * 0.98) - flip_profit.average_cost)
+                else:
+                    flip_profit.unrealized_net = 0
+                
+                flip_profit.save()
     
     return redirect('flips')
+
+
+def recalculate_flip_profit(item_id):
+    """Recalculate FlipProfit for an item by replaying all flips in chronological order"""
+    # Delete existing FlipProfit for this item
+    FlipProfit.objects.filter(item_id=item_id).delete()
+    
+    # Get all flips for this item ordered by date
+    flips = Flip.objects.filter(item_id=item_id).order_by('date')
+    
+    if not flips.exists():
+        return
+    
+    # Initialize tracking variables
+    average_cost = 0
+    quantity_held = 0
+    realized_net = 0
+    
+    # Replay all flips
+    for flip in flips:
+        if flip.type == 'buy':
+            if quantity_held == 0:
+                average_cost = flip.price
+                quantity_held = flip.quantity
+            else:
+                average_cost = ((quantity_held * average_cost) + (flip.quantity * flip.price)) / (quantity_held + flip.quantity)
+                quantity_held = quantity_held + flip.quantity
+        
+        elif flip.type == 'sell':
+            realized_gain = flip.quantity * (flip.price - average_cost)
+            realized_net = realized_net + realized_gain
+            quantity_held = quantity_held - flip.quantity
+    
+    # Calculate unrealized_net with current prices
+    all_prices = get_all_current_prices()
+    current_high = None
+    if str(item_id) in all_prices:
+        current_high = all_prices[str(item_id)].get('high')
+    
+    if current_high and quantity_held > 0:
+        unrealized_net = quantity_held * ((current_high * 0.98) - average_cost)
+    else:
+        unrealized_net = 0
+    
+    # Create new FlipProfit
+    FlipProfit.objects.create(
+        item_id=item_id,
+        average_cost=average_cost,
+        unrealized_net=unrealized_net,
+        realized_net=realized_net,
+        quantity_held=quantity_held
+    )
 
 
 def delete_flip(request, item_id):
     """Delete all flips for a specific item"""
     if request.method == 'POST':
         Flip.objects.filter(item_id=item_id).delete()
+        # Also delete the FlipProfit for this item
+        FlipProfit.objects.filter(item_id=item_id).delete()
     return redirect('flips')
 
 
@@ -223,7 +362,12 @@ def delete_single_flip(request):
             flip.delete()
             # Check if there are any remaining flips for this item
             if Flip.objects.filter(item_id=item_id).exists():
+                # Recalculate FlipProfit for this item
+                recalculate_flip_profit(item_id)
                 return redirect('item_detail', item_id=item_id)
+            else:
+                # No more flips, delete FlipProfit
+                FlipProfit.objects.filter(item_id=item_id).delete()
     return redirect('flips')
 
 
@@ -238,6 +382,8 @@ def edit_flip(request):
             flip.quantity = int(request.POST.get('quantity'))
             flip.type = request.POST.get('type')
             flip.save()
+            # Recalculate FlipProfit for this item
+            recalculate_flip_profit(flip.item_id)
             return redirect('item_detail', item_id=flip.item_id)
     return redirect('flips')
 

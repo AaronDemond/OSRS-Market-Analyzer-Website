@@ -44,6 +44,18 @@ class Flip(models.Model):
         return f"{self.item_name} x{self.quantity}"
 
 
+class FlipProfit(models.Model):
+    item_id = models.IntegerField(unique=True)
+    item_name = models.CharField(max_length=255, blank=True, null=True, default=None)
+    average_cost = models.FloatField(default=0)
+    unrealized_net = models.FloatField(default=0)
+    realized_net = models.FloatField(default=0)
+    quantity_held = models.IntegerField(default=0)
+
+    def __str__(self):
+        return f"FlipProfit item_id={self.item_id} qty={self.quantity_held}"
+
+
 class AlertGroup(models.Model):
     name = models.CharField(max_length=100, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
