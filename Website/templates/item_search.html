@@ -122,7 +122,7 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        width: 200px;
+        width: 150px;
         flex-shrink: 0;
         text-decoration: underline;
         text-decoration-color: #1a73e8;
@@ -150,31 +150,59 @@
         .search-row {
             margin-bottom: 30px;
         }
+        
+        .search-section {
+            flex: 1;
+            max-width: none;
+            width: 100%;
+        }
     }
     
-    /* 2 columns at 1350px+ */
-    @media (min-width: 1350px) {
+    /* Show only 3 items between 1100px and 1549px */
+    @media (min-width: 1100px) and (max-width: 1549px) {
+        .previous-search-item:nth-child(n+4) {
+            display: none;
+        }
+        .previous-searches-list {
+            max-width: 220px;
+        }
+    }
+    
+    /* Show only 6 items between 1550px and 1999px */
+    @media (min-width: 1550px) and (max-width: 1999px) {
+        .previous-search-item:nth-child(n+7) {
+            display: none;
+        }
         .previous-searches-list {
             max-width: 440px;
         }
     }
     
-    /* 3 columns at 1700px+ */
-    @media (min-width: 1700px) {
+    /* Show only 9 items between 2000px and 2449px */
+    @media (min-width: 2000px) and (max-width: 2449px) {
+        .previous-search-item:nth-child(n+10) {
+            display: none;
+        }
         .previous-searches-list {
             max-width: 660px;
         }
     }
     
-    /* 4 columns at 2050px+ */
-    @media (min-width: 2050px) {
+    /* Show only 12 items between 2450px and 2899px */
+    @media (min-width: 2450px) and (max-width: 2899px) {
+        .previous-search-item:nth-child(n+13) {
+            display: none;
+        }
         .previous-searches-list {
             max-width: 880px;
         }
     }
     
-    /* 5 columns at 2400px+ */
-    @media (min-width: 2400px) {
+    /* Show only 15 items at 2900px+ */
+    @media (min-width: 2900px) {
+        .previous-search-item:nth-child(n+16) {
+            display: none;
+        }
         .previous-searches-list {
             max-width: 1100px;
         }
@@ -213,40 +241,38 @@
         pointer-events: none;
     }
     
-    .search-btn {
-        padding: 6px 12px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border: none;
-        border-radius: 6px;
-        font-size: 0.8rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        white-space: nowrap;
-    }
-    
-    .search-btn:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-    }
-    
+    .search-btn,
     .randomize-btn {
-        padding: 6px 12px;
-        background: linear-gradient(135deg, #e65c00 0%, #c0392b 100%);
-        color: white;
-        border: none;
-        border-radius: 6px;
-        font-size: 0.8rem;
-        font-weight: 600;
+        padding: 12px 20px;
+        background: #FFFFFF;
+        color: #374151;
+        border: 1px solid #E5E7EB;
+        border-radius: 10px;
+        font-size: 1rem;
+        font-weight: 500;
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: all 0.15s;
         white-space: nowrap;
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
     
+    .search-btn:hover,
     .randomize-btn:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(192, 57, 43, 0.4);
+        background: #F5F6F8;
+        border-color: #6366F1;
+    }
+    
+    .search-btn:active,
+    .randomize-btn:active {
+        transform: translateY(1px);
+    }
+    
+    .search-btn svg,
+    .randomize-btn svg {
+        width: 18px;
+        height: 18px;
     }
     
     .suggestions-dropdown {
@@ -654,8 +680,18 @@
                     <div id="search-suggestions" class="suggestions-dropdown"></div>
                 </div>
                 <div class="search-buttons">
-                    <button id="search-btn" class="search-btn">Search</button>
-                    <button id="randomize-btn" class="randomize-btn">Randomize</button>
+                    <button id="search-btn" class="search-btn">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                        Search
+                    </button>
+                    <button id="randomize-btn" class="randomize-btn">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        Randomize
+                    </button>
                 </div>
             </div>
         </div>

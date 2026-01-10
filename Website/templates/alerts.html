@@ -11,7 +11,7 @@
     </div>
     <div class="page-header-text">
         <h1>Alerts</h1>
-        <p>Set up price alerts and get notified when items hit your targets</p>
+        <p>Set up price alerts and get notified when items hit your targets. Click on individual alerts to get more details.</p>
     </div>
 </div>
 
@@ -128,13 +128,8 @@
                                     <span class="filter-check">✓</span>
                                     <span class="filter-clear" title="Clear filter">×</span>
                                 </div>
-                                <div class="custom-dropdown-item" data-filter="minimumPrice">
-                                    <span>Minimum Price</span>
-                                    <span class="filter-check">✓</span>
-                                    <span class="filter-clear" title="Clear filter">×</span>
-                                </div>
-                                <div class="custom-dropdown-item" data-filter="maximumPrice">
-                                    <span>Maximum Price</span>
+                                <div class="custom-dropdown-item" data-filter="priceRange">
+                                    <span>Price</span>
                                     <span class="filter-check">✓</span>
                                     <span class="filter-clear" title="Clear filter">×</span>
                                 </div>
@@ -344,19 +339,31 @@
 </div>
 
 <!-- Price Filter Modal -->
-<div id="price-filter-modal" class="modal" style="display: none;">
+<div id="price-filter-modal" class="modal filter-modal-styled" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
-            <h2 id="price-filter-title">Set Price Filter</h2>
+            <h2>Filter by Price</h2>
             <button class="modal-close" onclick="closePriceFilterModal()">&times;</button>
         </div>
-        <div class="form-group">
-            <label for="price-filter-input" id="price-filter-label">Enter value</label>
-            <input type="number" id="price-filter-input" placeholder="Enter price...">
+        <div class="modal-body">
+            <div class="filter-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            <p class="filter-description">Show alerts with current price in a specific range.</p>
+            <div class="form-group">
+                <label for="price-filter-min">Minimum Price</label>
+                <input type="number" id="price-filter-min" placeholder="No minimum">
+            </div>
+            <div class="form-group">
+                <label for="price-filter-max">Maximum Price</label>
+                <input type="number" id="price-filter-max" placeholder="No maximum">
+            </div>
         </div>
         <div class="modal-buttons">
-            <button type="button" class="btn-save" onclick="applyPriceFilter()">Apply</button>
-            <button type="button" class="btn-cancel" onclick="closePriceFilterModal()">Cancel</button>
+            <button type="button" class="btn-clear" onclick="clearPriceFilter()">Clear</button>
+            <button type="button" class="btn-save" onclick="applyPriceFilter()">Apply Filter</button>
         </div>
     </div>
 </div>
@@ -640,7 +647,7 @@
 
     /* Actions wrapper */
     .alert-actions-wrapper {
-        margin-bottom: 8px;
+        margin-bottom: 4px;
     }
     
     .alert-actions {
@@ -882,6 +889,9 @@
     }
     
     .sort-indicator {
+
+
+        margin-top:7px;
         display: none;
         align-items: center;
         gap: 8px;
@@ -960,7 +970,7 @@
         align-items: center;
         flex-wrap: wrap-reverse;
         gap: 8px;
-        margin-top: 10px;
+        margin-top: 4px;
     }
     
     .filter-tags {
@@ -1120,6 +1130,10 @@
         width: 32px;
         height: 32px;
         color: #DC2626;
+    }
+
+    .sort-indicator {
+        margin-top:0px;
     }
     
     .delete-confirm-modal .modal-body p {
@@ -1450,6 +1464,97 @@
         border-color: var(--muted);
     }
     
+    .btn-clear {
+        flex: 0 0 auto;
+        background: var(--surface-2);
+        color: var(--text);
+        border: 1px solid var(--border);
+        padding: 12px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 15px;
+        font-weight: 500;
+        transition: all 0.15s;
+    }
+    
+    .btn-clear:hover {
+        background: var(--surface);
+        border-color: var(--muted);
+    }
+    
+    /* Styled filter modal */
+    .filter-modal-styled .modal-content {
+        max-width: 380px;
+    }
+    
+    .filter-modal-styled .modal-body {
+        padding: 20px;
+        text-align: center;
+    }
+    
+    .filter-modal-styled .filter-icon {
+        width: 56px;
+        height: 56px;
+        background: linear-gradient(135deg, var(--primary) 0%, #4F46E5 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 16px;
+    }
+    
+    .filter-modal-styled .filter-icon svg {
+        width: 28px;
+        height: 28px;
+        color: white;
+    }
+    
+    .filter-modal-styled .filter-description {
+        color: var(--muted);
+        font-size: 14px;
+        margin-bottom: 20px;
+    }
+    
+    .filter-modal-styled .form-group {
+        text-align: left;
+        padding: 0;
+        margin-bottom: 16px;
+    }
+    
+    .filter-modal-styled .form-group:last-of-type {
+        margin-bottom: 0;
+    }
+    
+    .filter-modal-styled .form-group label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 6px;
+    }
+    
+    .filter-modal-styled .form-group input {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 14px;
+        color: var(--text);
+        background: var(--surface);
+        transition: border-color 0.15s, box-shadow 0.15s;
+        box-sizing: border-box;
+    }
+    
+    .filter-modal-styled .form-group input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+    
+    .filter-modal-styled .form-group input::placeholder {
+        color: var(--muted);
+    }
+    
     .modal-content-large {
         max-width: 700px;
         max-height: 80vh;
@@ -1623,8 +1728,12 @@
         .alert-actions-wrapper {
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 2px;
         }
+
+    .sort-indicator {
+        margin-top:7px;
+    }
         
         .alert-actions {
             display: flex;
@@ -1644,6 +1753,12 @@
         .sort-indicator-mobile-row {
             display: block;
             text-align: right;
+            margin-bottom: -2px;
+        }
+        
+        /* When sort indicator is not active, collapse the row */
+        .sort-indicator-mobile-row:not(:has(.sort-indicator.active)) {
+            display: none;
         }
         
         .sort-indicator-mobile-row .sort-indicator.active {
@@ -1653,6 +1768,7 @@
 
     /* Tablet/Mobile Responsive Styles */
     @media (max-width: 950px) {
+
         .alert-actions {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
@@ -1815,72 +1931,58 @@ const AlertsConfig = {
             label: 'Not Triggered', 
             test: alert => !alert.is_triggered 
         },
-        minimumPrice: {
-            id: 'minimumPrice',
-            label: 'Minimum Price',
-            shortLabel: 'Min',
-            requiresInput: true,
+        priceRange: {
+            id: 'priceRange',
+            label: 'Price',
+            shortLabel: 'Price',
             requiresModal: true,
-            inputType: 'number',
-            inputPlaceholder: 'Enter minimum price...',
             testWithValue: (alert, value) => {
-                const minPrice = parseInt(value);
-                if (isNaN(minPrice)) return true;
+                if (!value) return true;
+                const { min, max } = value;
+                const minPrice = min != null && min !== '' ? parseInt(min) : null;
+                const maxPrice = max != null && max !== '' ? parseInt(max) : null;
                 
-                // For above/below alerts, use the current price for the chosen reference (high/low)
+                // Get the current price for the alert
+                let currentPrice = null;
+                
+                // For above/below alerts, use the current price
                 if (alert.type === 'above' || alert.type === 'below') {
-                    if (alert.current_price != null) {
-                        return alert.current_price >= minPrice;
-                    }
+                    currentPrice = alert.current_price;
+                }
+                // For spread alerts with all items, use average of min/max
+                else if (alert.type === 'spread' && alert.is_all_items) {
+                    const minP = alert.minimum_price || 0;
+                    const maxP = alert.maximum_price || 0;
+                    currentPrice = (minP + maxP) / 2;
+                }
+                // For spread alerts with single item, use average of low/high
+                else if (alert.type === 'spread' && !alert.is_all_items) {
+                    const low = alert.spread_low || 0;
+                    const high = alert.spread_high || 0;
+                    currentPrice = (low + high) / 2;
+                }
+                // For spike alerts, use current price
+                else if (alert.type === 'spike') {
+                    currentPrice = alert.current_price;
+                }
+                // Default fallback
+                else {
+                    currentPrice = alert.current_price || alert.price || 0;
+                }
+                
+                if (currentPrice == null) return true;
+                
+                // Check min bound (inclusive)
+                if (minPrice != null && !isNaN(minPrice) && currentPrice < minPrice) {
                     return false;
                 }
                 
-                // For spread alerts with all items, use minimum_price field
-                if (alert.type === 'spread' && alert.is_all_items) {
-                    return (alert.minimum_price || 0) >= minPrice;
-                }
-                
-                // For spread alerts with single item, use current low price
-                if (alert.type === 'spread' && !alert.is_all_items) {
-                    return (alert.spread_low || 0) >= minPrice;
-                }
-                
-                // Default: use current low price if available
-                return (alert.spread_low || alert.price || 0) >= minPrice;
-            }
-        },
-        maximumPrice: {
-            id: 'maximumPrice',
-            label: 'Maximum Price',
-            shortLabel: 'Max',
-            requiresInput: true,
-            requiresModal: true,
-            inputType: 'number',
-            inputPlaceholder: 'Enter maximum price...',
-            testWithValue: (alert, value) => {
-                const maxPrice = parseInt(value);
-                if (isNaN(maxPrice)) return true;
-                
-                // For above/below alerts, use the current price for the chosen reference (high/low)
-                if (alert.type === 'above' || alert.type === 'below') {
-                    if (alert.current_price != null) {
-                        return alert.current_price <= maxPrice;
-                    }
+                // Check max bound (inclusive)
+                if (maxPrice != null && !isNaN(maxPrice) && currentPrice > maxPrice) {
                     return false;
                 }
                 
-                // For spread alerts with all items, use maximum_price field
-                if (alert.type === 'spread' && alert.is_all_items) {
-                    return (alert.maximum_price || 0) <= maxPrice;
-                }
-                
-                // For spread alerts with single item, use current high price
-                if (alert.type === 'spread' && !alert.is_all_items) {
-                    return (alert.spread_high || 0) <= maxPrice;
-                }
-                
-                // Default: use current high price if available
-                return (alert.spread_high || alert.price || 0) <= maxPrice;
+                return true;
             }
         },
         myGroups: {
@@ -3097,8 +3199,8 @@ const FilterManager = {
         if (dropdown) dropdown.value = '';
         if (filterId === 'myGroups') {
             openGroupsFilterModal();
-        } else if (filterId === 'minimumPrice' || filterId === 'maximumPrice') {
-            openPriceFilterModal(filterId);
+        } else if (filterId === 'priceRange') {
+            openPriceFilterModal();
         }
     },
     
@@ -4250,11 +4352,16 @@ const AlertsRefresh = {
     intervalId: null,
     pausedForSort: false,
     errorNotificationActive: false,
+    dropdownOpen: false,
     
     /**
      * Checks if any dropdown is currently open or search is active.
      */
     isDropdownOpen() {
+        // Check the explicit dropdown open flag first
+        if (this.dropdownOpen) {
+            return true;
+        }
         // Check if any dropdown menu is open
         if (document.querySelector('.custom-dropdown-menu.show') !== null) {
             return true;
@@ -4269,6 +4376,20 @@ const AlertsRefresh = {
             return true;
         }
         return false;
+    },
+    
+    /**
+     * Called immediately when a dropdown button is clicked to pause refresh.
+     */
+    onDropdownOpen() {
+        this.dropdownOpen = true;
+    },
+    
+    /**
+     * Called when all dropdowns are closed to resume refresh.
+     */
+    onDropdownClose() {
+        this.dropdownOpen = false;
     },
     
     /**
@@ -4533,6 +4654,9 @@ const EventManager = {
         document.addEventListener('click', function(e) {
             const btn = e.target.closest('.btn-dropdown');
             if (btn) {
+                // IMMEDIATELY pause refresh before doing anything else
+                AlertsRefresh.onDropdownOpen();
+                
                 e.stopPropagation();
                 const wrapper = btn.closest('.custom-dropdown-wrapper');
                 const menu = wrapper.querySelector('.custom-dropdown-menu');
@@ -4546,6 +4670,9 @@ const EventManager = {
                 // Toggle this dropdown
                 if (!isOpen) {
                     menu.classList.add('show');
+                } else {
+                    // Dropdown is being closed, resume refresh
+                    AlertsRefresh.onDropdownClose();
                 }
                 return;
             }
@@ -4556,6 +4683,7 @@ const EventManager = {
                 const action = actionItem.dataset.action;
                 AlertActions.handleAction(action);
                 document.getElementById('actionsDropdownMenu')?.classList.remove('show');
+                AlertsRefresh.onDropdownClose();
                 return;
             }
             
@@ -4572,6 +4700,7 @@ const EventManager = {
                 
                 handleSortSelection(sortKey);
                 document.getElementById('sortDropdownMenu')?.classList.remove('show');
+                AlertsRefresh.onDropdownClose();
                 return;
             }
             
@@ -5021,20 +5150,24 @@ function applyGroupsFilter() {
     updateFilterBadge();
 }
 
-function openPriceFilterModal(filterId) {
+function openPriceFilterModal() {
     const modal = document.getElementById('price-filter-modal');
-    const title = document.getElementById('price-filter-title');
-    const label = document.getElementById('price-filter-label');
-    const input = document.getElementById('price-filter-input');
-    if (!modal || !title || !label || !input) return;
-    modal.dataset.filterId = filterId;
-    const isMin = filterId === 'minimumPrice';
-    title.textContent = isMin ? 'Set Minimum Price' : 'Set Maximum Price';
-    label.textContent = isMin ? 'Minimum Price' : 'Maximum Price';
-    input.placeholder = isMin ? 'Enter minimum price...' : 'Enter maximum price...';
-    input.value = '';
+    const minInput = document.getElementById('price-filter-min');
+    const maxInput = document.getElementById('price-filter-max');
+    if (!modal) return;
+    
+    // Load existing values if filter is active
+    const existingValue = AlertsState.getFilterValue('priceRange');
+    if (existingValue) {
+        if (minInput) minInput.value = existingValue.min || '';
+        if (maxInput) maxInput.value = existingValue.max || '';
+    } else {
+        if (minInput) minInput.value = '';
+        if (maxInput) maxInput.value = '';
+    }
+    
     modal.style.display = 'flex';
-    setTimeout(() => input.focus(), 0);
+    setTimeout(() => minInput && minInput.focus(), 0);
 }
 
 function closePriceFilterModal() {
@@ -5042,18 +5175,55 @@ function closePriceFilterModal() {
     if (modal) modal.style.display = 'none';
 }
 
+function clearPriceFilter() {
+    const minInput = document.getElementById('price-filter-min');
+    const maxInput = document.getElementById('price-filter-max');
+    if (minInput) minInput.value = '';
+    if (maxInput) maxInput.value = '';
+    
+    // Remove the filter
+    removeFilter('priceRange');
+    closePriceFilterModal();
+}
+
 function applyPriceFilter() {
-    const modal = document.getElementById('price-filter-modal');
-    const input = document.getElementById('price-filter-input');
-    if (!modal || !input) return;
-    const filterId = modal.dataset.filterId;
-    const value = input.value.trim();
-    if (!filterId || !value) {
+    const minInput = document.getElementById('price-filter-min');
+    const maxInput = document.getElementById('price-filter-max');
+    if (!minInput || !maxInput) return;
+    
+    const minValue = minInput.value.trim();
+    const maxValue = maxInput.value.trim();
+    
+    // If both are empty, clear the filter
+    if (!minValue && !maxValue) {
+        removeFilter('priceRange');
         closePriceFilterModal();
         return;
     }
-    AlertsState.setFilterValue(filterId, value);
-    FilterManager.activateFilter(filterId, value);
+    
+    const filterValue = {
+        min: minValue || null,
+        max: maxValue || null
+    };
+    
+    AlertsState.setFilterValue('priceRange', filterValue);
+    FilterManager.activateFilter('priceRange', filterValue);
+    
+    // Update the filter tag to show the range
+    const tag = document.querySelector('.filter-tag[data-filter-id="priceRange"]');
+    if (tag) {
+        let displayText = 'Price: ';
+        if (minValue && maxValue) {
+            displayText += minValue + ' - ' + maxValue;
+        } else if (minValue) {
+            displayText += '≥ ' + minValue;
+        } else if (maxValue) {
+            displayText += '≤ ' + maxValue;
+        }
+        tag.innerHTML = displayText + 
+            '<button class="filter-tag-remove" onclick="removeFilter(\'priceRange\')">&times;</button>';
+    }
+    
     closePriceFilterModal();
     syncFilterDropdownState();
     updateFilterBadge();
