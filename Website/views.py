@@ -176,6 +176,7 @@ def flips(request):
             'unrealized_net': item_unrealized,
             'realized_net': item_realized,
             'first_buy_timestamp': first_buy_timestamp,
+            'position_size': avg_price * quantity_held,
         })
     
     return render(request, 'flips.html', {

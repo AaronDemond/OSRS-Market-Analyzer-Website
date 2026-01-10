@@ -429,6 +429,9 @@
     }
     
     /* Sort indicator */
+    .sort-indicator-wrapper {
+        position: relative;
+    }
     .sort-indicator {
         display: none;
         align-items: center;
@@ -439,9 +442,23 @@
         border-radius: 8px;
         font-size: 13px;
         color: var(--text);
+        transition: all 0.3s ease;
+        cursor: pointer;
     }
     .sort-indicator.active {
         display: inline-flex;
+    }
+    .sort-indicator.clickable:hover {
+        background: var(--surface-2);
+        border-color: var(--primary);
+    }
+    .sort-indicator.flash {
+        animation: sortFlash 0.25s ease 5;
+    }
+    @keyframes sortFlash {
+        0% { background: var(--surface); border-color: var(--border); }
+        50% { background: rgba(99, 102, 241, 0.15); border-color: var(--primary); }
+        100% { background: var(--surface); border-color: var(--border); }
     }
     .sort-indicator-label {
         color: var(--text-muted);
@@ -452,14 +469,57 @@
     }
     .sort-indicator-arrow {
         cursor: pointer;
-        padding: 2px 6px;
+        padding: 2px 8px;
         border-radius: 4px;
         transition: all 0.15s;
         font-size: 14px;
         user-select: none;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        margin-left: 4px;
     }
     .sort-indicator-arrow:hover {
+        background: linear-gradient(135deg, rgba(234, 179, 140, 0.3), rgba(216, 155, 108, 0.25));
+        border-color: rgba(200, 140, 90, 0.4);
+    }
+    .sort-indicator-menu {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        margin-top: 6px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        min-width: 160px;
+        z-index: 1000;
+        display: none;
+        padding: 6px;
+    }
+    .sort-indicator-menu.show {
+        display: block;
+    }
+    .sort-indicator-menu .sort-by-item {
+        padding: 8px 12px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        transition: all 0.15s;
+        border-radius: 6px;
+        margin: 2px 0;
+        font-size: 13px;
         background: var(--surface-2);
+        border: 1px solid transparent;
+    }
+    .sort-indicator-menu .sort-by-item:hover {
+        background: linear-gradient(135deg, rgba(234, 179, 140, 0.3), rgba(216, 155, 108, 0.25));
+        border-color: rgba(200, 140, 90, 0.3);
+    }
+    .sort-indicator-menu .sort-by-item.active {
+        background: rgba(99, 102, 241, 0.15);
+        border-color: rgba(99, 102, 241, 0.3);
+        color: var(--primary);
     }
     
     /* Sort selector in dropdown */
@@ -509,6 +569,13 @@
     
     /* Time held subtext */
     .time-held-subtext {
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 2px;
+    }
+    
+    /* Position size subtext */
+    .position-size-subtext {
         font-size: 11px;
         color: var(--muted);
         margin-top: 2px;
@@ -564,12 +631,48 @@
         
         #flipsTable {
             font-size: 0.75rem;
-            margin-right: 1rem;
         }
         
         #flipsTable th,
         #flipsTable td {
             padding: 0.4rem 0.25rem;
+        }
+        
+        /* Align controls row with table on mobile */
+        .controls-row {
+            padding: 0;
+            margin-bottom: 0.75rem !important;
+        }
+        
+        .controls-row .d-flex.gap-3 {
+            gap: 0.5rem !important;
+        }
+        
+        .filter-search-input {
+            width: 300px;
+            font-size: 12px;
+            padding: 6px 10px;
+        }
+        
+        .btn-filter {
+            padding: 6px 10px;
+            font-size: 12px;
+        }
+        
+        .btn-filter svg {
+            width: 14px;
+            height: 14px;
+        }
+        
+        .sort-indicator {
+            padding: 4px 8px;
+            font-size: 11px;
+            gap: 4px;
+        }
+        
+        .sort-indicator-arrow {
+            padding: 2px 4px;
+            font-size: 12px;
         }
     }
 </style>
@@ -604,7 +707,7 @@
 </div>
 
 
-<div class="d-flex gap-3 mb-3 align-items-center justify-content-between flex-wrap">
+<div class="d-flex gap-3 mb-3 align-items-center justify-content-between flex-wrap controls-row">
     <div class="d-flex gap-3 align-items-center">
         <button type="button" class="btn-new-flip" data-bs-toggle="modal" data-bs-target="#newFlipModal">
             New Flip
@@ -614,10 +717,16 @@
         </button>
     </div>
     <div class="d-flex gap-3 align-items-center">
-        <div class="sort-indicator" id="sortIndicator">
-            <span class="sort-indicator-label">Sorted by:</span>
-            <span class="sort-indicator-value" id="sortIndicatorValue">Time Held</span>
-            <span class="sort-indicator-arrow" id="sortIndicatorArrow" title="Toggle sort order">↓</span>
+        <div class="sort-indicator-wrapper">
+            <div class="sort-indicator" id="sortIndicator">
+                <span class="sort-indicator-label">Sorted by:</span>
+                <span class="sort-indicator-value" id="sortIndicatorValue">Time Held</span>
+                <span class="sort-indicator-arrow" id="sortIndicatorArrow" title="Toggle sort order">↓</span>
+            </div>
+            <div class="sort-indicator-menu" id="sortIndicatorMenu">
+                <div class="filter-dropdown-header">Sort by</div>
+                <div id="sortIndicatorOptions"></div>
+            </div>
         </div>
         <div class="filter-search-wrapper" id="filterSearchWrapper">
             <input type="text" class="filter-search-input" id="filterSearchInput" placeholder="Search...">
@@ -633,18 +742,28 @@
             </button>
             <div class="filter-dropdown-menu" id="filterDropdownMenu">
                 <div class="filter-dropdown-header">Filter by</div>
+                <div class="filter-dropdown-item" data-filter="position-size">
+                    <span>Position Size</span>
+                    <span class="filter-check">✓</span>
+                    <span class="filter-clear" title="Clear filter">×</span>
+                </div>
+                <div class="filter-dropdown-item" data-filter="quantity">
+                    <span>Quantity</span>
+                    <span class="filter-check">✓</span>
+                    <span class="filter-clear" title="Clear filter">×</span>
+                </div>
+                <div class="filter-dropdown-item" data-filter="realized-range">
+                    <span>Realized</span>
+                    <span class="filter-check">✓</span>
+                    <span class="filter-clear" title="Clear filter">×</span>
+                </div>
                 <div class="filter-dropdown-item" data-filter="time-held">
                     <span>Time Held</span>
                     <span class="filter-check">✓</span>
                     <span class="filter-clear" title="Clear filter">×</span>
                 </div>
                 <div class="filter-dropdown-item" data-filter="unrealized-range">
-                    <span>Unrealized Range</span>
-                    <span class="filter-check">✓</span>
-                    <span class="filter-clear" title="Clear filter">×</span>
-                </div>
-                <div class="filter-dropdown-item" data-filter="realized-range">
-                    <span>Realized Range</span>
+                    <span>Unrealized</span>
                     <span class="filter-check">✓</span>
                     <span class="filter-clear" title="Clear filter">×</span>
                 </div>
@@ -782,6 +901,60 @@
     </div>
 </div>
 
+<!-- Position Size Filter Modal -->
+<div class="modal fade" id="positionSizeFilterModal" tabindex="-1" aria-labelledby="positionSizeFilterModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="positionSizeFilterModalLabel">Filter by Position Size</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">Show items with position size (price × quantity) in a specific range.</p>
+                <div class="mb-3">
+                    <label for="positionSizeMin" class="form-label">Minimum</label>
+                    <input type="number" class="form-control" id="positionSizeMin" placeholder="No minimum">
+                </div>
+                <div class="mb-3">
+                    <label for="positionSizeMax" class="form-label">Maximum</label>
+                    <input type="number" class="form-control" id="positionSizeMax" placeholder="No maximum">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" id="clearPositionSizeFilter">Clear</button>
+                <button type="button" class="btn btn-primary" id="applyPositionSizeFilter">Apply Filter</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quantity Filter Modal -->
+<div class="modal fade" id="quantityFilterModal" tabindex="-1" aria-labelledby="quantityFilterModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="quantityFilterModalLabel">Filter by Quantity</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">Show items with quantity holding in a specific range.</p>
+                <div class="mb-3">
+                    <label for="quantityMin" class="form-label">Minimum</label>
+                    <input type="number" class="form-control" id="quantityMin" placeholder="No minimum">
+                </div>
+                <div class="mb-3">
+                    <label for="quantityMax" class="form-label">Maximum</label>
+                    <input type="number" class="form-control" id="quantityMax" placeholder="No maximum">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" id="clearQuantityFilter">Clear</button>
+                <button type="button" class="btn btn-primary" id="applyQuantityFilter">Apply Filter</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <table class="table" id="flipsTable">
     <thead>
         <tr>
@@ -796,10 +969,11 @@
     </thead>
     <tbody>
         {% for item in items %}
-        <tr data-item-id="{{ item.item_id }}" data-item-name="{{ item.name }}" data-first-buy="{{ item.first_buy_timestamp|default:'' }}">
+        <tr data-item-id="{{ item.item_id }}" data-item-name="{{ item.name }}" data-first-buy="{{ item.first_buy_timestamp|default:'' }}" data-position-size="{{ item.position_size }}">
             <td>
                 <a href="{% url 'item_detail' item.item_id %}">{{ item.name }}</a>
                 <div class="time-held-subtext" style="display: none;"></div>
+                <div class="position-size-subtext" style="display: none;"></div>
             </td>
             <td data-value="{{ item.avg_price }}">{{ item.avg_price|intcomma }}</td>
             <td data-value="{{ item.quantity_holding }}">{{ item.quantity_holding|intcomma }}</td>
@@ -833,6 +1007,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const activeFilters = {};
     let currentSortFilter = null;
     let sortAscending = false; // Default descending
+    let columnSortActive = false; // Track if column header sort is active
     
     const filterDropdownBtn = document.getElementById('filterDropdownBtn');
     const filterDropdownMenu = document.getElementById('filterDropdownMenu');
@@ -841,6 +1016,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const sortIndicator = document.getElementById('sortIndicator');
     const sortIndicatorValue = document.getElementById('sortIndicatorValue');
     const sortIndicatorArrow = document.getElementById('sortIndicatorArrow');
+    const sortIndicatorMenu = document.getElementById('sortIndicatorMenu');
+    const sortIndicatorOptions = document.getElementById('sortIndicatorOptions');
     const sortByDivider = document.getElementById('sortByDivider');
     const sortBySection = document.getElementById('sortBySection');
     const sortByOptions = document.getElementById('sortByOptions');
@@ -855,15 +1032,61 @@ document.addEventListener('DOMContentLoaded', function() {
     const realizedModal = document.getElementById('realizedRangeFilterModal');
     const realizedMin = document.getElementById('realizedMin');
     const realizedMax = document.getElementById('realizedMax');
+    const positionSizeModal = document.getElementById('positionSizeFilterModal');
+    const positionSizeMin = document.getElementById('positionSizeMin');
+    const positionSizeMax = document.getElementById('positionSizeMax');
+    const quantityModal = document.getElementById('quantityFilterModal');
+    const quantityMin = document.getElementById('quantityMin');
+    const quantityMax = document.getElementById('quantityMax');
     
     const filterDisplayNames = {
+        'position-size': 'Position Size',
+        'quantity': 'Quantity',
+        'realized-range': 'Realized',
         'time-held': 'Time Held',
-        'unrealized-range': 'Unrealized',
-        'realized-range': 'Realized'
+        'unrealized-range': 'Unrealized'
     };
     
     if (!filterDropdownBtn || !filterDropdownMenu) {
         console.error('Filter elements not found!');
+    }
+    
+    // Sort table alphabetically by item name
+    function sortTableAlphabetically() {
+        const rows = Array.from(tableBody.querySelectorAll('tr[data-item-name]'));
+        rows.sort((a, b) => {
+            const nameA = a.dataset.itemName.toLowerCase();
+            const nameB = b.dataset.itemName.toLowerCase();
+            return nameA.localeCompare(nameB);
+        });
+        rows.forEach(row => tableBody.appendChild(row));
+    }
+    
+    // Sort alphabetically on page load
+    sortTableAlphabetically();
+    
+    // Function to clear column header sort styling
+    function clearColumnSortStyling() {
+        const headers = document.querySelectorAll('#flipsTable th.sortable');
+        headers.forEach(h => h.classList.remove('asc', 'desc'));
+    }
+    
+    // Function to deactivate filter sort (called when column header is clicked)
+    function deactivateFilterSort() {
+        columnSortActive = true;
+        currentSortFilter = null;
+        sortIndicator.classList.remove('active');
+        sortIndicatorMenu.classList.remove('show');
+        updateSortByOptions();
+    }
+    
+    // Function to activate filter sort (called when filter sort is selected)
+    function activateFilterSort(filterName) {
+        columnSortActive = false;
+        currentSortFilter = filterName;
+        clearColumnSortStyling();
+        updateSortByOptions();
+        sortTableByFilter();
     }
     
     // Format time held in human-readable format
@@ -924,6 +1147,11 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (filterName === 'realized-range') {
             const cell = row.querySelector('td:nth-child(7)');
             return parseFloat(cell?.dataset.value) || 0;
+        } else if (filterName === 'position-size') {
+            return parseFloat(row.dataset.positionSize) || 0;
+        } else if (filterName === 'quantity') {
+            const cell = row.querySelector('td:nth-child(3)');
+            return parseFloat(cell?.dataset.value) || 0;
         }
         return 0;
     }
@@ -952,37 +1180,96 @@ document.addEventListener('DOMContentLoaded', function() {
             sortBySection.style.display = 'none';
             sortByOptions.innerHTML = '';
             sortIndicator.classList.remove('active');
+            sortIndicator.classList.remove('clickable');
+            sortIndicatorOptions.innerHTML = '';
             currentSortFilter = null;
+            // Sort alphabetically when all filters cleared
+            if (!columnSortActive) {
+                sortTableAlphabetically();
+            }
             return;
         }
         
-        // Show sort section
+        // Show sort section in filter dropdown
         sortByDivider.style.display = 'block';
         sortBySection.style.display = 'block';
-        sortIndicator.classList.add('active');
         
-        // If no current sort or current sort filter was removed, use first filter
-        if (!currentSortFilter || !activeFilters[currentSortFilter]) {
-            currentSortFilter = filterKeys[0];
+        // Only show sort indicator if column sort is not active
+        if (!columnSortActive) {
+            sortIndicator.classList.add('active');
+            
+            // Make clickable only if more than one filter
+            if (filterKeys.length > 1) {
+                sortIndicator.classList.add('clickable');
+            } else {
+                sortIndicator.classList.remove('clickable');
+            }
+            
+            // If no current sort or current sort filter was removed, use first filter
+            const previousSort = currentSortFilter;
+            if (!currentSortFilter || !activeFilters[currentSortFilter]) {
+                currentSortFilter = filterKeys[0];
+            }
+            
+            // Flash the indicator when sort changes or first activates
+            if (previousSort !== currentSortFilter || !previousSort) {
+                sortIndicator.classList.remove('flash');
+                void sortIndicator.offsetWidth;
+                sortIndicator.classList.add('flash');
+            }
+            
+            // Update sort indicator text
+            sortIndicatorValue.textContent = filterDisplayNames[currentSortFilter];
+            sortIndicatorArrow.textContent = sortAscending ? '↑' : '↓';
+            
+            // Build sort indicator dropdown options
+            sortIndicatorOptions.innerHTML = filterKeys.map(filterName => `
+                <div class="sort-by-item ${filterName === currentSortFilter ? 'active' : ''}" data-sort="${filterName}">
+                    <span>${filterDisplayNames[filterName]}</span>
+                </div>
+            `).join('');
+            
+            // Add click handlers for sort indicator dropdown
+            sortIndicatorOptions.querySelectorAll('.sort-by-item').forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const newSort = this.dataset.sort;
+                    if (newSort !== currentSortFilter) {
+                        currentSortFilter = newSort;
+                        sortIndicator.classList.remove('flash');
+                        void sortIndicator.offsetWidth;
+                        sortIndicator.classList.add('flash');
+                        clearColumnSortStyling();
+                        updateSortByOptions();
+                        sortTableByFilter();
+                    }
+                    sortIndicatorMenu.classList.remove('show');
+                });
+            });
+        } else {
+            sortIndicator.classList.remove('active');
+            sortIndicator.classList.remove('clickable');
         }
         
-        // Update sort indicator
-        sortIndicatorValue.textContent = filterDisplayNames[currentSortFilter];
-        sortIndicatorArrow.textContent = sortAscending ? '↑' : '↓';
-        
-        // Build sort-by options
+        // Build sort-by options in filter dropdown (show none selected if column sort active)
         sortByOptions.innerHTML = filterKeys.map(filterName => `
-            <div class="sort-by-item ${filterName === currentSortFilter ? 'active' : ''}" data-sort="${filterName}">
+            <div class="sort-by-item ${!columnSortActive && filterName === currentSortFilter ? 'active' : ''}" data-sort="${filterName}">
                 <span>${filterDisplayNames[filterName]}</span>
                 <span class="sort-radio"></span>
             </div>
         `).join('');
         
-        // Add click handlers
+        // Add click handlers for filter dropdown sort options
         sortByOptions.querySelectorAll('.sort-by-item').forEach(item => {
             item.addEventListener('click', function(e) {
                 e.stopPropagation();
-                currentSortFilter = this.dataset.sort;
+                const newSort = this.dataset.sort;
+                columnSortActive = false;
+                currentSortFilter = newSort;
+                sortIndicator.classList.remove('flash');
+                void sortIndicator.offsetWidth;
+                sortIndicator.classList.add('flash');
+                clearColumnSortStyling();
                 updateSortByOptions();
                 sortTableByFilter();
                 filterDropdownMenu.classList.remove('show');
@@ -1017,18 +1304,22 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Apply all active filters
     function applyFilters() {
-        // Ensure sort filter is set before sorting
+        // Ensure sort filter is set before sorting (only if column sort not active)
         const filterKeys = Object.keys(activeFilters);
-        if (filterKeys.length > 0 && (!currentSortFilter || !activeFilters[currentSortFilter])) {
-            currentSortFilter = filterKeys[0];
-        } else if (filterKeys.length === 0) {
-            currentSortFilter = null;
+        if (!columnSortActive) {
+            if (filterKeys.length > 0 && (!currentSortFilter || !activeFilters[currentSortFilter])) {
+                currentSortFilter = filterKeys[0];
+            } else if (filterKeys.length === 0) {
+                currentSortFilter = null;
+            }
         }
         
         const rows = tableBody.querySelectorAll('tr[data-item-name]');
         const timeHeldActive = activeFilters['time-held'];
         const unrealizedActive = activeFilters['unrealized-range'];
         const realizedActive = activeFilters['realized-range'];
+        const positionSizeActive = activeFilters['position-size'];
+        const quantityActive = activeFilters['quantity'];
         
         rows.forEach(row => {
             let show = true;
@@ -1080,24 +1371,77 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
             
+            // Position size filter
+            if (show && positionSizeActive) {
+                const value = parseFloat(row.dataset.positionSize) || 0;
+                const min = positionSizeActive.min !== null ? positionSizeActive.min : -Infinity;
+                const max = positionSizeActive.max !== null ? positionSizeActive.max : Infinity;
+                if (value < min || value > max) {
+                    show = false;
+                }
+            }
+            
+            // Show/hide position size subtext
+            const positionSubtext = row.querySelector('.position-size-subtext');
+            if (positionSizeActive && positionSubtext) {
+                const value = parseFloat(row.dataset.positionSize) || 0;
+                positionSubtext.textContent = 'Position: ' + value.toLocaleString() + ' gp';
+                positionSubtext.style.display = 'block';
+            } else if (positionSubtext) {
+                positionSubtext.style.display = 'none';
+            }
+            
+            // Quantity filter
+            if (show && quantityActive) {
+                const cell = row.querySelector('td:nth-child(3)');
+                const value = parseFloat(cell?.dataset.value) || 0;
+                const min = quantityActive.min !== null ? quantityActive.min : -Infinity;
+                const max = quantityActive.max !== null ? quantityActive.max : Infinity;
+                if (value < min || value > max) {
+                    show = false;
+                }
+            }
+            
             row.style.display = show ? '' : 'none';
         });
         
-        // Sort after filtering
-        sortTableByFilter();
+        // Sort after filtering (only if column sort not active)
+        if (!columnSortActive) {
+            sortTableByFilter();
+        }
     }
     
     // Toggle sort direction
-    sortIndicatorArrow.addEventListener('click', function() {
+    sortIndicatorArrow.addEventListener('click', function(e) {
+        e.stopPropagation();
         sortAscending = !sortAscending;
         this.textContent = sortAscending ? '↑' : '↓';
         sortTableByFilter();
     });
     
-    // Toggle dropdown
+    // Toggle sort indicator dropdown (only if multiple filters)
+    sortIndicator.addEventListener('click', function(e) {
+        // Don't trigger if clicking the arrow
+        if (e.target === sortIndicatorArrow) return;
+        
+        const filterKeys = Object.keys(activeFilters);
+        if (filterKeys.length > 1) {
+            e.stopPropagation();
+            sortIndicatorMenu.classList.toggle('show');
+            filterDropdownMenu.classList.remove('show');
+        }
+    });
+    
+    // Prevent sort indicator menu from closing when clicking inside it
+    sortIndicatorMenu.addEventListener('click', function(e) {
+        e.stopPropagation();
+    });
+    
+    // Toggle filter dropdown
     filterDropdownBtn.addEventListener('click', function(e) {
         e.stopPropagation();
         filterDropdownMenu.classList.toggle('show');
+        sortIndicatorMenu.classList.remove('show');
     });
     
     // Prevent dropdown from closing when clicking inside it
@@ -1105,9 +1449,10 @@ document.addEventListener('DOMContentLoaded', function() {
         e.stopPropagation();
     });
     
-    // Close dropdown when clicking outside
+    // Close dropdowns when clicking outside
     document.addEventListener('click', function() {
         filterDropdownMenu.classList.remove('show');
+        sortIndicatorMenu.classList.remove('show');
     });
     
     // Handle filter item clicks
@@ -1128,6 +1473,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else if (filterName === 'realized-range') {
                     realizedMin.value = '';
                     realizedMax.value = '';
+                } else if (filterName === 'position-size') {
+                    positionSizeMin.value = '';
+                    positionSizeMax.value = '';
+                } else if (filterName === 'quantity') {
+                    quantityMin.value = '';
+                    quantityMax.value = '';
                 }
                 updateFilterUI();
                 applyFilters();
@@ -1144,6 +1495,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 modal.show();
             } else if (filterName === 'realized-range') {
                 const modal = new bootstrap.Modal(document.getElementById('realizedRangeFilterModal'));
+                modal.show();
+            } else if (filterName === 'position-size') {
+                const modal = new bootstrap.Modal(document.getElementById('positionSizeFilterModal'));
+                modal.show();
+            } else if (filterName === 'quantity') {
+                const modal = new bootstrap.Modal(document.getElementById('quantityFilterModal'));
                 modal.show();
             }
             filterDropdownMenu.classList.remove('show');
@@ -1246,6 +1603,70 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
+    // Position size filter modal
+    const applyPositionSizeBtn = document.getElementById('applyPositionSizeFilter');
+    const clearPositionSizeBtn = document.getElementById('clearPositionSizeFilter');
+    
+    applyPositionSizeBtn.addEventListener('click', function() {
+        const min = positionSizeMin.value !== '' ? parseFloat(positionSizeMin.value) : null;
+        const max = positionSizeMax.value !== '' ? parseFloat(positionSizeMax.value) : null;
+        
+        activeFilters['position-size'] = { min, max };
+        updateFilterUI();
+        applyFilters();
+        
+        bootstrap.Modal.getInstance(positionSizeModal).hide();
+    });
+    
+    clearPositionSizeBtn.addEventListener('click', function() {
+        delete activeFilters['position-size'];
+        positionSizeMin.value = '';
+        positionSizeMax.value = '';
+        updateFilterUI();
+        applyFilters();
+        
+        bootstrap.Modal.getInstance(positionSizeModal).hide();
+    });
+    
+    positionSizeModal.addEventListener('show.bs.modal', function() {
+        if (activeFilters['position-size']) {
+            positionSizeMin.value = activeFilters['position-size'].min !== null ? activeFilters['position-size'].min : '';
+            positionSizeMax.value = activeFilters['position-size'].max !== null ? activeFilters['position-size'].max : '';
+        }
+    });
+    
+    // Quantity filter modal
+    const applyQuantityBtn = document.getElementById('applyQuantityFilter');
+    const clearQuantityBtn = document.getElementById('clearQuantityFilter');
+    
+    applyQuantityBtn.addEventListener('click', function() {
+        const min = quantityMin.value !== '' ? parseFloat(quantityMin.value) : null;
+        const max = quantityMax.value !== '' ? parseFloat(quantityMax.value) : null;
+        
+        activeFilters['quantity'] = { min, max };
+        updateFilterUI();
+        applyFilters();
+        
+        bootstrap.Modal.getInstance(quantityModal).hide();
+    });
+    
+    clearQuantityBtn.addEventListener('click', function() {
+        delete activeFilters['quantity'];
+        quantityMin.value = '';
+        quantityMax.value = '';
+        updateFilterUI();
+        applyFilters();
+        
+        bootstrap.Modal.getInstance(quantityModal).hide();
+    });
+    
+    quantityModal.addEventListener('show.bs.modal', function() {
+        if (activeFilters['quantity']) {
+            quantityMin.value = activeFilters['quantity'].min !== null ? activeFilters['quantity'].min : '';
+            quantityMax.value = activeFilters['quantity'].max !== null ? activeFilters['quantity'].max : '';
+        }
+    });
+    
     // =========================================================================
     // TEXT SEARCH FILTER
     // =========================================================================
@@ -1280,6 +1701,23 @@ document.addEventListener('DOMContentLoaded', function() {
             const value = parseFloat(cell?.dataset.value) || 0;
             const min = activeFilters['realized-range'].min !== null ? activeFilters['realized-range'].min : -Infinity;
             const max = activeFilters['realized-range'].max !== null ? activeFilters['realized-range'].max : Infinity;
+            if (value < min || value > max) return false;
+        }
+        
+        // Position size filter
+        if (activeFilters['position-size']) {
+            const value = parseFloat(row.dataset.positionSize) || 0;
+            const min = activeFilters['position-size'].min !== null ? activeFilters['position-size'].min : -Infinity;
+            const max = activeFilters['position-size'].max !== null ? activeFilters['position-size'].max : Infinity;
+            if (value < min || value > max) return false;
+        }
+        
+        // Quantity filter
+        if (activeFilters['quantity']) {
+            const cell = row.querySelector('td:nth-child(3)');
+            const value = parseFloat(cell?.dataset.value) || 0;
+            const min = activeFilters['quantity'].min !== null ? activeFilters['quantity'].min : -Infinity;
+            const max = activeFilters['quantity'].max !== null ? activeFilters['quantity'].max : Infinity;
             if (value < min || value > max) return false;
         }
         
@@ -1409,6 +1847,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 currentCol = col;
                 currentAsc = true;
             }
+            
+            // Deactivate filter sort when column header is clicked
+            deactivateFilterSort();
             
             // Reset all headers
             headers.forEach(h => h.classList.remove('asc', 'desc'));
