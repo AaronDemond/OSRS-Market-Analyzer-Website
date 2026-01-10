@@ -567,6 +567,23 @@
         box-shadow: inset 0 0 0 3px var(--surface);
     }
     
+    /* Desktop sort indicator - inline with search/filter row */
+    .desktop-sort {
+        position: relative;
+    }
+    
+    /* Filter and sort group - keeps filter dropdown and mobile sort indicator together */
+    .filter-sort-group {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    /* Mobile sort indicator - hidden on desktop, shown on mobile */
+    .sort-indicator-mobile-wrapper {
+        display: none;
+    }
+    
     /* Time held subtext */
     .time-held-subtext {
         font-size: 11px;
@@ -631,6 +648,13 @@
         
         #flipsTable {
             font-size: 0.75rem;
+            width: 100%;
+            max-width: 100%;
+            table-layout: fixed;
+        }
+        
+        .main-content {
+            overflow-x: hidden;
         }
         
         #flipsTable th,
@@ -638,40 +662,66 @@
             padding: 0.4rem 0.25rem;
         }
         
-        /* Align controls row with table on mobile */
-        .controls-row {
-            padding: 0;
-            margin-bottom: 0.75rem !important;
+        /* Filter dropdown aligns left on mobile */
+        .filter-dropdown-menu {
+            right: auto;
+            left: 0;
         }
         
-        .controls-row .d-flex.gap-3 {
-            gap: 0.5rem !important;
+        /* Mobile controls layout */
+        .controls-row {
+            flex-direction: column;
+            align-items: stretch !important;
+            gap: 0.75rem !important;
+        }
+        
+        .buttons-row {
+            justify-content: flex-start;
+        }
+        
+        .search-filter-row {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 0.75rem !important;
+            margin-right: 1rem;
+        }
+        
+        /* Search bar full width on mobile */
+        .filter-search-wrapper {
+            width: 100%;
+            order: -1;
         }
         
         .filter-search-input {
-            width: 300px;
-            font-size: 12px;
-            padding: 6px 10px;
+            width: 100%;
+            font-size: 14px;
+            padding: 8px 12px;
         }
         
-        .btn-filter {
-            padding: 6px 10px;
-            font-size: 12px;
+        /* Hide desktop sort indicator on mobile */
+        .desktop-sort {
+            display: none !important;
         }
         
-        .btn-filter svg {
-            width: 14px;
-            height: 14px;
+        /* Show mobile sort indicator inline with filter when wrapper has active class */
+        .sort-indicator-mobile-wrapper.active {
+            display: block !important;
+        }
+        
+        /* The sort-indicator inside mobile wrapper should always display when wrapper is visible */
+        .sort-indicator-mobile-wrapper .sort-indicator {
+            display: inline-flex !important;
         }
         
         .sort-indicator {
-            padding: 4px 8px;
-            font-size: 11px;
+            padding: 6px 10px;
+            font-size: 12px;
             gap: 4px;
+            white-space: nowrap;
         }
         
         .sort-indicator-arrow {
-            padding: 2px 4px;
+            padding: 2px 5px;
             font-size: 12px;
         }
     }
@@ -708,7 +758,7 @@
 
 
 <div class="d-flex gap-3 mb-3 align-items-center justify-content-between flex-wrap controls-row">
-    <div class="d-flex gap-3 align-items-center">
+    <div class="d-flex gap-3 align-items-center buttons-row">
         <button type="button" class="btn-new-flip" data-bs-toggle="modal" data-bs-target="#newFlipModal">
             New Flip
         </button>
@@ -716,8 +766,63 @@
             Delete Flip
         </button>
     </div>
-    <div class="d-flex gap-3 align-items-center">
-        <div class="sort-indicator-wrapper">
+    <div class="d-flex gap-2 align-items-center search-filter-row">
+        <div class="filter-search-wrapper" id="filterSearchWrapper">
+            <input type="text" class="filter-search-input" id="filterSearchInput" placeholder="Search...">
+            <button type="button" class="filter-search-clear" id="filterSearchClear">&times;</button>
+        </div>
+        <div class="filter-sort-group">
+            <div class="filter-dropdown-wrapper">
+                <button type="button" class="btn-filter" id="filterDropdownBtn">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                    </svg>
+                    Filters
+                    <span class="filter-badge" id="filterBadge" style="display: none;">0</span>
+                </button>
+                <div class="filter-dropdown-menu" id="filterDropdownMenu">
+                    <div class="filter-dropdown-header">Filter by</div>
+                    <div class="filter-dropdown-item" data-filter="position-size">
+                        <span>Position Size</span>
+                        <span class="filter-check">✓</span>
+                        <span class="filter-clear" title="Clear filter">×</span>
+                    </div>
+                    <div class="filter-dropdown-item" data-filter="quantity">
+                        <span>Quantity</span>
+                        <span class="filter-check">✓</span>
+                        <span class="filter-clear" title="Clear filter">×</span>
+                    </div>
+                    <div class="filter-dropdown-item" data-filter="realized-range">
+                        <span>Realized</span>
+                        <span class="filter-check">✓</span>
+                        <span class="filter-clear" title="Clear filter">×</span>
+                    </div>
+                    <div class="filter-dropdown-item" data-filter="time-held">
+                        <span>Time Held</span>
+                        <span class="filter-check">✓</span>
+                        <span class="filter-clear" title="Clear filter">×</span>
+                    </div>
+                    <div class="filter-dropdown-item" data-filter="unrealized-range">
+                        <span>Unrealized</span>
+                        <span class="filter-check">✓</span>
+                        <span class="filter-clear" title="Clear filter">×</span>
+                    </div>
+                    <div class="filter-dropdown-divider" id="sortByDivider" style="display: none;"></div>
+                    <div class="filter-dropdown-section" id="sortBySection" style="display: none;">Sort by</div>
+                    <div id="sortByOptions"></div>
+                </div>
+            </div>
+            <!-- Mobile sort indicator (shown inline with filter on mobile) -->
+            <div class="sort-indicator-mobile-wrapper" id="sortIndicatorMobileWrapper">
+                <div class="sort-indicator" id="sortIndicatorMobile">
+                    <span class="sort-indicator-label">Sorted by:</span>
+                    <span class="sort-indicator-value" id="sortIndicatorValueMobile">Time Held</span>
+                    <span class="sort-indicator-arrow" id="sortIndicatorArrowMobile" title="Toggle sort order">↓</span>
+                </div>
+            </div>
+        </div>
+        <!-- Desktop sort indicator (inline with search/filter) -->
+        <div class="sort-indicator-wrapper desktop-sort">
             <div class="sort-indicator" id="sortIndicator">
                 <span class="sort-indicator-label">Sorted by:</span>
                 <span class="sort-indicator-value" id="sortIndicatorValue">Time Held</span>
@@ -726,50 +831,6 @@
             <div class="sort-indicator-menu" id="sortIndicatorMenu">
                 <div class="filter-dropdown-header">Sort by</div>
                 <div id="sortIndicatorOptions"></div>
-            </div>
-        </div>
-        <div class="filter-search-wrapper" id="filterSearchWrapper">
-            <input type="text" class="filter-search-input" id="filterSearchInput" placeholder="Search...">
-            <button type="button" class="filter-search-clear" id="filterSearchClear">&times;</button>
-        </div>
-        <div class="filter-dropdown-wrapper">
-            <button type="button" class="btn-filter" id="filterDropdownBtn">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
-                </svg>
-                Filters
-                <span class="filter-badge" id="filterBadge" style="display: none;">0</span>
-            </button>
-            <div class="filter-dropdown-menu" id="filterDropdownMenu">
-                <div class="filter-dropdown-header">Filter by</div>
-                <div class="filter-dropdown-item" data-filter="position-size">
-                    <span>Position Size</span>
-                    <span class="filter-check">✓</span>
-                    <span class="filter-clear" title="Clear filter">×</span>
-                </div>
-                <div class="filter-dropdown-item" data-filter="quantity">
-                    <span>Quantity</span>
-                    <span class="filter-check">✓</span>
-                    <span class="filter-clear" title="Clear filter">×</span>
-                </div>
-                <div class="filter-dropdown-item" data-filter="realized-range">
-                    <span>Realized</span>
-                    <span class="filter-check">✓</span>
-                    <span class="filter-clear" title="Clear filter">×</span>
-                </div>
-                <div class="filter-dropdown-item" data-filter="time-held">
-                    <span>Time Held</span>
-                    <span class="filter-check">✓</span>
-                    <span class="filter-clear" title="Clear filter">×</span>
-                </div>
-                <div class="filter-dropdown-item" data-filter="unrealized-range">
-                    <span>Unrealized</span>
-                    <span class="filter-check">✓</span>
-                    <span class="filter-clear" title="Clear filter">×</span>
-                </div>
-                <div class="filter-dropdown-divider" id="sortByDivider" style="display: none;"></div>
-                <div class="filter-dropdown-section" id="sortBySection" style="display: none;">Sort by</div>
-                <div id="sortByOptions"></div>
             </div>
         </div>
     </div>
@@ -1022,6 +1083,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const sortBySection = document.getElementById('sortBySection');
     const sortByOptions = document.getElementById('sortByOptions');
     
+    // Mobile sort indicator elements
+    const sortIndicatorMobileWrapper = document.getElementById('sortIndicatorMobileWrapper');
+    const sortIndicatorMobile = document.getElementById('sortIndicatorMobile');
+    const sortIndicatorValueMobile = document.getElementById('sortIndicatorValueMobile');
+    const sortIndicatorArrowMobile = document.getElementById('sortIndicatorArrowMobile');
+    
     // Modal elements - declare early so click handlers can access them
     const timeHeldModal = document.getElementById('timeHeldFilterModal');
     const timeHeldMin = document.getElementById('timeHeldMin');
@@ -1077,7 +1144,25 @@ document.addEventListener('DOMContentLoaded', function() {
         currentSortFilter = null;
         sortIndicator.classList.remove('active');
         sortIndicatorMenu.classList.remove('show');
+        syncMobileSortIndicator();
         updateSortByOptions();
+    }
+    
+    // Sync mobile sort indicator with desktop
+    function syncMobileSortIndicator() {
+        if (sortIndicator.classList.contains('active')) {
+            sortIndicatorMobileWrapper.classList.add('active');
+            sortIndicatorValueMobile.textContent = sortIndicatorValue.textContent;
+            sortIndicatorArrowMobile.textContent = sortIndicatorArrow.textContent;
+            // Copy flash animation
+            if (sortIndicator.classList.contains('flash')) {
+                sortIndicatorMobile.classList.add('flash');
+            } else {
+                sortIndicatorMobile.classList.remove('flash');
+            }
+        } else {
+            sortIndicatorMobileWrapper.classList.remove('active');
+        }
     }
     
     // Function to activate filter sort (called when filter sort is selected)
@@ -1275,6 +1360,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 filterDropdownMenu.classList.remove('show');
             });
         });
+        
+        // Sync mobile sort indicator
+        syncMobileSortIndicator();
     }
     
     // Update filter badge and button state
@@ -1415,6 +1503,16 @@ document.addEventListener('DOMContentLoaded', function() {
     sortIndicatorArrow.addEventListener('click', function(e) {
         e.stopPropagation();
         sortAscending = !sortAscending;
+        this.textContent = sortAscending ? '↑' : '↓';
+        sortIndicatorArrowMobile.textContent = sortAscending ? '↑' : '↓';
+        sortTableByFilter();
+    });
+    
+    // Mobile sort indicator arrow - same behavior
+    sortIndicatorArrowMobile.addEventListener('click', function(e) {
+        e.stopPropagation();
+        sortAscending = !sortAscending;
+        sortIndicatorArrow.textContent = sortAscending ? '↑' : '↓';
         this.textContent = sortAscending ? '↑' : '↓';
         sortTableByFilter();
     });
@@ -1743,6 +1841,14 @@ document.addEventListener('DOMContentLoaded', function() {
             
             row.style.display = (matchesSearch && passesFilters) ? '' : 'none';
         });
+    });
+    
+    // Blur search input on Enter key (dismiss mobile keyboard)
+    filterInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            this.blur();
+        }
     });
     
     filterClear.addEventListener('click', function() {
