@@ -41,7 +41,7 @@ class Command(BaseCommand):
             try:
                 response = requests.get(
                     'https://prices.runescape.wiki/api/v1/osrs/mapping',
-                    headers={'User-Agent': 'GE Tools'}
+                    headers={'User-Agent': 'GE-Tools (not yet live) - demondsoftware@gmail.com'}
                 )
                 if response.status_code == 200:
                     data = response.json()
@@ -55,7 +55,7 @@ class Command(BaseCommand):
         try:
             response = requests.get(
                 'https://prices.runescape.wiki/api/v1/osrs/latest',
-                headers={'User-Agent': 'GE Tools'}
+                headers={'User-Agent': 'GE-Tools (not yet live) - demondsoftware@gmail.com'}
             )
             if response.status_code == 200:
                 data = response.json()

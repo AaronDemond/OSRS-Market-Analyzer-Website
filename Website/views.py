@@ -20,7 +20,7 @@ def get_item_mapping():
         try:
             response = requests.get(
                 'https://prices.runescape.wiki/api/v1/osrs/mapping',
-                headers={'User-Agent': 'GE Tools'}
+                headers={'User-Agent': 'GE-Tools (not yet live) - demondsoftware@gmail.com'}
             )
             if response.status_code == 200:
                 data = response.json()
@@ -35,7 +35,7 @@ def get_all_current_prices():
     try:
         response = requests.get(
             'https://prices.runescape.wiki/api/v1/osrs/latest',
-            headers={'User-Agent': 'GE Tools'}
+            headers={'User-Agent': 'GE-Tools (not yet live) - demondsoftware@gmail.com'}
         )
         if response.status_code == 200:
             data = response.json()
@@ -51,7 +51,7 @@ def get_historical_price(item_id, time_filter):
     try:
         response = requests.get(
             f'https://prices.runescape.wiki/api/v1/osrs/timeseries?timestep=24h&id={item_id}',
-            headers={'User-Agent': 'GE Tools'}
+            headers={'User-Agent': 'GE-Tools (not yet live) - demondsoftware@gmail.com'}
         )
         if response.status_code == 200:
             data = response.json()
@@ -313,7 +313,7 @@ def item_data_api(request):
         try:
             response = requests.get(
                 'https://prices.runescape.wiki/api/v1/osrs/1h',
-                headers={'User-Agent': 'GE Tools'}
+                headers={'User-Agent': 'GE-Tools (not yet live) - demondsoftware@gmail.com'}
             )
             if response.status_code == 200:
                 hour_data = response.json()
@@ -359,7 +359,7 @@ def item_history_api(request):
     try:
         response = requests.get(
             f'https://prices.runescape.wiki/api/v1/osrs/timeseries?timestep={timestep}&id={item_id}',
-            headers={'User-Agent': 'GE Tools'}
+            headers={'User-Agent': 'GE-Tools (not yet live) - demondsoftware@gmail.com'}
         )
         if response.status_code == 200:
             data = response.json()
@@ -446,7 +446,7 @@ def alerts_api(request):
     try:
         response = requests.get(
             'https://prices.runescape.wiki/api/v1/osrs/latest',
-            headers={'User-Agent': 'GE Tools'}
+            headers={'User-Agent': 'GE-Tools (not yet live) - demondsoftware@gmail.com'}
         )
         if response.status_code == 200:
             data = response.json()
