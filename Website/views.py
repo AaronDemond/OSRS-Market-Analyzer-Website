@@ -274,6 +274,90 @@ def item_search(request):
     return render(request, 'item_search.html')
 
 
+def item_data_api(request):
+    """API endpoint to get detailed item data including current prices, volume, and GE limit"""
+    item_id = request.GET.get('id')
+    if not item_id:
+        return JsonResponse({'error': 'Item ID required'}, status=400)
+    
+    try:
+        # Get item mapping for GE limit and other metadata
+        mapping = get_item_mapping()
+        item_info = None
+        for name, item in mapping.items():
+            if str(item['id']) == str(item_id):
+                item_info = item
+                break
+        
+        if not item_info:
+            return JsonResponse({'error': 'Item not found'}, status=404)
+        
+        # Get current prices
+        prices = get_all_current_prices()
+        price_data = prices.get(str(item_id), {})
+        
+        # Get 1-hour volume data
+        volume = None
+        try:
+            response = requests.get(
+                'https://prices.runescape.wiki/api/v1/osrs/1h',
+                headers={'User-Agent': 'GE Tracker'}
+            )
+            if response.status_code == 200:
+                hour_data = response.json()
+                if 'data' in hour_data and str(item_id) in hour_data['data']:
+                    item_hour = hour_data['data'][str(item_id)]
+                    # Volume is sum of high and low volume
+                    high_vol = item_hour.get('highPriceVolume', 0) or 0
+                    low_vol = item_hour.get('lowPriceVolume', 0) or 0
+                    volume = high_vol + low_vol
+        except requests.RequestException:
+            pass
+        
+        return JsonResponse({
+            'id': item_info['id'],
+            'name': item_info['name'],
+            'examine': item_info.get('examine', ''),
+            'icon': item_info.get('icon', ''),
+            'limit': item_info.get('limit'),
+            'members': item_info.get('members', False),
+            'highalch': item_info.get('highalch'),
+            'lowalch': item_info.get('lowalch'),
+            'high': price_data.get('high'),
+            'low': price_data.get('low'),
+            'highTime': price_data.get('highTime'),
+            'lowTime': price_data.get('lowTime'),
+            'volume': volume
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+def item_history_api(request):
+    """API endpoint to get item price history for charting"""
+    item_id = request.GET.get('id')
+    timestep = request.GET.get('timestep', '24h')  # '5m', '1h', or '24h'
+    
+    if not item_id:
+        return JsonResponse({'error': 'Item ID required'}, status=400)
+    
+    if timestep not in ['5m', '1h', '24h']:
+        timestep = '24h'
+    
+    try:
+        response = requests.get(
+            f'https://prices.runescape.wiki/api/v1/osrs/timeseries?timestep={timestep}&id={item_id}',
+            headers={'User-Agent': 'GE Tracker'}
+        )
+        if response.status_code == 200:
+            data = response.json()
+            return JsonResponse(data)
+        else:
+            return JsonResponse({'error': 'Failed to fetch price history'}, status=response.status_code)
+    except requests.RequestException as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
 def alerts(request):
     active_alerts = Alert.objects.filter(is_active=True)
     triggered_alerts = Alert.objects.filter(is_triggered=True, is_dismissed=False).prefetch_related('groups')
