@@ -5,3 +5,8 @@ Website/__pycache__/*
 *~
 Website/migrations/*
 notes.txt
+__pycache__
+static/img/*
+test_alerts.py
+tests_alert_models.py
+
