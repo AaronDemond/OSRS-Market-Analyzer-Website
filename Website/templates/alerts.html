@@ -45,7 +45,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                             </svg>
-                            Actions
+                            <span class="btn-text">Actions</span>
                         </button>
                         <div class="custom-dropdown-menu" id="actionsDropdownMenu">
                             <div class="custom-dropdown-header">Actions</div>
@@ -81,7 +81,7 @@
                                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"/>
                                     </svg>
-                                    Sort
+                                    <span class="btn-text">Sort</span>
                                 </button>
                                 <div class="custom-dropdown-menu" id="sortDropdownMenu">
                                     <div class="custom-dropdown-header">Sort by</div>
@@ -113,7 +113,7 @@
                                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
                                 </svg>
-                                Filters
+                                <span class="btn-text">Filters</span>
                                 <span class="filter-badge" id="filterBadge" style="display: none;">0</span>
                             </button>
                             <div class="custom-dropdown-menu" id="filterDropdownMenu">
@@ -170,6 +170,7 @@
     <div id="create-alert" class="tab-pane" style="display: none;">
         <form method="POST" action="{% url 'create_alert' %}" class="create-alert-form">
             {% csrf_token %}
+            
             <div class="form-group">
                 <label for="alert-type">Alert Type</label>
                 <select name="type" id="alert-type" required onchange="handleAlertTypeChange()">
@@ -177,6 +178,13 @@
                     <option value="below">Below Threshold</option>
                     <option value="spread">Spread</option>
                     <option value="spike">Spike</option>
+                    <option value="sustained">Sustained Move</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="alert-group">Group</label>
+                <select name="group_id" id="alert-group">
+                    <option value="">No Group</option>
                 </select>
             </div>
 
@@ -198,7 +206,7 @@
                 </select>
             </div>
             
-            <!-- Item fields (shown for above/below, or spread with specific item) -->
+            <!-- Item Name -->
             <div class="form-group" id="item-name-group">
                 <label for="item-name">Item Name</label>
                 <input type="text" name="item_name" id="item-name" autocomplete="off">
@@ -207,11 +215,13 @@
                 <div id="item-suggestions" class="suggestions-dropdown"></div>
             </div>
             
-            <!-- Price fields (shown for above/below only) -->
+            <!-- Price Threshold -->
             <div class="form-group" id="price-group">
                 <label for="price">Price Threshold</label>
                 <input type="number" name="price" id="price">
             </div>
+            
+            <!-- Reference Price -->
             <div class="form-group" id="reference-group">
                 <label for="reference">Reference Price</label>
                 <select name="reference" id="reference">
@@ -242,7 +252,28 @@
                 </select>
             </div>
             
-            <!-- Min/Max price fields (shown for spread all items only) -->
+            <!-- Sustained Move scope selector -->
+            <div class="form-group" id="sustained-scope-group" style="display: none;">
+                <label for="sustained-scope">Apply To</label>
+                <select name="sustained_scope" id="sustained-scope" onchange="handleSustainedScopeChange()">
+                    <option value="specific" selected>Specific Item(s)</option>
+                    <option value="all">All Items</option>
+                </select>
+            </div>
+            
+            <!-- Multi-item selector for sustained move -->
+            <div class="form-group" id="sustained-items-group" style="display: none;">
+                <label for="sustained-item-input">Items</label>
+                <div class="multi-item-selector">
+                    <div class="selected-items-container" id="selected-items-container"></div>
+                    <input type="text" id="sustained-item-input" placeholder="Type to search items..." autocomplete="off">
+                    <input type="hidden" name="sustained_item_ids" id="sustained-item-ids" value="">
+                    <div id="sustained-item-suggestions" class="suggestions-dropdown"></div>
+                </div>
+                <small class="form-hint">Add one or more items to monitor</small>
+            </div>
+            
+            <!-- Min/Max price fields -->
             <div class="form-group" id="min-price-group" style="display: none;">
                 <label for="minimum-price">Minimum Price</label>
                 <input type="number" name="minimum_price" id="minimum-price" min="0">
@@ -250,6 +281,50 @@
             <div class="form-group" id="max-price-group" style="display: none;">
                 <label for="maximum-price">Maximum Price</label>
                 <input type="number" name="maximum_price" id="maximum-price" min="0">
+            </div>
+            
+            <!-- Sustained Move specific fields -->
+            <div class="form-group" id="min-consecutive-moves-group" style="display: none;">
+                <label for="min-consecutive-moves">Min Consecutive Moves</label>
+                <input type="number" name="min_consecutive_moves" id="min-consecutive-moves" min="2" step="1" placeholder="e.g. 5">
+                <small class="form-hint">Number of price changes in same direction</small>
+            </div>
+            <div class="form-group" id="min-move-percentage-group" style="display: none;">
+                <label for="min-move-percentage">Min Move %</label>
+                <input type="number" name="min_move_percentage" id="min-move-percentage" min="0.01" step="0.01" placeholder="e.g. 0.5">
+                <small class="form-hint">Min % change to count as move</small>
+            </div>
+            <div class="form-group" id="min-volume-group" style="display: none;">
+                <label for="min-volume">Min Volume</label>
+                <input type="number" name="min_volume" id="min-volume" min="0" step="1" placeholder="e.g. 10000">
+                <small class="form-hint">Min trading volume</small>
+            </div>
+            <div class="form-group" id="volatility-buffer-group" style="display: none;">
+                <label for="volatility-buffer-size">Volatility Buffer (N)</label>
+                <input type="number" name="volatility_buffer_size" id="volatility-buffer-size" min="5" step="1" placeholder="e.g. 20">
+                <small class="form-hint">Rolling buffer size for avg volatility</small>
+            </div>
+            <div class="form-group" id="volatility-multiplier-group" style="display: none;">
+                <label for="volatility-multiplier">Volatility Multiplier (K)</label>
+                <input type="number" name="volatility_multiplier" id="volatility-multiplier" min="0.1" step="0.1" placeholder="e.g. 1.5">
+                <small class="form-hint">Streak must move ≥ K × avg volatility</small>
+            </div>
+            
+            <!-- Market Pressure Filter (sustained only) -->
+            <div class="form-group" id="pressure-strength-group" style="display: none;">
+                <label for="min-pressure-strength">Market Pressure</label>
+                <select name="min_pressure_strength" id="min-pressure-strength">
+                    <option value="">No Pressure Filter</option>
+                    <option value="weak">Weak+ (any time delta)</option>
+                    <option value="moderate">Moderate+ (&lt;5min)</option>
+                    <option value="strong">Strong (&lt;1min)</option>
+                </select>
+                <small class="form-hint">BUY=up, SELL=down direction match</small>
+            </div>
+            <div class="form-group" id="pressure-spread-group" style="display: none;">
+                <label for="min-pressure-spread">Min Spread % for Pressure</label>
+                <input type="number" name="min_pressure_spread_pct" id="min-pressure-spread" min="0.01" step="0.01" placeholder="e.g. 0.2">
+                <small class="form-hint">Minimum high-low spread % to confirm pressure</small>
             </div>
             
             <div class="form-group checkbox-group">
@@ -1249,11 +1324,38 @@
 
     /* Create alert form */
     .create-alert-form {
-        max-width: 500px;
+        max-width: 100%;
         background: var(--surface);
         padding: 24px;
         border-radius: 12px;
         border: 1px solid var(--border);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        align-items: flex-start;
+    }
+    
+    .create-alert-form > .form-group {
+        width: 250px;
+        flex-shrink: 0;
+        margin-bottom: 0;
+    }
+    
+    .create-alert-form > .checkbox-group {
+        width: 100%;
+        flex-basis: 100%;
+    }
+    
+    .create-alert-form > button {
+        width: 100%;
+        flex-basis: 100%;
+        margin-top: 8px;
+    }
+    
+    @media (max-width: 600px) {
+        .create-alert-form > .form-group {
+            width: 100%;
+        }
     }
     
     .form-error-container {
@@ -1298,6 +1400,90 @@
     
     .form-group input::placeholder {
         color: var(--muted);
+    }
+    
+    .form-hint {
+        display: block;
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 4px;
+        line-height: 1.4;
+    }
+    
+    /* Multi-item selector styles */
+    .multi-item-selector {
+        position: relative;
+    }
+    
+    .multi-item-selector input[type="text"] {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 15px;
+        color: var(--text);
+        background: var(--surface);
+        transition: all 0.15s;
+    }
+    
+    .multi-item-selector input[type="text"]:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    }
+    
+    .selected-items-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 8px;
+        min-height: 0;
+    }
+    
+    .selected-items-container:empty {
+        display: none;
+    }
+    
+    .selected-item-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        background: var(--primary);
+        color: white;
+        border-radius: 16px;
+        font-size: 13px;
+        font-weight: 500;
+        animation: chipIn 0.15s ease-out;
+    }
+    
+    @keyframes chipIn {
+        from {
+            opacity: 0;
+            transform: scale(0.8);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+    
+    .selected-item-chip .chip-remove {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.2);
+        cursor: pointer;
+        font-size: 12px;
+        line-height: 1;
+        transition: background 0.15s;
+    }
+    
+    .selected-item-chip .chip-remove:hover {
+        background: rgba(255, 255, 255, 0.4);
     }
     
     .checkbox-group {
@@ -1807,6 +1993,7 @@
         .alert-actions-left .custom-dropdown-wrapper {
             grid-column: 1;
             grid-row: 2;
+            min-width: 0;
         }
         
         /* Row 2: Sort and Filters */
@@ -1826,17 +2013,26 @@
         .sort-controls .custom-dropdown-wrapper {
             grid-column: 2;
             grid-row: 2;
+            min-width: 0;
         }
         
         /* Filter dropdown - third item in row 2 */
         .alert-actions-controls > .custom-dropdown-wrapper {
             grid-column: 3;
             grid-row: 2;
+            min-width: 0;
         }
         
         .btn-dropdown {
             width: 100%;
             justify-content: center;
+            min-width: 0;
+            overflow: hidden;
+        }
+        
+        /* Hide button icons on mobile, show only text */
+        .btn-dropdown svg {
+            display: none;
         }
         
         .alert-search-input {
@@ -2017,6 +2213,7 @@ const AlertsConfig = {
         create: {
             alertType: '#alert-type',
             spreadScope: '#spread-scope',
+            sustainedScope: '#sustained-scope',
             itemName: '#item-name',
             itemId: '#item-id',
             isAllItems: '#is-all-items',
@@ -2024,8 +2221,15 @@ const AlertsConfig = {
             direction: '#direction',
             emailNotification: '#email-notification',
             suggestions: '#item-suggestions',
+            sustainedItemInput: '#sustained-item-input',
+            sustainedItemIds: '#sustained-item-ids',
+            sustainedItemSuggestions: '#sustained-item-suggestions',
+            selectedItemsContainer: '#selected-items-container',
+            alertGroup: '#alert-group',
                 groups: {
                     spreadScope: '#spread-scope-group',
+                    sustainedScope: '#sustained-scope-group',
+                    sustainedItems: '#sustained-items-group',
                     numberItems: '#number-items-group',
                     itemName: '#item-name-group',
                     price: '#price-group',
@@ -2034,7 +2238,14 @@ const AlertsConfig = {
                     timeFrame: '#time-frame-group',
                     direction: '#direction-group',
                     minPrice: '#min-price-group',
-                    maxPrice: '#max-price-group'
+                    maxPrice: '#max-price-group',
+                    minConsecutiveMoves: '#min-consecutive-moves-group',
+                    minMovePercentage: '#min-move-percentage-group',
+                    volatilityBuffer: '#volatility-buffer-group',
+                    volatilityMultiplier: '#volatility-multiplier-group',
+                    minVolume: '#min-volume-group',
+                    pressureStrength: '#pressure-strength-group',
+                    pressureSpread: '#pressure-spread-group'
                 }
             },
         // Other UI elements
@@ -2055,7 +2266,8 @@ const AlertsConfig = {
         ABOVE: 'above',
         BELOW: 'below',
         SPREAD: 'spread',
-        SPIKE: 'spike'
+        SPIKE: 'spike',
+        SUSTAINED: 'sustained'
     },
     
     // CSRF token for Django POST requests
@@ -2181,6 +2393,31 @@ const AlertsState = {
      */
     setAlertGroups(groups) {
         this.alertGroups = Array.isArray(groups) ? groups : [];
+        // Update the create form group dropdown
+        this.updateGroupDropdown();
+    },
+    
+    /**
+     * Updates the group dropdown in the create alert form.
+     */
+    updateGroupDropdown() {
+        const dropdown = document.querySelector(AlertsConfig.selectors.create.alertGroup);
+        if (!dropdown) return;
+        
+        const currentValue = dropdown.value;
+        dropdown.innerHTML = '<option value="">No Group</option>';
+        
+        this.alertGroups.forEach(group => {
+            const option = document.createElement('option');
+            option.value = group;
+            option.textContent = group;
+            dropdown.appendChild(option);
+        });
+        
+        // Restore selection if still valid
+        if (currentValue && this.alertGroups.includes(currentValue)) {
+            dropdown.value = currentValue;
+        }
     },
 
     /**
@@ -2421,6 +2658,29 @@ const AlertsUI = {
             return '';
         }
         
+        // DEBUG: Log triggered alerts data
+        console.log('=== TRIGGERED ALERTS DEBUG ===');
+        console.log('Number of triggered alerts:', triggeredAlerts.length);
+        triggeredAlerts.forEach((alert, index) => {
+            console.log(`Alert ${index}:`, {
+                id: alert.id,
+                type: alert.type,
+                triggered_text: alert.triggered_text,
+                triggered_data: alert.triggered_data,
+                direction: alert.direction,
+                is_all_items: alert.is_all_items,
+                // Sustained-specific fields
+                sustained_item_name: alert.sustained_item_name,
+                sustained_direction: alert.sustained_direction,
+                sustained_streak_count: alert.sustained_streak_count,
+                sustained_total_move: alert.sustained_total_move,
+                sustained_start_price: alert.sustained_start_price,
+                sustained_current_price: alert.sustained_current_price,
+                sustained_volume: alert.sustained_volume
+            });
+        });
+        console.log('==============================');
+        
         let html = '';
         triggeredAlerts.forEach(alert => {
             const isSpreadAllItems = this.isSpreadAllItemsAlert(alert);
@@ -2560,7 +2820,7 @@ const AlertsUI = {
                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>' +
                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>' +
                '</svg>' +
-               'Actions' +
+               '<span class="btn-text">Actions</span>' +
                '</button>' +
                '<div class="custom-dropdown-menu" id="actionsDropdownMenu">' +
                '<div class="custom-dropdown-header">Actions</div>' +
@@ -2579,7 +2839,7 @@ const AlertsUI = {
                '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"/>' +
                '</svg>' +
-               'Sort' +
+               '<span class="btn-text">Sort</span>' +
                '</button>' +
                '<div class="custom-dropdown-menu" id="sortDropdownMenu">' +
                '<div class="custom-dropdown-header">Sort by</div>' +
@@ -2592,7 +2852,7 @@ const AlertsUI = {
                '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>' +
                '</svg>' +
-               'Filters' +
+               '<span class="btn-text">Filters</span>' +
                filterBadge +
                '</button>' +
                '<div class="custom-dropdown-menu" id="filterDropdownMenu">' +
@@ -3496,18 +3756,42 @@ const FormManager = {
             timeFrame: document.querySelector(groups.timeFrame),
             direction: document.querySelector(groups.direction),
             minPrice: document.querySelector(groups.minPrice),
-            maxPrice: document.querySelector(groups.maxPrice)
+            maxPrice: document.querySelector(groups.maxPrice),
+            minConsecutiveMoves: document.querySelector(groups.minConsecutiveMoves),
+            minMovePercentage: document.querySelector(groups.minMovePercentage),
+            volatilityBuffer: document.querySelector(groups.volatilityBuffer),
+            volatilityMultiplier: document.querySelector(groups.volatilityMultiplier),
+            minVolume: document.querySelector(groups.minVolume),
+            sustainedScope: document.querySelector(groups.sustainedScope),
+            sustainedItems: document.querySelector(groups.sustainedItems),
+            pressureStrength: document.querySelector(groups.pressureStrength),
+            pressureSpread: document.querySelector(groups.pressureSpread)
+        };
+        
+        // Helper to hide all sustained move fields
+        const hideSustainedFields = () => {
+            if (elements.minConsecutiveMoves) elements.minConsecutiveMoves.style.display = 'none';
+            if (elements.minMovePercentage) elements.minMovePercentage.style.display = 'none';
+            if (elements.volatilityBuffer) elements.volatilityBuffer.style.display = 'none';
+            if (elements.volatilityMultiplier) elements.volatilityMultiplier.style.display = 'none';
+            if (elements.minVolume) elements.minVolume.style.display = 'none';
+            if (elements.sustainedScope) elements.sustainedScope.style.display = 'none';
+            if (elements.sustainedItems) elements.sustainedItems.style.display = 'none';
+            if (elements.pressureStrength) elements.pressureStrength.style.display = 'none';
+            if (elements.pressureSpread) elements.pressureSpread.style.display = 'none';
         };
         
         if (alertType === AlertsConfig.alertTypes.SPREAD) {
             // Spread alerts: show spread-specific fields
             elements.spreadScope.style.display = 'block';
             if (elements.numberItems) elements.numberItems.style.display = 'none';
+            elements.itemName.style.display = 'block';
             elements.price.style.display = 'none';
             elements.reference.style.display = 'none';
             elements.percentage.style.display = 'block';
             elements.timeFrame.style.display = 'none';
             elements.direction.style.display = 'none';
+            hideSustainedFields();
             
             // Let scope change handler determine remaining visibility
             this.handleSpreadScopeChange(formType);
@@ -3521,8 +3805,36 @@ const FormManager = {
             elements.percentage.style.display = 'block';
             elements.timeFrame.style.display = 'block';
             elements.direction.style.display = 'block';
+            hideSustainedFields();
             // Spike uses min/max only when all items selected; handled in handleSpikeScopeChange
             this.handleSpikeScopeChange(formType);
+        } else if (alertType === AlertsConfig.alertTypes.SUSTAINED) {
+            // Sustained Move alerts: scope selector + time frame + direction + sustained-specific fields
+            elements.spreadScope.style.display = 'none';
+            if (elements.numberItems) elements.numberItems.style.display = 'none';
+            elements.itemName.style.display = 'none';
+            elements.price.style.display = 'none';
+            elements.reference.style.display = 'none';
+            elements.percentage.style.display = 'none';
+            elements.timeFrame.style.display = 'block';
+            elements.direction.style.display = 'block';
+            
+            // Show sustained scope selector
+            if (elements.sustainedScope) elements.sustainedScope.style.display = 'block';
+            
+            // Show sustained-specific fields
+            if (elements.minConsecutiveMoves) elements.minConsecutiveMoves.style.display = 'block';
+            if (elements.minMovePercentage) elements.minMovePercentage.style.display = 'block';
+            if (elements.volatilityBuffer) elements.volatilityBuffer.style.display = 'block';
+            if (elements.volatilityMultiplier) elements.volatilityMultiplier.style.display = 'block';
+            if (elements.minVolume) elements.minVolume.style.display = 'block';
+            
+            // Show pressure filter fields
+            if (elements.pressureStrength) elements.pressureStrength.style.display = 'block';
+            if (elements.pressureSpread) elements.pressureSpread.style.display = 'block';
+            
+            // Let scope change handler determine item selector vs min/max price
+            this.handleSustainedScopeChange(formType);
         } else {
             // Above/Below alerts: show threshold fields
             elements.spreadScope.style.display = 'none';
@@ -3535,6 +3847,7 @@ const FormManager = {
             elements.direction.style.display = 'none';
             elements.minPrice.style.display = 'none';
             elements.maxPrice.style.display = 'none';
+            hideSustainedFields();
             
             // Reset is_all_items
             document.querySelector(selectors.isAllItems).value = 'false';
@@ -3589,6 +3902,27 @@ const FormManager = {
         const selection = numberItemsSelect ? numberItemsSelect.value : 'one';
         const isAll = selection === 'all';
         if (itemNameGroup) itemNameGroup.style.display = isAll ? 'none' : 'block';
+        if (minPriceGroup) minPriceGroup.style.display = isAll ? 'block' : 'none';
+        if (maxPriceGroup) maxPriceGroup.style.display = isAll ? 'block' : 'none';
+        if (isAllItemsInput) isAllItemsInput.value = isAll ? 'true' : 'false';
+    },
+    
+    /**
+     * Updates form fields based on sustained move scope selection.
+     */
+    handleSustainedScopeChange(formType) {
+        const selectors = AlertsConfig.selectors[formType];
+        const sustainedScopeSelect = document.querySelector(selectors.sustainedScope);
+        const groups = selectors.groups;
+        const sustainedItemsGroup = document.querySelector(groups.sustainedItems);
+        const minPriceGroup = document.querySelector(groups.minPrice);
+        const maxPriceGroup = document.querySelector(groups.maxPrice);
+        const isAllItemsInput = document.querySelector(selectors.isAllItems);
+        
+        const selection = sustainedScopeSelect ? sustainedScopeSelect.value : 'specific';
+        const isAll = selection === 'all';
+        
+        if (sustainedItemsGroup) sustainedItemsGroup.style.display = isAll ? 'none' : 'block';
         if (minPriceGroup) minPriceGroup.style.display = isAll ? 'block' : 'none';
         if (maxPriceGroup) maxPriceGroup.style.display = isAll ? 'block' : 'none';
         if (isAllItemsInput) isAllItemsInput.value = isAll ? 'true' : 'false';
@@ -4372,6 +4706,216 @@ const AutocompleteManager = {
 
 
 // =============================================================================
+// MULTI-ITEM SELECTOR
+// =============================================================================
+/**
+ * Manages multi-item selection for sustained move alerts.
+ * Allows adding multiple items via autocomplete with chip-style display.
+ */
+const MultiItemSelector = {
+    selectedItems: [],  // Array of {id, name} objects
+    selectedIndex: -1,
+    
+    /**
+     * Initializes the multi-item selector for sustained move alerts.
+     */
+    init() {
+        const input = document.querySelector(AlertsConfig.selectors.create.sustainedItemInput);
+        const dropdown = document.querySelector(AlertsConfig.selectors.create.sustainedItemSuggestions);
+        const hiddenInput = document.querySelector(AlertsConfig.selectors.create.sustainedItemIds);
+        const container = document.querySelector(AlertsConfig.selectors.create.selectedItemsContainer);
+        
+        if (!input || !dropdown || !hiddenInput || !container) return;
+        
+        this.selectedItems = [];
+        this.selectedIndex = -1;
+        
+        const updateHiddenInput = () => {
+            hiddenInput.value = this.selectedItems.map(item => item.id).join(',');
+        };
+        
+        const updateSelection = () => {
+            const items = dropdown.querySelectorAll('.suggestion-item');
+            items.forEach((item, index) => {
+                if (index === this.selectedIndex) {
+                    item.classList.add('selected');
+                    item.scrollIntoView({ block: 'nearest' });
+                } else {
+                    item.classList.remove('selected');
+                }
+            });
+        };
+        
+        const addItem = (id, name) => {
+            // Check if already selected
+            if (this.selectedItems.some(item => item.id === id)) {
+                return;
+            }
+            
+            this.selectedItems.push({ id, name });
+            updateHiddenInput();
+            this.renderChips(container);
+            input.value = '';
+            dropdown.style.display = 'none';
+            this.selectedIndex = -1;
+        };
+        
+        const removeItem = (id) => {
+            this.selectedItems = this.selectedItems.filter(item => item.id !== id);
+            updateHiddenInput();
+            this.renderChips(container);
+        };
+        
+        // Handle input changes - fetch suggestions
+        input.addEventListener('input', async () => {
+            const query = input.value;
+            
+            if (query.length < AlertsConfig.timing.minSearchLength) {
+                dropdown.style.display = 'none';
+                this.selectedIndex = -1;
+                return;
+            }
+            
+            const items = await AlertsAPI.searchItems(query);
+            
+            // Filter out already selected items
+            const filteredItems = items.filter(item => 
+                !this.selectedItems.some(selected => selected.id === item.id)
+            );
+            
+            if (filteredItems.length > 0) {
+                dropdown.innerHTML = AlertsUI.renderSuggestions(filteredItems);
+                dropdown.style.display = 'block';
+                this.selectedIndex = -1;
+            } else {
+                dropdown.style.display = 'none';
+                this.selectedIndex = -1;
+            }
+        });
+        
+        // Handle keyboard navigation
+        input.addEventListener('keydown', (e) => {
+            if (dropdown.style.display === 'none') {
+                // Backspace with empty input removes last chip
+                if (e.key === 'Backspace' && input.value === '' && this.selectedItems.length > 0) {
+                    const lastItem = this.selectedItems[this.selectedItems.length - 1];
+                    removeItem(lastItem.id);
+                }
+                return;
+            }
+            
+            const items = dropdown.querySelectorAll('.suggestion-item');
+            if (items.length === 0) return;
+            
+            switch (e.key) {
+                case 'ArrowDown':
+                    e.preventDefault();
+                    this.selectedIndex = (this.selectedIndex + 1) % items.length;
+                    updateSelection();
+                    break;
+                    
+                case 'ArrowUp':
+                    e.preventDefault();
+                    this.selectedIndex = this.selectedIndex <= 0 
+                        ? items.length - 1 
+                        : this.selectedIndex - 1;
+                    updateSelection();
+                    break;
+                    
+                case 'Tab':
+                    e.preventDefault();
+                    if (e.shiftKey) {
+                        // Shift+Tab moves selection up
+                        this.selectedIndex = this.selectedIndex <= 0 
+                            ? items.length - 1 
+                            : this.selectedIndex - 1;
+                    } else {
+                        // Tab moves selection down
+                        this.selectedIndex = (this.selectedIndex + 1) % items.length;
+                    }
+                    updateSelection();
+                    break;
+                    
+                case 'Enter':
+                    if (this.selectedIndex >= 0) {
+                        e.preventDefault();
+                        const selectedItem = items[this.selectedIndex];
+                        addItem(selectedItem.dataset.id, selectedItem.dataset.name);
+                    }
+                    break;
+                    
+                case 'Escape':
+                    e.preventDefault();
+                    dropdown.style.display = 'none';
+                    this.selectedIndex = -1;
+                    break;
+            }
+        });
+        
+        // Handle mouse click on suggestion
+        dropdown.addEventListener('click', (e) => {
+            if (e.target.classList.contains('suggestion-item')) {
+                addItem(e.target.dataset.id, e.target.dataset.name);
+            }
+        });
+        
+        // Handle mouse hover to update selection
+        dropdown.addEventListener('mouseover', (e) => {
+            if (e.target.classList.contains('suggestion-item')) {
+                const items = dropdown.querySelectorAll('.suggestion-item');
+                items.forEach((item, index) => {
+                    if (item === e.target) {
+                        this.selectedIndex = index;
+                    }
+                });
+                updateSelection();
+            }
+        });
+        
+        // Handle chip removal via event delegation on container
+        container.addEventListener('click', (e) => {
+            if (e.target.classList.contains('chip-remove')) {
+                const chip = e.target.closest('.selected-item-chip');
+                if (chip) {
+                    removeItem(chip.dataset.id);
+                }
+            }
+        });
+    },
+    
+    /**
+     * Renders the selected item chips in the container.
+     */
+    renderChips(container) {
+        container.innerHTML = this.selectedItems.map(item => 
+            `<span class="selected-item-chip" data-id="${item.id}">
+                ${item.name}
+                <span class="chip-remove">×</span>
+            </span>`
+        ).join('');
+    },
+    
+    /**
+     * Clears all selected items.
+     */
+    clear() {
+        this.selectedItems = [];
+        const container = document.querySelector(AlertsConfig.selectors.create.selectedItemsContainer);
+        const hiddenInput = document.querySelector(AlertsConfig.selectors.create.sustainedItemIds);
+        if (container) container.innerHTML = '';
+        if (hiddenInput) hiddenInput.value = '';
+    },
+    
+    /**
+     * Gets the selected item IDs.
+     */
+    getSelectedIds() {
+        return this.selectedItems.map(item => item.id);
+    }
+};
+
+
+// =============================================================================
 // ALERTS REFRESH
 // =============================================================================
 /**
@@ -4918,6 +5462,39 @@ const EventManager = {
                 }
             }
             
+            // Check sustained move specific fields
+            if (alertType === 'sustained') {
+                const timeFrame = document.getElementById('time-frame').value;
+                if (!timeFrame || timeFrame <= 0) {
+                    errors.push('Time frame is required');
+                }
+                const minMoves = document.getElementById('min-consecutive-moves').value;
+                if (!minMoves || minMoves < 2) {
+                    errors.push('Minimum consecutive moves must be at least 2');
+                }
+                const minMovePercent = document.getElementById('min-move-percentage').value;
+                if (!minMovePercent || minMovePercent <= 0) {
+                    errors.push('Minimum move percentage is required');
+                }
+                const volBuffer = document.getElementById('volatility-buffer-size').value;
+                if (!volBuffer || volBuffer < 5) {
+                    errors.push('Volatility buffer size must be at least 5');
+                }
+                const volMultiplier = document.getElementById('volatility-multiplier').value;
+                if (!volMultiplier || volMultiplier <= 0) {
+                    errors.push('Volatility multiplier is required');
+                }
+                
+                // Check items - either all items or at least one specific item
+                const sustainedScope = document.getElementById('sustained-scope').value;
+                if (sustainedScope === 'specific') {
+                    const selectedItemIds = document.getElementById('sustained-item-ids').value;
+                    if (!selectedItemIds || selectedItemIds.trim() === '') {
+                        errors.push('Please select at least one item');
+                    }
+                }
+            }
+            
             if (errors.length > 0) {
                 e.preventDefault();
                 FormValidation.showError(errors[0]);
@@ -4945,6 +5522,10 @@ function handleSpreadScopeChange() {
 
 function handleSpikeScopeChange() {
     FormManager.handleSpikeScopeChange('create');
+}
+
+function handleSustainedScopeChange() {
+    FormManager.handleSustainedScopeChange('create');
 }
 
 // Modal handlers
@@ -5284,6 +5865,7 @@ function confirmDelete() {
 (function init() {
     TabManager.init();
     AutocompleteManager.init();
+    MultiItemSelector.init();
     EventManager.init();
     DropdownSizer.init();
     AlertsRefresh.start();

@@ -85,7 +85,8 @@ class Alert(models.Model):
             ('above', 'Above Threshold'),
             ('below', 'Below Threshold'),
             ('spread', 'Spread'),
-            ('spike', 'Spike')
+            ('spike', 'Spike'),
+            ('sustained', 'Sustained Move')
     ]
     
     type = models.CharField(max_length=10, null=True, choices=ALERT_CHOICES, default='above')
@@ -108,10 +109,28 @@ class Alert(models.Model):
     email_notification = models.BooleanField(default=False)
     groups = models.ManyToManyField(AlertGroup, blank=True, related_name='alerts')
     triggered_at = models.DateTimeField(blank=True, null=True, default=None)
+    time_frame = models.IntegerField(blank=True, null=True, default=None)  # Time window in minutes (for sustained alerts)
     
-    def _format_time_frame(self):
+    # Sustained Move alert fields
+    min_consecutive_moves = models.IntegerField(blank=True, null=True, default=None)  # Minimum number of consecutive price moves
+    min_move_percentage = models.FloatField(blank=True, null=True, default=None)  # Minimum % change to count as a move
+    volatility_buffer_size = models.IntegerField(blank=True, null=True, default=None)  # N - rolling buffer size for volatility
+    volatility_multiplier = models.FloatField(blank=True, null=True, default=None)  # K - strength multiplier
+    min_volume = models.IntegerField(blank=True, null=True, default=None)  # Minimum volume requirement
+    sustained_item_ids = models.TextField(blank=True, null=True, default=None)  # JSON array of item IDs for multi-item sustained alerts
+    
+    # Pressure filter fields for sustained alerts
+    PRESSURE_STRENGTH_CHOICES = [
+        ('strong', 'Strong'),
+        ('moderate', 'Moderate'),
+        ('weak', 'Weak'),
+    ]
+    min_pressure_strength = models.CharField(max_length=10, choices=PRESSURE_STRENGTH_CHOICES, blank=True, null=True, default=None)
+    min_pressure_spread_pct = models.FloatField(blank=True, null=True, default=None)  # Minimum spread % for pressure check
+    
+    def _format_time_frame(self, minutes_value=None):
         try:
-            minutes = int(self.price) if self.price is not None else None
+            minutes = int(minutes_value) if minutes_value is not None else (int(self.price) if self.price is not None else None)
         except (TypeError, ValueError):
             minutes = None
         if minutes is None or minutes < 0:
@@ -143,6 +162,27 @@ class Alert(models.Model):
                 return f"All items spike {perc} within {frame}"
             target = self.item_name or "Unknown item"
             return f"{target} spike {perc} within {frame}"
+        if self.type == 'sustained':
+            frame = self._format_time_frame(self.time_frame)
+            moves = self.min_consecutive_moves or 0
+            direction = (self.direction or 'both').capitalize()
+            if self.is_all_items:
+                return f"All items sustained {direction} ({moves} moves in {frame})"
+            elif self.sustained_item_ids:
+                import json
+                try:
+                    ids = json.loads(self.sustained_item_ids)
+                    count = len(ids) if isinstance(ids, list) else 1
+                    if count == 1:
+                        target = self.item_name or "1 item"
+                    else:
+                        target = f"{count} items"
+                except:
+                    target = self.item_name or "Unknown"
+                return f"{target} sustained {direction} ({moves} moves in {frame})"
+            else:
+                target = self.item_name or "Unknown item"
+                return f"{target} sustained {direction} ({moves} moves in {frame})"
         if self.is_all_items:
             return f"All items {self.type} {self.price:,} ({self.reference})"
         return f"{self.item_name} {self.type} {self.price:,} ({self.reference})"
@@ -172,4 +212,22 @@ class Alert(models.Model):
                 except Exception:
                     pass
             return base
+        if self.type == "sustained":
+            if self.triggered_data:
+                import json
+                try:
+                    data = json.loads(self.triggered_data)
+                    item_name = data.get('item_name', self.item_name or 'Unknown')
+                    streak_dir = data.get('streak_direction', 'up')
+                    total_move = data.get('total_move_percent', 0)
+                    streak_count = data.get('streak_count', 0)
+                    direction_word = "up" if streak_dir == "up" else "down"
+                    return f"{item_name} moved {direction_word} {total_move:.2f}% over {streak_count} consecutive moves"
+                except Exception:
+                    pass
+            # Fallback if no triggered_data
+            frame = self._format_time_frame(self.time_frame)
+            moves = self.min_consecutive_moves or 0
+            direction = (self.direction or 'both').capitalize()
+            return f"{self.item_name} sustained {direction} move triggered ({moves} moves in {frame})"
         return f"Item price is now {price_formatted}"

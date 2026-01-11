@@ -537,6 +537,8 @@ def alerts(request):
 
 def create_alert(request):
     if request.method == 'POST':
+        import json as json_module
+        
         alert_type = request.POST.get('type')
         item_name = request.POST.get('item_name')
         item_id = request.POST.get('item_id')
@@ -550,8 +552,20 @@ def create_alert(request):
         minimum_price = request.POST.get('minimum_price')
         maximum_price = request.POST.get('maximum_price')
         email_notification = request.POST.get('email_notification') == 'on'
+        group_id = request.POST.get('group_id')  # Group to assign alert to
+        
+        # Sustained Move specific fields
+        min_consecutive_moves = request.POST.get('min_consecutive_moves')
+        min_move_percentage = request.POST.get('min_move_percentage')
+        volatility_buffer_size = request.POST.get('volatility_buffer_size')
+        volatility_multiplier = request.POST.get('volatility_multiplier')
+        min_volume = request.POST.get('min_volume')
+        sustained_item_ids_str = request.POST.get('sustained_item_ids', '')
+        min_pressure_strength = request.POST.get('min_pressure_strength') or None
+        min_pressure_spread_pct = request.POST.get('min_pressure_spread_pct')
+        
         direction_value = None
-        if alert_type == 'spike':
+        if alert_type in ['spike', 'sustained']:
             direction_value = (direction or '').lower()
             if direction_value not in ['up', 'down', 'both']:
                 direction_value = 'both'
@@ -561,20 +575,59 @@ def create_alert(request):
         if alert_type == 'spike' and number_of_items:
             is_all_items = number_of_items == 'all'
         
-        # Look up item ID from name if not provided
-        if not item_id and item_name:
+        # Handle sustained move multi-item selection
+        sustained_item_ids_json = None
+        sustained_item_name = None
+        if alert_type == 'sustained' and not is_all_items and sustained_item_ids_str:
+            item_ids = [int(x) for x in sustained_item_ids_str.split(',') if x.strip()]
+            if item_ids:
+                sustained_item_ids_json = json_module.dumps(item_ids)
+                # Get first item name for display
+                mapping = get_item_mapping()
+                for name, item in mapping.items():
+                    if item['id'] == item_ids[0]:
+                        sustained_item_name = item['name']
+                        break
+        
+        # Look up item ID from name if not provided (for non-sustained alerts)
+        if not item_id and item_name and alert_type != 'sustained':
             mapping = get_item_mapping()
             item_data = mapping.get(item_name.lower())
             if item_data:
                 item_id = item_data['id']
                 item_name = item_data['name']
         
-        Alert.objects.create(
+        # Determine price field value (time_frame for spike, price for others)
+        price_value = None
+        if alert_type == 'spike':
+            price_value = int(time_frame) if time_frame else None
+        elif alert_type != 'sustained' and price:
+            price_value = int(price)
+        
+        # For sustained alerts, store time_frame in dedicated field
+        time_frame_value = None
+        if alert_type == 'sustained' and time_frame:
+            time_frame_value = int(time_frame)
+        
+        # For sustained alerts, use multi-item data if available
+        final_item_name = sustained_item_name if alert_type == 'sustained' and sustained_item_name else (item_name if not is_all_items else None)
+        final_item_id = None
+        if alert_type == 'sustained' and sustained_item_ids_json:
+            # Store first item ID for backwards compatibility
+            item_ids = json_module.loads(sustained_item_ids_json)
+            final_item_id = item_ids[0] if item_ids else None
+        elif item_id and not is_all_items:
+            final_item_id = int(item_id)
+        
+        # Reference is not used for sustained alerts
+        reference_value = reference if reference and alert_type != 'sustained' else None
+        
+        alert = Alert.objects.create(
             type=alert_type,
-            item_name=item_name if not is_all_items else None,
-            item_id=int(item_id) if item_id and not is_all_items else None,
-            price=int(time_frame if alert_type == 'spike' else price) if (time_frame if alert_type == 'spike' else price) else None,
-            reference=reference if reference else None,
+            item_name=final_item_name,
+            item_id=final_item_id,
+            price=price_value,
+            reference=reference_value,
             percentage=float(percentage) if percentage else None,
             is_all_items=is_all_items,
             minimum_price=int(minimum_price) if minimum_price else None,
@@ -582,8 +635,28 @@ def create_alert(request):
             email_notification=email_notification,
             is_active=True,
             is_triggered=False,
-            direction=direction_value
+            direction=direction_value,
+            time_frame=time_frame_value,
+            # Sustained Move fields
+            min_consecutive_moves=int(min_consecutive_moves) if min_consecutive_moves else None,
+            min_move_percentage=float(min_move_percentage) if min_move_percentage else None,
+            volatility_buffer_size=int(volatility_buffer_size) if volatility_buffer_size else None,
+            volatility_multiplier=float(volatility_multiplier) if volatility_multiplier else None,
+            min_volume=int(min_volume) if min_volume else None,
+            sustained_item_ids=sustained_item_ids_json,
+            min_pressure_strength=min_pressure_strength,
+            min_pressure_spread_pct=float(min_pressure_spread_pct) if min_pressure_spread_pct else None
         )
+        
+        # Assign to group if specified
+        if group_id:
+            from Website.models import AlertGroup
+            try:
+                group = AlertGroup.objects.get(name=group_id)
+                alert.groups.add(group)
+            except AlertGroup.DoesNotExist:
+                pass  # Group doesn't exist, skip assignment
+        
         messages.success(request, 'Alert created')
         return redirect('alerts')
     
@@ -635,14 +708,22 @@ def alerts_api(request):
             'reference': alert.reference,
             'price': alert.price,
             'percentage': alert.percentage,
-            'time_frame': alert.price if alert.type == 'spike' else None,
+            'time_frame': alert.price if alert.type == 'spike' else (alert.time_frame if alert.type == 'sustained' else None),
             'minimum_price': alert.minimum_price,
             'maximum_price': alert.maximum_price,
             'created_at': alert.created_at.isoformat(),
             'last_triggered_at': alert.triggered_at.isoformat() if alert.triggered_at else None,
             'groups': list(alert.groups.values_list('name', flat=True)),
             'item_id': alert.item_id,
-            'icon': icon
+            'icon': icon,
+            # Sustained-specific fields
+            'min_consecutive_moves': alert.min_consecutive_moves if alert.type == 'sustained' else None,
+            'min_move_percentage': alert.min_move_percentage if alert.type == 'sustained' else None,
+            'min_volume': alert.min_volume if alert.type == 'sustained' else None,
+            'volatility_buffer_size': alert.volatility_buffer_size if alert.type == 'sustained' else None,
+            'volatility_multiplier': alert.volatility_multiplier if alert.type == 'sustained' else None,
+            'min_pressure_strength': alert.min_pressure_strength if alert.type == 'sustained' else None,
+            'min_pressure_spread_pct': alert.min_pressure_spread_pct if alert.type == 'sustained' else None
         }
 
         for g in alert_dict['groups']:
@@ -684,7 +765,7 @@ def alerts_api(request):
             'triggered_data': alert.triggered_data,
             'reference': alert.reference,
             'price': alert.price,
-            'time_frame': alert.price if alert.type == 'spike' else None,
+            'time_frame': alert.price if alert.type == 'spike' else (alert.time_frame if alert.type == 'sustained' else None),
             'percentage': alert.percentage
         }
 
@@ -710,6 +791,29 @@ def alerts_api(request):
                 else:
                     triggered_dict['current_price'] = price_data.get('high')
         
+        # Add sustained move data
+        if alert.type == 'sustained':
+            triggered_dict['min_consecutive_moves'] = alert.min_consecutive_moves
+            triggered_dict['min_move_percentage'] = alert.min_move_percentage
+            triggered_dict['min_volume'] = alert.min_volume
+            triggered_dict['volatility_buffer_size'] = alert.volatility_buffer_size
+            triggered_dict['volatility_multiplier'] = alert.volatility_multiplier
+            
+            # Parse triggered_data for sustained alert details
+            if alert.triggered_data:
+                try:
+                    import json as json_module
+                    sustained_data = json_module.loads(alert.triggered_data)
+                    triggered_dict['sustained_item_name'] = sustained_data.get('item_name')
+                    triggered_dict['sustained_direction'] = sustained_data.get('streak_direction')
+                    triggered_dict['sustained_streak_count'] = sustained_data.get('streak_count')
+                    triggered_dict['sustained_total_move'] = sustained_data.get('total_move_percent')
+                    triggered_dict['sustained_start_price'] = sustained_data.get('start_price')
+                    triggered_dict['sustained_current_price'] = sustained_data.get('current_price')
+                    triggered_dict['sustained_volume'] = sustained_data.get('volume')
+                except:
+                    pass
+
         triggered_data.append(triggered_dict)
     
     all_groups = sorted(all_groups_set)
@@ -886,15 +990,26 @@ def update_alert(request):
                 if alert.type == 'spike':
                     time_frame = data.get('time_frame') or data.get('price')
                     alert.price = int(time_frame) if time_frame else None
+                    alert.time_frame = None  # Spike uses price field for time_frame
+                elif alert.type == 'sustained':
+                    alert.price = None  # Sustained doesn't use price
+                    time_frame = data.get('time_frame')
+                    alert.time_frame = int(time_frame) if time_frame else None
                 else:
                     price = data.get('price')
                     alert.price = int(price) if price else None
-                    
-                reference = data.get('reference')
-                alert.reference = reference if reference else None
+                    alert.time_frame = None
+                
+                # Handle reference (not used for sustained)
+                if alert.type == 'sustained':
+                    alert.reference = None
+                else:
+                    reference = data.get('reference')
+                    alert.reference = reference if reference else None
 
+                # Handle direction for spike and sustained
                 direction = data.get('direction')
-                if alert.type == 'spike':
+                if alert.type in ['spike', 'sustained']:
                     direction_value = (direction or '').lower() if isinstance(direction, str) else ''
                     if direction_value not in ['up', 'down', 'both']:
                         direction_value = 'both'
@@ -902,14 +1017,14 @@ def update_alert(request):
                 else:
                     alert.direction = None
                 
-                # Handle percentage for spread or spike alerts
-                percentage = data.get('percentage')
-                if percentage:
-                    alert.percentage = float(percentage)
+                # Handle percentage for spread or spike alerts (not sustained)
+                if alert.type in ['spread', 'spike']:
+                    percentage = data.get('percentage')
+                    alert.percentage = float(percentage) if percentage else None
                 else:
                     alert.percentage = None
                 
-                # Handle min/max price for spread all items alerts
+                # Handle min/max price for all items alerts
                 minimum_price = data.get('minimum_price')
                 if minimum_price:
                     alert.minimum_price = int(minimum_price)
@@ -921,6 +1036,39 @@ def update_alert(request):
                     alert.maximum_price = int(maximum_price)
                 else:
                     alert.maximum_price = None
+                
+                # Handle sustained-specific fields
+                if alert.type == 'sustained':
+                    min_consecutive_moves = data.get('min_consecutive_moves')
+                    alert.min_consecutive_moves = int(min_consecutive_moves) if min_consecutive_moves else None
+                    
+                    min_move_percentage = data.get('min_move_percentage')
+                    alert.min_move_percentage = float(min_move_percentage) if min_move_percentage else None
+                    
+                    min_volume = data.get('min_volume')
+                    alert.min_volume = int(min_volume) if min_volume else None
+                    
+                    volatility_buffer_size = data.get('volatility_buffer_size')
+                    alert.volatility_buffer_size = int(volatility_buffer_size) if volatility_buffer_size else None
+                    
+                    volatility_multiplier = data.get('volatility_multiplier')
+                    alert.volatility_multiplier = float(volatility_multiplier) if volatility_multiplier else None
+                    
+                    min_pressure_strength = data.get('min_pressure_strength')
+                    alert.min_pressure_strength = min_pressure_strength if min_pressure_strength else None
+                    
+                    min_pressure_spread_pct = data.get('min_pressure_spread_pct')
+                    alert.min_pressure_spread_pct = float(min_pressure_spread_pct) if min_pressure_spread_pct else None
+                else:
+                    # Clear sustained fields for other alert types
+                    alert.min_consecutive_moves = None
+                    alert.min_move_percentage = None
+                    alert.min_volume = None
+                    alert.volatility_buffer_size = None
+                    alert.volatility_multiplier = None
+                    alert.sustained_item_ids = None
+                    alert.min_pressure_strength = None
+                    alert.min_pressure_spread_pct = None
                 
                 # Handle email notification preference
                 alert.email_notification = data.get('email_notification', False)
@@ -936,6 +1084,7 @@ def update_alert(request):
 
 
 def alert_detail(request, alert_id):
+
     """Display detailed view of a single alert"""
     from django.shortcuts import get_object_or_404
     import json
@@ -969,6 +1118,27 @@ def alert_detail(request, alert_id):
             'is_all_items': alert.is_all_items,
             'alert_type': alert.type,
         }
+
+        if alert.type == 'sustained':
+            # For sustained alerts, triggered_data contains the sustained move info
+            if alert.triggered_data:
+                try:
+                    sustained_data = json.loads(alert.triggered_data)
+                    triggered_info['sustained_data'] = sustained_data
+                    print(triggered_info['alert_type'])
+                    '''
+                    triggered_info['sustained_data'] = sustained_data
+                    triggered_info['sustained_item_name'] = sustained_data.get('item_name')
+                    triggered_info['sustained_direction'] = sustained_data.get('streak_direction')
+                    triggered_info['sustained_streak_count'] = sustained_data.get('streak_count')
+                    triggered_info['sustained_total_move'] = sustained_data.get('total_move_percent')
+                    triggered_info['sustained_start_price'] = sustained_data.get('start_price')
+                    triggered_info['sustained_current_price'] = sustained_data.get('current_price')
+                    triggered_info['sustained_volume'] = sustained_data.get('volume')
+                    '''
+                except json.JSONDecodeError:
+                    pass
+
         
         if alert.is_all_items and alert.triggered_data:
             # Parse the JSON triggered data for all-items alerts
@@ -1003,7 +1173,7 @@ def alert_detail(request, alert_id):
                             triggered_info['spike_data'] = spike_data[0] if isinstance(spike_data, list) else spike_data
                     except json.JSONDecodeError:
                         pass
-    
+
     # Check if redirected after save
     edit_saved = request.GET.get('edit_saved') == '1'
     

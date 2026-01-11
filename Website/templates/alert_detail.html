@@ -1048,10 +1048,12 @@
                     <div class="form-group" id="type-group">
                         <label for="edit-type">Alert Type</label>
                         <select id="edit-type" onchange="handleTypeChange()">
+                            
                             <option value="above" {% if alert.type == 'above' %}selected{% endif %}>Above Threshold</option>
                             <option value="below" {% if alert.type == 'below' %}selected{% endif %}>Below Threshold</option>
                             <option value="spread" {% if alert.type == 'spread' %}selected{% endif %}>Spread</option>
                             <option value="spike" {% if alert.type == 'spike' %}selected{% endif %}>Spike</option>
+                            <option value="sustained" {% if alert.type == 'sustained' %}selected{% endif %}>Sustained Move</option>
                         </select>
                     </div>
                     
@@ -1097,13 +1099,13 @@
                         <input type="number" id="edit-percentage" value="{{ alert.percentage|default:'' }}" step="0.001" min="0.001" placeholder="Enter percentage...">
                     </div>
                     
-                    <!-- Time Frame (spike only) -->
+                    <!-- Time Frame (spike/sustained) -->
                     <div class="form-group" id="time-frame-group" style="display: none;">
                         <label for="edit-time-frame">Time Frame (minutes)</label>
-                        <input type="number" id="edit-time-frame" value="{% if alert.type == 'spike' %}{{ alert.price|default:'' }}{% endif %}" min="1" step="1" placeholder="e.g. 10">
+                        <input type="number" id="edit-time-frame" value="{% if alert.type == 'spike' %}{{ alert.price|default:'' }}{% elif alert.type == 'sustained' %}{{ alert.time_frame|default:'' }}{% endif %}" min="1" step="1" placeholder="e.g. 10">
                     </div>
                     
-                    <!-- Direction (spike only) -->
+                    <!-- Direction (spike/sustained) -->
                     <div class="form-group" id="direction-group" style="display: none;">
                         <label for="edit-direction">Direction</label>
                         <select id="edit-direction">
@@ -1121,6 +1123,50 @@
                     <div class="form-group" id="max-price-group" style="display: none;">
                         <label for="edit-maximum-price">Maximum Price</label>
                         <input type="number" id="edit-maximum-price" value="{{ alert.maximum_price|default:'' }}" min="0" placeholder="Enter maximum price...">
+                    </div>
+                    
+                    <!-- Sustained Move specific fields -->
+                    <div class="form-group" id="min-consecutive-moves-group" style="display: none;">
+                        <label for="edit-min-consecutive-moves">Min Consecutive Moves</label>
+                        <input type="number" id="edit-min-consecutive-moves" value="{{ alert.min_consecutive_moves|default:'' }}" min="2" step="1" placeholder="e.g. 5">
+                        <small class="form-hint">Number of price changes in same direction</small>
+                    </div>
+                    <div class="form-group" id="min-move-percentage-group" style="display: none;">
+                        <label for="edit-min-move-percentage">Min Move %</label>
+                        <input type="number" id="edit-min-move-percentage" value="{{ alert.min_move_percentage|default:'' }}" min="0.01" step="0.01" placeholder="e.g. 0.5">
+                        <small class="form-hint">Min % change to count as move</small>
+                    </div>
+                    <div class="form-group" id="min-volume-group" style="display: none;">
+                        <label for="edit-min-volume">Min Volume</label>
+                        <input type="number" id="edit-min-volume" value="{{ alert.min_volume|default:'' }}" min="0" step="1" placeholder="e.g. 10000">
+                        <small class="form-hint">Min trading volume</small>
+                    </div>
+                    <div class="form-group" id="volatility-buffer-group" style="display: none;">
+                        <label for="edit-volatility-buffer-size">Volatility Buffer (N)</label>
+                        <input type="number" id="edit-volatility-buffer-size" value="{{ alert.volatility_buffer_size|default:'' }}" min="5" step="1" placeholder="e.g. 20">
+                        <small class="form-hint">Rolling buffer size for avg volatility</small>
+                    </div>
+                    <div class="form-group" id="volatility-multiplier-group" style="display: none;">
+                        <label for="edit-volatility-multiplier">Volatility Multiplier (K)</label>
+                        <input type="number" id="edit-volatility-multiplier" value="{{ alert.volatility_multiplier|default:'' }}" min="0.1" step="0.1" placeholder="e.g. 1.5">
+                        <small class="form-hint">Streak must move ≥ K × avg volatility</small>
+                    </div>
+                    
+                    <!-- Pressure Filter fields (sustained only) -->
+                    <div class="form-group" id="pressure-strength-group" style="display: none;">
+                        <label for="edit-pressure-strength">Market Pressure</label>
+                        <select id="edit-pressure-strength">
+                            <option value="">No Pressure Filter</option>
+                            <option value="weak" {% if alert.min_pressure_strength == 'weak' %}selected{% endif %}>Weak+ (any time delta)</option>
+                            <option value="moderate" {% if alert.min_pressure_strength == 'moderate' %}selected{% endif %}>Moderate+ (&lt;5min)</option>
+                            <option value="strong" {% if alert.min_pressure_strength == 'strong' %}selected{% endif %}>Strong (&lt;1min)</option>
+                        </select>
+                        <small class="form-hint">BUY=up, SELL=down direction match</small>
+                    </div>
+                    <div class="form-group" id="pressure-spread-group" style="display: none;">
+                        <label for="edit-pressure-spread">Min Spread % for Pressure</label>
+                        <input type="number" id="edit-pressure-spread" value="{{ alert.min_pressure_spread_pct|default:'' }}" min="0.01" step="0.01" placeholder="e.g. 0.2">
+                        <small class="form-hint">Spread % threshold for pressure</small>
                     </div>
                     
                     <!-- SMS Notification -->
@@ -1190,6 +1236,7 @@
         </div>
         <div class="detail-card-body">
             {% if triggered_info.is_all_items and triggered_info.items %}
+
                 <!-- All items alert - show scrollable list -->
                 <div class="triggered-info-grid">
                     <div class="triggered-info-item">
@@ -1217,12 +1264,18 @@
                                 <div class="triggered-item-details">
                                     Baseline: {{ item.baseline|intcomma }} | Current: {{ item.current|intcomma }}
                                 </div>
+                                {% elif triggered_info.alert_type == 'sustained' %}
+                                <div class="triggered-item-details">
+                                    {{ item.streak_direction|default:""|title }} {{ item.streak_count }} moves | {{ item.start_price|floatformat:0|intcomma }} → {{ item.current_price|floatformat:0|intcomma }} | Pressure Strength : {{ item.pressure_strength }}
+                                </div>
                                 {% endif %}
                             </div>
                             {% if triggered_info.alert_type == 'spread' %}
                             <span class="triggered-item-percentage">{{ item.spread }}%</span>
                             {% elif triggered_info.alert_type == 'spike' %}
                             <span class="triggered-item-percentage {% if item.percent_change < 0 %}negative-change{% endif %}">{{ item.percent_change }}%</span>
+                            {% elif triggered_info.alert_type == 'sustained' %}
+                            <span class="triggered-item-percentage {% if item.streak_direction == 'down' %}negative-change{% endif %}">{{ item.total_move_percent }}%</span>
                             {% endif %}
                         </li>
                     {% endfor %}
@@ -1231,6 +1284,7 @@
             {% else %}
                 <!-- Single item alert -->
                 <div class="triggered-info-grid">
+
                     <div class="triggered-info-item">
                         <span class="detail-label">Triggered At</span>
                         <span class="detail-value">{% if triggered_info.triggered_at %}{{ triggered_info.triggered_at|date:"M d, Y H:i" }}{% else %}N/A{% endif %}</span>
@@ -1271,6 +1325,38 @@
                             <span class="detail-label">Percentage Change</span>
                             <span class="detail-value {% if triggered_info.spike_data.percent_change >= 0 %}positive{% else %}negative{% endif %}">{% if triggered_info.spike_data.percent_change %}{{ triggered_info.spike_data.percent_change }}%{% else %}N/A{% endif %}</span>
                         </div>
+                    {% elif triggered_info.alert_type == 'sustained' and triggered_info.sustained_data %}
+
+                        <div class="triggered-info-item">
+                            <span class="detail-label">Item</span>
+                            <span class="detail-value">{{ triggered_info.sustained_item_name|default:"N/A" }}</span>
+                        </div>
+                        <div class="triggered-info-item">
+                            <span class="detail-label">Direction</span>
+                            <span class="detail-value {% if triggered_info.sustained_direction == 'up' %}positive{% else %}negative{% endif %}">{{ triggered_info.sustained_direction|default:"N/A"|title }}</span>
+                        </div>
+                        <div class="triggered-info-item">
+                            <span class="detail-label">Consecutive Moves</span>
+                            <span class="detail-value">{{ triggered_info.sustained_streak_count|default:"N/A" }}</span>
+                        </div>
+                        <div class="triggered-info-item">
+                            <span class="detail-label">Total Move</span>
+                            <span class="detail-value {% if triggered_info.sustained_direction == 'up' %}positive{% else %}negative{% endif %}">{% if triggered_info.sustained_total_move %}{{ triggered_info.sustained_total_move }}%{% else %}N/A{% endif %}</span>
+                        </div>
+                        <div class="triggered-info-item">
+                            <span class="detail-label">Start Price</span>
+                            <span class="detail-value price">{% if triggered_info.sustained_start_price %}{{ triggered_info.sustained_start_price|floatformat:0|intcomma }}{% else %}N/A{% endif %}</span>
+                        </div>
+                        <div class="triggered-info-item">
+                            <span class="detail-label">Current Price</span>
+                            <span class="detail-value price">{% if triggered_info.sustained_current_price %}{{ triggered_info.sustained_current_price|floatformat:0|intcomma }}{% else %}N/A{% endif %}</span>
+                        </div>
+                        {% if triggered_info.sustained_volume %}
+                        <div class="triggered-info-item">
+                            <span class="detail-label">Volume</span>
+                            <span class="detail-value">{{ triggered_info.sustained_volume|intcomma }}</span>
+                        </div>
+                        {% endif %}
                     {% endif %}
                 </div>
             {% endif %}
@@ -1454,7 +1540,25 @@ function handleTypeChange() {
         timeFrame: document.getElementById('time-frame-group'),
         direction: document.getElementById('direction-group'),
         minPrice: document.getElementById('min-price-group'),
-        maxPrice: document.getElementById('max-price-group')
+        maxPrice: document.getElementById('max-price-group'),
+        minConsecutiveMoves: document.getElementById('min-consecutive-moves-group'),
+        minMovePercentage: document.getElementById('min-move-percentage-group'),
+        minVolume: document.getElementById('min-volume-group'),
+        volatilityBuffer: document.getElementById('volatility-buffer-group'),
+        volatilityMultiplier: document.getElementById('volatility-multiplier-group'),
+        pressureStrength: document.getElementById('pressure-strength-group'),
+        pressureSpread: document.getElementById('pressure-spread-group')
+    };
+    
+    // Helper to hide all sustained-specific fields
+    const hideSustainedFields = () => {
+        if (groups.minConsecutiveMoves) groups.minConsecutiveMoves.style.display = 'none';
+        if (groups.minMovePercentage) groups.minMovePercentage.style.display = 'none';
+        if (groups.minVolume) groups.minVolume.style.display = 'none';
+        if (groups.volatilityBuffer) groups.volatilityBuffer.style.display = 'none';
+        if (groups.volatilityMultiplier) groups.volatilityMultiplier.style.display = 'none';
+        if (groups.pressureStrength) groups.pressureStrength.style.display = 'none';
+        if (groups.pressureSpread) groups.pressureSpread.style.display = 'none';
     };
     
     if (alertType === 'spread') {
@@ -1465,6 +1569,7 @@ function handleTypeChange() {
         groups.percentage.style.display = 'block';
         groups.timeFrame.style.display = 'none';
         groups.direction.style.display = 'none';
+        hideSustainedFields();
         
         // Let scope change handler determine item/min/max visibility
         handleScopeChange();
@@ -1476,6 +1581,27 @@ function handleTypeChange() {
         groups.percentage.style.display = 'block';
         groups.timeFrame.style.display = 'block';
         groups.direction.style.display = 'block';
+        hideSustainedFields();
+        
+        // Let scope change handler determine item/min/max visibility
+        handleScopeChange();
+    } else if (alertType === 'sustained') {
+        // Sustained Move: show all items toggle, time frame, direction, sustained-specific fields
+        groups.allItems.style.display = 'block';
+        groups.price.style.display = 'none';
+        groups.reference.style.display = 'none';
+        groups.percentage.style.display = 'none';
+        groups.timeFrame.style.display = 'block';
+        groups.direction.style.display = 'block';
+        
+        // Show sustained-specific fields
+        if (groups.minConsecutiveMoves) groups.minConsecutiveMoves.style.display = 'block';
+        if (groups.minMovePercentage) groups.minMovePercentage.style.display = 'block';
+        if (groups.minVolume) groups.minVolume.style.display = 'block';
+        if (groups.volatilityBuffer) groups.volatilityBuffer.style.display = 'block';
+        if (groups.volatilityMultiplier) groups.volatilityMultiplier.style.display = 'block';
+        if (groups.pressureStrength) groups.pressureStrength.style.display = 'block';
+        if (groups.pressureSpread) groups.pressureSpread.style.display = 'block';
         
         // Let scope change handler determine item/min/max visibility
         handleScopeChange();
@@ -1490,6 +1616,7 @@ function handleTypeChange() {
         groups.direction.style.display = 'none';
         groups.minPrice.style.display = 'none';
         groups.maxPrice.style.display = 'none';
+        hideSustainedFields();
         
         // Reset is_all_items for above/below
         document.getElementById('edit-is-all-items').value = 'false';
@@ -1560,6 +1687,20 @@ async function saveChanges() {
         data.time_frame = document.getElementById('edit-time-frame').value || null;
         data.direction = document.getElementById('edit-direction').value || 'both';
         data.reference = document.getElementById('edit-reference').value || 'low';
+        if (isAllItems) {
+            data.minimum_price = document.getElementById('edit-minimum-price').value || null;
+            data.maximum_price = document.getElementById('edit-maximum-price').value || null;
+        }
+    } else if (alertType === 'sustained') {
+        data.time_frame = document.getElementById('edit-time-frame').value || null;
+        data.direction = document.getElementById('edit-direction').value || 'both';
+        data.min_consecutive_moves = document.getElementById('edit-min-consecutive-moves').value || null;
+        data.min_move_percentage = document.getElementById('edit-min-move-percentage').value || null;
+        data.min_volume = document.getElementById('edit-min-volume').value || null;
+        data.volatility_buffer_size = document.getElementById('edit-volatility-buffer-size').value || null;
+        data.volatility_multiplier = document.getElementById('edit-volatility-multiplier').value || null;
+        data.min_pressure_strength = document.getElementById('edit-pressure-strength').value || null;
+        data.min_pressure_spread_pct = document.getElementById('edit-pressure-spread').value || null;
         if (isAllItems) {
             data.minimum_price = document.getElementById('edit-minimum-price').value || null;
             data.maximum_price = document.getElementById('edit-maximum-price').value || null;
@@ -1981,5 +2122,8 @@ const ItemAutocomplete = {
 
 // Initialize autocomplete when page loads
 ItemAutocomplete.init();
+
+// Set up form visibility based on current alert type on page load
+handleTypeChange();
 </script>
 {% endblock %}

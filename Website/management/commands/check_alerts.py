@@ -34,6 +34,17 @@ class Command(BaseCommand):
         super().__init__(*args, **kwargs)
         self.item_mapping = None
         self.price_history = defaultdict(list)  # key: itemId:reference, value: list[(ts, price)]
+        
+        # Sustained move tracking state - keyed by alert_id
+        # Each entry contains: {
+        #   'last_price': float,           # Last observed average price
+        #   'streak_count': int,           # Current consecutive move count
+        #   'streak_direction': str,       # 'up' or 'down'
+        #   'streak_start_time': float,    # Timestamp when streak started
+        #   'streak_total_move': float,    # Total absolute price change during streak
+        #   'volatility_buffer': list,     # Rolling buffer of absolute moves
+        # }
+        self.sustained_state = {}
 
     def get_item_mapping(self):
         """Fetch and cache item ID to name mapping"""
@@ -71,6 +82,351 @@ class Command(BaseCommand):
             return None
         return ((high - low) / low) * 100
 
+    def get_volume_from_timeseries(self, item_id, time_window_minutes):
+        """
+        Fetch volume from timeseries API for a given item within a time window.
+        Uses 5-minute intervals (the most granular available).
+        Returns total volume or None if unavailable.
+        """
+        try:
+            response = requests.get(
+                f'https://prices.runescape.wiki/api/v1/osrs/timeseries?timestep=5m&id={item_id}',
+                headers={'User-Agent': 'GE-Tools (not yet live) - demondsoftware@gmail.com'}
+            )
+            if response.status_code != 200:
+                return None
+            
+            data = response.json()
+            if 'data' not in data:
+                return None
+            
+            now = time.time()
+            cutoff = now - (time_window_minutes * 60)
+            total_volume = 0
+            
+            for entry in data['data']:
+                timestamp = entry.get('timestamp', 0)
+                if timestamp >= cutoff:
+                    high_vol = entry.get('highPriceVolume', 0) or 0
+                    low_vol = entry.get('lowPriceVolume', 0) or 0
+                    total_volume += high_vol + low_vol
+            
+            return total_volume
+        except requests.RequestException:
+            return None
+
+    def print_sustained_debug(self, alert, state, trigger_data):
+        """Print formatted debug info for a triggered sustained move alert."""
+        print("\n" + "=" * 70)
+        print("SUSTAINED MOVE ALERT TRIGGERED")
+        print("=" * 70)
+        print(f"\n{'ALERT CONFIGURATION':^70}")
+        print("-" * 70)
+        print(f"  Alert ID:              {alert.id}")
+        print(f"  Item:                  {alert.item_name} (ID: {alert.item_id})")
+        print(f"  Direction:             {alert.direction or 'both'}")
+        print(f"  Time Window:           {alert.time_frame} minutes")
+        print(f"  Min Consecutive Moves: {alert.min_consecutive_moves}")
+        print(f"  Min Move Percentage:   {alert.min_move_percentage}%")
+        print(f"  Volatility Buffer (N): {alert.volatility_buffer_size}")
+        print(f"  Volatility Mult (K):   {alert.volatility_multiplier}")
+        print(f"  Min Volume:            {alert.min_volume or 'None'}")
+        
+        print(f"\n{'TRIGGER DATA':^70}")
+        print("-" * 70)
+        print(f"  Streak Direction:      {trigger_data['streak_direction']}")
+        print(f"  Streak Count:          {trigger_data['streak_count']} moves")
+        print(f"  Total Move:            {trigger_data['total_move_percent']:.4f}%")
+        print(f"  Start Price:           {trigger_data['start_price']:,.2f}")
+        print(f"  Current Price:         {trigger_data['current_price']:,.2f}")
+        print(f"  Volume:                {trigger_data['volume']:,}")
+        print(f"  Avg Volatility:        {trigger_data['avg_volatility']:.4f}%")
+        print(f"  Required Move (K×avg): {trigger_data['required_move']:.4f}%")
+        print(f"  Volatility Check:      PASSED")
+        
+        buffer = state.get('volatility_buffer', [])
+        buffer_header = f"VOLATILITY BUFFER (last {len(buffer)} moves)"
+        print(f"\n{buffer_header:^70}")
+        print("-" * 70)
+        if buffer:
+            for i, move in enumerate(buffer[-10:], 1):  # Show last 10 moves
+                print(f"    Move {i}: {move:.4f}%")
+            if len(buffer) > 10:
+                print(f"    ... ({len(buffer) - 10} more moves)")
+        
+        print("=" * 70 + "\n")
+
+    def check_sustained_alert(self, alert, all_prices):
+        print(alert)
+        """
+        Check if a sustained move alert should be triggered.
+        
+        Supports:
+        - Single item (item_id set)
+        - Multiple specific items (sustained_item_ids JSON array)
+        - All items (is_all_items=True, with optional min/max price filter)
+        
+        Returns True if triggered, or a list of matching items for all-items alerts.
+        """
+        # Get required parameters
+        time_window_minutes = alert.time_frame  # Use dedicated time_frame field
+        min_moves = alert.min_consecutive_moves
+        min_move_pct = alert.min_move_percentage
+        vol_buffer_size = alert.volatility_buffer_size
+        vol_multiplier = alert.volatility_multiplier
+        min_volume = alert.min_volume
+        direction = (alert.direction or 'both').lower()
+        min_pressure_strength = alert.min_pressure_strength
+        min_pressure_spread_pct = alert.min_pressure_spread_pct
+        
+        if not all([time_window_minutes, min_moves, min_move_pct, vol_buffer_size, vol_multiplier]):
+            return False
+        
+        # Determine which items to check
+        items_to_check = []
+        
+        if alert.is_all_items:
+            # All items - filter by min/max price if set
+            for item_id, price_data in all_prices.items():
+                high = price_data.get('high')
+                low = price_data.get('low')
+                if high is None or low is None:
+                    continue
+                avg_price = (high + low) / 2
+                
+                # Apply price filters
+                if alert.minimum_price is not None and avg_price < alert.minimum_price:
+                    continue
+                if alert.maximum_price is not None and avg_price > alert.maximum_price:
+                    continue
+                
+                items_to_check.append(int(item_id))
+        elif alert.sustained_item_ids:
+            # Multiple specific items
+            try:
+                items_to_check = json.loads(alert.sustained_item_ids)
+            except:
+                items_to_check = []
+        elif alert.item_id:
+            # Single item
+            items_to_check = [alert.item_id]
+        
+        if not items_to_check:
+            return False
+        
+        now = time.time()
+        triggered_items = []
+        
+        for item_id in items_to_check:
+            result = self._check_sustained_for_item(
+                alert, item_id, all_prices, now,
+                time_window_minutes, min_moves, min_move_pct,
+                vol_buffer_size, vol_multiplier, min_volume, direction,
+                min_pressure_strength, min_pressure_spread_pct
+            )
+            if result:
+                triggered_items.append(result)
+        
+        if not triggered_items:
+            return False
+        
+        # For single item alerts, return True
+        if not alert.is_all_items and len(items_to_check) == 1:
+            alert.triggered_data = json.dumps(triggered_items[0])
+            return True
+        
+        # For multi-item or all-items, return the list
+        alert.triggered_data = json.dumps(triggered_items)
+        return triggered_items if alert.is_all_items else True
+    
+    def _check_sustained_for_item(self, alert, item_id, all_prices, now,
+                                   time_window_minutes, min_moves, min_move_pct,
+                                   vol_buffer_size, vol_multiplier, min_volume, direction,
+                                   min_pressure_strength=None, min_pressure_spread_pct=None):
+        """
+        Check sustained move conditions for a single item.
+        Returns trigger data dict if triggered, None otherwise.
+        """
+        price_data = all_prices.get(str(item_id))
+        if not price_data:
+            return None
+        
+        high = price_data.get('high')
+        low = price_data.get('low')
+        if high is None or low is None:
+            return None
+        
+        current_price = (high + low) / 2
+        
+        # State key includes both alert ID and item ID for multi-item support
+        state_key = f"{alert.id}:{item_id}"
+        
+        if state_key not in self.sustained_state:
+            self.sustained_state[state_key] = {
+                'last_price': current_price,
+                'streak_count': 0,
+                'streak_direction': None,
+                'streak_start_time': now,
+                'streak_start_price': current_price,
+                'volatility_buffer': []
+            }
+            return None  # Need at least one previous price to compare
+
+        
+        state = self.sustained_state[state_key]
+        last_price = state['last_price']
+        
+        if last_price == 0:
+            state['last_price'] = current_price
+            return None
+        
+        price_change_pct = ((current_price - last_price) / last_price) * 100
+        abs_change = abs(price_change_pct)
+        
+        # Always update volatility buffer
+        state['volatility_buffer'].append(abs_change)
+        if len(state['volatility_buffer']) > vol_buffer_size:
+            state['volatility_buffer'] = state['volatility_buffer'][-vol_buffer_size:]
+        
+        state['last_price'] = current_price
+        
+        # Determine move direction
+        if price_change_pct > 0:
+            move_dir = 'up'
+        elif price_change_pct < 0:
+            move_dir = 'down'
+        else:
+            move_dir = None
+        
+        # Check if this move counts
+        if abs_change >= min_move_pct and move_dir:
+            if state['streak_direction'] == move_dir:
+                state['streak_count'] += 1
+            elif state['streak_direction'] is None:
+                state['streak_count'] = 1
+                state['streak_direction'] = move_dir
+                state['streak_start_time'] = now
+                state['streak_start_price'] = last_price
+            else:
+                state['streak_count'] = 1
+                state['streak_direction'] = move_dir
+                state['streak_start_time'] = now
+                state['streak_start_price'] = last_price
+        
+        # Check time window
+        streak_duration = now - state['streak_start_time']
+        if streak_duration > (time_window_minutes * 60):
+            state['streak_count'] = 0
+            state['streak_direction'] = None
+            return None
+        
+        if state['streak_count'] < min_moves:
+            return None
+        
+        if direction != 'both' and state['streak_direction'] != direction:
+            return None
+        
+        # Check volume
+        volume = 0
+        if min_volume:
+            volume = self.get_volume_from_timeseries(item_id, time_window_minutes)
+            if volume is None or volume < min_volume:
+                return None
+        else:
+            volume = self.get_volume_from_timeseries(item_id, time_window_minutes) or 0
+        
+        # Volatility check
+        if len(state['volatility_buffer']) < 5:
+            return None
+        
+        avg_volatility = sum(state['volatility_buffer']) / len(state['volatility_buffer'])
+        required_move = vol_multiplier * avg_volatility
+        
+        streak_start_price = state['streak_start_price']
+        if streak_start_price == 0:
+            return None
+        total_move_pct = abs((current_price - streak_start_price) / streak_start_price * 100)
+        
+        if total_move_pct < required_move:
+            return None
+        
+        # Market pressure filter check
+        pressure_direction = None
+        pressure_strength = None
+        if min_pressure_strength:
+            high_time = price_data.get('highTime')
+            low_time = price_data.get('lowTime')
+            
+            # Determine pressure direction: BUY if highTime > lowTime, SELL if lowTime > highTime
+            if high_time and low_time:
+                if high_time > low_time:
+                    pressure_direction = 'buy'  # Recent buy = upward pressure
+                elif low_time > high_time:
+                    pressure_direction = 'sell'  # Recent sell = downward pressure
+                
+                # Calculate time delta and spread percentage
+                time_delta = abs(high_time - low_time)
+                spread_pct = ((high - low) / low * 100) if low > 0 else 0
+                
+                # Determine pressure strength based on time_delta
+                if time_delta < 60:
+                    pressure_strength = 'strong'
+                elif time_delta < 300:
+                    pressure_strength = 'moderate'
+                else:
+                    pressure_strength = 'weak'
+                
+                # Check if spread meets threshold (if configured)
+                spread_ok = True
+                if min_pressure_spread_pct and spread_pct < min_pressure_spread_pct:
+                    spread_ok = False
+                
+                # Check if pressure strength meets minimum requirement
+                strength_order = {'weak': 1, 'moderate': 2, 'strong': 3}
+                required_strength = strength_order.get(min_pressure_strength, 0)
+                actual_strength = strength_order.get(pressure_strength, 0)
+                strength_ok = actual_strength >= required_strength
+                
+                # Pressure direction must match streak direction
+                # BUY pressure = expecting UP movement, SELL pressure = expecting DOWN movement
+                direction_match = (
+                    (pressure_direction == 'buy' and state['streak_direction'] == 'up') or
+                    (pressure_direction == 'sell' and state['streak_direction'] == 'down')
+                )
+                
+                # All pressure conditions must be met
+                if not (spread_ok and strength_ok and direction_match):
+                    return None
+        
+        # TRIGGERED!
+        item_mapping = self.get_item_mapping()
+        item_name = item_mapping.get(str(item_id), f'Item {item_id}')
+        
+        trigger_data = {
+            'item_id': item_id,
+            'item_name': item_name,
+            'streak_direction': state['streak_direction'],
+            'streak_count': state['streak_count'],
+            'total_move_percent': round(total_move_pct, 4),
+            'start_price': streak_start_price,
+            'current_price': current_price,
+            'volume': volume,
+            'avg_volatility': round(avg_volatility, 4),
+            'required_move': round(required_move, 4),
+            'time_window_minutes': time_window_minutes,
+            'pressure_direction': pressure_direction,
+            'pressure_strength': pressure_strength
+        }
+        
+        # Print debug info
+        self.print_sustained_debug(alert, state, trigger_data)
+        
+        # Reset streak after trigger
+        state['streak_count'] = 0
+        state['streak_direction'] = None
+        
+        return trigger_data
+
     def send_alert_notification(self, alert, triggered_text):
         """
         Send email/SMS notification when an alert is triggered.
@@ -101,6 +457,10 @@ class Command(BaseCommand):
 
     def check_alert(self, alert, all_prices):
         """Check if an alert should be triggered. Returns True/False or list of matching items for all_items spread."""
+        
+        # Handle sustained move alerts
+        if alert.type == 'sustained':
+            return self.check_sustained_alert(alert, all_prices)
         
         # Handle spread alerts
         if alert.type == 'spread':
@@ -303,10 +663,10 @@ class Command(BaseCommand):
         while True:
             # Get all active alerts (include triggered all_items spread alerts for re-check)
             active_alerts = Alert.objects.filter(is_active=True)
-            # Filter to non-triggered OR is_all_items spread/spike (which can re-trigger)
+            # Filter to non-triggered OR is_all_items spread/spike (which can re-trigger) OR sustained (which can re-trigger)
             alerts_to_check = [
                 a for a in active_alerts
-                if (not a.is_triggered) or (a.type == 'spread' and a.is_all_items) or (a.type == 'spike' and a.is_all_items)
+                if (not a.is_triggered) or (a.type == 'spread' and a.is_all_items) or (a.type == 'spike' and a.is_all_items) or (a.type == 'sustained')
             ]
             
             if alerts_to_check:
@@ -347,6 +707,25 @@ class Command(BaseCommand):
                                 )
                                 if alert.email_notification:
                                     self.send_alert_notification(alert, alert.triggered_text())
+                            elif alert.type == 'sustained':
+                                # Sustained alerts stay active for re-triggering
+                                alert.is_triggered = True
+                                alert.is_dismissed = False
+                                alert.is_active = True  # Keep monitoring
+                                alert.triggered_at = timezone.now()
+                                alert.save()
+                                
+                                # Log appropriately based on result type
+                                if isinstance(result, list):
+                                    self.stdout.write(
+                                        self.style.WARNING(f'TRIGGERED (sustained move - all items): {len(result)} items matched')
+                                    )
+                                else:
+                                    self.stdout.write(
+                                        self.style.WARNING(f'TRIGGERED (sustained move): {alert.item_name or "multiple items"}')
+                                    )
+                                if alert.email_notification:
+                                    self.send_alert_notification(alert, alert.triggered_text())
                             else:
                                 alert.is_triggered = True
                                 # Deactivate alert if it's not for all items
@@ -364,4 +743,4 @@ class Command(BaseCommand):
                 self.stdout.write('No alerts to check.')
             
             # Wait 30 seconds before next check
-            time.sleep(10)
+            time.sleep(3)
