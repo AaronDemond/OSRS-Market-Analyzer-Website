@@ -204,7 +204,8 @@
         font-weight: 600;
         color: var(--text);
         font-size: 1rem;
-        text-decoration: none;
+        text-decoration: underline;
+        text-underline-offset: 2px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -711,7 +712,7 @@
         {% for fav in grouped_favorites|get_item:group.id %}
         <div class="favorite-item" data-item-id="{{ fav.item_id }}" data-group-id="{{ fav.group_id }}">
             <div class="favorite-item-header">
-                <a href="{% url 'item_detail' fav.item_id %}" class="favorite-item-name">{{ fav.item_name }}</a>
+                <a href="{% url 'item_search' %}?id={{ fav.item_id }}&name={{ fav.item_name|urlencode }}" class="favorite-item-name">{{ fav.item_name }}</a>
                 <button class="favorite-remove" onclick="removeFavorite({{ fav.item_id }}, '{{ fav.item_name|escapejs }}')" title="Remove">×</button>
             </div>
             <div class="favorite-prices">
@@ -752,7 +753,7 @@
         {% for fav in ungrouped_favorites %}
         <div class="favorite-item" data-item-id="{{ fav.item_id }}">
             <div class="favorite-item-header">
-                <a href="{% url 'item_detail' fav.item_id %}" class="favorite-item-name">{{ fav.item_name }}</a>
+                <a href="{% url 'item_search' %}?id={{ fav.item_id }}&name={{ fav.item_name|urlencode }}" class="favorite-item-name">{{ fav.item_name }}</a>
                 <button class="favorite-remove" onclick="removeFavorite({{ fav.item_id }}, '{{ fav.item_name|escapejs }}')" title="Remove">×</button>
             </div>
             <div class="favorite-prices">

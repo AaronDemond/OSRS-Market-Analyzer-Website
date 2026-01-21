@@ -808,14 +808,29 @@ const ItemSearch = {
         this.setupPreviousSearches();
         this.syncPreviousSearchesHeight();
         
-        // Only restore if this is a refresh (not a fresh navigation)
-        const navType = performance.getEntriesByType('navigation')[0]?.type;
-        if (navType === 'reload') {
-            this.restoreLastItem();
+        // Check for URL parameters first (e.g., ?id=123&name=ItemName)
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlItemId = urlParams.get('id');
+        const urlItemName = urlParams.get('name');
+        
+        if (urlItemId) {
+            // Load item from URL parameter
+            this.currentItemId = urlItemId;
+            this.currentItemName = urlItemName || '';
+            this.loadItemData(urlItemId);
+            if (urlItemName) {
+                this.addToPreviousSearches(urlItemId, urlItemName);
+            }
         } else {
-            // Clear any stored item on fresh navigation
-            sessionStorage.removeItem('lastItemId');
-            sessionStorage.removeItem('lastItemName');
+            // Only restore if this is a refresh (not a fresh navigation)
+            const navType = performance.getEntriesByType('navigation')[0]?.type;
+            if (navType === 'reload') {
+                this.restoreLastItem();
+            } else {
+                // Clear any stored item on fresh navigation
+                sessionStorage.removeItem('lastItemId');
+                sessionStorage.removeItem('lastItemName');
+            }
         }
         
         // Re-sync on window resize
