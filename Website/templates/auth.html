@@ -217,9 +217,34 @@
 
     .auth-message {
         padding: 12px 14px;
+        padding-right: 36px;
         border-radius: 8px;
         margin-bottom: 16px;
         font-size: 0.9rem;
+        position: relative;
+    }
+
+    .auth-message .dismiss-btn {
+        position: absolute;
+        top: 50%;
+        right: 10px;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 4px;
+        opacity: 0.6;
+        transition: opacity 0.2s;
+        color: inherit;
+    }
+
+    .auth-message .dismiss-btn:hover {
+        opacity: 1;
+    }
+
+    .auth-message .dismiss-btn svg {
+        width: 16px;
+        height: 16px;
     }
 
     .auth-message.error {
@@ -319,6 +344,11 @@
                 {% for message in messages %}
                 <div class="auth-message {% if message.tags %}{{ message.tags }}{% endif %}">
                     {{ message }}
+                    <button type="button" class="dismiss-btn" onclick="this.parentElement.remove()">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
                 </div>
                 {% endfor %}
             {% endif %}

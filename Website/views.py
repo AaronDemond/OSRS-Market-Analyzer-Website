@@ -1597,3 +1597,197 @@ def logout_view(request):
     logout(request)
     messages.success(request, 'You have been logged out.')
     return redirect('auth')
+
+
+def settings_view(request):
+    """Display user settings page"""
+    if not request.user.is_authenticated:
+        return redirect('auth')
+    return render(request, 'settings.html')
+
+
+def change_email_view(request):
+    """Handle email change"""
+    if not request.user.is_authenticated:
+        return redirect('auth')
+    
+    if request.method != 'POST':
+        return redirect('settings')
+    
+    new_email = request.POST.get('new_email', '').strip().lower()
+    password = request.POST.get('password', '')
+    
+    # Validate password
+    if not request.user.check_password(password):
+        messages.error(request, 'Incorrect password.')
+        return redirect('settings')
+    
+    # Validate email format
+    if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', new_email):
+        messages.error(request, 'Please enter a valid email address.')
+        return redirect('settings')
+    
+    # Check if email already exists
+    if User.objects.filter(username=new_email).exclude(pk=request.user.pk).exists():
+        messages.error(request, 'This email is already in use.')
+        return redirect('settings')
+    
+    # Update email
+    request.user.username = new_email
+    request.user.email = new_email
+    request.user.save()
+    
+    messages.success(request, 'Email address updated successfully.')
+    return redirect('settings')
+
+
+def request_password_reset_view(request):
+    """Send password reset email"""
+    from .models import PasswordResetToken
+    import secrets
+    from django.core.mail import send_mail
+    from django.conf import settings as django_settings
+    
+    if not request.user.is_authenticated:
+        return redirect('auth')
+    
+    if request.method != 'POST':
+        return redirect('settings')
+    
+    # Generate secure random token
+    token = secrets.token_urlsafe(48)
+    
+    # Create token record
+    PasswordResetToken.objects.create(
+        user=request.user,
+        token=token
+    )
+    
+    # Build reset URL
+    reset_url = request.build_absolute_uri(f'/reset-password/{token}/')
+    
+    # Send email
+    try:
+        send_mail(
+            subject='GE Tools - Password Reset Request',
+            message=f'''You requested a password reset for your GE Tools account.
+
+Click the link below to reset your password:
+{reset_url}
+
+This link will expire in 1 hour.
+
+If you did not request this password reset, please ignore this email.
+
+- GE Tools Team''',
+            from_email=getattr(django_settings, 'DEFAULT_FROM_EMAIL', 'noreply@getools.com'),
+            recipient_list=[request.user.email],
+            fail_silently=False,
+        )
+        messages.success(request, 'Password reset link sent to your email.')
+    except Exception as e:
+        messages.error(request, f'Failed to send email. Please try again later.')
+    
+    return redirect('settings')
+
+
+def reset_password_view(request, token):
+    """Handle password reset from email link"""
+    from .models import PasswordResetToken
+    
+    try:
+        reset_token = PasswordResetToken.objects.get(token=token)
+    except PasswordResetToken.DoesNotExist:
+        return render(request, 'reset_password.html', {'valid': False})
+    
+    if not reset_token.is_valid():
+        return render(request, 'reset_password.html', {'valid': False})
+    
+    if request.method == 'POST':
+        new_password = request.POST.get('new_password', '')
+        confirm_password = request.POST.get('confirm_password', '')
+        
+        # Validate passwords match
+        if new_password != confirm_password:
+            messages.error(request, 'Passwords do not match.')
+            return render(request, 'reset_password.html', {
+                'valid': True,
+                'token': token,
+                'email': reset_token.user.email
+            })
+        
+        # Validate password requirements
+        if len(new_password) < 8:
+            messages.error(request, 'Password must be at least 8 characters long.')
+            return render(request, 'reset_password.html', {
+                'valid': True,
+                'token': token,
+                'email': reset_token.user.email
+            })
+        
+        if not re.search(r'\d', new_password):
+            messages.error(request, 'Password must contain at least one number.')
+            return render(request, 'reset_password.html', {
+                'valid': True,
+                'token': token,
+                'email': reset_token.user.email
+            })
+        
+        if not re.search(r'[!@#$%^&*()_+\-=\[\]{};\':"\\|,.<>\/?]', new_password):
+            messages.error(request, 'Password must contain at least one symbol.')
+            return render(request, 'reset_password.html', {
+                'valid': True,
+                'token': token,
+                'email': reset_token.user.email
+            })
+        
+        # Update password
+        user = reset_token.user
+        user.set_password(new_password)
+        user.save()
+        
+        # Mark token as used
+        reset_token.used = True
+        reset_token.save()
+        
+        # Log the user in
+        login(request, user)
+        
+        messages.success(request, 'Password updated successfully.')
+        return redirect('settings')
+    
+    return render(request, 'reset_password.html', {
+        'valid': True,
+        'token': token,
+        'email': reset_token.user.email
+    })
+
+
+def delete_account_view(request):
+    """Handle account deletion"""
+    if not request.user.is_authenticated:
+        return redirect('auth')
+    
+    if request.method != 'POST':
+        return redirect('settings')
+    
+    password = request.POST.get('password', '')
+    confirm_text = request.POST.get('confirm_text', '')
+    
+    # Validate password
+    if not request.user.check_password(password):
+        messages.error(request, 'Incorrect password.')
+        return redirect('settings')
+    
+    # Validate confirmation text
+    if confirm_text != 'DELETE':
+        messages.error(request, 'Please type DELETE to confirm.')
+        return redirect('settings')
+    
+    # Delete user (cascades to related data)
+    user = request.user
+    logout(request)
+    user.delete()
+    
+    messages.success(request, 'Your account has been deleted.')
+    return redirect('auth')

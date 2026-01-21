@@ -202,7 +202,7 @@ body {
 }
 
 .sidebar-footer .user-link {
-    font-size: 0.85rem;
+    font-size: 0.55rem;
     color: rgba(255, 255, 255, 0.5);
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }

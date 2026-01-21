@@ -53,4 +53,9 @@ urlpatterns = [
     path('login/', views.login_view, name='login'),
     path('signup/', views.signup_view, name='signup'),
     path('logout/', views.logout_view, name='logout'),
+    path('settings/', views.settings_view, name='settings'),
+    path('settings/change-email/', views.change_email_view, name='change_email'),
+    path('settings/request-password-reset/', views.request_password_reset_view, name='request_password_reset'),
+    path('reset-password/<str:token>/', views.reset_password_view, name='reset_password'),
+    path('settings/delete-account/', views.delete_account_view, name='delete_account'),
 ]

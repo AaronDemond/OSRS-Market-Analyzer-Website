@@ -1,0 +1,527 @@
+{% extends 'base.html' %}
+
+{% block title %}Account Settings - GE Tools{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --bg: #F8F9FA;
+        --surface: #FFFFFF;
+        --surface-2: #F5F6F8;
+        --border: #E5E7EB;
+        --text: #374151;
+        --muted: #6B7280;
+        --primary: #6366F1;
+        --primary-hover: #5558E3;
+        --success: #22C55E;
+        --danger: #EF4444;
+        --danger-hover: #DC2626;
+    }
+
+    .settings-container {
+        max-width: 600px;
+        margin: 40px auto;
+        padding: 0 20px;
+    }
+
+    .settings-header {
+        margin-bottom: 24px;
+    }
+
+    .settings-header h1 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--text);
+        margin: 0 0 8px 0;
+    }
+
+    .settings-header p {
+        color: var(--muted);
+        margin: 0;
+    }
+
+    .settings-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+
+    .settings-card-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border);
+        background: var(--surface-2);
+    }
+
+    .settings-card-header h2 {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .settings-card-header h2 svg {
+        width: 20px;
+        height: 20px;
+        color: var(--muted);
+    }
+
+    .settings-card-body {
+        padding: 20px;
+    }
+
+    .settings-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 0;
+    }
+
+    .settings-row:not(:last-child) {
+        border-bottom: 1px solid var(--border);
+    }
+
+    .settings-row-info {
+        flex: 1;
+    }
+
+    .settings-row-label {
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 4px;
+    }
+
+    .settings-row-value {
+        font-size: 0.9rem;
+        color: var(--muted);
+    }
+
+    .settings-btn {
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+    }
+
+    .settings-btn-primary {
+        background: var(--primary);
+        color: white;
+    }
+
+    .settings-btn-primary:hover {
+        background: var(--primary-hover);
+    }
+
+    .settings-btn-danger {
+        background: var(--danger);
+        color: white;
+    }
+
+    .settings-btn-danger:hover {
+        background: var(--danger-hover);
+    }
+
+    .settings-btn-outline {
+        background: transparent;
+        color: var(--text);
+        border: 1px solid var(--border);
+    }
+
+    .settings-btn-outline:hover {
+        background: var(--surface-2);
+    }
+
+    /* Modal styles */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.2s;
+    }
+
+    .modal-overlay.active {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .modal-content {
+        background: var(--surface);
+        border-radius: 12px;
+        width: 100%;
+        max-width: 420px;
+        margin: 20px;
+        transform: scale(0.95);
+        transition: transform 0.2s;
+    }
+
+    .modal-overlay.active .modal-content {
+        transform: scale(1);
+    }
+
+    .modal-header {
+        padding: 20px;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .modal-header h3 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--text);
+        margin: 0;
+    }
+
+    .modal-body {
+        padding: 20px;
+    }
+
+    .modal-footer {
+        padding: 16px 20px;
+        border-top: 1px solid var(--border);
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+    }
+
+    .form-group {
+        margin-bottom: 16px;
+    }
+
+    .form-group:last-child {
+        margin-bottom: 0;
+    }
+
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--text);
+        margin-bottom: 8px;
+    }
+
+    .form-group input {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        font-size: 0.95rem;
+        color: var(--text);
+        background: var(--surface);
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .form-group input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    .form-error {
+        color: var(--danger);
+        font-size: 0.85rem;
+        margin-top: 6px;
+    }
+
+    .alert {
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-size: 0.9rem;
+    }
+
+    .alert-success {
+        background: rgba(34, 197, 94, 0.1);
+        color: #16A34A;
+        border: 1px solid rgba(34, 197, 94, 0.2);
+    }
+
+    .alert-error {
+        background: rgba(239, 68, 68, 0.1);
+        color: #DC2626;
+        border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+
+    .alert-info {
+        background: rgba(99, 102, 241, 0.1);
+        color: #4F46E5;
+        border: 1px solid rgba(99, 102, 241, 0.2);
+    }
+
+    .danger-zone {
+        border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    .danger-zone .settings-card-header {
+        background: rgba(239, 68, 68, 0.05);
+        border-color: rgba(239, 68, 68, 0.2);
+    }
+
+    .danger-zone .settings-card-header h2 {
+        color: var(--danger);
+    }
+
+    .danger-zone .settings-card-header h2 svg {
+        color: var(--danger);
+    }
+
+    .delete-warning {
+        font-size: 0.9rem;
+        color: var(--muted);
+        margin-bottom: 16px;
+    }
+
+    .delete-warning strong {
+        color: var(--danger);
+    }
+
+    @media (max-width: 480px) {
+        .settings-container {
+            margin: 20px auto;
+        }
+
+        .settings-row {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="settings-container">
+    <div class="settings-header">
+        <h1>Account Settings</h1>
+        <p>Manage your account preferences</p>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}error{% elif message.tags == 'success' %}success{% else %}info{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Email Settings -->
+    <div class="settings-card">
+        <div class="settings-card-header">
+            <h2>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                </svg>
+                Email Address
+            </h2>
+        </div>
+        <div class="settings-card-body">
+            <div class="settings-row">
+                <div class="settings-row-info">
+                    <div class="settings-row-label">Current Email</div>
+                    <div class="settings-row-value">{{ user.email }}</div>
+                </div>
+                <button class="settings-btn settings-btn-primary" onclick="openModal('emailModal')">Change Email</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Password Settings -->
+    <div class="settings-card">
+        <div class="settings-card-header">
+            <h2>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                </svg>
+                Password
+            </h2>
+        </div>
+        <div class="settings-card-body">
+            <div class="settings-row">
+                <div class="settings-row-info">
+                    <div class="settings-row-label">Password</div>
+                    <div class="settings-row-value">••••••••••••</div>
+                </div>
+                <button class="settings-btn settings-btn-primary" onclick="openModal('passwordModal')">Change Password</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logout -->
+    <div class="settings-card">
+        <div class="settings-card-header">
+            <h2>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                </svg>
+                Session
+            </h2>
+        </div>
+        <div class="settings-card-body">
+            <div class="settings-row">
+                <div class="settings-row-info">
+                    <div class="settings-row-label">Sign Out</div>
+                    <div class="settings-row-value">Sign out of your account on this device</div>
+                </div>
+                <a href="{% url 'logout' %}" class="settings-btn settings-btn-outline">Logout</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Danger Zone -->
+    <div class="settings-card danger-zone">
+        <div class="settings-card-header">
+            <h2>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+                Danger Zone
+            </h2>
+        </div>
+        <div class="settings-card-body">
+            <div class="settings-row">
+                <div class="settings-row-info">
+                    <div class="settings-row-label">Delete Account</div>
+                    <div class="settings-row-value">Permanently delete your account and all data</div>
+                </div>
+                <button class="settings-btn settings-btn-danger" onclick="openModal('deleteModal')">Delete Account</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Change Email Modal -->
+<div class="modal-overlay" id="emailModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Change Email Address</h3>
+        </div>
+        <form method="post" action="{% url 'change_email' %}">
+            {% csrf_token %}
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="current-email">Current Email</label>
+                    <input type="email" id="current-email" value="{{ user.email }}" disabled>
+                </div>
+                <div class="form-group">
+                    <label for="new-email">New Email Address</label>
+                    <input type="email" id="new-email" name="new_email" required autocomplete="email">
+                </div>
+                <div class="form-group">
+                    <label for="email-password">Confirm Password</label>
+                    <input type="password" id="email-password" name="password" required autocomplete="current-password">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="settings-btn settings-btn-outline" onclick="closeModal('emailModal')">Cancel</button>
+                <button type="submit" class="settings-btn settings-btn-primary">Update Email</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Change Password Modal -->
+<div class="modal-overlay" id="passwordModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Change Password</h3>
+        </div>
+        <form method="post" action="{% url 'request_password_reset' %}">
+            {% csrf_token %}
+            <div class="modal-body">
+                <p style="color: var(--muted); margin: 0 0 16px 0;">
+                    We'll send a password reset link to your email address: <strong>{{ user.email }}</strong>
+                </p>
+                <p style="color: var(--muted); font-size: 0.85rem; margin: 0;">
+                    The link will expire in 1 hour.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="settings-btn settings-btn-outline" onclick="closeModal('passwordModal')">Cancel</button>
+                <button type="submit" class="settings-btn settings-btn-primary">Send Reset Link</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Account Modal -->
+<div class="modal-overlay" id="deleteModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Delete Account</h3>
+        </div>
+        <form method="post" action="{% url 'delete_account' %}">
+            {% csrf_token %}
+            <div class="modal-body">
+                <div class="delete-warning">
+                    <strong>Warning:</strong> This action cannot be undone. All your data including flips, alerts, and favorites will be permanently deleted.
+                </div>
+                <div class="form-group">
+                    <label for="delete-password">Confirm Password</label>
+                    <input type="password" id="delete-password" name="password" required autocomplete="current-password">
+                </div>
+                <div class="form-group">
+                    <label for="delete-confirm">Type "DELETE" to confirm</label>
+                    <input type="text" id="delete-confirm" name="confirm_text" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="settings-btn settings-btn-outline" onclick="closeModal('deleteModal')">Cancel</button>
+                <button type="submit" class="settings-btn settings-btn-danger" id="deleteSubmitBtn" disabled>Delete Account</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openModal(modalId) {
+    document.getElementById(modalId).classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+// Close modal on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', function(e) {
+        if (e.target === this) {
+            this.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    });
+});
+
+// Close modal on Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-overlay.active').forEach(modal => {
+            modal.classList.remove('active');
+        });
+        document.body.style.overflow = '';
+    }
+});
+
+// Enable delete button only when "DELETE" is typed
+document.getElementById('delete-confirm').addEventListener('input', function() {
+    document.getElementById('deleteSubmitBtn').disabled = this.value !== 'DELETE';
+});
+</script>
+{% endblock %}
