@@ -28,6 +28,71 @@
         --hover-orange-light: #FDBA74;
     }
 
+    /* Skeleton loading animation */
+    @keyframes skeleton-pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.4; }
+    }
+    
+    .skeleton {
+        background: linear-gradient(90deg, #E5E7EB 25%, #F3F4F6 50%, #E5E7EB 75%);
+        background-size: 200% 100%;
+        animation: skeleton-pulse 1.5s ease-in-out infinite;
+        border-radius: 4px;
+    }
+    
+    .skeleton-text {
+        height: 1em;
+        display: inline-block;
+        min-width: 60px;
+    }
+    
+    .skeleton-stat-value {
+        height: 28px;
+        width: 100px;
+    }
+    
+    .skeleton-table-row td {
+        padding: 12px 14px !important;
+    }
+    
+    .skeleton-cell {
+        height: 16px;
+        width: 80%;
+        display: block;
+    }
+    
+    /* Loading state for stats */
+    .stats-row.loading .stat-value {
+        visibility: hidden;
+        position: relative;
+    }
+    
+    .stats-row.loading .stat-value::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 80px;
+        height: 24px;
+        background: linear-gradient(90deg, #E5E7EB 25%, #F3F4F6 50%, #E5E7EB 75%);
+        background-size: 200% 100%;
+        animation: skeleton-pulse 1.5s ease-in-out infinite;
+        border-radius: 4px;
+        visibility: visible;
+    }
+    
+    /* Fade in animation for loaded content */
+    .fade-in {
+        animation: fadeIn 0.3s ease-out;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
     .page-header {
         display: flex;
         align-items: center;
@@ -1373,18 +1438,18 @@
     </div>
 </div>
 
-<div class="stats-row">
-    <div class="stat-card" data-tone="{% if total_unrealized >= 0 %}success{% else %}danger{% endif %}">
+<div class="stats-row loading" id="statsRow">
+    <div class="stat-card" data-tone="info" id="statUnrealized">
         <span class="stat-label">Unrealized Net</span>
-        <span class="stat-value {% if total_unrealized > 0 %}pnl-pos{% elif total_unrealized < 0 %}pnl-neg{% else %}pnl-zero{% endif %}">{% if total_unrealized >= 0 %}+{% endif %}{{ total_unrealized|floatformat:0|intcomma }} gp</span>
+        <span class="stat-value pnl-zero" id="statUnrealizedValue">-- gp</span>
     </div>
-    <div class="stat-card" data-tone="{% if total_realized >= 0 %}success{% else %}danger{% endif %}">
+    <div class="stat-card" data-tone="info" id="statRealized">
         <span class="stat-label">Realized Net</span>
-        <span class="stat-value {% if total_realized > 0 %}pnl-pos{% elif total_realized < 0 %}pnl-neg{% else %}pnl-zero{% endif %}">{% if total_realized >= 0 %}+{% endif %}{{ total_realized|floatformat:0|intcomma }} gp</span>
+        <span class="stat-value pnl-zero" id="statRealizedValue">-- gp</span>
     </div>
-    <div class="stat-card" data-tone="info">
+    <div class="stat-card" data-tone="info" id="statPosition">
         <span class="stat-label">Position Size</span>
-        <span class="stat-value">{{ position_size|floatformat:0|intcomma }} gp</span>
+        <span class="stat-value" id="statPositionValue">-- gp</span>
     </div>
 </div>
 
@@ -1752,27 +1817,16 @@
             <th class="sortable" data-col="7" data-type="number"><span class="d-none d-md-inline">Realized Net</span><span class="d-md-none">Real.</span> <span class="sort-icon"></span></th>
         </tr>
     </thead>
-    <tbody>
-        {% for item in items %}
-        <tr data-item-id="{{ item.item_id }}" data-item-name="{{ item.name }}" data-first-buy="{{ item.first_buy_timestamp|default:'' }}" data-position-size="{{ item.position_size }}">
-            <td>
-                <a href="{% url 'item_detail' item.item_id %}">{{ item.name }}</a>
-                <div class="time-held-subtext" style="display: none;"></div>
-                <div class="position-size-subtext" style="display: none;"></div>
+    <tbody id="flipsTableBody">
+        <!-- Skeleton loading rows - shown while data loads -->
+        <tr class="skeleton-row">
+            <td colspan="8" class="text-center" style="padding: 20px; color: var(--muted);">
+                <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+                    <div class="spinner-border spinner-border-sm" role="status" style="color: var(--primary);"></div>
+                    <span>Loading flip data...</span>
+                </div>
             </td>
-            <td data-value="{{ item.avg_price }}">{{ item.avg_price|intcomma }}</td>
-            <td data-value="{{ item.quantity_holding }}">{{ item.quantity_holding|intcomma }}</td>
-            <td data-value="{{ item.position_size }}">{{ item.position_size|floatformat:0|intcomma }}</td>
-            <td data-value="{{ item.high_price|default:0 }}">{% if item.high_price %}{{ item.high_price|intcomma }}{% else %}-{% endif %}</td>
-            <td data-value="{{ item.low_price|default:0 }}">{% if item.low_price %}{{ item.low_price|intcomma }}{% else %}-{% endif %}</td>
-            <td data-value="{{ item.unrealized_net }}" class="{% if item.unrealized_net > 0 %}pnl-pos{% elif item.unrealized_net < 0 %}pnl-neg{% else %}pnl-zero{% endif %}">{% if item.unrealized_net >= 0 %}+{% endif %}{{ item.unrealized_net|floatformat:0|intcomma }}</td>
-            <td data-value="{{ item.realized_net }}" class="{% if item.realized_net > 0 %}pnl-pos{% elif item.realized_net < 0 %}pnl-neg{% else %}pnl-zero{% endif %}">{% if item.realized_net >= 0 %}+{% endif %}{{ item.realized_net|floatformat:0|intcomma }}</td>
         </tr>
-        {% empty %}
-        <tr>
-            <td colspan="8" class="text-center">No flips recorded yet.</td>
-        </tr>
-        {% endfor %}
     </tbody>
 </table>
 
@@ -1781,10 +1835,133 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Auto-refresh page every 5 minutes
-    setInterval(function() {
-        window.location.reload();
-    }, 5 * 60 * 1000);
+    // =========================================================================
+    // PROGRESSIVE DATA LOADING
+    // =========================================================================
+    
+    const timeFilter = '{{ time_filter }}';
+    let flipsData = null;
+    
+    function formatNumber(num) {
+        return num.toLocaleString();
+    }
+    
+    function formatNumberWithSign(num) {
+        return (num >= 0 ? '+' : '') + Math.round(num).toLocaleString();
+    }
+    
+    function getPnlClass(value) {
+        if (value > 0) return 'pnl-pos';
+        if (value < 0) return 'pnl-neg';
+        return 'pnl-zero';
+    }
+    
+    function updateStats(stats) {
+        const statsRow = document.getElementById('statsRow');
+        
+        // Unrealized
+        const unrealizedCard = document.getElementById('statUnrealized');
+        const unrealizedValue = document.getElementById('statUnrealizedValue');
+        unrealizedCard.dataset.tone = stats.total_unrealized >= 0 ? 'success' : 'danger';
+        unrealizedValue.className = 'stat-value ' + getPnlClass(stats.total_unrealized);
+        unrealizedValue.textContent = formatNumberWithSign(stats.total_unrealized) + ' gp';
+        
+        // Realized
+        const realizedCard = document.getElementById('statRealized');
+        const realizedValue = document.getElementById('statRealizedValue');
+        realizedCard.dataset.tone = stats.total_realized >= 0 ? 'success' : 'danger';
+        realizedValue.className = 'stat-value ' + getPnlClass(stats.total_realized);
+        realizedValue.textContent = formatNumberWithSign(stats.total_realized) + ' gp';
+        
+        // Position Size
+        const positionValue = document.getElementById('statPositionValue');
+        positionValue.textContent = formatNumber(stats.position_size) + ' gp';
+        
+        // Remove loading state
+        statsRow.classList.remove('loading');
+        statsRow.classList.add('fade-in');
+    }
+    
+    function renderTableRows(items) {
+        const tbody = document.getElementById('flipsTableBody');
+        
+        if (items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center">No flips recorded yet.</td></tr>';
+            return;
+        }
+        
+        let html = '';
+        items.forEach(item => {
+            html += `
+            <tr data-item-id="${item.item_id}" data-item-name="${item.name}" data-first-buy="${item.first_buy_timestamp || ''}" data-position-size="${item.position_size}">
+                <td>
+                    <a href="/flips/item/${item.item_id}/">${item.name}</a>
+                    <div class="time-held-subtext" style="display: none;"></div>
+                    <div class="position-size-subtext" style="display: none;"></div>
+                </td>
+                <td data-value="${item.avg_price}">${formatNumber(item.avg_price)}</td>
+                <td data-value="${item.quantity_holding}">${formatNumber(item.quantity_holding)}</td>
+                <td data-value="${item.position_size}">${formatNumber(item.position_size)}</td>
+                <td data-value="${item.high_price || 0}">${item.high_price ? formatNumber(item.high_price) : '-'}</td>
+                <td data-value="${item.low_price || 0}">${item.low_price ? formatNumber(item.low_price) : '-'}</td>
+                <td data-value="${item.unrealized_net}" class="${getPnlClass(item.unrealized_net)}">${formatNumberWithSign(item.unrealized_net)}</td>
+                <td data-value="${item.realized_net}" class="${getPnlClass(item.realized_net)}">${formatNumberWithSign(item.realized_net)}</td>
+            </tr>`;
+        });
+        
+        tbody.innerHTML = html;
+        tbody.classList.add('fade-in');
+        
+        // Apply mobile formatting after rendering
+        applyMobileFormatting();
+        
+        // Re-initialize sorting after data loads
+        initTableSort();
+        
+        // Apply initial sort by time held
+        triggerInitialSort();
+    }
+    
+    function loadFlipsStats() {
+        // Fast stats load - uses cached values, no external API calls
+        fetch('/api/flips/stats/')
+            .then(response => response.json())
+            .then(stats => {
+                updateStats({
+                    total_unrealized: stats.total_unrealized,
+                    total_realized: stats.total_realized,
+                    position_size: stats.position_size
+                });
+            })
+            .catch(error => {
+                console.error('Error loading flips stats:', error);
+            });
+    }
+    
+    function loadFlipsData() {
+        const url = '/api/flips/data/' + (timeFilter !== 'current' ? '?filter=' + timeFilter : '');
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                flipsData = data;
+                // Update stats again with fresh values (recalculated with live prices)
+                updateStats(data.stats);
+                renderTableRows(data.items);
+            })
+            .catch(error => {
+                console.error('Error loading flips data:', error);
+                document.getElementById('flipsTableBody').innerHTML = 
+                    '<tr><td colspan="8" class="text-center text-danger">Error loading data. Please refresh the page.</td></tr>';
+            });
+    }
+    
+    // Load stats instantly (cached values), then load full data
+    loadFlipsStats();
+    loadFlipsData();
+    
+    // Auto-refresh data every 5 minutes (instead of page reload)
+    setInterval(loadFlipsData, 5 * 60 * 1000);
     
     // =========================================================================
     // MOBILE NUMBER FORMATTING
@@ -1939,8 +2116,22 @@ document.addEventListener('DOMContentLoaded', function() {
         rows.forEach(row => tableBody.appendChild(row));
     }
     
-    // Sort alphabetically on page load
-    sortTableAlphabetically();
+    // Function to trigger initial sort (called after data loads via AJAX)
+    function triggerInitialSort() {
+        sortTableAlphabetically();
+    }
+    
+    // Function to re-initialize table sorting (called after data loads via AJAX)
+    // Note: Column header event listeners are set up once on DOMContentLoaded
+    // This function exists for any post-load cleanup if needed
+    function initTableSort() {
+        // Headers already have event listeners from initial setup
+        // Just ensure any filter state is consistent
+    }
+    
+    // Make functions globally accessible for AJAX callbacks
+    window.triggerInitialSort = triggerInitialSort;
+    window.initTableSort = initTableSort;
     
     // Function to clear column header sort styling
     function clearColumnSortStyling() {

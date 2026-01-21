@@ -189,7 +189,40 @@ def home(request):
 
 
 def flips(request):
-    # Get time filter from query params
+    # Return lightweight template - data loaded via AJAX
+    time_filter = request.GET.get('filter', 'current')
+    return render(request, 'flips.html', {
+        'time_filter': time_filter,
+    })
+
+
+def flips_stats_api(request):
+    """Fast API endpoint for stats only - loads instantly without price fetching"""
+    user = request.user if request.user.is_authenticated else None
+    
+    if not user:
+        return JsonResponse({
+            'total_unrealized': 0,
+            'total_realized': 0,
+            'position_size': 0,
+        })
+    
+    flip_profits_qs = FlipProfit.objects.filter(user=user)
+    
+    # Use cached values from database - no external API calls
+    total_unrealized = flip_profits_qs.aggregate(total=Sum('unrealized_net'))['total'] or 0
+    total_realized = flip_profits_qs.aggregate(total=Sum('realized_net'))['total'] or 0
+    position_size = flip_profits_qs.aggregate(total=Sum(F('quantity_held') * F('average_cost')))['total'] or 0
+    
+    return JsonResponse({
+        'total_unrealized': total_unrealized,
+        'total_realized': total_realized,
+        'position_size': position_size,
+    })
+
+
+def flips_data_api(request):
+    """API endpoint for flip data - enables progressive loading"""
     time_filter = request.GET.get('filter', 'current')
     
     # Get current user (or None if not authenticated)
@@ -198,7 +231,7 @@ def flips(request):
     # Get all unique items for this user
     flips_qs = Flip.objects.filter(user=user) if user else Flip.objects.none()
     flip_profits_qs = FlipProfit.objects.filter(user=user) if user else FlipProfit.objects.none()
-    item_ids = flips_qs.values_list('item_id', flat=True).distinct()
+    item_ids = list(flips_qs.values_list('item_id', flat=True).distinct())
     
     # Fetch all current prices in one API call
     all_prices = get_all_current_prices()
@@ -277,25 +310,26 @@ def flips(request):
         items.append({
             'item_id': item_id,
             'name': item_name,
-            'avg_price': avg_price,
+            'avg_price': int(avg_price),
             'high_price': high_price,
             'low_price': low_price,
             'quantity': quantity_held,
             'quantity_holding': quantity_held,
             'total_bought': total_bought,
             'total_sold': total_sold,
-            'unrealized_net': item_unrealized,
-            'realized_net': item_realized,
+            'unrealized_net': round(item_unrealized),
+            'realized_net': round(item_realized),
             'first_buy_timestamp': first_buy_timestamp,
-            'position_size': avg_price * quantity_held,
+            'position_size': int(avg_price * quantity_held),
         })
     
-    return render(request, 'flips.html', {
+    return JsonResponse({
         'items': items,
-        'total_unrealized': total_unrealized,
-        'total_realized': total_realized,
-        'position_size': position_size,
-        'time_filter': time_filter,
+        'stats': {
+            'total_unrealized': round(total_unrealized),
+            'total_realized': round(total_realized),
+            'position_size': int(position_size) if position_size else 0,
+        }
     })
 
 
