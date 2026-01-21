@@ -644,6 +644,63 @@
         display: inline-flex;
     }
     
+    /* Active filter tags row (desktop) */
+    .active-filter-tags-row {
+        display: none;
+    }
+    .active-filter-tags-row.has-filters {
+        display: block;
+    }
+    .active-filter-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+    }
+    .filter-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 8px 4px 10px;
+        background: rgba(99, 102, 241, 0.1);
+        border: 1px solid var(--primary);
+        border-radius: 16px;
+        font-size: 12px;
+        color: var(--primary);
+        font-weight: 500;
+    }
+    .filter-tag-remove {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+        background: transparent;
+        border: none;
+        border-radius: 50%;
+        color: #DC2626;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        padding: 0;
+        line-height: 1;
+        transition: background 0.15s;
+    }
+    .filter-tag-remove:hover {
+        background: rgba(220, 38, 38, 0.15);
+    }
+    
+    /* Mobile filter tags (next to sort indicator) */
+    .active-filter-tags-mobile {
+        display: none;
+    }
+    .sort-indicator-mobile-row.has-filters .active-filter-tags-mobile {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+    }
+    
     /* Time held subtext */
     .time-held-subtext {
         font-size: 11px;
@@ -1143,9 +1200,18 @@
             display: none !important;
         }
         
-        /* Show mobile sort indicator as its own row starting at 1100px - only when active */
-        .sort-indicator-mobile-row.active {
-            display: block;
+        /* Hide desktop filter tags row on mobile */
+        .active-filter-tags-row {
+            display: none !important;
+        }
+        
+        /* Show mobile sort indicator as its own row starting at 1100px - only when active or has filters */
+        .sort-indicator-mobile-row.active,
+        .sort-indicator-mobile-row.has-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
         }
         
         .sort-indicator {
@@ -1157,6 +1223,17 @@
         
         .sort-indicator-arrow {
             padding: 2px 5px;
+            font-size: 12px;
+        }
+        
+        /* Mobile filter tags */
+        .filter-tag {
+            padding: 3px 6px 3px 8px;
+            font-size: 11px;
+        }
+        .filter-tag-remove {
+            width: 14px;
+            height: 14px;
             font-size: 12px;
         }
     }
@@ -1243,9 +1320,18 @@
             display: none !important;
         }
         
-        /* Show mobile sort indicator as its own row on mobile - only when active */
-        .sort-indicator-mobile-row.active {
-            display: block;
+        /* Hide desktop filter tags row on mobile */
+        .active-filter-tags-row {
+            display: none !important;
+        }
+        
+        /* Show mobile sort indicator as its own row on mobile - only when active or has filters */
+        .sort-indicator-mobile-row.active,
+        .sort-indicator-mobile-row.has-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
         }
         
         .sort-indicator {
@@ -1257,6 +1343,17 @@
         
         .sort-indicator-arrow {
             padding: 2px 5px;
+            font-size: 12px;
+        }
+        
+        /* Mobile filter tags */
+        .filter-tag {
+            padding: 3px 6px 3px 8px;
+            font-size: 11px;
+        }
+        .filter-tag-remove {
+            width: 14px;
+            height: 14px;
             font-size: 12px;
         }
     }
@@ -1374,6 +1471,11 @@
             <span class="sort-indicator-value" id="sortIndicatorValueMobile">Time Held</span>
             <span class="sort-indicator-arrow" id="sortIndicatorArrowMobile" title="Toggle sort order">↓</span>
         </div>
+        <div class="active-filter-tags-mobile" id="activeFilterTagsMobile"></div>
+    </div>
+    <!-- Desktop filter tags row -->
+    <div class="active-filter-tags-row" id="activeFilterTagsRow">
+        <div class="active-filter-tags" id="activeFilterTags"></div>
     </div>
 </div>
 
@@ -1783,6 +1885,20 @@ document.addEventListener('DOMContentLoaded', function() {
     const sortIndicatorValueMobile = document.getElementById('sortIndicatorValueMobile');
     const sortIndicatorArrowMobile = document.getElementById('sortIndicatorArrowMobile');
     
+    // Filter tags elements
+    const activeFilterTagsRow = document.getElementById('activeFilterTagsRow');
+    const activeFilterTags = document.getElementById('activeFilterTags');
+    const activeFilterTagsMobile = document.getElementById('activeFilterTagsMobile');
+    
+    // Filter label mappings
+    const filterLabels = {
+        'time-held': 'Time Held',
+        'unrealized-range': 'Unrealized',
+        'realized-range': 'Realized',
+        'position-size': 'Position Size',
+        'quantity': 'Quantity'
+    };
+    
     // Modal elements - declare early so click handlers can access them
     const timeHeldModal = document.getElementById('timeHeldFilterModal');
     const timeHeldMin = document.getElementById('timeHeldMin');
@@ -2085,7 +2201,88 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
+        // Update filter tags
+        updateFilterTags();
+        
         updateSortByOptions();
+    }
+    
+    // Format filter value for display
+    function formatFilterValue(filterName, filterData) {
+        const { min, max } = filterData;
+        const formatNum = (n) => n !== null ? n.toLocaleString() : null;
+        
+        if (min !== null && max !== null) {
+            return `${formatNum(min)} - ${formatNum(max)}`;
+        } else if (min !== null) {
+            return `≥ ${formatNum(min)}`;
+        } else if (max !== null) {
+            return `≤ ${formatNum(max)}`;
+        }
+        return '';
+    }
+    
+    // Render filter tags
+    function updateFilterTags() {
+        const filterKeys = Object.keys(activeFilters);
+        
+        // Desktop filter tags
+        if (activeFilterTags) {
+            activeFilterTags.innerHTML = '';
+            filterKeys.forEach(filterName => {
+                const label = filterLabels[filterName] || filterName;
+                const value = formatFilterValue(filterName, activeFilters[filterName]);
+                const tag = document.createElement('span');
+                tag.className = 'filter-tag';
+                tag.dataset.filter = filterName;
+                tag.innerHTML = `${label}: ${value}<button class="filter-tag-remove" title="Remove filter">&times;</button>`;
+                tag.querySelector('.filter-tag-remove').addEventListener('click', () => {
+                    removeFilter(filterName);
+                });
+                activeFilterTags.appendChild(tag);
+            });
+        }
+        
+        // Mobile filter tags
+        if (activeFilterTagsMobile) {
+            activeFilterTagsMobile.innerHTML = '';
+            filterKeys.forEach(filterName => {
+                const label = filterLabels[filterName] || filterName;
+                const value = formatFilterValue(filterName, activeFilters[filterName]);
+                const tag = document.createElement('span');
+                tag.className = 'filter-tag';
+                tag.dataset.filter = filterName;
+                tag.innerHTML = `${label}: ${value}<button class="filter-tag-remove" title="Remove filter">&times;</button>`;
+                tag.querySelector('.filter-tag-remove').addEventListener('click', () => {
+                    removeFilter(filterName);
+                });
+                activeFilterTagsMobile.appendChild(tag);
+            });
+        }
+        
+        // Toggle row visibility
+        if (activeFilterTagsRow) {
+            if (filterKeys.length > 0) {
+                activeFilterTagsRow.classList.add('has-filters');
+            } else {
+                activeFilterTagsRow.classList.remove('has-filters');
+            }
+        }
+        
+        if (sortIndicatorMobileRow) {
+            if (filterKeys.length > 0) {
+                sortIndicatorMobileRow.classList.add('has-filters');
+            } else {
+                sortIndicatorMobileRow.classList.remove('has-filters');
+            }
+        }
+    }
+    
+    // Remove a filter by name
+    function removeFilter(filterName) {
+        delete activeFilters[filterName];
+        updateFilterUI();
+        applyFilters();
     }
     
     // Apply all active filters
