@@ -437,6 +437,9 @@ class Command(BaseCommand):
         Why: Users need to be notified even when not viewing the website
         How: Uses Django's send_mail with the alert's triggered_text as content
         """
+        print("Sending alert for: ")
+        print(alert)
+        print("==================")
         # Skip if not configured
         if not settings.EMAIL_HOST_USER or not settings.EMAIL_HOST_PASSWORD:
             self.stdout.write(self.style.WARNING('Email not configured - skipping notification'))
@@ -456,7 +459,6 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f'Notification sent for alert: {alert}'))
         except Exception as e:
             self.stdout.write(self.style.ERROR(f'Failed to send notification: {e}'))
-            print("Sending alert for: " +alert.__str__())
 
     def check_alert(self, alert, all_prices):
         """Check if an alert should be triggered. Returns True/False or list of matching items for all_items spread."""
