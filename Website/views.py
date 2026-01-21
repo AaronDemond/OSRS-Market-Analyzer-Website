@@ -901,6 +901,7 @@ def alerts_api(request):
             'id': alert.id,
             'text': str(alert),
             'is_triggered': alert.is_triggered,
+            'is_active': alert.is_active,
             'triggered_text': alert.triggered_text() if alert.is_triggered else None,
             'type': alert.type,
             'direction': alert.direction,

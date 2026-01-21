@@ -957,8 +957,8 @@
     }
     
     .alert-status-inactive {
-        color: #DC2626;
-        background: #FEE2E2;
+        color: #6B7280;
+        background: #F3F4F6;
     }
     
     .alert-triggered {
@@ -3369,7 +3369,7 @@ const AlertsUI = {
         }
 
         // Build active/inactive status display
-        const isActive = alert.is_active !== false; // Default to active if not specified
+        const isActive = alert.is_active === true;
         const statusDisplay = isActive 
             ? '<span class="alert-status alert-status-active">Active</span>'
             : '<span class="alert-status alert-status-inactive">Inactive</span>';

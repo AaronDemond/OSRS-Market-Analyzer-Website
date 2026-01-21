@@ -30,44 +30,51 @@
 
     /* Skeleton loading animation */
     @keyframes skeleton-pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.4; }
+
+        0%,
+        100% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0.4;
+        }
     }
-    
+
     .skeleton {
         background: linear-gradient(90deg, #E5E7EB 25%, #F3F4F6 50%, #E5E7EB 75%);
         background-size: 200% 100%;
         animation: skeleton-pulse 1.5s ease-in-out infinite;
         border-radius: 4px;
     }
-    
+
     .skeleton-text {
         height: 1em;
         display: inline-block;
         min-width: 60px;
     }
-    
+
     .skeleton-stat-value {
         height: 28px;
         width: 100px;
     }
-    
+
     .skeleton-table-row td {
         padding: 12px 14px !important;
     }
-    
+
     .skeleton-cell {
         height: 16px;
         width: 80%;
         display: block;
     }
-    
+
     /* Loading state for stats */
     .stats-row.loading .stat-value {
         visibility: hidden;
         position: relative;
     }
-    
+
     .stats-row.loading .stat-value::after {
         content: '';
         position: absolute;
@@ -82,15 +89,22 @@
         border-radius: 4px;
         visibility: visible;
     }
-    
+
     /* Fade in animation for loaded content */
     .fade-in {
         animation: fadeIn 0.3s ease-out;
     }
-    
+
     @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
     .page-header {
@@ -99,7 +113,7 @@
         gap: 16px;
         margin-bottom: 30px;
     }
-    
+
     .page-header-icon {
         width: 48px;
         height: 48px;
@@ -111,13 +125,13 @@
         flex-shrink: 0;
         box-shadow: 0 4px 12px rgba(17, 153, 142, 0.3);
     }
-    
+
     .page-header-icon svg {
         width: 24px;
         height: 24px;
         color: white;
     }
-    
+
     .page-header-text h1 {
         font-size: 1.75rem;
         font-weight: 700;
@@ -125,7 +139,7 @@
         margin: 0 0 2px 0;
         letter-spacing: -0.02em;
     }
-    
+
     .page-header-text p {
         color: var(--muted);
         margin: 0;
@@ -142,7 +156,7 @@
         border-collapse: separate;
         border-spacing: 0;
     }
-    
+
     #flipsTable thead th {
         background: #1F2937;
         color: #E5E7EB;
@@ -151,41 +165,41 @@
         border-bottom: 1px solid #374151;
         transition: background 0.15s;
     }
-    
+
     #flipsTable tbody td {
         padding: 12px 14px;
         border-top: 1px solid var(--border);
         color: var(--text);
     }
-    
+
     /* Zebra striping */
     #flipsTable tbody tr:nth-child(odd) {
         background: var(--surface);
     }
-    
+
     #flipsTable tbody tr:nth-child(even) {
         background: #F9FAFB;
     }
-    
+
     /* Row hover - muted orange */
     #flipsTable tbody tr:hover {
         background: linear-gradient(135deg, #FEF3E2 0%, #FDE9D0 100%) !important;
     }
-    
-    #flipsTable tbody tr:hover > td {
+
+    #flipsTable tbody tr:hover>td {
         background: inherit !important;
     }
-    
+
     /* Header hover - muted orange */
     .sortable:hover {
         background: linear-gradient(135deg, #D97706 0%, #F59E0B 100%) !important;
         color: #fff;
     }
-    
+
     #flipsTable a {
         color: var(--primary);
     }
-    
+
     #flipsTable a:hover {
         color: var(--primary-hover);
     }
@@ -193,6 +207,7 @@
     .autocomplete-wrapper {
         position: relative;
     }
+
     .autocomplete-results {
         position: absolute;
         top: 100%;
@@ -207,38 +222,45 @@
         z-index: 1000;
         display: none;
     }
+
     .autocomplete-results.show {
         display: block;
     }
+
     .autocomplete-item {
         padding: 8px 12px;
         cursor: pointer;
         color: var(--text);
     }
+
     .autocomplete-item:hover,
     .autocomplete-item.active {
         background-color: var(--primary);
         color: #fff;
     }
+
     .sortable {
         cursor: pointer;
         user-select: none;
         transition: background 0.15s;
     }
+
     .sort-icon::after {
         content: '⇅';
         margin-left: 5px;
         opacity: 0.5;
     }
+
     .sortable.asc .sort-icon::after {
         content: '↑';
         opacity: 1;
     }
+
     .sortable.desc .sort-icon::after {
         content: '↓';
         opacity: 1;
     }
-    
+
     /* Stats row */
     .stats-row {
         display: flex;
@@ -246,6 +268,7 @@
         gap: 1.5rem;
         margin-bottom: 1.5rem;
     }
+
     .stat-card {
         background: var(--surface);
         border: 1px solid var(--border);
@@ -255,15 +278,19 @@
         display: flex;
         flex-direction: column;
     }
+
     .stat-card[data-tone="success"] {
         border-top: 4px solid var(--success);
     }
+
     .stat-card[data-tone="danger"] {
         border-top: 4px solid var(--danger);
     }
+
     .stat-card[data-tone="info"] {
         border-top: 4px solid var(--primary);
     }
+
     .stat-label {
         color: var(--muted);
         font-size: 12px;
@@ -271,21 +298,25 @@
         text-transform: uppercase;
         margin-bottom: 0.25rem;
     }
+
     .stat-value {
         font-size: 22px;
         font-weight: 700;
         color: var(--text);
     }
+
     .stat-value.pnl-pos {
         color: var(--success);
     }
+
     .stat-value.pnl-neg {
         color: var(--danger);
     }
+
     .stat-value.pnl-zero {
         color: var(--muted);
     }
-    
+
     /* Buttons */
     .btn-new-flip,
     .btn-delete-flip {
@@ -302,65 +333,79 @@
         align-items: center;
         gap: 6px;
     }
+
     .btn-new-flip:hover,
     .btn-delete-flip:hover {
         background: var(--surface-2);
         border-color: var(--primary);
     }
+
     .btn-new-flip:active,
     .btn-delete-flip:active {
         transform: translateY(1px);
     }
+
     .btn-new-flip svg,
     .btn-delete-flip svg {
         width: 16px;
         height: 16px;
     }
+
     .btn-delete-flip.delete-mode-active {
         background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
         border-color: transparent;
         color: #fff;
     }
+
     .btn-delete-flip.delete-mode-active:hover {
         background: linear-gradient(135deg, #D97706 0%, #B45309 100%);
     }
-    
+
     #flipsTable.delete-mode tbody tr {
         cursor: pointer;
     }
+
     #flipsTable.delete-mode tbody tr:hover {
         background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%) !important;
     }
+
     #flipsTable.delete-mode tbody tr:hover td {
         color: white;
     }
+
     #flipsTable.delete-mode tbody tr:hover a {
         color: white;
     }
+
     #flipsTable.delete-mode tbody tr.selected-for-delete {
         background: linear-gradient(135deg, #B91C1C 0%, #991B1B 100%) !important;
     }
+
     #flipsTable.delete-mode tbody tr.selected-for-delete td {
         color: white;
     }
+
     #flipsTable.delete-mode tbody tr.selected-for-delete a {
         color: white;
     }
+
     /* Selected row styling - works even after delete-mode is removed */
     #flipsTable tbody tr.selected-for-delete,
     #flipsTable tbody tr.selected-for-delete:hover {
         background: linear-gradient(135deg, #B91C1C 0%, #991B1B 100%) !important;
     }
+
     #flipsTable tbody tr.selected-for-delete td,
     #flipsTable tbody tr.selected-for-delete:hover td {
         color: white !important;
         background: transparent !important;
     }
+
     #flipsTable tbody tr.selected-for-delete a,
     #flipsTable tbody tr.selected-for-delete:hover a {
         color: white !important;
     }
-    
+
     /* Controls container - stacks buttons row and search/filter row */
     .controls-container {
         display: flex;
@@ -368,13 +413,13 @@
         gap: 12px;
         margin-bottom: 12px;
     }
-    
+
     .buttons-row {
         display: flex;
         gap: 12px;
         align-items: center;
     }
-    
+
     /*
     .search-filter-row {
         display: flex;
@@ -382,13 +427,14 @@
         align-items: center;
     }
     */
-    
+
     /* Filter search bar - stretches to fill available space */
     .filter-search-wrapper {
         position: relative;
         flex: 1;
         min-width: 0;
     }
+
     .filter-search-input {
         width: 100%;
         padding: 8px 36px 8px 12px;
@@ -399,14 +445,17 @@
         background: var(--surface);
         transition: border-color 0.15s, box-shadow 0.15s;
     }
+
     .filter-search-input:focus {
         outline: none;
         border-color: var(--primary);
         box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
     }
+
     .filter-search-input::placeholder {
         color: var(--muted);
     }
+
     .filter-search-clear {
         position: absolute;
         right: 10px;
@@ -421,17 +470,20 @@
         line-height: 1;
         display: none;
     }
+
     .filter-search-clear:hover {
         color: var(--text);
     }
+
     .filter-search-wrapper.has-value .filter-search-clear {
         display: block;
     }
-    
+
     /* Filter dropdown */
     .filter-dropdown-wrapper {
         position: relative;
     }
+
     .btn-filter {
         padding: 8px 14px;
         background: var(--surface);
@@ -445,19 +497,23 @@
         align-items: center;
         gap: 6px;
     }
+
     .btn-filter:hover {
         background: var(--surface-2);
         border-color: var(--primary);
     }
+
     .btn-filter.has-active {
         background: rgba(99, 102, 241, 0.1);
         border-color: var(--primary);
         color: var(--primary);
     }
+
     .btn-filter svg {
         width: 16px;
         height: 16px;
     }
+
     .filter-badge {
         background: var(--primary);
         color: white;
@@ -466,6 +522,7 @@
         border-radius: 10px;
         margin-left: 4px;
     }
+
     .filter-dropdown-menu {
         position: absolute;
         top: 100%;
@@ -480,9 +537,11 @@
         display: none;
         padding: 6px;
     }
+
     .filter-dropdown-menu.show {
         display: block;
     }
+
     .filter-dropdown-header {
         padding: 8px 10px 6px;
         font-size: 11px;
@@ -493,6 +552,7 @@
         border-bottom: 1px solid var(--border);
         margin-bottom: 6px;
     }
+
     .filter-dropdown-item {
         padding: 10px 12px;
         cursor: pointer;
@@ -505,26 +565,32 @@
         background: var(--surface-2);
         border: 1px solid transparent;
     }
+
     .filter-dropdown-item:hover {
         background: linear-gradient(135deg, rgba(234, 179, 140, 0.3), rgba(216, 155, 108, 0.25));
         border-color: rgba(200, 140, 90, 0.3);
     }
+
     .filter-dropdown-item.active {
         background: rgba(99, 102, 241, 0.15);
         border-color: rgba(99, 102, 241, 0.3);
         color: var(--primary);
     }
+
     .filter-dropdown-item.active:hover {
         background: rgba(99, 102, 241, 0.25);
     }
+
     .filter-dropdown-item .filter-check {
         color: var(--primary);
         display: none;
         font-weight: 600;
     }
+
     .filter-dropdown-item.active .filter-check {
         display: none;
     }
+
     .filter-dropdown-item .filter-clear {
         display: none;
         color: var(--danger);
@@ -535,17 +601,20 @@
         border-radius: 4px;
         transition: all 0.15s;
     }
+
     .filter-dropdown-item.active .filter-clear {
         display: inline;
     }
+
     .filter-dropdown-item .filter-clear:hover {
         background: rgba(239, 68, 68, 0.15);
     }
-    
+
     /* Sort indicator */
     .sort-indicator-wrapper {
         position: relative;
     }
+
     .sort-indicator {
         display: none;
         align-items: center;
@@ -559,28 +628,46 @@
         transition: all 0.3s ease;
         cursor: pointer;
     }
+
     .sort-indicator.active {
         display: inline-flex;
     }
+
     .sort-indicator.clickable:hover {
         background: var(--surface-2);
         border-color: var(--primary);
     }
+
     .sort-indicator.flash {
         animation: sortFlash 0.25s ease 5;
     }
+
     @keyframes sortFlash {
-        0% { background: var(--surface); border-color: var(--border); }
-        50% { background: rgba(99, 102, 241, 0.15); border-color: var(--primary); }
-        100% { background: var(--surface); border-color: var(--border); }
+        0% {
+            background: var(--surface);
+            border-color: var(--border);
+        }
+
+        50% {
+            background: rgba(99, 102, 241, 0.15);
+            border-color: var(--primary);
+        }
+
+        100% {
+            background: var(--surface);
+            border-color: var(--border);
+        }
     }
+
     .sort-indicator-label {
         color: var(--text-muted);
     }
+
     .sort-indicator-value {
         font-weight: 500;
         color: var(--primary);
     }
+
     .sort-indicator-arrow {
         cursor: pointer;
         padding: 2px 8px;
@@ -592,10 +679,12 @@
         border: 1px solid var(--border);
         margin-left: 4px;
     }
+
     .sort-indicator-arrow:hover {
         background: linear-gradient(135deg, rgba(234, 179, 140, 0.3), rgba(216, 155, 108, 0.25));
         border-color: rgba(200, 140, 90, 0.4);
     }
+
     .sort-indicator-menu {
         position: absolute;
         top: 100%;
@@ -610,9 +699,11 @@
         display: none;
         padding: 6px;
     }
+
     .sort-indicator-menu.show {
         display: block;
     }
+
     .sort-indicator-menu .sort-by-item {
         padding: 8px 12px;
         cursor: pointer;
@@ -626,22 +717,25 @@
         background: var(--surface-2);
         border: 1px solid transparent;
     }
+
     .sort-indicator-menu .sort-by-item:hover {
         background: linear-gradient(135deg, rgba(234, 179, 140, 0.3), rgba(216, 155, 108, 0.25));
         border-color: rgba(200, 140, 90, 0.3);
     }
+
     .sort-indicator-menu .sort-by-item.active {
         background: rgba(99, 102, 241, 0.15);
         border-color: rgba(99, 102, 241, 0.3);
         color: var(--primary);
     }
-    
+
     /* Sort selector in dropdown */
     .filter-dropdown-divider {
         height: 1px;
         background: var(--border);
         margin: 6px 0;
     }
+
     .filter-dropdown-section {
         padding: 6px 10px;
         font-size: 11px;
@@ -650,6 +744,7 @@
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
+
     .sort-by-item {
         padding: 8px 12px;
         cursor: pointer;
@@ -661,13 +756,16 @@
         margin: 2px 0;
         font-size: 13px;
     }
+
     .sort-by-item:hover {
         background: var(--surface-2);
     }
+
     .sort-by-item.active {
         background: rgba(99, 102, 241, 0.1);
         color: var(--primary);
     }
+
     .sort-by-item .sort-radio {
         width: 14px;
         height: 14px;
@@ -675,22 +773,24 @@
         border-radius: 50%;
         transition: all 0.15s;
     }
+
     .sort-by-item.active .sort-radio {
         border-color: var(--primary);
         background: var(--primary);
         box-shadow: inset 0 0 0 3px var(--surface);
     }
-    
+
     /* Desktop sort indicator - inline with search/filter row */
     /* Only shows when sort indicator inside is active */
     .desktop-sort {
         position: relative;
         display: none;
     }
+
     .desktop-sort:has(.sort-indicator.active) {
         display: block;
     }
-    
+
     /* Filter and sort group - keeps filter dropdown and mobile sort indicator together */
     .filter-sort-group {
         display: flex;
@@ -698,30 +798,33 @@
         gap: 0.75rem;
         flex-shrink: 0;
     }
-    
+
     /* Mobile sort indicator row - hidden on desktop, shown on mobile */
     .sort-indicator-mobile-row {
         display: none;
     }
-    
+
     /* Mobile sort indicator should always display when row is visible */
     .sort-indicator-mobile-row .sort-indicator {
         display: inline-flex;
     }
-    
+
     /* Active filter tags row (desktop) */
     .active-filter-tags-row {
         display: none;
     }
+
     .active-filter-tags-row.has-filters {
         display: block;
     }
+
     .active-filter-tags {
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
         align-items: center;
     }
+
     .filter-tag {
         display: inline-flex;
         align-items: center;
@@ -734,6 +837,7 @@
         color: var(--primary);
         font-weight: 500;
     }
+
     .filter-tag-remove {
         display: inline-flex;
         align-items: center;
@@ -751,51 +855,55 @@
         line-height: 1;
         transition: background 0.15s;
     }
+
     .filter-tag-remove:hover {
         background: rgba(220, 38, 38, 0.15);
     }
-    
+
     /* Mobile filter tags (next to sort indicator) */
     .active-filter-tags-mobile {
         display: none;
     }
+
     .sort-indicator-mobile-row.has-filters .active-filter-tags-mobile {
         display: flex;
         flex-wrap: wrap;
         gap: 6px;
         align-items: center;
     }
-    
+
     /* Time held subtext */
     .time-held-subtext {
         font-size: 11px;
         color: var(--muted);
         margin-top: 2px;
     }
-    
+
     /* Position size subtext */
     .position-size-subtext {
         font-size: 11px;
         color: var(--muted);
         margin-top: 2px;
     }
-    
+
     /* P&L colors for table - muted green/red */
     .pnl-pos {
         color: #16A34A;
         font-weight: 600;
         font-variant-numeric: tabular-nums;
     }
+
     .pnl-neg {
         color: #DC2626;
         font-weight: 600;
         font-variant-numeric: tabular-nums;
     }
+
     .pnl-zero {
         color: var(--muted);
         font-variant-numeric: tabular-nums;
     }
-    
+
     /* Success notification */
     .success-notification {
         background-color: #28a745;
@@ -809,6 +917,7 @@
         max-height: 100px;
         overflow: hidden;
     }
+
     .success-notification.dismissing {
         opacity: 0;
         transform: translateX(20px);
@@ -817,6 +926,7 @@
         padding-top: 0;
         padding-bottom: 0;
     }
+
     .success-notification .dismiss-btn {
         position: absolute;
         top: 50%;
@@ -831,16 +941,18 @@
         line-height: 1;
         opacity: 0.8;
     }
+
     .success-notification .dismiss-btn:hover {
         opacity: 1;
     }
-    
+
     /* Delete confirmation modal */
     .delete-confirm-modal .modal-content {
         border-radius: 12px;
         border: none;
         box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
     }
+
     .delete-confirm-modal .modal-header {
         background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
         color: white;
@@ -848,17 +960,21 @@
         border: none;
         padding: 1rem 1.5rem;
     }
+
     .delete-confirm-modal .modal-header .btn-close {
         filter: brightness(0) invert(1);
         opacity: 0.8;
     }
+
     .delete-confirm-modal .modal-header .btn-close:hover {
         opacity: 1;
     }
+
     .delete-confirm-modal .modal-body {
         padding: 1.5rem;
         text-align: center;
     }
+
     .delete-confirm-modal .modal-body .delete-icon {
         width: 64px;
         height: 64px;
@@ -869,25 +985,30 @@
         justify-content: center;
         margin: 0 auto 1rem;
     }
+
     .delete-confirm-modal .modal-body .delete-icon svg {
         width: 32px;
         height: 32px;
         color: #DC2626;
     }
+
     .delete-confirm-modal .modal-body p {
         color: var(--text);
         margin-bottom: 0.5rem;
     }
+
     .delete-confirm-modal .modal-body .item-name {
         font-weight: 600;
         color: var(--primary);
     }
+
     .delete-confirm-modal .modal-footer {
         border: none;
         padding: 1rem 1.5rem;
         gap: 0.75rem;
         justify-content: center;
     }
+
     .delete-confirm-modal .btn-cancel {
         background: var(--surface-2);
         border: 1px solid var(--border);
@@ -897,10 +1018,12 @@
         font-weight: 500;
         transition: all 0.15s;
     }
+
     .delete-confirm-modal .btn-cancel:hover {
         background: var(--surface);
         border-color: var(--text-muted);
     }
+
     .delete-confirm-modal .btn-confirm-delete {
         background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
         border: none;
@@ -910,17 +1033,19 @@
         font-weight: 500;
         transition: all 0.15s;
     }
+
     .delete-confirm-modal .btn-confirm-delete:hover {
         background: linear-gradient(135deg, #B91C1C 0%, #991B1B 100%);
         transform: translateY(-1px);
     }
-    
+
     /* New Flip Modal styling */
     .new-flip-modal .modal-content {
         border-radius: 12px;
         border: none;
         box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
     }
+
     .new-flip-modal .modal-header {
         background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
         color: white;
@@ -928,20 +1053,25 @@
         border: none;
         padding: 1rem 1.5rem;
     }
+
     .new-flip-modal .modal-header .modal-title {
         font-weight: 600;
     }
+
     .new-flip-modal .modal-header .btn-close {
         filter: brightness(0) invert(1);
         opacity: 0.8;
     }
+
     .new-flip-modal .modal-header .btn-close:hover {
         opacity: 1;
     }
+
     .new-flip-modal .modal-body {
         padding: 1.5rem;
         font-size: 16px;
     }
+
     .new-flip-modal .modal-body .flip-icon {
         width: 56px;
         height: 56px;
@@ -952,28 +1082,34 @@
         justify-content: center;
         margin: 0 auto 1rem;
     }
+
     .new-flip-modal .modal-body .flip-icon svg {
         width: 28px;
         height: 28px;
         color: #11998e;
     }
+
     .new-flip-modal .form-row {
         display: flex;
         gap: 1rem;
         margin-bottom: 1rem;
     }
+
     .new-flip-modal .form-row .form-group {
         flex: 1;
     }
+
     .new-flip-modal .form-row .form-group.full-width {
         flex: 1 1 100%;
     }
+
     .new-flip-modal .form-label {
         font-weight: 500;
         color: var(--text);
         font-size: 15px;
         margin-bottom: 0.5rem;
     }
+
     .new-flip-modal .form-control,
     .new-flip-modal .form-select {
         border-radius: 8px;
@@ -982,21 +1118,25 @@
         font-size: 16px;
         transition: all 0.15s;
     }
+
     .new-flip-modal .form-control:focus,
     .new-flip-modal .form-select:focus {
         border-color: #11998e;
         box-shadow: 0 0 0 3px rgba(17, 153, 142, 0.15);
     }
+
     .new-flip-modal .form-control::placeholder {
         color: var(--text-muted);
         opacity: 0.7;
     }
+
     .new-flip-modal .modal-footer {
         border: none;
         padding: 1rem 1.5rem;
         gap: 0.75rem;
         justify-content: flex-end;
     }
+
     .new-flip-modal .btn-cancel {
         background: var(--surface-2);
         border: 1px solid var(--border);
@@ -1006,10 +1146,12 @@
         font-weight: 500;
         transition: all 0.15s;
     }
+
     .new-flip-modal .btn-cancel:hover {
         background: var(--surface);
         border-color: var(--text-muted);
     }
+
     .new-flip-modal .btn-add-flip {
         background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
         border: none;
@@ -1019,13 +1161,16 @@
         font-weight: 500;
         transition: all 0.15s;
     }
+
     .new-flip-modal .btn-add-flip:hover {
         background: linear-gradient(135deg, #0e8377 0%, #2dd36f 100%);
         transform: translateY(-1px);
     }
+
     .new-flip-modal .autocomplete-wrapper {
         position: relative;
     }
+
     .new-flip-modal .autocomplete-results {
         position: absolute;
         top: 100%;
@@ -1040,30 +1185,37 @@
         z-index: 1050;
         display: none;
     }
+
     .new-flip-modal .autocomplete-results.show {
         display: block;
     }
+
     .new-flip-modal .autocomplete-item {
         padding: 0.625rem 0.875rem;
         cursor: pointer;
         transition: background 0.15s, color 0.15s;
         font-size: 16px;
     }
+
     .new-flip-modal .autocomplete-item:hover {
         background: rgba(30, 58, 138, 0.1);
     }
+
     .new-flip-modal .autocomplete-item.active {
         background: #1E3A8A;
         color: white;
     }
+
     .new-flip-modal .date-input-wrapper {
         display: flex;
         gap: 0.5rem;
         align-items: center;
     }
+
     .new-flip-modal .date-input-wrapper .form-control {
         flex: 1;
     }
+
     .new-flip-modal .btn-now {
         background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
         border: none;
@@ -1076,17 +1228,19 @@
         transition: all 0.15s;
         white-space: nowrap;
     }
+
     .new-flip-modal .btn-now:hover {
         background: linear-gradient(135deg, #0e8377 0%, #2dd36f 100%);
         transform: translateY(-1px);
     }
-    
+
     /* Filter modals styling */
     .filter-modal .modal-content {
         border-radius: 12px;
         border: none;
         box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
     }
+
     .filter-modal .modal-header {
         background: linear-gradient(135deg, var(--primary) 0%, #4F46E5 100%);
         color: white;
@@ -1094,19 +1248,24 @@
         border: none;
         padding: 1rem 1.5rem;
     }
+
     .filter-modal .modal-header .modal-title {
         font-weight: 600;
     }
+
     .filter-modal .modal-header .btn-close {
         filter: brightness(0) invert(1);
         opacity: 0.8;
     }
+
     .filter-modal .modal-header .btn-close:hover {
         opacity: 1;
     }
+
     .filter-modal .modal-body {
         padding: 1.5rem;
     }
+
     .filter-modal .modal-body .filter-icon {
         width: 56px;
         height: 56px;
@@ -1117,23 +1276,27 @@
         justify-content: center;
         margin: 0 auto 1rem;
     }
+
     .filter-modal .modal-body .filter-icon svg {
         width: 28px;
         height: 28px;
         color: var(--primary);
     }
+
     .filter-modal .modal-body .filter-description {
         text-align: center;
         color: var(--text-muted);
         font-size: 13px;
         margin-bottom: 1.25rem;
     }
+
     .filter-modal .modal-body .form-label {
         font-weight: 500;
         color: var(--text);
         font-size: 13px;
         margin-bottom: 0.5rem;
     }
+
     .filter-modal .modal-body .form-control {
         border-radius: 8px;
         border: 1px solid var(--border);
@@ -1141,20 +1304,24 @@
         font-size: 14px;
         transition: all 0.15s;
     }
+
     .filter-modal .modal-body .form-control:focus {
         border-color: var(--primary);
         box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
     }
+
     .filter-modal .modal-body .form-control::placeholder {
         color: var(--text-muted);
         opacity: 0.7;
     }
+
     .filter-modal .modal-footer {
         border: none;
         padding: 1rem 1.5rem;
         gap: 0.75rem;
         justify-content: flex-end;
     }
+
     .filter-modal .btn-clear-filter {
         background: var(--surface-2);
         border: 1px solid var(--border);
@@ -1164,10 +1331,12 @@
         font-weight: 500;
         transition: all 0.15s;
     }
+
     .filter-modal .btn-clear-filter:hover {
         background: var(--surface);
         border-color: var(--text-muted);
     }
+
     .filter-modal .btn-apply-filter {
         background: linear-gradient(135deg, var(--primary) 0%, #4F46E5 100%);
         border: none;
@@ -1177,11 +1346,12 @@
         font-weight: 500;
         transition: all 0.15s;
     }
+
     .filter-modal .btn-apply-filter:hover {
         background: linear-gradient(135deg, #4F46E5 0%, #4338CA 100%);
         transform: translateY(-1px);
     }
-    
+
     /* Mobile styles */
     @media (max-width: 1100px) {
         .stats-row {
@@ -1189,6 +1359,7 @@
             gap: 0.5rem;
             width: fit-content;
         }
+
         .stat-card {
             padding: 8px 12px;
             flex-direction: row;
@@ -1196,14 +1367,16 @@
             gap: 0.5rem;
             border-radius: 10px;
         }
+
         .stat-label {
             font-size: 10px;
             margin-bottom: 0;
         }
+
         .stat-value {
             font-size: 16px;
         }
-        
+
         /* Hide columns on mobile: Price Paid, Quantity Holding, High Price, Low Price */
         #flipsTable th:nth-child(2),
         #flipsTable td:nth-child(2),
@@ -1215,61 +1388,61 @@
         #flipsTable td:nth-child(6) {
             display: none;
         }
-        
+
         #flipsTable {
             font-size: 0.75rem;
             width: 100%;
             max-width: 100%;
             table-layout: fixed;
         }
-        
+
         .main-content {
             overflow-x: hidden;
         }
-        
+
         #flipsTable th,
         #flipsTable td {
             padding: 0.4rem 0.25rem;
         }
-        
+
         /* Mobile controls layout */
         .controls-container {
             gap: 0.75rem;
         }
-        
+
         .buttons-row {
             justify-content: flex-start;
         }
-        
+
         /*
         .search-filter-row {
             flex-direction: row;
             gap: 0.5rem;
         }
         */
-        
+
         /* Search bar stretches on mobile */
         .filter-search-wrapper {
             flex: 1;
             min-width: 0;
         }
-        
+
         .filter-search-input {
             width: 100%;
             font-size: 14px;
             padding: 8px 12px;
         }
-        
+
         /* Hide desktop sort indicator at 1100px */
         .desktop-sort {
             display: none !important;
         }
-        
+
         /* Hide desktop filter tags row on mobile */
         .active-filter-tags-row {
             display: none !important;
         }
-        
+
         /* Show mobile sort indicator as its own row starting at 1100px - only when active or has filters */
         .sort-indicator-mobile-row.active,
         .sort-indicator-mobile-row.has-filters {
@@ -1278,24 +1451,25 @@
             gap: 8px;
             align-items: center;
         }
-        
+
         .sort-indicator {
             padding: 6px 10px;
             font-size: 12px;
             gap: 4px;
             white-space: nowrap;
         }
-        
+
         .sort-indicator-arrow {
             padding: 2px 5px;
             font-size: 12px;
         }
-        
+
         /* Mobile filter tags */
         .filter-tag {
             padding: 3px 6px 3px 8px;
             font-size: 11px;
         }
+
         .filter-tag-remove {
             width: 14px;
             height: 14px;
@@ -1310,6 +1484,7 @@
             gap: 0.5rem;
             align-self: flex-start;
         }
+
         .stat-card {
             padding: 8px 12px;
             flex-direction: row;
@@ -1318,14 +1493,16 @@
             border-radius: 10px;
             min-width: 220px;
         }
+
         .stat-label {
             font-size: 10px;
             margin-bottom: 0;
         }
+
         .stat-value {
             font-size: 16px;
         }
-        
+
         /* Hide columns on mobile: Price Paid, Quantity Holding, High Price, Low Price */
         #flipsTable th:nth-child(2),
         #flipsTable td:nth-child(2),
@@ -1337,59 +1514,59 @@
         #flipsTable td:nth-child(6) {
             display: none;
         }
-        
+
         #flipsTable {
             font-size: 0.75rem;
             width: 100%;
             max-width: 100%;
             table-layout: fixed;
         }
-        
+
         .main-content {
             overflow-x: hidden;
         }
-        
+
         #flipsTable th,
         #flipsTable td {
             padding: 0.4rem 0.25rem;
         }
-        
+
         /* Mobile controls layout */
         .controls-container {
             gap: 0.75rem;
         }
-        
+
         .buttons-row {
             justify-content: flex-start;
         }
-        
+
         .search-filter-row {
             flex-direction: row;
             gap: 0.5rem;
         }
-        
+
         /* Search bar stretches on mobile */
         .filter-search-wrapper {
             flex: 1;
             min-width: 0;
         }
-        
+
         .filter-search-input {
             width: 100%;
             font-size: 14px;
             padding: 8px 12px;
         }
-        
+
         /* Hide desktop sort indicator on mobile */
         .desktop-sort {
             display: none !important;
         }
-        
+
         /* Hide desktop filter tags row on mobile */
         .active-filter-tags-row {
             display: none !important;
         }
-        
+
         /* Show mobile sort indicator as its own row on mobile - only when active or has filters */
         .sort-indicator-mobile-row.active,
         .sort-indicator-mobile-row.has-filters {
@@ -1398,30 +1575,32 @@
             gap: 8px;
             align-items: center;
         }
-        
+
         .sort-indicator {
             padding: 6px 10px;
             font-size: 12px;
             gap: 4px;
             white-space: nowrap;
         }
-        
+
         .sort-indicator-arrow {
             padding: 2px 5px;
             font-size: 12px;
         }
-        
+
         /* Mobile filter tags */
         .filter-tag {
             padding: 3px 6px 3px 8px;
             font-size: 11px;
         }
+
         .filter-tag-remove {
             width: 14px;
             height: 14px;
             font-size: 12px;
         }
     }
+
 </style>
 {% endblock %}
 
@@ -1429,7 +1608,8 @@
 <div class="page-header">
     <div class="page-header-icon">
         <svg fill="currentColor" viewBox="0 0 20 20">
-            <path d="M10 2a1 1 0 011 1v1.323l.956.285a4.5 4.5 0 012.626 2.02 1 1 0 01-1.724 1.016 2.5 2.5 0 00-1.46-1.123L11 6.4V10l.956.285a4.5 4.5 0 01-.001 8.48l-.955.285V20a1 1 0 11-2 0v-.95l-.956-.285a4.5 4.5 0 01-2.626-2.02 1 1 0 011.724-1.016 2.5 2.5 0 001.46 1.123l.398.118V13l-.956-.285a4.5 4.5 0 01.001-8.48L9 4.05V3a1 1 0 011-1zm1 8.79V6.4l.398.118a2.5 2.5 0 010 4.723L11 10.79zm-2 .42l-.398-.118a2.5 2.5 0 010-4.723L9 6.25v3.96zm0 2.54v3.96l-.398-.118a2.5 2.5 0 010-4.723L9 11.75zm2 .46l.398.118a2.5 2.5 0 010 4.723L11 17.17v-3.96z"/>
+            <path
+                d="M10 2a1 1 0 011 1v1.323l.956.285a4.5 4.5 0 012.626 2.02 1 1 0 01-1.724 1.016 2.5 2.5 0 00-1.46-1.123L11 6.4V10l.956.285a4.5 4.5 0 01-.001 8.48l-.955.285V20a1 1 0 11-2 0v-.95l-.956-.285a4.5 4.5 0 01-2.626-2.02 1 1 0 011.724-1.016 2.5 2.5 0 001.46 1.123l.398.118V13l-.956-.285a4.5 4.5 0 01.001-8.48L9 4.05V3a1 1 0 011-1zm1 8.79V6.4l.398.118a2.5 2.5 0 010 4.723L11 10.79zm-2 .42l-.398-.118a2.5 2.5 0 010-4.723L9 6.25v3.96zm0 2.54v3.96l-.398-.118a2.5 2.5 0 010-4.723L9 11.75zm2 .46l.398.118a2.5 2.5 0 010 4.723L11 17.17v-3.96z" />
         </svg>
     </div>
     <div class="page-header-text">
@@ -1458,13 +1638,14 @@
     <div class="d-flex gap-3 align-items-center buttons-row">
         <button type="button" class="btn-new-flip" data-bs-toggle="modal" data-bs-target="#newFlipModal">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
             New Flip
         </button>
         <button type="button" class="btn-delete-flip" id="deleteFlipBtn">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
             Delete Flip
         </button>
@@ -1490,7 +1671,8 @@
             <div class="filter-dropdown-wrapper">
                 <button type="button" class="btn-filter" id="filterDropdownBtn">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                     </svg>
                     Filters
                     <span class="filter-badge" id="filterBadge" style="display: none;">0</span>
@@ -1545,7 +1727,8 @@
 </div>
 
 <!-- New Flip Modal -->
-<div class="modal fade new-flip-modal" id="newFlipModal" tabindex="-1" aria-labelledby="newFlipModalLabel" aria-hidden="true">
+<div class="modal fade new-flip-modal" id="newFlipModal" tabindex="-1" aria-labelledby="newFlipModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
@@ -1557,18 +1740,20 @@
                 <div class="modal-body">
                     <div class="flip-icon">
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
-                    
+
                     <div class="form-row">
                         <div class="form-group full-width autocomplete-wrapper">
                             <label for="itemName" class="form-label">Item Name</label>
-                            <input type="text" class="form-control" id="itemName" name="item_name" autocomplete="off" placeholder="Search for an item..." required>
+                            <input type="text" class="form-control" id="itemName" name="item_name" autocomplete="off"
+                                placeholder="Search for an item..." required>
                             <div class="autocomplete-results" id="autocompleteResults"></div>
                         </div>
                     </div>
-                    
+
                     <div class="form-row">
                         <div class="form-group">
                             <label for="price" class="form-label">Price</label>
@@ -1576,16 +1761,18 @@
                         </div>
                         <div class="form-group">
                             <label for="quantity" class="form-label">Quantity</label>
-                            <input type="number" class="form-control" id="quantity" name="quantity" placeholder="0" required>
+                            <input type="number" class="form-control" id="quantity" name="quantity" placeholder="0"
+                                required>
                         </div>
                     </div>
-                    
+
                     <div class="form-row">
                         <div class="form-group">
                             <label for="date" class="form-label">Date</label>
                             <div class="date-input-wrapper">
                                 <input type="datetime-local" class="form-control" id="date" name="date" required>
-                                <button type="button" class="btn-now" id="setNowBtn" title="Set to current time">Now</button>
+                                <button type="button" class="btn-now" id="setNowBtn"
+                                    title="Set to current time">Now</button>
                             </div>
                         </div>
                         <div class="form-group">
@@ -1607,7 +1794,8 @@
 </div>
 
 <!-- Time Held Filter Modal -->
-<div class="modal fade filter-modal" id="timeHeldFilterModal" tabindex="-1" aria-labelledby="timeHeldFilterModalLabel" aria-hidden="true">
+<div class="modal fade filter-modal" id="timeHeldFilterModal" tabindex="-1" aria-labelledby="timeHeldFilterModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
@@ -1617,17 +1805,20 @@
             <div class="modal-body">
                 <div class="filter-icon">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                 </div>
                 <p class="filter-description">Show items held for a specific range of days.</p>
                 <div class="mb-3">
                     <label for="timeHeldMin" class="form-label">Minimum Days</label>
-                    <input type="number" class="form-control" id="timeHeldMin" min="0" step="0.1" placeholder="No minimum">
+                    <input type="number" class="form-control" id="timeHeldMin" min="0" step="0.1"
+                        placeholder="No minimum">
                 </div>
                 <div class="mb-3">
                     <label for="timeHeldMax" class="form-label">Maximum Days</label>
-                    <input type="number" class="form-control" id="timeHeldMax" min="0" step="0.1" placeholder="No maximum">
+                    <input type="number" class="form-control" id="timeHeldMax" min="0" step="0.1"
+                        placeholder="No maximum">
                 </div>
             </div>
             <div class="modal-footer">
@@ -1639,7 +1830,8 @@
 </div>
 
 <!-- Unrealized Range Filter Modal -->
-<div class="modal fade filter-modal" id="unrealizedRangeFilterModal" tabindex="-1" aria-labelledby="unrealizedRangeFilterModalLabel" aria-hidden="true">
+<div class="modal fade filter-modal" id="unrealizedRangeFilterModal" tabindex="-1"
+    aria-labelledby="unrealizedRangeFilterModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
@@ -1649,7 +1841,8 @@
             <div class="modal-body">
                 <div class="filter-icon">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                     </svg>
                 </div>
                 <p class="filter-description">Show items with unrealized profit in a specific range.</p>
@@ -1671,7 +1864,8 @@
 </div>
 
 <!-- Realized Range Filter Modal -->
-<div class="modal fade filter-modal" id="realizedRangeFilterModal" tabindex="-1" aria-labelledby="realizedRangeFilterModalLabel" aria-hidden="true">
+<div class="modal fade filter-modal" id="realizedRangeFilterModal" tabindex="-1"
+    aria-labelledby="realizedRangeFilterModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
@@ -1681,7 +1875,8 @@
             <div class="modal-body">
                 <div class="filter-icon">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                 </div>
                 <p class="filter-description">Show items with realized profit in a specific range.</p>
@@ -1703,7 +1898,8 @@
 </div>
 
 <!-- Position Size Filter Modal -->
-<div class="modal fade filter-modal" id="positionSizeFilterModal" tabindex="-1" aria-labelledby="positionSizeFilterModalLabel" aria-hidden="true">
+<div class="modal fade filter-modal" id="positionSizeFilterModal" tabindex="-1"
+    aria-labelledby="positionSizeFilterModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
@@ -1713,7 +1909,8 @@
             <div class="modal-body">
                 <div class="filter-icon">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
                 </div>
                 <p class="filter-description">Show items with position size (price × quantity) in a specific range.</p>
@@ -1735,7 +1932,8 @@
 </div>
 
 <!-- Quantity Filter Modal -->
-<div class="modal fade filter-modal" id="quantityFilterModal" tabindex="-1" aria-labelledby="quantityFilterModalLabel" aria-hidden="true">
+<div class="modal fade filter-modal" id="quantityFilterModal" tabindex="-1" aria-labelledby="quantityFilterModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
@@ -1745,7 +1943,8 @@
             <div class="modal-body">
                 <div class="filter-icon">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
                     </svg>
                 </div>
                 <p class="filter-description">Show items with quantity holding in a specific range.</p>
@@ -1769,17 +1968,18 @@
 <!-- Success Notifications -->
 <div id="notifications">
     {% if messages %}
-        {% for message in messages %}
-            <div class="success-notification">
-                {{ message }}
-                <button type="button" class="dismiss-btn" onclick="dismissNotification(this)">&times;</button>
-            </div>
-        {% endfor %}
+    {% for message in messages %}
+    <div class="success-notification">
+        {{ message }}
+        <button type="button" class="dismiss-btn" onclick="dismissNotification(this)">&times;</button>
+    </div>
+    {% endfor %}
     {% endif %}
 </div>
 
 <!-- Delete Confirmation Modal -->
-<div class="modal fade delete-confirm-modal" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+<div class="modal fade delete-confirm-modal" id="deleteConfirmModal" tabindex="-1"
+    aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
@@ -1789,7 +1989,8 @@
             <div class="modal-body">
                 <div class="delete-icon">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                 </div>
                 <p>Are you sure you want to delete all flips for</p>
@@ -1809,12 +2010,16 @@
         <tr>
             <th class="sortable" data-col="0" data-type="string">Item <span class="sort-icon"></span></th>
             <th class="sortable" data-col="1" data-type="number">Price Paid<span class="sort-icon"></span></th>
-            <th class="sortable" data-col="2" data-type="number"><span class="d-none d-md-inline">Quantity Holding</span><span class="d-md-none">Qty</span> <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="3" data-type="number"><span class="d-none d-md-inline">Position Size</span><span class="d-md-none">Pos.</span> <span class="sort-icon"></span></th>
+            <th class="sortable" data-col="2" data-type="number"><span class="d-none d-md-inline">Quantity
+                    Holding</span><span class="d-md-none">Qty</span> <span class="sort-icon"></span></th>
+            <th class="sortable" data-col="3" data-type="number"><span class="d-none d-md-inline">Position
+                    Size</span><span class="d-md-none">Pos.</span> <span class="sort-icon"></span></th>
             <th class="sortable" data-col="4" data-type="number">High Price <span class="sort-icon"></span></th>
             <th class="sortable" data-col="5" data-type="number">Low Price <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="6" data-type="number"><span class="d-none d-md-inline">Unrealized Net</span><span class="d-md-none">Unreal.</span> <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="7" data-type="number"><span class="d-none d-md-inline">Realized Net</span><span class="d-md-none">Real.</span> <span class="sort-icon"></span></th>
+            <th class="sortable" data-col="6" data-type="number"><span class="d-none d-md-inline">Unrealized
+                    Net</span><span class="d-md-none">Unreal.</span> <span class="sort-icon"></span></th>
+            <th class="sortable" data-col="7" data-type="number"><span class="d-none d-md-inline">Realized
+                    Net</span><span class="d-md-none">Real.</span> <span class="sort-icon"></span></th>
         </tr>
     </thead>
     <tbody id="flipsTableBody">
@@ -1834,65 +2039,65 @@
 
 {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // =========================================================================
-    // PROGRESSIVE DATA LOADING
-    // =========================================================================
-    
-    const timeFilter = '{{ time_filter }}';
-    let flipsData = null;
-    
-    function formatNumber(num) {
-        return num.toLocaleString();
-    }
-    
-    function formatNumberWithSign(num) {
-        return (num >= 0 ? '+' : '') + Math.round(num).toLocaleString();
-    }
-    
-    function getPnlClass(value) {
-        if (value > 0) return 'pnl-pos';
-        if (value < 0) return 'pnl-neg';
-        return 'pnl-zero';
-    }
-    
-    function updateStats(stats) {
-        const statsRow = document.getElementById('statsRow');
-        
-        // Unrealized
-        const unrealizedCard = document.getElementById('statUnrealized');
-        const unrealizedValue = document.getElementById('statUnrealizedValue');
-        unrealizedCard.dataset.tone = stats.total_unrealized >= 0 ? 'success' : 'danger';
-        unrealizedValue.className = 'stat-value ' + getPnlClass(stats.total_unrealized);
-        unrealizedValue.textContent = formatNumberWithSign(stats.total_unrealized) + ' gp';
-        
-        // Realized
-        const realizedCard = document.getElementById('statRealized');
-        const realizedValue = document.getElementById('statRealizedValue');
-        realizedCard.dataset.tone = stats.total_realized >= 0 ? 'success' : 'danger';
-        realizedValue.className = 'stat-value ' + getPnlClass(stats.total_realized);
-        realizedValue.textContent = formatNumberWithSign(stats.total_realized) + ' gp';
-        
-        // Position Size
-        const positionValue = document.getElementById('statPositionValue');
-        positionValue.textContent = formatNumber(stats.position_size) + ' gp';
-        
-        // Remove loading state
-        statsRow.classList.remove('loading');
-        statsRow.classList.add('fade-in');
-    }
-    
-    function renderTableRows(items) {
-        const tbody = document.getElementById('flipsTableBody');
-        
-        if (items.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-center">No flips recorded yet.</td></tr>';
-            return;
+    document.addEventListener('DOMContentLoaded', function () {
+        // =========================================================================
+        // PROGRESSIVE DATA LOADING
+        // =========================================================================
+
+        const timeFilter = '{{ time_filter }}';
+        let flipsData = null;
+
+        function formatNumber(num) {
+            return num.toLocaleString();
         }
-        
-        let html = '';
-        items.forEach(item => {
-            html += `
+
+        function formatNumberWithSign(num) {
+            return (num >= 0 ? '+' : '') + Math.round(num).toLocaleString();
+        }
+
+        function getPnlClass(value) {
+            if (value > 0) return 'pnl-pos';
+            if (value < 0) return 'pnl-neg';
+            return 'pnl-zero';
+        }
+
+        function updateStats(stats) {
+            const statsRow = document.getElementById('statsRow');
+
+            // Unrealized
+            const unrealizedCard = document.getElementById('statUnrealized');
+            const unrealizedValue = document.getElementById('statUnrealizedValue');
+            unrealizedCard.dataset.tone = stats.total_unrealized >= 0 ? 'success' : 'danger';
+            unrealizedValue.className = 'stat-value ' + getPnlClass(stats.total_unrealized);
+            unrealizedValue.textContent = formatNumberWithSign(stats.total_unrealized) + ' gp';
+
+            // Realized
+            const realizedCard = document.getElementById('statRealized');
+            const realizedValue = document.getElementById('statRealizedValue');
+            realizedCard.dataset.tone = stats.total_realized >= 0 ? 'success' : 'danger';
+            realizedValue.className = 'stat-value ' + getPnlClass(stats.total_realized);
+            realizedValue.textContent = formatNumberWithSign(stats.total_realized) + ' gp';
+
+            // Position Size
+            const positionValue = document.getElementById('statPositionValue');
+            positionValue.textContent = formatNumber(stats.position_size) + ' gp';
+
+            // Remove loading state
+            statsRow.classList.remove('loading');
+            statsRow.classList.add('fade-in');
+        }
+
+        function renderTableRows(items) {
+            const tbody = document.getElementById('flipsTableBody');
+
+            if (items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center">No flips recorded yet.</td></tr>';
+                return;
+            }
+
+            let html = '';
+            items.forEach(item => {
+                html += `
             <tr data-item-id="${item.item_id}" data-item-name="${item.name}" data-first-buy="${item.first_buy_timestamp || ''}" data-position-size="${item.position_size}">
                 <td>
                     <a href="/flips/item/${item.item_id}/">${item.name}</a>
@@ -1907,1397 +2112,1398 @@ document.addEventListener('DOMContentLoaded', function() {
                 <td data-value="${item.unrealized_net}" class="${getPnlClass(item.unrealized_net)}">${formatNumberWithSign(item.unrealized_net)}</td>
                 <td data-value="${item.realized_net}" class="${getPnlClass(item.realized_net)}">${formatNumberWithSign(item.realized_net)}</td>
             </tr>`;
-        });
-        
-        tbody.innerHTML = html;
-        tbody.classList.add('fade-in');
-        
-        // Apply mobile formatting after rendering
-        applyMobileFormatting();
-        
-        // Re-initialize sorting after data loads
-        initTableSort();
-        
-        // Apply initial sort by time held
-        triggerInitialSort();
-    }
-    
-    function loadFlipsStats() {
-        // Fast stats load - uses cached values, no external API calls
-        fetch('/api/flips/stats/')
-            .then(response => response.json())
-            .then(stats => {
-                updateStats({
-                    total_unrealized: stats.total_unrealized,
-                    total_realized: stats.total_realized,
-                    position_size: stats.position_size
+            });
+
+            tbody.innerHTML = html;
+            tbody.classList.add('fade-in');
+
+            // Apply mobile formatting after rendering
+            applyMobileFormatting();
+
+            // Re-initialize sorting after data loads
+            initTableSort();
+
+            // Apply initial sort by time held
+            triggerInitialSort();
+        }
+
+        function loadFlipsStats() {
+            // Fast stats load - uses cached values, no external API calls
+            fetch('/api/flips/stats/')
+                .then(response => response.json())
+                .then(stats => {
+                    updateStats({
+                        total_unrealized: stats.total_unrealized,
+                        total_realized: stats.total_realized,
+                        position_size: stats.position_size
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading flips stats:', error);
                 });
-            })
-            .catch(error => {
-                console.error('Error loading flips stats:', error);
-            });
-    }
-    
-    function loadFlipsData() {
-        const url = '/api/flips/data/' + (timeFilter !== 'current' ? '?filter=' + timeFilter : '');
-        
-        fetch(url)
-            .then(response => response.json())
-            .then(data => {
-                flipsData = data;
-                // Update stats again with fresh values (recalculated with live prices)
-                updateStats(data.stats);
-                renderTableRows(data.items);
-            })
-            .catch(error => {
-                console.error('Error loading flips data:', error);
-                document.getElementById('flipsTableBody').innerHTML = 
-                    '<tr><td colspan="8" class="text-center text-danger">Error loading data. Please refresh the page.</td></tr>';
-            });
-    }
-    
-    // Load stats instantly (cached values), then load full data
-    loadFlipsStats();
-    loadFlipsData();
-    
-    // Auto-refresh data every 5 minutes (instead of page reload)
-    setInterval(loadFlipsData, 5 * 60 * 1000);
-    
-    // =========================================================================
-    // MOBILE NUMBER FORMATTING
-    // =========================================================================
-    
-    function formatNumberMobile(num) {
-        const absNum = Math.abs(num);
-        const sign = num < 0 ? '-' : (num > 0 ? '+' : '');
-        
-        if (absNum >= 1000000) {
-            // Millions - use 1 decimal
-            return sign + (absNum / 1000000).toFixed(1) + 'M';
-        } else if (absNum >= 1000) {
-            // Thousands - no decimal
-            return sign + Math.floor(absNum / 1000) + 'K';
-        } else {
-            return sign + absNum;
         }
-    }
-    
-    function formatNumberMobileNoSign(num) {
-        const absNum = Math.abs(num);
-        
-        if (absNum >= 1000000) {
-            return (absNum / 1000000).toFixed(1) + 'M';
-        } else if (absNum >= 1000) {
-            return Math.floor(absNum / 1000) + 'K';
-        } else {
-            return absNum.toLocaleString();
+
+        function loadFlipsData() {
+            const url = '/api/flips/data/' + (timeFilter !== 'current' ? '?filter=' + timeFilter : '');
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    flipsData = data;
+                    // Update stats again with fresh values (recalculated with live prices)
+                    updateStats(data.stats);
+                    renderTableRows(data.items);
+                })
+                .catch(error => {
+                    console.error('Error loading flips data:', error);
+                    document.getElementById('flipsTableBody').innerHTML =
+                        '<tr><td colspan="8" class="text-center text-danger">Error loading data. Please refresh the page.</td></tr>';
+                });
         }
-    }
-    
-    function applyMobileFormatting() {
-        const isMobile = window.innerWidth <= 1100;
-        const rows = document.querySelectorAll('#flipsTable tbody tr[data-item-id]');
-        
-        rows.forEach(row => {
-            // Position Size (column 4)
-            const posCell = row.querySelector('td:nth-child(4)');
-            if (posCell) {
-                const value = parseFloat(posCell.dataset.value) || 0;
-                posCell.textContent = isMobile ? formatNumberMobileNoSign(value) : value.toLocaleString();
-            }
-            
-            // Unrealized Net (column 7)
-            const unrealCell = row.querySelector('td:nth-child(7)');
-            if (unrealCell) {
-                const value = parseFloat(unrealCell.dataset.value) || 0;
-                if (isMobile) {
-                    unrealCell.textContent = formatNumberMobile(value);
-                } else {
-                    unrealCell.textContent = (value >= 0 ? '+' : '') + Math.round(value).toLocaleString();
-                }
-            }
-            
-            // Realized Net (column 8)
-            const realCell = row.querySelector('td:nth-child(8)');
-            if (realCell) {
-                const value = parseFloat(realCell.dataset.value) || 0;
-                if (isMobile) {
-                    realCell.textContent = formatNumberMobile(value);
-                } else {
-                    realCell.textContent = (value >= 0 ? '+' : '') + Math.round(value).toLocaleString();
-                }
-            }
-        });
-    }
-    
-    // Apply on load and resize
-    applyMobileFormatting();
-    window.addEventListener('resize', applyMobileFormatting);
-    
-    // =========================================================================
-    // FILTER SYSTEM
-    // =========================================================================
-    
-    const activeFilters = {};
-    let currentSortFilter = null;
-    let sortAscending = false; // Default descending
-    let columnSortActive = false; // Track if column header sort is active
-    
-    const filterDropdownBtn = document.getElementById('filterDropdownBtn');
-    const filterDropdownMenu = document.getElementById('filterDropdownMenu');
-    const filterBadge = document.getElementById('filterBadge');
-    const tableBody = document.querySelector('#flipsTable tbody');
-    const sortIndicator = document.getElementById('sortIndicator');
-    const sortIndicatorValue = document.getElementById('sortIndicatorValue');
-    const sortIndicatorArrow = document.getElementById('sortIndicatorArrow');
-    const sortIndicatorMenu = document.getElementById('sortIndicatorMenu');
-    const sortIndicatorOptions = document.getElementById('sortIndicatorOptions');
-    const sortByDivider = document.getElementById('sortByDivider');
-    const sortBySection = document.getElementById('sortBySection');
-    const sortByOptions = document.getElementById('sortByOptions');
-    
-    // Mobile sort indicator elements
-    const sortIndicatorMobileRow = document.getElementById('sortIndicatorMobileRow');
-    const sortIndicatorMobile = document.getElementById('sortIndicatorMobile');
-    const sortIndicatorValueMobile = document.getElementById('sortIndicatorValueMobile');
-    const sortIndicatorArrowMobile = document.getElementById('sortIndicatorArrowMobile');
-    
-    // Filter tags elements
-    const activeFilterTagsRow = document.getElementById('activeFilterTagsRow');
-    const activeFilterTags = document.getElementById('activeFilterTags');
-    const activeFilterTagsMobile = document.getElementById('activeFilterTagsMobile');
-    
-    // Filter label mappings
-    const filterLabels = {
-        'time-held': 'Time Held',
-        'unrealized-range': 'Unrealized',
-        'realized-range': 'Realized',
-        'position-size': 'Position Size',
-        'quantity': 'Quantity'
-    };
-    
-    // Modal elements - declare early so click handlers can access them
-    const timeHeldModal = document.getElementById('timeHeldFilterModal');
-    const timeHeldMin = document.getElementById('timeHeldMin');
-    const timeHeldMax = document.getElementById('timeHeldMax');
-    const unrealizedModal = document.getElementById('unrealizedRangeFilterModal');
-    const unrealizedMin = document.getElementById('unrealizedMin');
-    const unrealizedMax = document.getElementById('unrealizedMax');
-    const realizedModal = document.getElementById('realizedRangeFilterModal');
-    const realizedMin = document.getElementById('realizedMin');
-    const realizedMax = document.getElementById('realizedMax');
-    const positionSizeModal = document.getElementById('positionSizeFilterModal');
-    const positionSizeMin = document.getElementById('positionSizeMin');
-    const positionSizeMax = document.getElementById('positionSizeMax');
-    const quantityModal = document.getElementById('quantityFilterModal');
-    const quantityMin = document.getElementById('quantityMin');
-    const quantityMax = document.getElementById('quantityMax');
-    
-    const filterDisplayNames = {
-        'position-size': 'Position Size',
-        'quantity': 'Quantity',
-        'realized-range': 'Realized',
-        'time-held': 'Time Held',
-        'unrealized-range': 'Unrealized'
-    };
-    
-    if (!filterDropdownBtn || !filterDropdownMenu) {
-        console.error('Filter elements not found!');
-    }
-    
-    // Sort table alphabetically by item name
-    function sortTableAlphabetically() {
-        const rows = Array.from(tableBody.querySelectorAll('tr[data-item-name]'));
-        rows.sort((a, b) => {
-            const nameA = a.dataset.itemName.toLowerCase();
-            const nameB = b.dataset.itemName.toLowerCase();
-            return nameA.localeCompare(nameB);
-        });
-        rows.forEach(row => tableBody.appendChild(row));
-    }
-    
-    // Function to trigger initial sort (called after data loads via AJAX)
-    function triggerInitialSort() {
-        sortTableAlphabetically();
-    }
-    
-    // Function to re-initialize table sorting (called after data loads via AJAX)
-    // Note: Column header event listeners are set up once on DOMContentLoaded
-    // This function exists for any post-load cleanup if needed
-    function initTableSort() {
-        // Headers already have event listeners from initial setup
-        // Just ensure any filter state is consistent
-    }
-    
-    // Make functions globally accessible for AJAX callbacks
-    window.triggerInitialSort = triggerInitialSort;
-    window.initTableSort = initTableSort;
-    
-    // Function to clear column header sort styling
-    function clearColumnSortStyling() {
-        const headers = document.querySelectorAll('#flipsTable th.sortable');
-        headers.forEach(h => h.classList.remove('asc', 'desc'));
-    }
-    
-    // Function to deactivate filter sort (called when column header is clicked)
-    function deactivateFilterSort() {
-        columnSortActive = true;
-        currentSortFilter = null;
-        sortIndicator.classList.remove('active');
-        sortIndicatorMenu.classList.remove('show');
-        syncMobileSortIndicator();
-        updateSortByOptions();
-    }
-    
-    // Sync mobile sort indicator with desktop
-    function syncMobileSortIndicator() {
-        // Sync active state - mobile row only shows when sort is active
-        if (sortIndicator.classList.contains('active')) {
-            sortIndicatorMobileRow.classList.add('active');
-        } else {
-            sortIndicatorMobileRow.classList.remove('active');
-        }
-        // Sync content
-        sortIndicatorValueMobile.textContent = sortIndicatorValue.textContent;
-        sortIndicatorArrowMobile.textContent = sortIndicatorArrow.textContent;
-        // Copy flash animation
-        if (sortIndicator.classList.contains('flash')) {
-            sortIndicatorMobile.classList.add('flash');
-        } else {
-            sortIndicatorMobile.classList.remove('flash');
-        }
-    }
-    
-    // Function to activate filter sort (called when filter sort is selected)
-    function activateFilterSort(filterName) {
-        columnSortActive = false;
-        currentSortFilter = filterName;
-        clearColumnSortStyling();
-        updateSortByOptions();
-        sortTableByFilter();
-    }
-    
-    // Format time held in human-readable format
-    function formatTimeHeld(seconds) {
-        if (seconds < 0) return 'N/A';
-        
-        const minutes = Math.floor(seconds / 60);
-        const hours = Math.floor(seconds / 3600);
-        const days = Math.floor(seconds / 86400);
-        const weeks = Math.floor(days / 7);
-        const months = Math.floor(days / 30);
-        
-        if (seconds < 3600) {
-            return minutes === 1 ? '1 minute' : `${minutes} minutes`;
-        } else if (seconds < 86400) {
-            const remainingMins = minutes % 60;
-            if (remainingMins > 0) {
-                return hours === 1 ? `1 hour and ${remainingMins} min` : `${hours} hours and ${remainingMins} min`;
-            }
-            return hours === 1 ? '1 hour' : `${hours} hours`;
-        } else if (days < 14) {
-            const remainingHours = hours % 24;
-            if (remainingHours > 0 && days < 7) {
-                return days === 1 ? `1 day and ${remainingHours} hr` : `${days} days and ${remainingHours} hr`;
-            }
-            return days === 1 ? '1 day' : `${days} days`;
-        } else if (days < 60) {
-            const remainingDays = days % 7;
-            if (remainingDays > 0) {
-                return weeks === 1 ? `1 week and ${remainingDays} day${remainingDays > 1 ? 's' : ''}` : `${weeks} weeks and ${remainingDays} day${remainingDays > 1 ? 's' : ''}`;
-            }
-            return weeks === 1 ? '1 week' : `${weeks} weeks`;
-        } else {
-            const remainingDays = days % 30;
-            if (remainingDays > 0) {
-                return months === 1 ? `1 month and ${remainingDays} day${remainingDays > 1 ? 's' : ''}` : `${months} months and ${remainingDays} day${remainingDays > 1 ? 's' : ''}`;
-            }
-            return months === 1 ? '1 month' : `${months} months`;
-        }
-    }
-    
-    // Calculate time held in days for a row
-    function getTimeHeldDays(row) {
-        const firstBuy = row.dataset.firstBuy;
-        if (!firstBuy) return null;
-        const now = Date.now() / 1000;
-        const seconds = now - parseFloat(firstBuy);
-        return seconds / 86400;
-    }
-    
-    // Get sort value for a row based on filter type
-    function getSortValue(row, filterName) {
-        if (filterName === 'time-held') {
-            return getTimeHeldDays(row) || 0;
-        } else if (filterName === 'unrealized-range') {
-            const cell = row.querySelector('td:nth-child(7)');
-            return parseFloat(cell?.dataset.value) || 0;
-        } else if (filterName === 'realized-range') {
-            const cell = row.querySelector('td:nth-child(8)');
-            return parseFloat(cell?.dataset.value) || 0;
-        } else if (filterName === 'position-size') {
-            const cell = row.querySelector('td:nth-child(4)');
-            return parseFloat(cell?.dataset.value) || 0;
-        } else if (filterName === 'quantity') {
-            const cell = row.querySelector('td:nth-child(3)');
-            return parseFloat(cell?.dataset.value) || 0;
-        }
-        return 0;
-    }
-    
-    // Sort the table by current sort filter
-    function sortTableByFilter() {
-        if (!currentSortFilter) return;
-        
-        const rows = Array.from(tableBody.querySelectorAll('tr[data-item-name]'));
-        
-        rows.sort((a, b) => {
-            const valA = getSortValue(a, currentSortFilter);
-            const valB = getSortValue(b, currentSortFilter);
-            return sortAscending ? valA - valB : valB - valA;
-        });
-        
-        rows.forEach(row => tableBody.appendChild(row));
-    }
-    
-    // Update sort-by options in dropdown
-    function updateSortByOptions() {
-        const filterKeys = Object.keys(activeFilters);
-        
-        if (filterKeys.length === 0) {
-            sortByDivider.style.display = 'none';
-            sortBySection.style.display = 'none';
-            sortByOptions.innerHTML = '';
-            sortIndicator.classList.remove('active');
-            sortIndicator.classList.remove('clickable');
-            sortIndicatorOptions.innerHTML = '';
-            currentSortFilter = null;
-            // Sort alphabetically when all filters cleared
-            if (!columnSortActive) {
-                sortTableAlphabetically();
-            }
-            syncMobileSortIndicator();
-            return;
-        }
-        
-        // Show sort section in filter dropdown
-        sortByDivider.style.display = 'block';
-        sortBySection.style.display = 'block';
-        
-        // Only show sort indicator if column sort is not active
-        if (!columnSortActive) {
-            sortIndicator.classList.add('active');
-            
-            // Make clickable only if more than one filter
-            if (filterKeys.length > 1) {
-                sortIndicator.classList.add('clickable');
+
+        // Load stats instantly (cached values), then load full data
+        loadFlipsStats();
+        loadFlipsData();
+
+        // Auto-refresh data every 5 minutes (instead of page reload)
+        setInterval(loadFlipsData, 5 * 60 * 1000);
+
+        // =========================================================================
+        // MOBILE NUMBER FORMATTING
+        // =========================================================================
+
+        function formatNumberMobile(num) {
+            const absNum = Math.abs(num);
+            const sign = num < 0 ? '-' : (num > 0 ? '+' : '');
+
+            if (absNum >= 1000000) {
+                // Millions - use 1 decimal
+                return sign + (absNum / 1000000).toFixed(1) + 'M';
+            } else if (absNum >= 1000) {
+                // Thousands - no decimal
+                return sign + Math.floor(absNum / 1000) + 'K';
             } else {
+                return sign + absNum;
+            }
+        }
+
+        function formatNumberMobileNoSign(num) {
+            const absNum = Math.abs(num);
+
+            if (absNum >= 1000000) {
+                return (absNum / 1000000).toFixed(1) + 'M';
+            } else if (absNum >= 1000) {
+                return Math.floor(absNum / 1000) + 'K';
+            } else {
+                return absNum.toLocaleString();
+            }
+        }
+
+        function applyMobileFormatting() {
+            const isMobile = window.innerWidth <= 1100;
+            const rows = document.querySelectorAll('#flipsTable tbody tr[data-item-id]');
+
+            rows.forEach(row => {
+                // Position Size (column 4)
+                const posCell = row.querySelector('td:nth-child(4)');
+                if (posCell) {
+                    const value = parseFloat(posCell.dataset.value) || 0;
+                    posCell.textContent = isMobile ? formatNumberMobileNoSign(value) : value.toLocaleString();
+                }
+
+                // Unrealized Net (column 7)
+                const unrealCell = row.querySelector('td:nth-child(7)');
+                if (unrealCell) {
+                    const value = parseFloat(unrealCell.dataset.value) || 0;
+                    if (isMobile) {
+                        unrealCell.textContent = formatNumberMobile(value);
+                    } else {
+                        unrealCell.textContent = (value >= 0 ? '+' : '') + Math.round(value).toLocaleString();
+                    }
+                }
+
+                // Realized Net (column 8)
+                const realCell = row.querySelector('td:nth-child(8)');
+                if (realCell) {
+                    const value = parseFloat(realCell.dataset.value) || 0;
+                    if (isMobile) {
+                        realCell.textContent = formatNumberMobile(value);
+                    } else {
+                        realCell.textContent = (value >= 0 ? '+' : '') + Math.round(value).toLocaleString();
+                    }
+                }
+            });
+        }
+
+        // Apply on load and resize
+        applyMobileFormatting();
+        window.addEventListener('resize', applyMobileFormatting);
+
+        // =========================================================================
+        // FILTER SYSTEM
+        // =========================================================================
+
+        const activeFilters = {};
+        let currentSortFilter = null;
+        let sortAscending = false; // Default descending
+        let columnSortActive = false; // Track if column header sort is active
+
+        const filterDropdownBtn = document.getElementById('filterDropdownBtn');
+        const filterDropdownMenu = document.getElementById('filterDropdownMenu');
+        const filterBadge = document.getElementById('filterBadge');
+        const tableBody = document.querySelector('#flipsTable tbody');
+        const sortIndicator = document.getElementById('sortIndicator');
+        const sortIndicatorValue = document.getElementById('sortIndicatorValue');
+        const sortIndicatorArrow = document.getElementById('sortIndicatorArrow');
+        const sortIndicatorMenu = document.getElementById('sortIndicatorMenu');
+        const sortIndicatorOptions = document.getElementById('sortIndicatorOptions');
+        const sortByDivider = document.getElementById('sortByDivider');
+        const sortBySection = document.getElementById('sortBySection');
+        const sortByOptions = document.getElementById('sortByOptions');
+
+        // Mobile sort indicator elements
+        const sortIndicatorMobileRow = document.getElementById('sortIndicatorMobileRow');
+        const sortIndicatorMobile = document.getElementById('sortIndicatorMobile');
+        const sortIndicatorValueMobile = document.getElementById('sortIndicatorValueMobile');
+        const sortIndicatorArrowMobile = document.getElementById('sortIndicatorArrowMobile');
+
+        // Filter tags elements
+        const activeFilterTagsRow = document.getElementById('activeFilterTagsRow');
+        const activeFilterTags = document.getElementById('activeFilterTags');
+        const activeFilterTagsMobile = document.getElementById('activeFilterTagsMobile');
+
+        // Filter label mappings
+        const filterLabels = {
+            'time-held': 'Time Held',
+            'unrealized-range': 'Unrealized',
+            'realized-range': 'Realized',
+            'position-size': 'Position Size',
+            'quantity': 'Quantity'
+        };
+
+        // Modal elements - declare early so click handlers can access them
+        const timeHeldModal = document.getElementById('timeHeldFilterModal');
+        const timeHeldMin = document.getElementById('timeHeldMin');
+        const timeHeldMax = document.getElementById('timeHeldMax');
+        const unrealizedModal = document.getElementById('unrealizedRangeFilterModal');
+        const unrealizedMin = document.getElementById('unrealizedMin');
+        const unrealizedMax = document.getElementById('unrealizedMax');
+        const realizedModal = document.getElementById('realizedRangeFilterModal');
+        const realizedMin = document.getElementById('realizedMin');
+        const realizedMax = document.getElementById('realizedMax');
+        const positionSizeModal = document.getElementById('positionSizeFilterModal');
+        const positionSizeMin = document.getElementById('positionSizeMin');
+        const positionSizeMax = document.getElementById('positionSizeMax');
+        const quantityModal = document.getElementById('quantityFilterModal');
+        const quantityMin = document.getElementById('quantityMin');
+        const quantityMax = document.getElementById('quantityMax');
+
+        const filterDisplayNames = {
+            'position-size': 'Position Size',
+            'quantity': 'Quantity',
+            'realized-range': 'Realized',
+            'time-held': 'Time Held',
+            'unrealized-range': 'Unrealized'
+        };
+
+        if (!filterDropdownBtn || !filterDropdownMenu) {
+            console.error('Filter elements not found!');
+        }
+
+        // Sort table alphabetically by item name
+        function sortTableAlphabetically() {
+            const rows = Array.from(tableBody.querySelectorAll('tr[data-item-name]'));
+            rows.sort((a, b) => {
+                const nameA = a.dataset.itemName.toLowerCase();
+                const nameB = b.dataset.itemName.toLowerCase();
+                return nameA.localeCompare(nameB);
+            });
+            rows.forEach(row => tableBody.appendChild(row));
+        }
+
+        // Function to trigger initial sort (called after data loads via AJAX)
+        function triggerInitialSort() {
+            sortTableAlphabetically();
+        }
+
+        // Function to re-initialize table sorting (called after data loads via AJAX)
+        // Note: Column header event listeners are set up once on DOMContentLoaded
+        // This function exists for any post-load cleanup if needed
+        function initTableSort() {
+            // Headers already have event listeners from initial setup
+            // Just ensure any filter state is consistent
+        }
+
+        // Make functions globally accessible for AJAX callbacks
+        window.triggerInitialSort = triggerInitialSort;
+        window.initTableSort = initTableSort;
+
+        // Function to clear column header sort styling
+        function clearColumnSortStyling() {
+            const headers = document.querySelectorAll('#flipsTable th.sortable');
+            headers.forEach(h => h.classList.remove('asc', 'desc'));
+        }
+
+        // Function to deactivate filter sort (called when column header is clicked)
+        function deactivateFilterSort() {
+            columnSortActive = true;
+            currentSortFilter = null;
+            sortIndicator.classList.remove('active');
+            sortIndicatorMenu.classList.remove('show');
+            syncMobileSortIndicator();
+            updateSortByOptions();
+        }
+
+        // Sync mobile sort indicator with desktop
+        function syncMobileSortIndicator() {
+            // Sync active state - mobile row only shows when sort is active
+            if (sortIndicator.classList.contains('active')) {
+                sortIndicatorMobileRow.classList.add('active');
+            } else {
+                sortIndicatorMobileRow.classList.remove('active');
+            }
+            // Sync content
+            sortIndicatorValueMobile.textContent = sortIndicatorValue.textContent;
+            sortIndicatorArrowMobile.textContent = sortIndicatorArrow.textContent;
+            // Copy flash animation
+            if (sortIndicator.classList.contains('flash')) {
+                sortIndicatorMobile.classList.add('flash');
+            } else {
+                sortIndicatorMobile.classList.remove('flash');
+            }
+        }
+
+        // Function to activate filter sort (called when filter sort is selected)
+        function activateFilterSort(filterName) {
+            columnSortActive = false;
+            currentSortFilter = filterName;
+            clearColumnSortStyling();
+            updateSortByOptions();
+            sortTableByFilter();
+        }
+
+        // Format time held in human-readable format
+        function formatTimeHeld(seconds) {
+            if (seconds < 0) return 'N/A';
+
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(seconds / 3600);
+            const days = Math.floor(seconds / 86400);
+            const weeks = Math.floor(days / 7);
+            const months = Math.floor(days / 30);
+
+            if (seconds < 3600) {
+                return minutes === 1 ? '1 minute' : `${minutes} minutes`;
+            } else if (seconds < 86400) {
+                const remainingMins = minutes % 60;
+                if (remainingMins > 0) {
+                    return hours === 1 ? `1 hour and ${remainingMins} min` : `${hours} hours and ${remainingMins} min`;
+                }
+                return hours === 1 ? '1 hour' : `${hours} hours`;
+            } else if (days < 14) {
+                const remainingHours = hours % 24;
+                if (remainingHours > 0 && days < 7) {
+                    return days === 1 ? `1 day and ${remainingHours} hr` : `${days} days and ${remainingHours} hr`;
+                }
+                return days === 1 ? '1 day' : `${days} days`;
+            } else if (days < 60) {
+                const remainingDays = days % 7;
+                if (remainingDays > 0) {
+                    return weeks === 1 ? `1 week and ${remainingDays} day${remainingDays > 1 ? 's' : ''}` : `${weeks} weeks and ${remainingDays} day${remainingDays > 1 ? 's' : ''}`;
+                }
+                return weeks === 1 ? '1 week' : `${weeks} weeks`;
+            } else {
+                const remainingDays = days % 30;
+                if (remainingDays > 0) {
+                    return months === 1 ? `1 month and ${remainingDays} day${remainingDays > 1 ? 's' : ''}` : `${months} months and ${remainingDays} day${remainingDays > 1 ? 's' : ''}`;
+                }
+                return months === 1 ? '1 month' : `${months} months`;
+            }
+        }
+
+        // Calculate time held in days for a row
+        function getTimeHeldDays(row) {
+            const firstBuy = row.dataset.firstBuy;
+            if (!firstBuy) return null;
+            const now = Date.now() / 1000;
+            const seconds = now - parseFloat(firstBuy);
+            return seconds / 86400;
+        }
+
+        // Get sort value for a row based on filter type
+        function getSortValue(row, filterName) {
+            if (filterName === 'time-held') {
+                return getTimeHeldDays(row) || 0;
+            } else if (filterName === 'unrealized-range') {
+                const cell = row.querySelector('td:nth-child(7)');
+                return parseFloat(cell?.dataset.value) || 0;
+            } else if (filterName === 'realized-range') {
+                const cell = row.querySelector('td:nth-child(8)');
+                return parseFloat(cell?.dataset.value) || 0;
+            } else if (filterName === 'position-size') {
+                const cell = row.querySelector('td:nth-child(4)');
+                return parseFloat(cell?.dataset.value) || 0;
+            } else if (filterName === 'quantity') {
+                const cell = row.querySelector('td:nth-child(3)');
+                return parseFloat(cell?.dataset.value) || 0;
+            }
+            return 0;
+        }
+
+        // Sort the table by current sort filter
+        function sortTableByFilter() {
+            if (!currentSortFilter) return;
+
+            const rows = Array.from(tableBody.querySelectorAll('tr[data-item-name]'));
+
+            rows.sort((a, b) => {
+                const valA = getSortValue(a, currentSortFilter);
+                const valB = getSortValue(b, currentSortFilter);
+                return sortAscending ? valA - valB : valB - valA;
+            });
+
+            rows.forEach(row => tableBody.appendChild(row));
+        }
+
+        // Update sort-by options in dropdown
+        function updateSortByOptions() {
+            const filterKeys = Object.keys(activeFilters);
+
+            if (filterKeys.length === 0) {
+                sortByDivider.style.display = 'none';
+                sortBySection.style.display = 'none';
+                sortByOptions.innerHTML = '';
+                sortIndicator.classList.remove('active');
                 sortIndicator.classList.remove('clickable');
+                sortIndicatorOptions.innerHTML = '';
+                currentSortFilter = null;
+                // Sort alphabetically when all filters cleared
+                if (!columnSortActive) {
+                    sortTableAlphabetically();
+                }
+                syncMobileSortIndicator();
+                return;
             }
-            
-            // If no current sort or current sort filter was removed, use first filter
-            const previousSort = currentSortFilter;
-            if (!currentSortFilter || !activeFilters[currentSortFilter]) {
-                currentSortFilter = filterKeys[0];
-            }
-            
-            // Flash the indicator when sort changes or first activates
-            if (previousSort !== currentSortFilter || !previousSort) {
-                sortIndicator.classList.remove('flash');
-                void sortIndicator.offsetWidth;
-                sortIndicator.classList.add('flash');
-            }
-            
-            // Update sort indicator text
-            sortIndicatorValue.textContent = filterDisplayNames[currentSortFilter];
-            sortIndicatorArrow.textContent = sortAscending ? '↑' : '↓';
-            
-            // Build sort indicator dropdown options
-            sortIndicatorOptions.innerHTML = filterKeys.map(filterName => `
+
+            // Show sort section in filter dropdown
+            sortByDivider.style.display = 'block';
+            sortBySection.style.display = 'block';
+
+            // Only show sort indicator if column sort is not active
+            if (!columnSortActive) {
+                sortIndicator.classList.add('active');
+
+                // Make clickable only if more than one filter
+                if (filterKeys.length > 1) {
+                    sortIndicator.classList.add('clickable');
+                } else {
+                    sortIndicator.classList.remove('clickable');
+                }
+
+                // If no current sort or current sort filter was removed, use first filter
+                const previousSort = currentSortFilter;
+                if (!currentSortFilter || !activeFilters[currentSortFilter]) {
+                    currentSortFilter = filterKeys[0];
+                }
+
+                // Flash the indicator when sort changes or first activates
+                if (previousSort !== currentSortFilter || !previousSort) {
+                    sortIndicator.classList.remove('flash');
+                    void sortIndicator.offsetWidth;
+                    sortIndicator.classList.add('flash');
+                }
+
+                // Update sort indicator text
+                sortIndicatorValue.textContent = filterDisplayNames[currentSortFilter];
+                sortIndicatorArrow.textContent = sortAscending ? '↑' : '↓';
+
+                // Build sort indicator dropdown options
+                sortIndicatorOptions.innerHTML = filterKeys.map(filterName => `
                 <div class="sort-by-item ${filterName === currentSortFilter ? 'active' : ''}" data-sort="${filterName}">
                     <span>${filterDisplayNames[filterName]}</span>
                 </div>
             `).join('');
-            
-            // Add click handlers for sort indicator dropdown
-            sortIndicatorOptions.querySelectorAll('.sort-by-item').forEach(item => {
-                item.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    const newSort = this.dataset.sort;
-                    if (newSort !== currentSortFilter) {
-                        currentSortFilter = newSort;
-                        sortIndicator.classList.remove('flash');
-                        void sortIndicator.offsetWidth;
-                        sortIndicator.classList.add('flash');
-                        clearColumnSortStyling();
-                        updateSortByOptions();
-                        sortTableByFilter();
-                    }
-                    sortIndicatorMenu.classList.remove('show');
+
+                // Add click handlers for sort indicator dropdown
+                sortIndicatorOptions.querySelectorAll('.sort-by-item').forEach(item => {
+                    item.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        const newSort = this.dataset.sort;
+                        if (newSort !== currentSortFilter) {
+                            currentSortFilter = newSort;
+                            sortIndicator.classList.remove('flash');
+                            void sortIndicator.offsetWidth;
+                            sortIndicator.classList.add('flash');
+                            clearColumnSortStyling();
+                            updateSortByOptions();
+                            sortTableByFilter();
+                        }
+                        sortIndicatorMenu.classList.remove('show');
+                    });
                 });
-            });
-        } else {
-            sortIndicator.classList.remove('active');
-            sortIndicator.classList.remove('clickable');
-        }
-        
-        // Build sort-by options in filter dropdown (show none selected if column sort active)
-        sortByOptions.innerHTML = filterKeys.map(filterName => `
+            } else {
+                sortIndicator.classList.remove('active');
+                sortIndicator.classList.remove('clickable');
+            }
+
+            // Build sort-by options in filter dropdown (show none selected if column sort active)
+            sortByOptions.innerHTML = filterKeys.map(filterName => `
             <div class="sort-by-item ${!columnSortActive && filterName === currentSortFilter ? 'active' : ''}" data-sort="${filterName}">
                 <span>${filterDisplayNames[filterName]}</span>
                 <span class="sort-radio"></span>
             </div>
         `).join('');
-        
-        // Add click handlers for filter dropdown sort options
-        sortByOptions.querySelectorAll('.sort-by-item').forEach(item => {
-            item.addEventListener('click', function(e) {
-                e.stopPropagation();
-                const newSort = this.dataset.sort;
-                columnSortActive = false;
-                currentSortFilter = newSort;
-                sortIndicator.classList.remove('flash');
-                void sortIndicator.offsetWidth;
-                sortIndicator.classList.add('flash');
-                clearColumnSortStyling();
-                updateSortByOptions();
-                sortTableByFilter();
-                filterDropdownMenu.classList.remove('show');
-            });
-        });
-        
-        // Sync mobile sort indicator
-        syncMobileSortIndicator();
-    }
-    
-    // Update filter badge and button state
-    function updateFilterUI() {
-        const count = Object.keys(activeFilters).length;
-        if (count > 0) {
-            filterBadge.textContent = count;
-            filterBadge.style.display = 'inline';
-            filterDropdownBtn.classList.add('has-active');
-        } else {
-            filterBadge.style.display = 'none';
-            filterDropdownBtn.classList.remove('has-active');
-        }
-        
-        // Update dropdown item states
-        document.querySelectorAll('.filter-dropdown-item').forEach(item => {
-            const filterName = item.dataset.filter;
-            if (activeFilters[filterName]) {
-                item.classList.add('active');
-            } else {
-                item.classList.remove('active');
-            }
-        });
-        
-        // Update filter tags
-        updateFilterTags();
-        
-        updateSortByOptions();
-    }
-    
-    // Format filter value for display
-    function formatFilterValue(filterName, filterData) {
-        const { min, max } = filterData;
-        
-        // Format number based on filter type
-        const formatNum = (n) => {
-            if (n === null) return null;
-            return n.toLocaleString();
-        };
-        
-        // Add unit suffix based on filter type
-        const getUnit = () => {
-            if (filterName === 'time-held') return ' days';
-            return '';
-        };
-        const unit = getUnit();
-        
-        if (min !== null && max !== null) {
-            return `${formatNum(min)} - ${formatNum(max)}${unit}`;
-        } else if (min !== null) {
-            return `≥ ${formatNum(min)}${unit}`;
-        } else if (max !== null) {
-            return `≤ ${formatNum(max)}${unit}`;
-        }
-        return '';
-    }
-    
-    // Render filter tags
-    function updateFilterTags() {
-        const filterKeys = Object.keys(activeFilters);
-        
-        // Desktop filter tags
-        if (activeFilterTags) {
-            activeFilterTags.innerHTML = '';
-            filterKeys.forEach(filterName => {
-                const label = filterLabels[filterName] || filterName;
-                const value = formatFilterValue(filterName, activeFilters[filterName]);
-                const tag = document.createElement('span');
-                tag.className = 'filter-tag';
-                tag.dataset.filter = filterName;
-                tag.innerHTML = `${label}: ${value}<button class="filter-tag-remove" title="Remove filter">&times;</button>`;
-                tag.querySelector('.filter-tag-remove').addEventListener('click', () => {
-                    removeFilter(filterName);
+
+            // Add click handlers for filter dropdown sort options
+            sortByOptions.querySelectorAll('.sort-by-item').forEach(item => {
+                item.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    const newSort = this.dataset.sort;
+                    columnSortActive = false;
+                    currentSortFilter = newSort;
+                    sortIndicator.classList.remove('flash');
+                    void sortIndicator.offsetWidth;
+                    sortIndicator.classList.add('flash');
+                    clearColumnSortStyling();
+                    updateSortByOptions();
+                    sortTableByFilter();
+                    filterDropdownMenu.classList.remove('show');
                 });
-                activeFilterTags.appendChild(tag);
             });
+
+            // Sync mobile sort indicator
+            syncMobileSortIndicator();
         }
-        
-        // Mobile filter tags
-        if (activeFilterTagsMobile) {
-            activeFilterTagsMobile.innerHTML = '';
-            filterKeys.forEach(filterName => {
-                const label = filterLabels[filterName] || filterName;
-                const value = formatFilterValue(filterName, activeFilters[filterName]);
-                const tag = document.createElement('span');
-                tag.className = 'filter-tag';
-                tag.dataset.filter = filterName;
-                tag.innerHTML = `${label}: ${value}<button class="filter-tag-remove" title="Remove filter">&times;</button>`;
-                tag.querySelector('.filter-tag-remove').addEventListener('click', () => {
-                    removeFilter(filterName);
-                });
-                activeFilterTagsMobile.appendChild(tag);
-            });
-        }
-        
-        // Toggle row visibility
-        if (activeFilterTagsRow) {
-            if (filterKeys.length > 0) {
-                activeFilterTagsRow.classList.add('has-filters');
+
+        // Update filter badge and button state
+        function updateFilterUI() {
+            const count = Object.keys(activeFilters).length;
+            if (count > 0) {
+                filterBadge.textContent = count;
+                filterBadge.style.display = 'inline';
+                filterDropdownBtn.classList.add('has-active');
             } else {
-                activeFilterTagsRow.classList.remove('has-filters');
+                filterBadge.style.display = 'none';
+                filterDropdownBtn.classList.remove('has-active');
             }
-        }
-        
-        if (sortIndicatorMobileRow) {
-            if (filterKeys.length > 0) {
-                sortIndicatorMobileRow.classList.add('has-filters');
-            } else {
-                sortIndicatorMobileRow.classList.remove('has-filters');
-            }
-        }
-    }
-    
-    // Remove a filter by name
-    function removeFilter(filterName) {
-        delete activeFilters[filterName];
-        updateFilterUI();
-        applyFilters();
-    }
-    
-    // Apply all active filters
-    function applyFilters() {
-        // Ensure sort filter is set before sorting (only if column sort not active)
-        const filterKeys = Object.keys(activeFilters);
-        if (!columnSortActive) {
-            if (filterKeys.length > 0 && (!currentSortFilter || !activeFilters[currentSortFilter])) {
-                currentSortFilter = filterKeys[0];
-            } else if (filterKeys.length === 0) {
-                currentSortFilter = null;
-            }
-        }
-        
-        const rows = tableBody.querySelectorAll('tr[data-item-name]');
-        const timeHeldActive = activeFilters['time-held'];
-        const unrealizedActive = activeFilters['unrealized-range'];
-        const realizedActive = activeFilters['realized-range'];
-        const positionSizeActive = activeFilters['position-size'];
-        const quantityActive = activeFilters['quantity'];
-        
-        rows.forEach(row => {
-            let show = true;
-            const subtext = row.querySelector('.time-held-subtext');
-            
-            // Time held filter
-            if (timeHeldActive) {
-                const daysHeld = getTimeHeldDays(row);
-                if (daysHeld === null) {
-                    show = false;
+
+            // Update dropdown item states
+            document.querySelectorAll('.filter-dropdown-item').forEach(item => {
+                const filterName = item.dataset.filter;
+                if (activeFilters[filterName]) {
+                    item.classList.add('active');
                 } else {
-                    const min = timeHeldActive.min !== null ? timeHeldActive.min : -Infinity;
-                    const max = timeHeldActive.max !== null ? timeHeldActive.max : Infinity;
-                    if (daysHeld < min || daysHeld > max) {
+                    item.classList.remove('active');
+                }
+            });
+
+            // Update filter tags
+            updateFilterTags();
+
+            updateSortByOptions();
+        }
+
+        // Format filter value for display
+        function formatFilterValue(filterName, filterData) {
+            const {min, max} = filterData;
+
+            // Format number based on filter type
+            const formatNum = (n) => {
+                if (n === null) return null;
+                return n.toLocaleString();
+            };
+
+            // Add unit suffix based on filter type
+            const getUnit = () => {
+                if (filterName === 'time-held') return ' days';
+                return '';
+            };
+            const unit = getUnit();
+
+            if (min !== null && max !== null) {
+                return `${formatNum(min)} - ${formatNum(max)}${unit}`;
+            } else if (min !== null) {
+                return `≥ ${formatNum(min)}${unit}`;
+            } else if (max !== null) {
+                return `≤ ${formatNum(max)}${unit}`;
+            }
+            return '';
+        }
+
+        // Render filter tags
+        function updateFilterTags() {
+            const filterKeys = Object.keys(activeFilters);
+
+            // Desktop filter tags
+            if (activeFilterTags) {
+                activeFilterTags.innerHTML = '';
+                filterKeys.forEach(filterName => {
+                    const label = filterLabels[filterName] || filterName;
+                    const value = formatFilterValue(filterName, activeFilters[filterName]);
+                    const tag = document.createElement('span');
+                    tag.className = 'filter-tag';
+                    tag.dataset.filter = filterName;
+                    tag.innerHTML = `${label}: ${value}<button class="filter-tag-remove" title="Remove filter">&times;</button>`;
+                    tag.querySelector('.filter-tag-remove').addEventListener('click', () => {
+                        removeFilter(filterName);
+                    });
+                    activeFilterTags.appendChild(tag);
+
+                });
+            }
+
+            // Mobile filter tags
+            if (activeFilterTagsMobile) {
+                activeFilterTagsMobile.innerHTML = '';
+                filterKeys.forEach(filterName => {
+                    const label = filterLabels[filterName] || filterName;
+                    const value = formatFilterValue(filterName, activeFilters[filterName]);
+                    const tag = document.createElement('span');
+                    tag.className = 'filter-tag';
+                    tag.dataset.filter = filterName;
+                    tag.innerHTML = `${label}: ${value}<button class="filter-tag-remove" title="Remove filter">&times;</button>`;
+                    tag.querySelector('.filter-tag-remove').addEventListener('click', () => {
+                        removeFilter(filterName);
+                    });
+                    activeFilterTagsMobile.appendChild(tag);
+                });
+            }
+
+            // Toggle row visibility
+            if (activeFilterTagsRow) {
+                if (filterKeys.length > 0) {
+                    activeFilterTagsRow.classList.add('has-filters');
+                } else {
+                    activeFilterTagsRow.classList.remove('has-filters');
+                }
+            }
+
+            if (sortIndicatorMobileRow) {
+                if (filterKeys.length > 0) {
+                    sortIndicatorMobileRow.classList.add('has-filters');
+                } else {
+                    sortIndicatorMobileRow.classList.remove('has-filters');
+                }
+            }
+        }
+
+        // Remove a filter by name
+        function removeFilter(filterName) {
+            delete activeFilters[filterName];
+            updateFilterUI();
+            applyFilters();
+        }
+
+        // Apply all active filters
+        function applyFilters() {
+            // Ensure sort filter is set before sorting (only if column sort not active)
+            const filterKeys = Object.keys(activeFilters);
+            if (!columnSortActive) {
+                if (filterKeys.length > 0 && (!currentSortFilter || !activeFilters[currentSortFilter])) {
+                    currentSortFilter = filterKeys[0];
+                } else if (filterKeys.length === 0) {
+                    currentSortFilter = null;
+                }
+            }
+
+            const rows = tableBody.querySelectorAll('tr[data-item-name]');
+            const timeHeldActive = activeFilters['time-held'];
+            const unrealizedActive = activeFilters['unrealized-range'];
+            const realizedActive = activeFilters['realized-range'];
+            const positionSizeActive = activeFilters['position-size'];
+            const quantityActive = activeFilters['quantity'];
+
+            rows.forEach(row => {
+                let show = true;
+                const subtext = row.querySelector('.time-held-subtext');
+
+                // Time held filter
+                if (timeHeldActive) {
+                    const daysHeld = getTimeHeldDays(row);
+                    if (daysHeld === null) {
+                        show = false;
+                    } else {
+                        const min = timeHeldActive.min !== null ? timeHeldActive.min : -Infinity;
+                        const max = timeHeldActive.max !== null ? timeHeldActive.max : Infinity;
+                        if (daysHeld < min || daysHeld > max) {
+                            show = false;
+                        }
+                    }
+
+                    if (subtext && daysHeld !== null) {
+                        const seconds = daysHeld * 86400;
+                        subtext.textContent = 'Held: ' + formatTimeHeld(seconds);
+                        subtext.style.display = 'block';
+                    }
+                } else {
+                    if (subtext) {
+                        subtext.style.display = 'none';
+                    }
+                }
+
+                // Unrealized range filter
+                if (show && unrealizedActive) {
+                    const cell = row.querySelector('td:nth-child(7)');
+                    const value = parseFloat(cell?.dataset.value) || 0;
+                    const min = unrealizedActive.min !== null ? unrealizedActive.min : -Infinity;
+                    const max = unrealizedActive.max !== null ? unrealizedActive.max : Infinity;
+                    if (value < min || value > max) {
                         show = false;
                     }
                 }
-                
-                if (subtext && daysHeld !== null) {
-                    const seconds = daysHeld * 86400;
-                    subtext.textContent = 'Held: ' + formatTimeHeld(seconds);
-                    subtext.style.display = 'block';
+
+                // Realized range filter
+                if (show && realizedActive) {
+                    const cell = row.querySelector('td:nth-child(8)');
+                    const value = parseFloat(cell?.dataset.value) || 0;
+                    const min = realizedActive.min !== null ? realizedActive.min : -Infinity;
+                    const max = realizedActive.max !== null ? realizedActive.max : Infinity;
+                    if (value < min || value > max) {
+                        show = false;
+                    }
                 }
-            } else {
-                if (subtext) {
-                    subtext.style.display = 'none';
+
+                // Position size filter
+                if (show && positionSizeActive) {
+                    const cell = row.querySelector('td:nth-child(4)');
+                    const value = parseFloat(cell?.dataset.value) || 0;
+                    const min = positionSizeActive.min !== null ? positionSizeActive.min : -Infinity;
+                    const max = positionSizeActive.max !== null ? positionSizeActive.max : Infinity;
+                    if (value < min || value > max) {
+                        show = false;
+                    }
                 }
-            }
-            
-            // Unrealized range filter
-            if (show && unrealizedActive) {
-                const cell = row.querySelector('td:nth-child(7)');
-                const value = parseFloat(cell?.dataset.value) || 0;
-                const min = unrealizedActive.min !== null ? unrealizedActive.min : -Infinity;
-                const max = unrealizedActive.max !== null ? unrealizedActive.max : Infinity;
-                if (value < min || value > max) {
-                    show = false;
+
+                // Show/hide position size subtext
+                const positionSubtext = row.querySelector('.position-size-subtext');
+                if (positionSizeActive && positionSubtext) {
+                    const cell = row.querySelector('td:nth-child(4)');
+                    const value = parseFloat(cell?.dataset.value) || 0;
+                    positionSubtext.textContent = 'Position: ' + value.toLocaleString() + ' gp';
+                    positionSubtext.style.display = 'block';
+                } else if (positionSubtext) {
+                    positionSubtext.style.display = 'none';
                 }
-            }
-            
-            // Realized range filter
-            if (show && realizedActive) {
-                const cell = row.querySelector('td:nth-child(8)');
-                const value = parseFloat(cell?.dataset.value) || 0;
-                const min = realizedActive.min !== null ? realizedActive.min : -Infinity;
-                const max = realizedActive.max !== null ? realizedActive.max : Infinity;
-                if (value < min || value > max) {
-                    show = false;
+
+                // Quantity filter
+                if (show && quantityActive) {
+                    const cell = row.querySelector('td:nth-child(3)');
+                    const value = parseFloat(cell?.dataset.value) || 0;
+                    const min = quantityActive.min !== null ? quantityActive.min : -Infinity;
+                    const max = quantityActive.max !== null ? quantityActive.max : Infinity;
+                    if (value < min || value > max) {
+                        show = false;
+                    }
                 }
+
+                row.style.display = show ? '' : 'none';
+            });
+
+            // Sort after filtering (only if column sort not active)
+            if (!columnSortActive) {
+                sortTableByFilter();
             }
-            
-            // Position size filter
-            if (show && positionSizeActive) {
-                const cell = row.querySelector('td:nth-child(4)');
-                const value = parseFloat(cell?.dataset.value) || 0;
-                const min = positionSizeActive.min !== null ? positionSizeActive.min : -Infinity;
-                const max = positionSizeActive.max !== null ? positionSizeActive.max : Infinity;
-                if (value < min || value > max) {
-                    show = false;
-                }
-            }
-            
-            // Show/hide position size subtext
-            const positionSubtext = row.querySelector('.position-size-subtext');
-            if (positionSizeActive && positionSubtext) {
-                const cell = row.querySelector('td:nth-child(4)');
-                const value = parseFloat(cell?.dataset.value) || 0;
-                positionSubtext.textContent = 'Position: ' + value.toLocaleString() + ' gp';
-                positionSubtext.style.display = 'block';
-            } else if (positionSubtext) {
-                positionSubtext.style.display = 'none';
-            }
-            
-            // Quantity filter
-            if (show && quantityActive) {
-                const cell = row.querySelector('td:nth-child(3)');
-                const value = parseFloat(cell?.dataset.value) || 0;
-                const min = quantityActive.min !== null ? quantityActive.min : -Infinity;
-                const max = quantityActive.max !== null ? quantityActive.max : Infinity;
-                if (value < min || value > max) {
-                    show = false;
-                }
-            }
-            
-            row.style.display = show ? '' : 'none';
-        });
-        
-        // Sort after filtering (only if column sort not active)
-        if (!columnSortActive) {
+        }
+
+        // Toggle sort direction
+        sortIndicatorArrow.addEventListener('click', function (e) {
+            e.stopPropagation();
+            sortAscending = !sortAscending;
+            this.textContent = sortAscending ? '↑' : '↓';
+            sortIndicatorArrowMobile.textContent = sortAscending ? '↑' : '↓';
             sortTableByFilter();
-        }
-    }
-    
-    // Toggle sort direction
-    sortIndicatorArrow.addEventListener('click', function(e) {
-        e.stopPropagation();
-        sortAscending = !sortAscending;
-        this.textContent = sortAscending ? '↑' : '↓';
-        sortIndicatorArrowMobile.textContent = sortAscending ? '↑' : '↓';
-        sortTableByFilter();
-    });
-    
-    // Mobile sort indicator arrow - same behavior
-    sortIndicatorArrowMobile.addEventListener('click', function(e) {
-        e.stopPropagation();
-        sortAscending = !sortAscending;
-        sortIndicatorArrow.textContent = sortAscending ? '↑' : '↓';
-        this.textContent = sortAscending ? '↑' : '↓';
-        sortTableByFilter();
-    });
-    
-    // Toggle sort indicator dropdown (only if multiple filters)
-    sortIndicator.addEventListener('click', function(e) {
-        // Don't trigger if clicking the arrow
-        if (e.target === sortIndicatorArrow) return;
-        
-        const filterKeys = Object.keys(activeFilters);
-        if (filterKeys.length > 1) {
+        });
+
+        // Mobile sort indicator arrow - same behavior
+        sortIndicatorArrowMobile.addEventListener('click', function (e) {
             e.stopPropagation();
-            sortIndicatorMenu.classList.toggle('show');
-            filterDropdownMenu.classList.remove('show');
-        }
-    });
-    
-    // Prevent sort indicator menu from closing when clicking inside it
-    sortIndicatorMenu.addEventListener('click', function(e) {
-        e.stopPropagation();
-    });
-    
-    // Toggle filter dropdown
-    filterDropdownBtn.addEventListener('click', function(e) {
-        e.stopPropagation();
-        filterDropdownMenu.classList.toggle('show');
-        sortIndicatorMenu.classList.remove('show');
-    });
-    
-    // Prevent dropdown from closing when clicking inside it
-    filterDropdownMenu.addEventListener('click', function(e) {
-        e.stopPropagation();
-    });
-    
-    // Close dropdowns when clicking outside
-    document.addEventListener('click', function() {
-        filterDropdownMenu.classList.remove('show');
-        sortIndicatorMenu.classList.remove('show');
-    });
-    
-    // Handle filter item clicks
-    document.querySelectorAll('.filter-dropdown-item').forEach(item => {
-        item.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const filterName = this.dataset.filter;
-            
-            // Check if clicking the clear button
-            if (e.target.classList.contains('filter-clear')) {
-                delete activeFilters[filterName];
-                if (filterName === 'time-held') {
-                    timeHeldMin.value = '';
-                    timeHeldMax.value = '';
-                } else if (filterName === 'unrealized-range') {
-                    unrealizedMin.value = '';
-                    unrealizedMax.value = '';
-                } else if (filterName === 'realized-range') {
-                    realizedMin.value = '';
-                    realizedMax.value = '';
-                } else if (filterName === 'position-size') {
-                    positionSizeMin.value = '';
-                    positionSizeMax.value = '';
-                } else if (filterName === 'quantity') {
-                    quantityMin.value = '';
-                    quantityMax.value = '';
-                }
-                updateFilterUI();
-                applyFilters();
+            sortAscending = !sortAscending;
+            sortIndicatorArrow.textContent = sortAscending ? '↑' : '↓';
+            this.textContent = sortAscending ? '↑' : '↓';
+            sortTableByFilter();
+        });
+
+        // Toggle sort indicator dropdown (only if multiple filters)
+        sortIndicator.addEventListener('click', function (e) {
+            // Don't trigger if clicking the arrow
+            if (e.target === sortIndicatorArrow) return;
+
+            const filterKeys = Object.keys(activeFilters);
+            if (filterKeys.length > 1) {
+                e.stopPropagation();
+                sortIndicatorMenu.classList.toggle('show');
                 filterDropdownMenu.classList.remove('show');
-                return;
             }
-            
-            // Open appropriate modal
-            if (filterName === 'time-held') {
-                const modal = new bootstrap.Modal(document.getElementById('timeHeldFilterModal'));
-                modal.show();
-            } else if (filterName === 'unrealized-range') {
-                const modal = new bootstrap.Modal(document.getElementById('unrealizedRangeFilterModal'));
-                modal.show();
-            } else if (filterName === 'realized-range') {
-                const modal = new bootstrap.Modal(document.getElementById('realizedRangeFilterModal'));
-                modal.show();
-            } else if (filterName === 'position-size') {
-                const modal = new bootstrap.Modal(document.getElementById('positionSizeFilterModal'));
-                modal.show();
-            } else if (filterName === 'quantity') {
-                const modal = new bootstrap.Modal(document.getElementById('quantityFilterModal'));
-                modal.show();
-            }
+        });
+
+        // Prevent sort indicator menu from closing when clicking inside it
+        sortIndicatorMenu.addEventListener('click', function (e) {
+            e.stopPropagation();
+        });
+
+        // Toggle filter dropdown
+        filterDropdownBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            filterDropdownMenu.classList.toggle('show');
+            sortIndicatorMenu.classList.remove('show');
+        });
+
+        // Prevent dropdown from closing when clicking inside it
+        filterDropdownMenu.addEventListener('click', function (e) {
+            e.stopPropagation();
+        });
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function () {
             filterDropdownMenu.classList.remove('show');
+            sortIndicatorMenu.classList.remove('show');
         });
-    });
-    
-    // Time held filter modal
-    const applyTimeHeldBtn = document.getElementById('applyTimeHeldFilter');
-    const clearTimeHeldBtn = document.getElementById('clearTimeHeldFilter');
-    
-    applyTimeHeldBtn.addEventListener('click', function() {
-        const min = timeHeldMin.value !== '' ? parseFloat(timeHeldMin.value) : null;
-        const max = timeHeldMax.value !== '' ? parseFloat(timeHeldMax.value) : null;
-        
-        activeFilters['time-held'] = { min, max };
-        columnSortActive = false;
-        currentSortFilter = 'time-held';
-        clearColumnSortStyling();
-        updateFilterUI();
-        applyFilters();
-        
-        // Trigger flash animation
-        sortIndicator.classList.remove('flash');
-        void sortIndicator.offsetWidth;
-        sortIndicator.classList.add('flash');
-        syncMobileSortIndicator();
-        
-        bootstrap.Modal.getInstance(timeHeldModal).hide();
-    });
-    
-    clearTimeHeldBtn.addEventListener('click', function() {
-        delete activeFilters['time-held'];
-        timeHeldMin.value = '';
-        timeHeldMax.value = '';
-        updateFilterUI();
-        applyFilters();
-        
-        bootstrap.Modal.getInstance(timeHeldModal).hide();
-    });
-    
-    timeHeldModal.addEventListener('show.bs.modal', function() {
-        if (activeFilters['time-held']) {
-            timeHeldMin.value = activeFilters['time-held'].min !== null ? activeFilters['time-held'].min : '';
-            timeHeldMax.value = activeFilters['time-held'].max !== null ? activeFilters['time-held'].max : '';
-        }
-    });
-    
-    // Unrealized range filter modal
-    const applyUnrealizedBtn = document.getElementById('applyUnrealizedFilter');
-    const clearUnrealizedBtn = document.getElementById('clearUnrealizedFilter');
-    
-    applyUnrealizedBtn.addEventListener('click', function() {
-        const min = unrealizedMin.value !== '' ? parseFloat(unrealizedMin.value) : null;
-        const max = unrealizedMax.value !== '' ? parseFloat(unrealizedMax.value) : null;
-        
-        activeFilters['unrealized-range'] = { min, max };
-        columnSortActive = false;
-        currentSortFilter = 'unrealized-range';
-        clearColumnSortStyling();
-        updateFilterUI();
-        applyFilters();
-        
-        // Trigger flash animation
-        sortIndicator.classList.remove('flash');
-        void sortIndicator.offsetWidth;
-        sortIndicator.classList.add('flash');
-        syncMobileSortIndicator();
-        
-        bootstrap.Modal.getInstance(unrealizedModal).hide();
-    });
-    
-    clearUnrealizedBtn.addEventListener('click', function() {
-        delete activeFilters['unrealized-range'];
-        unrealizedMin.value = '';
-        unrealizedMax.value = '';
-        updateFilterUI();
-        applyFilters();
-        
-        bootstrap.Modal.getInstance(unrealizedModal).hide();
-    });
-    
-    unrealizedModal.addEventListener('show.bs.modal', function() {
-        if (activeFilters['unrealized-range']) {
-            unrealizedMin.value = activeFilters['unrealized-range'].min !== null ? activeFilters['unrealized-range'].min : '';
-            unrealizedMax.value = activeFilters['unrealized-range'].max !== null ? activeFilters['unrealized-range'].max : '';
-        }
-    });
-    
-    // Realized range filter modal
-    const applyRealizedBtn = document.getElementById('applyRealizedFilter');
-    const clearRealizedBtn = document.getElementById('clearRealizedFilter');
-    
-    applyRealizedBtn.addEventListener('click', function() {
-        const min = realizedMin.value !== '' ? parseFloat(realizedMin.value) : null;
-        const max = realizedMax.value !== '' ? parseFloat(realizedMax.value) : null;
-        
-        activeFilters['realized-range'] = { min, max };
-        columnSortActive = false;
-        currentSortFilter = 'realized-range';
-        clearColumnSortStyling();
-        updateFilterUI();
-        applyFilters();
-        
-        // Trigger flash animation
-        sortIndicator.classList.remove('flash');
-        void sortIndicator.offsetWidth;
-        sortIndicator.classList.add('flash');
-        syncMobileSortIndicator();
-        
-        bootstrap.Modal.getInstance(realizedModal).hide();
-    });
-    
-    clearRealizedBtn.addEventListener('click', function() {
-        delete activeFilters['realized-range'];
-        realizedMin.value = '';
-        realizedMax.value = '';
-        updateFilterUI();
-        applyFilters();
-        
-        bootstrap.Modal.getInstance(realizedModal).hide();
-    });
-    
-    realizedModal.addEventListener('show.bs.modal', function() {
-        if (activeFilters['realized-range']) {
-            realizedMin.value = activeFilters['realized-range'].min !== null ? activeFilters['realized-range'].min : '';
-            realizedMax.value = activeFilters['realized-range'].max !== null ? activeFilters['realized-range'].max : '';
-        }
-    });
-    
-    // Position size filter modal
-    const applyPositionSizeBtn = document.getElementById('applyPositionSizeFilter');
-    const clearPositionSizeBtn = document.getElementById('clearPositionSizeFilter');
-    
-    applyPositionSizeBtn.addEventListener('click', function() {
-        const min = positionSizeMin.value !== '' ? parseFloat(positionSizeMin.value) : null;
-        const max = positionSizeMax.value !== '' ? parseFloat(positionSizeMax.value) : null;
-        
-        activeFilters['position-size'] = { min, max };
-        columnSortActive = false;
-        currentSortFilter = 'position-size';
-        clearColumnSortStyling();
-        updateFilterUI();
-        applyFilters();
-        
-        // Trigger flash animation
-        sortIndicator.classList.remove('flash');
-        void sortIndicator.offsetWidth;
-        sortIndicator.classList.add('flash');
-        syncMobileSortIndicator();
-        
-        bootstrap.Modal.getInstance(positionSizeModal).hide();
-    });
-    
-    clearPositionSizeBtn.addEventListener('click', function() {
-        delete activeFilters['position-size'];
-        positionSizeMin.value = '';
-        positionSizeMax.value = '';
-        updateFilterUI();
-        applyFilters();
-        
-        bootstrap.Modal.getInstance(positionSizeModal).hide();
-    });
-    
-    positionSizeModal.addEventListener('show.bs.modal', function() {
-        if (activeFilters['position-size']) {
-            positionSizeMin.value = activeFilters['position-size'].min !== null ? activeFilters['position-size'].min : '';
-            positionSizeMax.value = activeFilters['position-size'].max !== null ? activeFilters['position-size'].max : '';
-        }
-    });
-    
-    // Quantity filter modal
-    const applyQuantityBtn = document.getElementById('applyQuantityFilter');
-    const clearQuantityBtn = document.getElementById('clearQuantityFilter');
-    
-    applyQuantityBtn.addEventListener('click', function() {
-        const min = quantityMin.value !== '' ? parseFloat(quantityMin.value) : null;
-        const max = quantityMax.value !== '' ? parseFloat(quantityMax.value) : null;
-        
-        activeFilters['quantity'] = { min, max };
-        columnSortActive = false;
-        currentSortFilter = 'quantity';
-        clearColumnSortStyling();
-        updateFilterUI();
-        applyFilters();
-        
-        // Trigger flash animation
-        sortIndicator.classList.remove('flash');
-        void sortIndicator.offsetWidth;
-        sortIndicator.classList.add('flash');
-        syncMobileSortIndicator();
-        
-        bootstrap.Modal.getInstance(quantityModal).hide();
-    });
-    
-    clearQuantityBtn.addEventListener('click', function() {
-        delete activeFilters['quantity'];
-        quantityMin.value = '';
-        quantityMax.value = '';
-        updateFilterUI();
-        applyFilters();
-        
-        bootstrap.Modal.getInstance(quantityModal).hide();
-    });
-    
-    quantityModal.addEventListener('show.bs.modal', function() {
-        if (activeFilters['quantity']) {
-            quantityMin.value = activeFilters['quantity'].min !== null ? activeFilters['quantity'].min : '';
-            quantityMax.value = activeFilters['quantity'].max !== null ? activeFilters['quantity'].max : '';
-        }
-    });
-    
-    // =========================================================================
-    // TEXT SEARCH FILTER
-    // =========================================================================
-    
-    const filterInput = document.getElementById('filterSearchInput');
-    const filterClear = document.getElementById('filterSearchClear');
-    const filterWrapper = document.getElementById('filterSearchWrapper');
-    
-    // Check if a row passes all active dropdown filters
-    function passesDropdownFilters(row) {
-        // Time held filter
-        if (activeFilters['time-held']) {
-            const daysHeld = getTimeHeldDays(row);
-            if (daysHeld === null) return false;
-            const min = activeFilters['time-held'].min !== null ? activeFilters['time-held'].min : -Infinity;
-            const max = activeFilters['time-held'].max !== null ? activeFilters['time-held'].max : Infinity;
-            if (daysHeld < min || daysHeld > max) return false;
-        }
-        
-        // Unrealized range filter
-        if (activeFilters['unrealized-range']) {
-            const cell = row.querySelector('td:nth-child(7)');
-            const value = parseFloat(cell?.dataset.value) || 0;
-            const min = activeFilters['unrealized-range'].min !== null ? activeFilters['unrealized-range'].min : -Infinity;
-            const max = activeFilters['unrealized-range'].max !== null ? activeFilters['unrealized-range'].max : Infinity;
-            if (value < min || value > max) return false;
-        }
-        
-        // Realized range filter
-        if (activeFilters['realized-range']) {
-            const cell = row.querySelector('td:nth-child(8)');
-            const value = parseFloat(cell?.dataset.value) || 0;
-            const min = activeFilters['realized-range'].min !== null ? activeFilters['realized-range'].min : -Infinity;
-            const max = activeFilters['realized-range'].max !== null ? activeFilters['realized-range'].max : Infinity;
-            if (value < min || value > max) return false;
-        }
-        
-        // Position size filter
-        if (activeFilters['position-size']) {
-            const cell = row.querySelector('td:nth-child(4)');
-            const value = parseFloat(cell?.dataset.value) || 0;
-            const min = activeFilters['position-size'].min !== null ? activeFilters['position-size'].min : -Infinity;
-            const max = activeFilters['position-size'].max !== null ? activeFilters['position-size'].max : Infinity;
-            if (value < min || value > max) return false;
-        }
-        
-        // Quantity filter
-        if (activeFilters['quantity']) {
-            const cell = row.querySelector('td:nth-child(3)');
-            const value = parseFloat(cell?.dataset.value) || 0;
-            const min = activeFilters['quantity'].min !== null ? activeFilters['quantity'].min : -Infinity;
-            const max = activeFilters['quantity'].max !== null ? activeFilters['quantity'].max : Infinity;
-            if (value < min || value > max) return false;
-        }
-        
-        return true;
-    }
-    
-    filterInput.addEventListener('input', function() {
-        const query = this.value.toLowerCase().trim();
-        
-        // Toggle clear button visibility
-        if (query.length > 0) {
-            filterWrapper.classList.add('has-value');
-        } else {
-            filterWrapper.classList.remove('has-value');
-        }
-        
-        // Filter table rows (combined with other filters)
-        const rows = tableBody.querySelectorAll('tr[data-item-name]');
-        rows.forEach(row => {
-            const itemName = row.dataset.itemName.toLowerCase();
-            const matchesSearch = itemName.includes(query);
-            const passesFilters = passesDropdownFilters(row);
-            
-            row.style.display = (matchesSearch && passesFilters) ? '' : 'none';
-        });
-    });
-    
-    // Blur search input on Enter key (dismiss mobile keyboard)
-    filterInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            this.blur();
-        }
-    });
-    
-    filterClear.addEventListener('click', function() {
-        filterInput.value = '';
-        filterWrapper.classList.remove('has-value');
-        applyFilters(); // Reapply just the dropdown filters
-        filterInput.focus();
-    });
-    
-    // =========================================================================
-    // AUTOCOMPLETE FOR NEW FLIP MODAL
-    // =========================================================================
-    
-    const input = document.getElementById('itemName');
-    const results = document.getElementById('autocompleteResults');
-    let activeIndex = -1;
-    let items = [];
 
-    input.addEventListener('input', function() {
-        const query = this.value;
-        if (query.length < 2) {
-            results.classList.remove('show');
-            return;
-        }
+        // Handle filter item clicks
+        document.querySelectorAll('.filter-dropdown-item').forEach(item => {
+            item.addEventListener('click', function (e) {
+                e.stopPropagation();
+                const filterName = this.dataset.filter;
 
-        fetch(`/api/items/?q=${encodeURIComponent(query)}`)
-            .then(response => response.json())
-            .then(data => {
-                items = data;
-                activeIndex = -1;
-                if (data.length === 0) {
-                    results.classList.remove('show');
+                // Check if clicking the clear button
+                if (e.target.classList.contains('filter-clear')) {
+                    delete activeFilters[filterName];
+                    if (filterName === 'time-held') {
+                        timeHeldMin.value = '';
+                        timeHeldMax.value = '';
+                    } else if (filterName === 'unrealized-range') {
+                        unrealizedMin.value = '';
+                        unrealizedMax.value = '';
+                    } else if (filterName === 'realized-range') {
+                        realizedMin.value = '';
+                        realizedMax.value = '';
+                    } else if (filterName === 'position-size') {
+                        positionSizeMin.value = '';
+                        positionSizeMax.value = '';
+                    } else if (filterName === 'quantity') {
+                        quantityMin.value = '';
+                        quantityMax.value = '';
+                    }
+                    updateFilterUI();
+                    applyFilters();
+                    filterDropdownMenu.classList.remove('show');
                     return;
                 }
-                results.innerHTML = data.map((item, i) => 
-                    `<div class="autocomplete-item" data-index="${i}" data-name="${item.name}">${item.name}</div>`
-                ).join('');
-                results.classList.add('show');
+
+                // Open appropriate modal
+                if (filterName === 'time-held') {
+                    const modal = new bootstrap.Modal(document.getElementById('timeHeldFilterModal'));
+                    modal.show();
+                } else if (filterName === 'unrealized-range') {
+                    const modal = new bootstrap.Modal(document.getElementById('unrealizedRangeFilterModal'));
+                    modal.show();
+                } else if (filterName === 'realized-range') {
+                    const modal = new bootstrap.Modal(document.getElementById('realizedRangeFilterModal'));
+                    modal.show();
+                } else if (filterName === 'position-size') {
+                    const modal = new bootstrap.Modal(document.getElementById('positionSizeFilterModal'));
+                    modal.show();
+                } else if (filterName === 'quantity') {
+                    const modal = new bootstrap.Modal(document.getElementById('quantityFilterModal'));
+                    modal.show();
+                }
+                filterDropdownMenu.classList.remove('show');
             });
-    });
-
-    input.addEventListener('keydown', function(e) {
-        const itemElements = results.querySelectorAll('.autocomplete-item');
-        if (!results.classList.contains('show') || itemElements.length === 0) return;
-
-        if (e.key === 'ArrowDown' || e.key === 'Tab') {
-            e.preventDefault();
-            activeIndex = Math.min(activeIndex + 1, itemElements.length - 1);
-            updateActive(itemElements);
-        } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            activeIndex = Math.max(activeIndex - 1, 0);
-            updateActive(itemElements);
-        } else if (e.key === 'Enter' && activeIndex >= 0) {
-            e.preventDefault();
-            selectItem(itemElements[activeIndex].dataset.name);
-        }
-    });
-
-    results.addEventListener('click', function(e) {
-        if (e.target.classList.contains('autocomplete-item')) {
-            selectItem(e.target.dataset.name);
-        }
-    });
-
-    function updateActive(itemElements) {
-        itemElements.forEach((el, i) => {
-            el.classList.toggle('active', i === activeIndex);
         });
-        if (activeIndex >= 0) {
-            itemElements[activeIndex].scrollIntoView({ block: 'nearest' });
+
+        // Time held filter modal
+        const applyTimeHeldBtn = document.getElementById('applyTimeHeldFilter');
+        const clearTimeHeldBtn = document.getElementById('clearTimeHeldFilter');
+
+        applyTimeHeldBtn.addEventListener('click', function () {
+            const min = timeHeldMin.value !== '' ? parseFloat(timeHeldMin.value) : null;
+            const max = timeHeldMax.value !== '' ? parseFloat(timeHeldMax.value) : null;
+
+            activeFilters['time-held'] = {min, max};
+            columnSortActive = false;
+            currentSortFilter = 'time-held';
+            clearColumnSortStyling();
+            updateFilterUI();
+            applyFilters();
+
+            // Trigger flash animation
+            sortIndicator.classList.remove('flash');
+            void sortIndicator.offsetWidth;
+            sortIndicator.classList.add('flash');
+            syncMobileSortIndicator();
+
+            bootstrap.Modal.getInstance(timeHeldModal).hide();
+        });
+
+        clearTimeHeldBtn.addEventListener('click', function () {
+            delete activeFilters['time-held'];
+            timeHeldMin.value = '';
+            timeHeldMax.value = '';
+            updateFilterUI();
+            applyFilters();
+
+            bootstrap.Modal.getInstance(timeHeldModal).hide();
+        });
+
+        timeHeldModal.addEventListener('show.bs.modal', function () {
+            if (activeFilters['time-held']) {
+                timeHeldMin.value = activeFilters['time-held'].min !== null ? activeFilters['time-held'].min : '';
+                timeHeldMax.value = activeFilters['time-held'].max !== null ? activeFilters['time-held'].max : '';
+            }
+        });
+
+        // Unrealized range filter modal
+        const applyUnrealizedBtn = document.getElementById('applyUnrealizedFilter');
+        const clearUnrealizedBtn = document.getElementById('clearUnrealizedFilter');
+
+        applyUnrealizedBtn.addEventListener('click', function () {
+            const min = unrealizedMin.value !== '' ? parseFloat(unrealizedMin.value) : null;
+            const max = unrealizedMax.value !== '' ? parseFloat(unrealizedMax.value) : null;
+
+            activeFilters['unrealized-range'] = {min, max};
+            columnSortActive = false;
+            currentSortFilter = 'unrealized-range';
+            clearColumnSortStyling();
+            updateFilterUI();
+            applyFilters();
+
+            // Trigger flash animation
+            sortIndicator.classList.remove('flash');
+            void sortIndicator.offsetWidth;
+            sortIndicator.classList.add('flash');
+            syncMobileSortIndicator();
+
+            bootstrap.Modal.getInstance(unrealizedModal).hide();
+        });
+
+        clearUnrealizedBtn.addEventListener('click', function () {
+            delete activeFilters['unrealized-range'];
+            unrealizedMin.value = '';
+            unrealizedMax.value = '';
+            updateFilterUI();
+            applyFilters();
+
+            bootstrap.Modal.getInstance(unrealizedModal).hide();
+        });
+
+        unrealizedModal.addEventListener('show.bs.modal', function () {
+            if (activeFilters['unrealized-range']) {
+                unrealizedMin.value = activeFilters['unrealized-range'].min !== null ? activeFilters['unrealized-range'].min : '';
+                unrealizedMax.value = activeFilters['unrealized-range'].max !== null ? activeFilters['unrealized-range'].max : '';
+            }
+        });
+
+        // Realized range filter modal
+        const applyRealizedBtn = document.getElementById('applyRealizedFilter');
+        const clearRealizedBtn = document.getElementById('clearRealizedFilter');
+
+        applyRealizedBtn.addEventListener('click', function () {
+            const min = realizedMin.value !== '' ? parseFloat(realizedMin.value) : null;
+            const max = realizedMax.value !== '' ? parseFloat(realizedMax.value) : null;
+
+            activeFilters['realized-range'] = {min, max};
+            columnSortActive = false;
+            currentSortFilter = 'realized-range';
+            clearColumnSortStyling();
+            updateFilterUI();
+            applyFilters();
+
+            // Trigger flash animation
+            sortIndicator.classList.remove('flash');
+            void sortIndicator.offsetWidth;
+            sortIndicator.classList.add('flash');
+            syncMobileSortIndicator();
+
+            bootstrap.Modal.getInstance(realizedModal).hide();
+        });
+
+        clearRealizedBtn.addEventListener('click', function () {
+            delete activeFilters['realized-range'];
+            realizedMin.value = '';
+            realizedMax.value = '';
+            updateFilterUI();
+            applyFilters();
+
+            bootstrap.Modal.getInstance(realizedModal).hide();
+        });
+
+        realizedModal.addEventListener('show.bs.modal', function () {
+            if (activeFilters['realized-range']) {
+                realizedMin.value = activeFilters['realized-range'].min !== null ? activeFilters['realized-range'].min : '';
+                realizedMax.value = activeFilters['realized-range'].max !== null ? activeFilters['realized-range'].max : '';
+            }
+        });
+
+        // Position size filter modal
+        const applyPositionSizeBtn = document.getElementById('applyPositionSizeFilter');
+        const clearPositionSizeBtn = document.getElementById('clearPositionSizeFilter');
+
+        applyPositionSizeBtn.addEventListener('click', function () {
+            const min = positionSizeMin.value !== '' ? parseFloat(positionSizeMin.value) : null;
+            const max = positionSizeMax.value !== '' ? parseFloat(positionSizeMax.value) : null;
+
+            activeFilters['position-size'] = {min, max};
+            columnSortActive = false;
+            currentSortFilter = 'position-size';
+            clearColumnSortStyling();
+            updateFilterUI();
+            applyFilters();
+
+            // Trigger flash animation
+            sortIndicator.classList.remove('flash');
+            void sortIndicator.offsetWidth;
+            sortIndicator.classList.add('flash');
+            syncMobileSortIndicator();
+
+            bootstrap.Modal.getInstance(positionSizeModal).hide();
+        });
+
+        clearPositionSizeBtn.addEventListener('click', function () {
+            delete activeFilters['position-size'];
+            positionSizeMin.value = '';
+            positionSizeMax.value = '';
+            updateFilterUI();
+            applyFilters();
+
+            bootstrap.Modal.getInstance(positionSizeModal).hide();
+        });
+
+        positionSizeModal.addEventListener('show.bs.modal', function () {
+            if (activeFilters['position-size']) {
+                positionSizeMin.value = activeFilters['position-size'].min !== null ? activeFilters['position-size'].min : '';
+                positionSizeMax.value = activeFilters['position-size'].max !== null ? activeFilters['position-size'].max : '';
+            }
+        });
+
+        // Quantity filter modal
+        const applyQuantityBtn = document.getElementById('applyQuantityFilter');
+        const clearQuantityBtn = document.getElementById('clearQuantityFilter');
+
+        applyQuantityBtn.addEventListener('click', function () {
+            const min = quantityMin.value !== '' ? parseFloat(quantityMin.value) : null;
+            const max = quantityMax.value !== '' ? parseFloat(quantityMax.value) : null;
+
+            activeFilters['quantity'] = {min, max};
+            columnSortActive = false;
+            currentSortFilter = 'quantity';
+            clearColumnSortStyling();
+            updateFilterUI();
+            applyFilters();
+
+            // Trigger flash animation
+            sortIndicator.classList.remove('flash');
+            void sortIndicator.offsetWidth;
+            sortIndicator.classList.add('flash');
+            syncMobileSortIndicator();
+
+            bootstrap.Modal.getInstance(quantityModal).hide();
+        });
+
+        clearQuantityBtn.addEventListener('click', function () {
+            delete activeFilters['quantity'];
+            quantityMin.value = '';
+            quantityMax.value = '';
+            updateFilterUI();
+            applyFilters();
+
+            bootstrap.Modal.getInstance(quantityModal).hide();
+        });
+
+        quantityModal.addEventListener('show.bs.modal', function () {
+            if (activeFilters['quantity']) {
+                quantityMin.value = activeFilters['quantity'].min !== null ? activeFilters['quantity'].min : '';
+                quantityMax.value = activeFilters['quantity'].max !== null ? activeFilters['quantity'].max : '';
+            }
+        });
+
+        // =========================================================================
+        // TEXT SEARCH FILTER
+        // =========================================================================
+
+        const filterInput = document.getElementById('filterSearchInput');
+        const filterClear = document.getElementById('filterSearchClear');
+        const filterWrapper = document.getElementById('filterSearchWrapper');
+
+        // Check if a row passes all active dropdown filters
+        function passesDropdownFilters(row) {
+            // Time held filter
+            if (activeFilters['time-held']) {
+                const daysHeld = getTimeHeldDays(row);
+                if (daysHeld === null) return false;
+                const min = activeFilters['time-held'].min !== null ? activeFilters['time-held'].min : -Infinity;
+                const max = activeFilters['time-held'].max !== null ? activeFilters['time-held'].max : Infinity;
+                if (daysHeld < min || daysHeld > max) return false;
+            }
+
+            // Unrealized range filter
+            if (activeFilters['unrealized-range']) {
+                const cell = row.querySelector('td:nth-child(7)');
+                const value = parseFloat(cell?.dataset.value) || 0;
+                const min = activeFilters['unrealized-range'].min !== null ? activeFilters['unrealized-range'].min : -Infinity;
+                const max = activeFilters['unrealized-range'].max !== null ? activeFilters['unrealized-range'].max : Infinity;
+                if (value < min || value > max) return false;
+            }
+
+            // Realized range filter
+            if (activeFilters['realized-range']) {
+                const cell = row.querySelector('td:nth-child(8)');
+                const value = parseFloat(cell?.dataset.value) || 0;
+                const min = activeFilters['realized-range'].min !== null ? activeFilters['realized-range'].min : -Infinity;
+                const max = activeFilters['realized-range'].max !== null ? activeFilters['realized-range'].max : Infinity;
+                if (value < min || value > max) return false;
+            }
+
+            // Position size filter
+            if (activeFilters['position-size']) {
+                const cell = row.querySelector('td:nth-child(4)');
+                const value = parseFloat(cell?.dataset.value) || 0;
+                const min = activeFilters['position-size'].min !== null ? activeFilters['position-size'].min : -Infinity;
+                const max = activeFilters['position-size'].max !== null ? activeFilters['position-size'].max : Infinity;
+                if (value < min || value > max) return false;
+            }
+
+            // Quantity filter
+            if (activeFilters['quantity']) {
+                const cell = row.querySelector('td:nth-child(3)');
+                const value = parseFloat(cell?.dataset.value) || 0;
+                const min = activeFilters['quantity'].min !== null ? activeFilters['quantity'].min : -Infinity;
+                const max = activeFilters['quantity'].max !== null ? activeFilters['quantity'].max : Infinity;
+                if (value < min || value > max) return false;
+            }
+
+            return true;
         }
-    }
 
-    function selectItem(name) {
-        input.value = name;
-        results.classList.remove('show');
-        activeIndex = -1;
-    }
+        filterInput.addEventListener('input', function () {
+            const query = this.value.toLowerCase().trim();
 
-    document.addEventListener('click', function(e) {
-        if (!input.contains(e.target) && !results.contains(e.target)) {
+            // Toggle clear button visibility
+            if (query.length > 0) {
+                filterWrapper.classList.add('has-value');
+            } else {
+                filterWrapper.classList.remove('has-value');
+            }
+
+            // Filter table rows (combined with other filters)
+            const rows = tableBody.querySelectorAll('tr[data-item-name]');
+            rows.forEach(row => {
+                const itemName = row.dataset.itemName.toLowerCase();
+                const matchesSearch = itemName.includes(query);
+                const passesFilters = passesDropdownFilters(row);
+
+                row.style.display = (matchesSearch && passesFilters) ? '' : 'none';
+            });
+        });
+
+        // Blur search input on Enter key (dismiss mobile keyboard)
+        filterInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.blur();
+            }
+        });
+
+        filterClear.addEventListener('click', function () {
+            filterInput.value = '';
+            filterWrapper.classList.remove('has-value');
+            applyFilters(); // Reapply just the dropdown filters
+            filterInput.focus();
+        });
+
+        // =========================================================================
+        // AUTOCOMPLETE FOR NEW FLIP MODAL
+        // =========================================================================
+
+        const input = document.getElementById('itemName');
+        const results = document.getElementById('autocompleteResults');
+        let activeIndex = -1;
+        let items = [];
+
+        input.addEventListener('input', function () {
+            const query = this.value;
+            if (query.length < 2) {
+                results.classList.remove('show');
+                return;
+            }
+
+            fetch(`/api/items/?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    items = data;
+                    activeIndex = -1;
+                    if (data.length === 0) {
+                        results.classList.remove('show');
+                        return;
+                    }
+                    results.innerHTML = data.map((item, i) =>
+                        `<div class="autocomplete-item" data-index="${i}" data-name="${item.name}">${item.name}</div>`
+                    ).join('');
+                    results.classList.add('show');
+                });
+        });
+
+        input.addEventListener('keydown', function (e) {
+            const itemElements = results.querySelectorAll('.autocomplete-item');
+            if (!results.classList.contains('show') || itemElements.length === 0) return;
+
+            if (e.key === 'ArrowDown' || e.key === 'Tab') {
+                e.preventDefault();
+                activeIndex = Math.min(activeIndex + 1, itemElements.length - 1);
+                updateActive(itemElements);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                activeIndex = Math.max(activeIndex - 1, 0);
+                updateActive(itemElements);
+            } else if (e.key === 'Enter' && activeIndex >= 0) {
+                e.preventDefault();
+                selectItem(itemElements[activeIndex].dataset.name);
+            }
+        });
+
+        results.addEventListener('click', function (e) {
+            if (e.target.classList.contains('autocomplete-item')) {
+                selectItem(e.target.dataset.name);
+            }
+        });
+
+        function updateActive(itemElements) {
+            itemElements.forEach((el, i) => {
+                el.classList.toggle('active', i === activeIndex);
+            });
+            if (activeIndex >= 0) {
+                itemElements[activeIndex].scrollIntoView({block: 'nearest'});
+            }
+        }
+
+        function selectItem(name) {
+            input.value = name;
             results.classList.remove('show');
+            activeIndex = -1;
         }
-    });
-    
-    // Date "Now" button and default date
-    const dateInput = document.getElementById('date');
-    const setNowBtn = document.getElementById('setNowBtn');
-    
-    function setDateToNow() {
-        const now = new Date();
-        // Format for datetime-local input: YYYY-MM-DDTHH:MM
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        const hours = String(now.getHours()).padStart(2, '0');
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-        dateInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
-    }
-    
-    setNowBtn.addEventListener('click', setDateToNow);
-    
-    // Set default date and auto-focus when modal opens
-    const newFlipModal = document.getElementById('newFlipModal');
-    newFlipModal.addEventListener('shown.bs.modal', function() {
-        setDateToNow();
-        input.focus();
-    });
-    
-    // Clear form when modal closes
-    newFlipModal.addEventListener('hidden.bs.modal', function() {
-        input.value = '';
-        document.getElementById('price').value = '';
-        document.getElementById('quantity').value = '';
-        document.getElementById('type').value = 'buy';
-        dateInput.value = '';
-        results.classList.remove('show');
-        activeIndex = -1;
-    });
-    
-    // Prevent Enter from submitting form unless Add Flip button is focused
-    newFlipModal.querySelector('form').addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            const activeElement = document.activeElement;
-            const submitBtn = newFlipModal.querySelector('.btn-add-flip');
-            // Allow Enter only if submit button is focused or in autocomplete selection
-            if (activeElement !== submitBtn && activeElement.id !== 'itemName') {
-                e.preventDefault();
-            }
-            // If in autocomplete and selecting item, don't submit
-            if (activeElement.id === 'itemName' && results.classList.contains('show')) {
-                e.preventDefault();
-            }
-            // If on date input, show the picker instead of submitting
-            if (activeElement.id === 'date') {
-                e.preventDefault();
-                activeElement.showPicker();
-            }
-        }
-    });
 
-    // Table sorting
-    const table = document.getElementById('flipsTable');
-    const headers = table.querySelectorAll('th.sortable');
-    let currentCol = -1;
-    let currentAsc = true;
-    
-    headers.forEach(header => {
-        header.addEventListener('click', function() {
-            const col = parseInt(this.dataset.col);
-            const type = this.dataset.type;
-            
-            // Toggle direction if same column, otherwise start ascending
-            if (col === currentCol) {
-                currentAsc = !currentAsc;
+        document.addEventListener('click', function (e) {
+            if (!input.contains(e.target) && !results.contains(e.target)) {
+                results.classList.remove('show');
+            }
+        });
+
+        // Date "Now" button and default date
+        const dateInput = document.getElementById('date');
+        const setNowBtn = document.getElementById('setNowBtn');
+
+        function setDateToNow() {
+            const now = new Date();
+            // Format for datetime-local input: YYYY-MM-DDTHH:MM
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            dateInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+        }
+
+        setNowBtn.addEventListener('click', setDateToNow);
+
+        // Set default date and auto-focus when modal opens
+        const newFlipModal = document.getElementById('newFlipModal');
+        newFlipModal.addEventListener('shown.bs.modal', function () {
+            setDateToNow();
+            input.focus();
+        });
+
+        // Clear form when modal closes
+        newFlipModal.addEventListener('hidden.bs.modal', function () {
+            input.value = '';
+            document.getElementById('price').value = '';
+            document.getElementById('quantity').value = '';
+            document.getElementById('type').value = 'buy';
+            dateInput.value = '';
+            results.classList.remove('show');
+            activeIndex = -1;
+        });
+
+        // Prevent Enter from submitting form unless Add Flip button is focused
+        newFlipModal.querySelector('form').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                const activeElement = document.activeElement;
+                const submitBtn = newFlipModal.querySelector('.btn-add-flip');
+                // Allow Enter only if submit button is focused or in autocomplete selection
+                if (activeElement !== submitBtn && activeElement.id !== 'itemName') {
+                    e.preventDefault();
+                }
+                // If in autocomplete and selecting item, don't submit
+                if (activeElement.id === 'itemName' && results.classList.contains('show')) {
+                    e.preventDefault();
+                }
+                // If on date input, show the picker instead of submitting
+                if (activeElement.id === 'date') {
+                    e.preventDefault();
+                    activeElement.showPicker();
+                }
+            }
+        });
+
+        // Table sorting
+        const table = document.getElementById('flipsTable');
+        const headers = table.querySelectorAll('th.sortable');
+        let currentCol = -1;
+        let currentAsc = true;
+
+        headers.forEach(header => {
+            header.addEventListener('click', function () {
+                const col = parseInt(this.dataset.col);
+                const type = this.dataset.type;
+
+                // Toggle direction if same column, otherwise start ascending
+                if (col === currentCol) {
+                    currentAsc = !currentAsc;
+                } else {
+                    currentCol = col;
+                    currentAsc = true;
+                }
+
+                // Deactivate filter sort when column header is clicked
+                deactivateFilterSort();
+
+                // Reset all headers
+                headers.forEach(h => h.classList.remove('asc', 'desc'));
+
+                // Set current sort direction
+                this.classList.add(currentAsc ? 'asc' : 'desc');
+
+                sortTable(col, type, currentAsc);
+            });
+        });
+
+        function sortTable(col, type, asc) {
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+
+            rows.sort((a, b) => {
+                let aVal, bVal;
+                const aCell = a.cells[col];
+                const bCell = b.cells[col];
+
+                if (type === 'number') {
+                    aVal = parseFloat(aCell.dataset.value) || 0;
+                    bVal = parseFloat(bCell.dataset.value) || 0;
+                } else {
+                    aVal = aCell.textContent.trim().toLowerCase();
+                    bVal = bCell.textContent.trim().toLowerCase();
+                }
+
+                if (aVal < bVal) return asc ? -1 : 1;
+                if (aVal > bVal) return asc ? 1 : -1;
+                return 0;
+            });
+
+            rows.forEach(row => tbody.appendChild(row));
+        }
+
+        // Delete flip functionality
+        const deleteBtn = document.getElementById('deleteFlipBtn');
+        let deleteMode = false;
+        let isProcessing = false;
+        let selectedRow = null;
+
+        deleteBtn.addEventListener('click', function () {
+            if (!deleteMode) {
+                deleteMode = true;
+                deleteBtn.textContent = 'Click a row to delete';
+                deleteBtn.classList.add('delete-mode-active');
+                table.classList.add('delete-mode');
             } else {
-                currentCol = col;
-                currentAsc = true;
+                cancelDeleteMode();
             }
-            
-            // Deactivate filter sort when column header is clicked
-            deactivateFilterSort();
-            
-            // Reset all headers
-            headers.forEach(h => h.classList.remove('asc', 'desc'));
-            
-            // Set current sort direction
-            this.classList.add(currentAsc ? 'asc' : 'desc');
-            
-            sortTable(col, type, currentAsc);
         });
-    });
 
-    function sortTable(col, type, asc) {
-        const tbody = table.querySelector('tbody');
-        const rows = Array.from(tbody.querySelectorAll('tr'));
-        
-        rows.sort((a, b) => {
-            let aVal, bVal;
-            const aCell = a.cells[col];
-            const bCell = b.cells[col];
-            
-            if (type === 'number') {
-                aVal = parseFloat(aCell.dataset.value) || 0;
-                bVal = parseFloat(bCell.dataset.value) || 0;
-            } else {
-                aVal = aCell.textContent.trim().toLowerCase();
-                bVal = bCell.textContent.trim().toLowerCase();
+        function cancelDeleteMode() {
+            deleteMode = false;
+            isProcessing = false;
+            deleteBtn.textContent = 'Delete Flip';
+            deleteBtn.classList.remove('delete-mode-active');
+            table.classList.remove('delete-mode');
+            // Clear any selected row
+            if (selectedRow) {
+                selectedRow.classList.remove('selected-for-delete');
+                selectedRow = null;
             }
-            
-            if (aVal < bVal) return asc ? -1 : 1;
-            if (aVal > bVal) return asc ? 1 : -1;
-            return 0;
+        }
+
+        table.querySelector('tbody').addEventListener('click', function (e) {
+            if (!deleteMode || isProcessing) return;
+
+            const row = e.target.closest('tr');
+            if (!row || !row.dataset.itemId) return;
+
+            e.preventDefault();
+            e.stopImmediatePropagation();
+
+            isProcessing = true;
+            deleteMode = false;
+
+            // Highlight the selected row
+            row.classList.add('selected-for-delete');
+            selectedRow = row;
+
+            const itemName = row.dataset.itemName;
+            const itemId = row.dataset.itemId;
+
+            // Show delete confirmation modal
+            document.getElementById('deleteItemName').textContent = itemName;
+            const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+
+            // Set up confirm button handler
+            const confirmBtn = document.getElementById('confirmDeleteBtn');
+            const newConfirmBtn = confirmBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+            newConfirmBtn.addEventListener('click', function () {
+                // Create and submit a form to delete
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `/flips/delete/${itemId}/`;
+
+                const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrfmiddlewaretoken';
+                csrfInput.value = csrf;
+                form.appendChild(csrfInput);
+
+                document.body.appendChild(form);
+                form.submit();
+            });
+
+            // Handle modal close (cancel)
+            document.getElementById('deleteConfirmModal').addEventListener('hidden.bs.modal', function () {
+                cancelDeleteMode();
+            }, {once: true});
+
+            deleteModal.show();
         });
-        
-        rows.forEach(row => tbody.appendChild(row));
-    }
 
-    // Delete flip functionality
-    const deleteBtn = document.getElementById('deleteFlipBtn');
-    let deleteMode = false;
-    let isProcessing = false;
-    let selectedRow = null;
-    
-    deleteBtn.addEventListener('click', function() {
-        if (!deleteMode) {
-            deleteMode = true;
-            deleteBtn.textContent = 'Click a row to delete';
-            deleteBtn.classList.add('delete-mode-active');
-            table.classList.add('delete-mode');
-        } else {
-            cancelDeleteMode();
-        }
-    });
-
-    function cancelDeleteMode() {
-        deleteMode = false;
-        isProcessing = false;
-        deleteBtn.textContent = 'Delete Flip';
-        deleteBtn.classList.remove('delete-mode-active');
-        table.classList.remove('delete-mode');
-        // Clear any selected row
-        if (selectedRow) {
-            selectedRow.classList.remove('selected-for-delete');
-            selectedRow = null;
-        }
-    }
-
-    table.querySelector('tbody').addEventListener('click', function(e) {
-        if (!deleteMode || isProcessing) return;
-        
-        const row = e.target.closest('tr');
-        if (!row || !row.dataset.itemId) return;
-        
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        
-        isProcessing = true;
-        deleteMode = false;
-        
-        // Highlight the selected row
-        row.classList.add('selected-for-delete');
-        selectedRow = row;
-        
-        const itemName = row.dataset.itemName;
-        const itemId = row.dataset.itemId;
-        
-        // Show delete confirmation modal
-        document.getElementById('deleteItemName').textContent = itemName;
-        const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
-        
-        // Set up confirm button handler
-        const confirmBtn = document.getElementById('confirmDeleteBtn');
-        const newConfirmBtn = confirmBtn.cloneNode(true);
-        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-        
-        newConfirmBtn.addEventListener('click', function() {
-            // Create and submit a form to delete
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = `/flips/delete/${itemId}/`;
-            
-            const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
-            const csrfInput = document.createElement('input');
-            csrfInput.type = 'hidden';
-            csrfInput.name = 'csrfmiddlewaretoken';
-            csrfInput.value = csrf;
-            form.appendChild(csrfInput);
-            
-            document.body.appendChild(form);
-            form.submit();
-        });
-        
-        // Handle modal close (cancel)
-        document.getElementById('deleteConfirmModal').addEventListener('hidden.bs.modal', function() {
-            cancelDeleteMode();
-        }, { once: true });
-        
-        deleteModal.show();
-    });
-    
-    // Dismiss notification function
-    window.dismissNotification = function(btn) {
-        const notification = btn.closest('.success-notification');
-        if (notification) {
-            notification.classList.add('dismissing');
-            setTimeout(() => notification.remove(), 300);
-        }
-    };
-    
-    // Auto-dismiss notifications after 5 seconds
-    document.querySelectorAll('.success-notification').forEach(notification => {
-        setTimeout(() => {
-            if (notification.parentElement) {
+        // Dismiss notification function
+        window.dismissNotification = function (btn) {
+            const notification = btn.closest('.success-notification');
+            if (notification) {
                 notification.classList.add('dismissing');
                 setTimeout(() => notification.remove(), 300);
             }
-        }, 5000);
+        };
+
+        // Auto-dismiss notifications after 5 seconds
+        document.querySelectorAll('.success-notification').forEach(notification => {
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.classList.add('dismissing');
+                    setTimeout(() => notification.remove(), 300);
+                }
+            }, 5000);
+        });
+
+        // Initialize mobile sort indicator state on page load
+        syncMobileSortIndicator();
     });
-    
-    // Initialize mobile sort indicator state on page load
-    syncMobileSortIndicator();
-});
 </script>
 {% endblock %}
