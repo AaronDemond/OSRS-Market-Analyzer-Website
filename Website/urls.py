@@ -46,4 +46,6 @@ urlpatterns = [
     path('api/alerts/unlink-groups/', views.unlink_groups, name='unlink_groups'),
     path('alerts/<int:alert_id>/', views.alert_detail, name='alert_detail'),
     path('api/alerts/<int:alert_id>/update/', views.update_single_alert, name='update_single_alert'),
+    path('api/favorites/add/', views.add_favorite, name='add_favorite'),
+    path('api/favorites/remove/', views.remove_favorite, name='remove_favorite'),
 ]

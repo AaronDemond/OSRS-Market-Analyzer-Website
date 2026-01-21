@@ -231,3 +231,16 @@ class Alert(models.Model):
             direction = (self.direction or 'both').capitalize()
             return f"{self.item_name} sustained {direction} move triggered ({moves} moves in {frame})"
         return f"Item price is now {price_formatted}"
+
+
+class FavoriteItem(models.Model):
+    item_id = models.IntegerField(unique=True)
+    item_name = models.CharField(max_length=255)
+    added_at = models.DateTimeField(auto_now_add=True)
+    display_order = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ['display_order', '-added_at']
+
+    def __str__(self):
+        return self.item_name

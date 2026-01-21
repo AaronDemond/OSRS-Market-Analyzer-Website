@@ -87,7 +87,122 @@ def test(request):
 
 
 def home(request):
-    return render(request, 'home.html')
+    from .models import FlipProfit, Alert, FavoriteItem, Flip
+    from django.db.models import Sum
+    from datetime import datetime, timedelta
+    from django.utils import timezone
+    import json
+    
+    # Fetch all current prices
+    all_prices = get_all_current_prices()
+    
+    # Get flip profit summary
+    total_unrealized = FlipProfit.objects.aggregate(total=Sum('unrealized_net'))['total'] or 0
+    total_realized = FlipProfit.objects.aggregate(total=Sum('realized_net'))['total'] or 0
+    position_size = FlipProfit.objects.aggregate(total=Sum(F('quantity_held') * F('average_cost')))['total'] or 0
+    
+    # Get flips that recently became profitable (unrealized > 0, were negative or near zero before)
+    # We'll get all flips with positive unrealized and show them
+    profitable_flips = []
+    for fp in FlipProfit.objects.filter(quantity_held__gt=0).order_by('-unrealized_net')[:10]:
+        item_id = str(fp.item_id)
+        high_price = all_prices.get(item_id, {}).get('high')
+        low_price = all_prices.get(item_id, {}).get('low')
+        
+        # Get item name from Flip if not on FlipProfit
+        item_name = fp.item_name
+        if not item_name:
+            flip = Flip.objects.filter(item_id=fp.item_id).first()
+            item_name = flip.item_name if flip else f"Item {fp.item_id}"
+        
+        # Calculate profit percentage
+        if fp.average_cost > 0 and high_price:
+            profit_pct = ((high_price * 0.98 - fp.average_cost) / fp.average_cost) * 100
+        else:
+            profit_pct = 0
+            
+        profitable_flips.append({
+            'item_id': fp.item_id,
+            'item_name': item_name,
+            'quantity_held': fp.quantity_held,
+            'average_cost': fp.average_cost,
+            'unrealized_net': fp.unrealized_net,
+            'high_price': high_price,
+            'low_price': low_price,
+            'profit_pct': profit_pct,
+            'position_size': fp.quantity_held * fp.average_cost,
+        })
+    
+    # Get recent triggered alerts
+    recent_alerts = Alert.objects.filter(
+        is_triggered=True,
+        is_dismissed=False
+    ).order_by('-triggered_at')[:5]
+    
+    alert_list = []
+    for alert in recent_alerts:
+        alert_list.append({
+            'id': alert.id,
+            'text': str(alert),
+            'triggered_text': alert.triggered_text(),
+            'type': alert.type,
+            'triggered_at': alert.triggered_at,
+        })
+    
+    # Get total alerts stats
+    total_alerts = Alert.objects.filter(is_active=True).count()
+    triggered_alerts = Alert.objects.filter(is_triggered=True, is_dismissed=False).count()
+    
+    # Get favorite items with current prices
+    favorites = []
+    for fav in FavoriteItem.objects.all()[:12]:
+        item_id = str(fav.item_id)
+        price_data = all_prices.get(item_id, {})
+        high_price = price_data.get('high')
+        low_price = price_data.get('low')
+        
+        # Calculate spread
+        if high_price and low_price and low_price > 0:
+            spread = high_price - low_price
+            spread_pct = (spread / low_price) * 100
+        else:
+            spread = 0
+            spread_pct = 0
+            
+        favorites.append({
+            'item_id': fav.item_id,
+            'item_name': fav.item_name,
+            'high_price': high_price,
+            'low_price': low_price,
+            'spread': spread,
+            'spread_pct': spread_pct,
+        })
+    
+    # Get recent activity (last 5 flips)
+    recent_flips = Flip.objects.order_by('-date')[:5]
+    recent_activity = []
+    for flip in recent_flips:
+        recent_activity.append({
+            'item_name': flip.item_name,
+            'item_id': flip.item_id,
+            'type': flip.type,
+            'quantity': flip.quantity,
+            'price': flip.price,
+            'date': flip.date,
+            'total': flip.quantity * flip.price,
+        })
+    
+    return render(request, 'home.html', {
+        'total_unrealized': total_unrealized,
+        'total_realized': total_realized,
+        'position_size': position_size,
+        'profitable_flips': profitable_flips,
+        'recent_alerts': alert_list,
+        'total_alerts': total_alerts,
+        'triggered_alerts': triggered_alerts,
+        'favorites': favorites,
+        'recent_activity': recent_activity,
+    })
 
 
 def flips(request):
@@ -1284,3 +1399,57 @@ def update_single_alert(request, alert_id):
     alert.save()
     
     return JsonResponse({'success': True})
+
+
+@csrf_exempt
+def add_favorite(request):
+    """API endpoint to add an item to favorites"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST required'}, status=405)
+    
+    import json
+    from .models import FavoriteItem
+    
+    try:
+        data = json.loads(request.body)
+        item_id = data.get('item_id')
+        item_name = data.get('item_name')
+        
+        if not item_id or not item_name:
+            return JsonResponse({'success': False, 'error': 'item_id and item_name required'}, status=400)
+        
+        favorite, created = FavoriteItem.objects.get_or_create(
+            item_id=item_id,
+            defaults={'item_name': item_name}
+        )
+        
+        return JsonResponse({'success': True, 'created': created})
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def remove_favorite(request):
+    """API endpoint to remove an item from favorites"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST required'}, status=405)
+    
+    import json
+    from .models import FavoriteItem
+    
+    try:
+        data = json.loads(request.body)
+        item_id = data.get('item_id')
+        
+        if not item_id:
+            return JsonResponse({'success': False, 'error': 'item_id required'}, status=400)
+        
+        deleted, _ = FavoriteItem.objects.filter(item_id=item_id).delete()
+        
+        return JsonResponse({'success': True, 'deleted': deleted > 0})
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)

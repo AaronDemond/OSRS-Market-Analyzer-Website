@@ -1,9 +1,25 @@
 {% extends 'base.html' %}
+{% load humanize %}
 
 {% block title %}Dashboard - GE Tools{% endblock %}
 
 {% block extra_css %}
 <style>
+    :root {
+        --bg: #F8F9FA;
+        --surface: #FFFFFF;
+        --surface-2: #F5F6F8;
+        --border: #E5E7EB;
+        --text: #374151;
+        --muted: #6B7280;
+        --primary: #6366F1;
+        --primary-hover: #5558E3;
+        --success: #22C55E;
+        --danger: #EF4444;
+        --warning: #F59E0B;
+        --info: #3B82F6;
+    }
+
     .page-header {
         display: flex;
         align-items: center;
@@ -32,15 +48,781 @@
     .page-header-text h1 {
         font-size: 1.75rem;
         font-weight: 700;
-        color: #1a1a2e;
+        color: var(--text);
         margin: 0 0 2px 0;
         letter-spacing: -0.02em;
     }
     
     .page-header-text p {
-        color: #6c757d;
+        color: var(--muted);
         margin: 0;
         font-size: 0.95rem;
+    }
+
+    /* Summary Stats Row */
+    .stats-row {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+    }
+    
+    .stat-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px 20px;
+        flex: 1;
+        min-width: 180px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .stat-card-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 8px;
+    }
+    
+    .stat-card-icon svg {
+        width: 20px;
+        height: 20px;
+    }
+    
+    .stat-card-icon.green { background: rgba(34, 197, 94, 0.15); color: #16A34A; }
+    .stat-card-icon.blue { background: rgba(59, 130, 246, 0.15); color: #2563EB; }
+    .stat-card-icon.purple { background: rgba(139, 92, 246, 0.15); color: #7C3AED; }
+    .stat-card-icon.orange { background: rgba(249, 115, 22, 0.15); color: #EA580C; }
+    
+    .stat-label {
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text);
+    }
+    
+    .stat-value.positive { color: #16A34A; }
+    .stat-value.negative { color: #DC2626; }
+
+    /* Dashboard Grid */
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 24px;
+    }
+    
+    @media (max-width: 1200px) {
+        .dashboard-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* Card Styles */
+    .dashboard-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        overflow: hidden;
+    }
+    
+    .card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border);
+        background: var(--surface-2);
+    }
+    
+    .card-header h3 {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .card-header h3 svg {
+        width: 18px;
+        height: 18px;
+        color: var(--muted);
+    }
+    
+    .card-header-action {
+        font-size: 0.85rem;
+        color: var(--primary);
+        text-decoration: none;
+        font-weight: 500;
+    }
+    
+    .card-header-action:hover {
+        text-decoration: underline;
+    }
+    
+    .card-body {
+        padding: 16px 20px;
+    }
+    
+    .card-body.no-padding {
+        padding: 0;
+    }
+
+    /* Profitable Flips List */
+    .flip-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+    
+    .flip-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 20px;
+        border-bottom: 1px solid var(--border);
+        transition: background 0.15s;
+    }
+    
+    .flip-item:last-child {
+        border-bottom: none;
+    }
+    
+    .flip-item:hover {
+        background: var(--surface-2);
+    }
+    
+    .flip-item-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    
+    .flip-item-name {
+        font-weight: 600;
+        color: var(--text);
+        text-decoration: none;
+    }
+    
+    .flip-item-name:hover {
+        color: var(--primary);
+    }
+    
+    .flip-item-details {
+        font-size: 0.8rem;
+        color: var(--muted);
+    }
+    
+    .flip-item-profit {
+        text-align: right;
+    }
+    
+    .flip-item-profit .amount {
+        font-weight: 700;
+        font-size: 1rem;
+    }
+    
+    .flip-item-profit .amount.positive { color: #16A34A; }
+    .flip-item-profit .amount.negative { color: #DC2626; }
+    
+    .flip-item-profit .percent {
+        font-size: 0.8rem;
+        color: var(--muted);
+    }
+
+    /* Alert List */
+    .alert-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+    
+    .alert-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 12px 20px;
+        border-bottom: 1px solid var(--border);
+    }
+    
+    .alert-item:last-child {
+        border-bottom: none;
+    }
+    
+    .alert-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    
+    .alert-icon.spread { background: rgba(139, 92, 246, 0.15); color: #7C3AED; }
+    .alert-icon.spike { background: rgba(239, 68, 68, 0.15); color: #DC2626; }
+    .alert-icon.above { background: rgba(34, 197, 94, 0.15); color: #16A34A; }
+    .alert-icon.below { background: rgba(59, 130, 246, 0.15); color: #2563EB; }
+    .alert-icon.sustained { background: rgba(249, 115, 22, 0.15); color: #EA580C; }
+    
+    .alert-icon svg {
+        width: 16px;
+        height: 16px;
+    }
+    
+    .alert-content {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .alert-title {
+        font-weight: 500;
+        color: var(--text);
+        font-size: 0.9rem;
+        margin-bottom: 2px;
+    }
+    
+    .alert-description {
+        font-size: 0.8rem;
+        color: var(--muted);
+    }
+    
+    .alert-time {
+        font-size: 0.75rem;
+        color: var(--muted);
+        white-space: nowrap;
+    }
+
+    /* Favorites Grid */
+    .favorites-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 12px;
+        padding: 16px 20px;
+    }
+    
+    .favorite-item {
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        position: relative;
+        transition: all 0.15s;
+    }
+    
+    .favorite-item:hover {
+        border-color: var(--primary);
+        box-shadow: 0 2px 8px rgba(99, 102, 241, 0.1);
+    }
+    
+    .favorite-item-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .favorite-item-name {
+        font-weight: 600;
+        color: var(--text);
+        font-size: 0.9rem;
+        text-decoration: none;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .favorite-item-name:hover {
+        color: var(--primary);
+    }
+    
+    .favorite-remove {
+        background: none;
+        border: none;
+        color: var(--muted);
+        cursor: pointer;
+        padding: 2px;
+        line-height: 1;
+        font-size: 16px;
+        opacity: 0;
+        transition: opacity 0.15s, color 0.15s;
+    }
+    
+    .favorite-item:hover .favorite-remove {
+        opacity: 1;
+    }
+    
+    .favorite-remove:hover {
+        color: #DC2626;
+    }
+    
+    .favorite-prices {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.8rem;
+    }
+    
+    .favorite-price {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .favorite-price-label {
+        color: var(--muted);
+        font-size: 0.7rem;
+        text-transform: uppercase;
+    }
+    
+    .favorite-price-value {
+        color: var(--text);
+        font-weight: 600;
+    }
+    
+    .favorite-price-value.high { color: #16A34A; }
+    .favorite-price-value.low { color: #DC2626; }
+    
+    .favorite-spread {
+        font-size: 0.75rem;
+        color: var(--muted);
+        text-align: center;
+        padding-top: 4px;
+        border-top: 1px solid var(--border);
+    }
+    
+    .favorite-spread strong {
+        color: var(--primary);
+    }
+
+    /* Add Favorite */
+    .add-favorite-card {
+        background: transparent;
+        border: 2px dashed var(--border);
+        border-radius: 10px;
+        padding: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.15s;
+        min-height: 100px;
+    }
+    
+    .add-favorite-card:hover {
+        border-color: var(--primary);
+        background: rgba(99, 102, 241, 0.05);
+    }
+    
+    .add-favorite-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        color: var(--muted);
+    }
+    
+    .add-favorite-content svg {
+        width: 24px;
+        height: 24px;
+    }
+    
+    .add-favorite-content span {
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+
+    /* Recent Activity */
+    .activity-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+    
+    .activity-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 20px;
+        border-bottom: 1px solid var(--border);
+    }
+    
+    .activity-item:last-child {
+        border-bottom: none;
+    }
+    
+    .activity-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    
+    .activity-icon.buy { background: rgba(34, 197, 94, 0.15); color: #16A34A; }
+    .activity-icon.sell { background: rgba(239, 68, 68, 0.15); color: #DC2626; }
+    
+    .activity-icon svg {
+        width: 14px;
+        height: 14px;
+    }
+    
+    .activity-content {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .activity-title {
+        font-size: 0.85rem;
+        color: var(--text);
+    }
+    
+    .activity-title strong {
+        font-weight: 600;
+    }
+    
+    .activity-time {
+        font-size: 0.75rem;
+        color: var(--muted);
+    }
+    
+    .activity-amount {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--text);
+    }
+
+    /* Empty State */
+    .empty-state {
+        padding: 40px 20px;
+        text-align: center;
+        color: var(--muted);
+    }
+    
+    .empty-state svg {
+        width: 48px;
+        height: 48px;
+        margin-bottom: 12px;
+        opacity: 0.5;
+    }
+    
+    .empty-state p {
+        margin: 0;
+        font-size: 0.9rem;
+    }
+    
+    .empty-state a {
+        color: var(--primary);
+        text-decoration: none;
+        font-weight: 500;
+    }
+    
+    .empty-state a:hover {
+        text-decoration: underline;
+    }
+
+    /* Add Favorite Modal */
+    .add-favorite-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .add-favorite-modal.show {
+        display: flex;
+    }
+    
+    .add-favorite-modal-content {
+        background: var(--surface);
+        border-radius: 12px;
+        width: 90%;
+        max-width: 400px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+    
+    .add-favorite-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border);
+    }
+    
+    .add-favorite-modal-header h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+    
+    .add-favorite-modal-close {
+        background: none;
+        border: none;
+        font-size: 24px;
+        color: var(--muted);
+        cursor: pointer;
+        line-height: 1;
+    }
+    
+    .add-favorite-modal-close:hover {
+        color: var(--text);
+    }
+    
+    .add-favorite-modal-body {
+        padding: 20px;
+    }
+    
+    .add-favorite-input-wrapper {
+        position: relative;
+    }
+    
+    .add-favorite-input {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 1rem;
+        color: var(--text);
+        background: var(--surface);
+    }
+    
+    .add-favorite-input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+    
+    .add-favorite-suggestions {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        margin-top: 4px;
+        max-height: 200px;
+        overflow-y: auto;
+        display: none;
+        z-index: 10;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .add-favorite-suggestions.show {
+        display: block;
+    }
+    
+    .add-favorite-suggestion {
+        padding: 10px 16px;
+        cursor: pointer;
+        font-size: 0.9rem;
+    }
+    
+    .add-favorite-suggestion:hover,
+    .add-favorite-suggestion.highlighted {
+        background: var(--surface-2);
+    }
+    
+    .add-favorite-suggestion.highlighted {
+        background: rgba(99, 102, 241, 0.1);
+        color: var(--primary);
+    }
+    
+    .add-favorite-selected {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: rgba(99, 102, 241, 0.1);
+        border: 1px solid var(--primary);
+        border-radius: 8px;
+        padding: 10px 12px;
+        margin-top: 12px;
+    }
+    
+    .selected-item-name {
+        font-weight: 600;
+        color: var(--primary);
+    }
+    
+    .selected-item-clear {
+        background: none;
+        border: none;
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 18px;
+        line-height: 1;
+        padding: 0;
+    }
+    
+    .selected-item-clear:hover {
+        color: #DC2626;
+    }
+    
+    .add-favorite-submit {
+        width: 100%;
+        margin-top: 16px;
+        padding: 12px 16px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.15s, opacity 0.15s;
+    }
+    
+    .add-favorite-submit:hover:not(:disabled) {
+        background: var(--primary-hover);
+    }
+    
+    .add-favorite-submit:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* Delete Confirmation Modal */
+    .delete-confirm-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1001;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .delete-confirm-modal.show {
+        display: flex;
+    }
+    
+    .delete-confirm-content {
+        background: var(--surface);
+        border-radius: 12px;
+        width: 90%;
+        max-width: 400px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        text-align: center;
+        padding: 24px;
+    }
+    
+    .delete-confirm-icon {
+        width: 56px;
+        height: 56px;
+        background: rgba(239, 68, 68, 0.1);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 16px;
+    }
+    
+    .delete-confirm-icon svg {
+        width: 28px;
+        height: 28px;
+        color: #DC2626;
+    }
+    
+    .delete-confirm-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--text);
+        margin: 0 0 8px 0;
+    }
+    
+    .delete-confirm-message {
+        font-size: 0.9rem;
+        color: var(--muted);
+        margin: 0 0 20px 0;
+    }
+    
+    .delete-confirm-item-name {
+        font-weight: 600;
+        color: var(--text);
+    }
+    
+    .delete-confirm-buttons {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+    }
+    
+    .delete-confirm-btn {
+        padding: 10px 24px;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s;
+        border: none;
+    }
+    
+    .delete-confirm-btn.cancel {
+        background: var(--surface-2);
+        color: var(--text);
+        border: 1px solid var(--border);
+    }
+    
+    .delete-confirm-btn.cancel:hover {
+        background: var(--border);
+    }
+    
+    .delete-confirm-btn.delete {
+        background: #DC2626;
+        color: white;
+    }
+    
+    .delete-confirm-btn.delete:hover {
+        background: #B91C1C;
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+        .stats-row {
+            flex-direction: column;
+        }
+        
+        .stat-card {
+            min-width: 100%;
+        }
+        
+        .favorites-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .flip-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        
+        .flip-item-profit {
+            text-align: left;
+        }
     }
 </style>
 {% endblock %}
@@ -54,7 +836,530 @@
     </div>
     <div class="page-header-text">
         <h1>Dashboard</h1>
-        <p>Welcome to your GE Tools dashboard</p>
+        <p>Your GE trading overview at a glance</p>
     </div>
 </div>
+
+<!-- Summary Stats -->
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-card-icon green">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+            </svg>
+        </div>
+        <span class="stat-label">Unrealized P/L</span>
+        <span class="stat-value {% if total_unrealized >= 0 %}positive{% else %}negative{% endif %}">
+            {% if total_unrealized >= 0 %}+{% endif %}{{ total_unrealized|floatformat:0|intcomma }} gp
+        </span>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-icon blue">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+        </div>
+        <span class="stat-label">Realized P/L</span>
+        <span class="stat-value {% if total_realized >= 0 %}positive{% else %}negative{% endif %}">
+            {% if total_realized >= 0 %}+{% endif %}{{ total_realized|floatformat:0|intcomma }} gp
+        </span>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-icon purple">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+            </svg>
+        </div>
+        <span class="stat-label">Position Size</span>
+        <span class="stat-value">{{ position_size|floatformat:0|intcomma }} gp</span>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-icon orange">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+            </svg>
+        </div>
+        <span class="stat-label">Active Alerts</span>
+        <span class="stat-value">{{ total_alerts }}{% if triggered_alerts > 0 %} <span style="font-size: 0.8rem; color: #DC2626;">({{ triggered_alerts }} triggered)</span>{% endif %}</span>
+    </div>
+</div>
+
+<!-- Dashboard Grid -->
+<div class="dashboard-grid">
+    <!-- Profitable Positions -->
+    <div class="dashboard-card">
+        <div class="card-header">
+            <h3>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Top Positions
+            </h3>
+            <a href="{% url 'flips' %}" class="card-header-action">View All →</a>
+        </div>
+        <div class="card-body no-padding">
+            {% if profitable_flips %}
+            <ul class="flip-list">
+                {% for flip in profitable_flips %}
+                <li class="flip-item">
+                    <div class="flip-item-info">
+                        <a href="{% url 'item_detail' flip.item_id %}" class="flip-item-name">{{ flip.item_name }}</a>
+                        <span class="flip-item-details">{{ flip.quantity_held|intcomma }} × {{ flip.average_cost|floatformat:0|intcomma }} gp avg</span>
+                    </div>
+                    <div class="flip-item-profit">
+                        <div class="amount {% if flip.unrealized_net >= 0 %}positive{% else %}negative{% endif %}">
+                            {% if flip.unrealized_net >= 0 %}+{% endif %}{{ flip.unrealized_net|floatformat:0|intcomma }} gp
+                        </div>
+                        <div class="percent">{% if flip.profit_pct >= 0 %}+{% endif %}{{ flip.profit_pct|floatformat:1 }}%</div>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="empty-state">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                </svg>
+                <p>No positions yet. <a href="{% url 'flips' %}">Add your first flip</a></p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Triggered Alerts -->
+    <div class="dashboard-card">
+        <div class="card-header">
+            <h3>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                </svg>
+                Recent Alerts
+            </h3>
+            <a href="{% url 'alerts' %}" class="card-header-action">View All →</a>
+        </div>
+        <div class="card-body no-padding">
+            {% if recent_alerts %}
+            <ul class="alert-list">
+                {% for alert in recent_alerts %}
+                <li class="alert-item">
+                    <div class="alert-icon {{ alert.type }}">
+                        {% if alert.type == 'spread' %}
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                        {% elif alert.type == 'spike' %}
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        {% elif alert.type == 'above' %}
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
+                        {% elif alert.type == 'below' %}
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+                        {% else %}
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                        {% endif %}
+                    </div>
+                    <div class="alert-content">
+                        <div class="alert-title">{{ alert.text }}</div>
+                        <div class="alert-description">{{ alert.triggered_text }}</div>
+                    </div>
+                    <span class="alert-time">{{ alert.triggered_at|timesince }} ago</span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="empty-state">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                </svg>
+                <p>No triggered alerts. <a href="{% url 'alerts' %}">Create an alert</a></p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Favorite Items -->
+    <div class="dashboard-card">
+        <div class="card-header">
+            <h3>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+                </svg>
+                Favorite Items
+            </h3>
+            <a href="{% url 'item_search' %}" class="card-header-action">Search Items →</a>
+        </div>
+        <div class="card-body no-padding">
+            <div class="favorites-grid">
+                {% for fav in favorites %}
+                <div class="favorite-item" data-item-id="{{ fav.item_id }}">
+                    <div class="favorite-item-header">
+                        <a href="{% url 'item_detail' fav.item_id %}" class="favorite-item-name">{{ fav.item_name }}</a>
+                        <button class="favorite-remove" onclick="removeFavorite({{ fav.item_id }})" title="Remove">×</button>
+                    </div>
+                    <div class="favorite-prices">
+                        <div class="favorite-price">
+                            <span class="favorite-price-label">High</span>
+                            <span class="favorite-price-value high">{% if fav.high_price %}{{ fav.high_price|intcomma }}{% else %}-{% endif %}</span>
+                        </div>
+                        <div class="favorite-price">
+                            <span class="favorite-price-label">Low</span>
+                            <span class="favorite-price-value low">{% if fav.low_price %}{{ fav.low_price|intcomma }}{% else %}-{% endif %}</span>
+                        </div>
+                    </div>
+                    <div class="favorite-spread">
+                        Spread: <strong>{{ fav.spread|floatformat:0|intcomma }}</strong> ({{ fav.spread_pct|floatformat:1 }}%)
+                    </div>
+                </div>
+                {% endfor %}
+                <div class="add-favorite-card" onclick="openAddFavoriteModal()">
+                    <div class="add-favorite-content">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        <span>Add Item</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="dashboard-card">
+        <div class="card-header">
+            <h3>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Recent Activity
+            </h3>
+            <a href="{% url 'flips' %}" class="card-header-action">View All →</a>
+        </div>
+        <div class="card-body no-padding">
+            {% if recent_activity %}
+            <ul class="activity-list">
+                {% for activity in recent_activity %}
+                <li class="activity-item">
+                    <div class="activity-icon {{ activity.type }}">
+                        {% if activity.type == 'buy' %}
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        {% else %}
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>
+                        {% endif %}
+                    </div>
+                    <div class="activity-content">
+                        <div class="activity-title">
+                            <strong>{{ activity.type|title }}</strong> {{ activity.quantity|intcomma }}x {{ activity.item_name }}
+                        </div>
+                        <div class="activity-time">{{ activity.date|timesince }} ago</div>
+                    </div>
+                    <span class="activity-amount">{{ activity.total|intcomma }} gp</span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="empty-state">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <p>No recent activity. <a href="{% url 'flips' %}">Record a flip</a></p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Add Favorite Modal -->
+<div class="add-favorite-modal" id="addFavoriteModal">
+    <div class="add-favorite-modal-content">
+        <div class="add-favorite-modal-header">
+            <h3>Add Favorite Item</h3>
+            <button class="add-favorite-modal-close" onclick="closeAddFavoriteModal()">×</button>
+        </div>
+        <div class="add-favorite-modal-body">
+            <div class="add-favorite-input-wrapper">
+                <input type="text" class="add-favorite-input" id="addFavoriteInput" placeholder="Search for an item..." autocomplete="off">
+                <div class="add-favorite-suggestions" id="addFavoriteSuggestions"></div>
+            </div>
+            <div class="add-favorite-selected" id="addFavoriteSelected" style="display: none;">
+                <span class="selected-item-name" id="selectedItemName"></span>
+                <button class="selected-item-clear" onclick="clearSelectedItem()">×</button>
+            </div>
+            <input type="hidden" id="selectedItemId" value="">
+            <button type="button" class="add-favorite-submit" id="addFavoriteSubmit" onclick="submitFavorite()" disabled>Add to Favorites</button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="delete-confirm-modal" id="deleteConfirmModal">
+    <div class="delete-confirm-content">
+        <div class="delete-confirm-icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+        </div>
+        <h4 class="delete-confirm-title">Remove from Favorites?</h4>
+        <p class="delete-confirm-message">
+            Are you sure you want to remove <span class="delete-confirm-item-name" id="deleteItemName"></span> from your favorites?
+        </p>
+        <div class="delete-confirm-buttons">
+            <button class="delete-confirm-btn cancel" onclick="closeDeleteModal()">Cancel</button>
+            <button class="delete-confirm-btn delete" id="confirmDeleteBtn">Remove</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('addFavoriteModal');
+    const input = document.getElementById('addFavoriteInput');
+    const suggestions = document.getElementById('addFavoriteSuggestions');
+    const deleteModal = document.getElementById('deleteConfirmModal');
+    let debounceTimer;
+    let highlightedIndex = -1;
+    
+    // Input search
+    input.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        const query = this.value.trim();
+        highlightedIndex = -1;
+        
+        if (query.length < 2) {
+            suggestions.classList.remove('show');
+            return;
+        }
+        
+        debounceTimer = setTimeout(() => {
+            fetch(`/api/items/?q=${encodeURIComponent(query)}`)
+                .then(res => res.json())
+                .then(data => {
+                    // API returns array directly, not { items: [] }
+                    if (Array.isArray(data) && data.length > 0) {
+                        suggestions.innerHTML = data.slice(0, 8).map(item => 
+                            `<div class="add-favorite-suggestion" data-id="${item.id}" data-name="${item.name}">${item.name}</div>`
+                        ).join('');
+                        suggestions.classList.add('show');
+                        highlightedIndex = -1;
+                    } else {
+                        suggestions.classList.remove('show');
+                    }
+                })
+                .catch(err => {
+                    console.error('Search error:', err);
+                    suggestions.classList.remove('show');
+                });
+        }, 200);
+    });
+    
+    // Keyboard navigation
+    input.addEventListener('keydown', function(e) {
+        const items = suggestions.querySelectorAll('.add-favorite-suggestion');
+        
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (suggestions.classList.contains('show') && items.length > 0) {
+                highlightedIndex = Math.min(highlightedIndex + 1, items.length - 1);
+                updateHighlight(items);
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (suggestions.classList.contains('show') && items.length > 0) {
+                highlightedIndex = Math.max(highlightedIndex - 1, 0);
+                updateHighlight(items);
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (highlightedIndex >= 0 && items[highlightedIndex]) {
+                const item = items[highlightedIndex];
+                selectItem(item.dataset.id, item.dataset.name);
+            }
+        } else if (e.key === 'Escape') {
+            closeAddFavoriteModal();
+        } else if (e.key === 'Tab' && suggestions.classList.contains('show')) {
+            e.preventDefault();
+            if (items.length > 0) {
+                highlightedIndex = (highlightedIndex + 1) % items.length;
+                updateHighlight(items);
+            }
+        }
+    });
+    
+    function updateHighlight(items) {
+        items.forEach((item, idx) => {
+            if (idx === highlightedIndex) {
+                item.classList.add('highlighted');
+                item.scrollIntoView({ block: 'nearest' });
+            } else {
+                item.classList.remove('highlighted');
+            }
+        });
+    }
+    
+    // Suggestion click - select item
+    suggestions.addEventListener('click', function(e) {
+        if (e.target.classList.contains('add-favorite-suggestion')) {
+            const itemId = e.target.dataset.id;
+            const itemName = e.target.dataset.name;
+            selectItem(itemId, itemName);
+        }
+    });
+    
+    // Close modals on background click
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            closeAddFavoriteModal();
+        }
+    });
+    
+    deleteModal.addEventListener('click', function(e) {
+        if (e.target === deleteModal) {
+            closeDeleteModal();
+        }
+    });
+    
+    // Global escape key handler
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            if (deleteModal.classList.contains('show')) {
+                closeDeleteModal();
+            } else if (modal.classList.contains('show')) {
+                closeAddFavoriteModal();
+            }
+        }
+    });
+});
+
+function selectItem(itemId, itemName) {
+    const input = document.getElementById('addFavoriteInput');
+    const suggestions = document.getElementById('addFavoriteSuggestions');
+    const selectedDiv = document.getElementById('addFavoriteSelected');
+    const selectedName = document.getElementById('selectedItemName');
+    const selectedIdInput = document.getElementById('selectedItemId');
+    const submitBtn = document.getElementById('addFavoriteSubmit');
+    
+    // Hide input and suggestions, show selected
+    input.style.display = 'none';
+    suggestions.classList.remove('show');
+    selectedDiv.style.display = 'flex';
+    selectedName.textContent = itemName;
+    selectedIdInput.value = itemId;
+    selectedIdInput.dataset.name = itemName;
+    submitBtn.disabled = false;
+}
+
+function clearSelectedItem() {
+    const input = document.getElementById('addFavoriteInput');
+    const selectedDiv = document.getElementById('addFavoriteSelected');
+    const selectedIdInput = document.getElementById('selectedItemId');
+    const submitBtn = document.getElementById('addFavoriteSubmit');
+    
+    // Show input, hide selected
+    input.style.display = 'block';
+    input.value = '';
+    input.focus();
+    selectedDiv.style.display = 'none';
+    selectedIdInput.value = '';
+    selectedIdInput.dataset.name = '';
+    submitBtn.disabled = true;
+}
+
+function submitFavorite() {
+    const selectedIdInput = document.getElementById('selectedItemId');
+    const itemId = selectedIdInput.value;
+    const itemName = selectedIdInput.dataset.name;
+    
+    if (!itemId || !itemName) return;
+    
+    addFavorite(itemId, itemName);
+}
+
+function openAddFavoriteModal() {
+    const modal = document.getElementById('addFavoriteModal');
+    const input = document.getElementById('addFavoriteInput');
+    modal.classList.add('show');
+    clearSelectedItem();
+    input.focus();
+}
+
+function closeAddFavoriteModal() {
+    const modal = document.getElementById('addFavoriteModal');
+    const suggestions = document.getElementById('addFavoriteSuggestions');
+    modal.classList.remove('show');
+    suggestions.classList.remove('show');
+    clearSelectedItem();
+}
+
+function addFavorite(itemId, itemName) {
+    // Get CSRF token from cookie
+    const csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+    
+    fetch('/api/favorites/add/', {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({ item_id: parseInt(itemId), item_name: itemName })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            closeAddFavoriteModal();
+            location.reload();
+        } else {
+            alert('Failed to add favorite: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(err => {
+        console.error('Error adding favorite:', err);
+        alert('Failed to add favorite. Please try again.');
+    });
+}
+
+function removeFavorite(itemId) {
+    const item = document.querySelector(`.favorite-item[data-item-id="${itemId}"]`);
+    const itemName = item ? item.querySelector('.favorite-item-name').textContent : 'this item';
+    
+    const deleteModal = document.getElementById('deleteConfirmModal');
+    const deleteItemName = document.getElementById('deleteItemName');
+    const confirmBtn = document.getElementById('confirmDeleteBtn');
+    
+    deleteItemName.textContent = itemName;
+    deleteModal.classList.add('show');
+    
+    // Set up confirm button click
+    confirmBtn.onclick = function() {
+        doRemoveFavorite(itemId);
+    };
+}
+
+function closeDeleteModal() {
+    document.getElementById('deleteConfirmModal').classList.remove('show');
+}
+
+function doRemoveFavorite(itemId) {
+    // Get CSRF token from cookie
+    const csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+    
+    fetch('/api/favorites/remove/', {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({ item_id: itemId })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            closeDeleteModal();
+            const item = document.querySelector(`.favorite-item[data-item-id="${itemId}"]`);
+            if (item) item.remove();
+        }
+    })
+    .catch(err => {
+        console.error('Error removing favorite:', err);
+        closeDeleteModal();
+    });
+}
+</script>
 {% endblock %}
