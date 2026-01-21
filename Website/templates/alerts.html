@@ -1616,6 +1616,11 @@
         overflow: hidden;
     }
     
+    /* Hide non-status triggered notifications until JS validates them */
+    .triggered-notification[data-alert-id]:not(.status-notification):not(.validated) {
+        display: none;
+    }
+    
     .triggered-notification.dismissing {
         opacity: 0;
         transform: translateX(20px);
@@ -2685,6 +2690,7 @@ const AlertsState = {
     cachedAlerts: [],               // Cached alerts data for instant filtering/sorting
     searchQuery: '',                // Current search query
     iconCache: {},                  // Cache for item icons (keyed by item_id)
+    previousTriggeredItems: {},     // Track previously seen triggered items per alert (keyed by alert ID)
     sorting: {                      // Current sorting state
         sortKey: null,
         sortOrder: null,
@@ -2780,6 +2786,83 @@ const AlertsState = {
      */
     getFilterValue(filterId) {
         return this.filterValues[filterId] || null;
+    },
+    
+    /**
+     * Gets the set of previously triggered item IDs for an alert.
+     * Loads from localStorage if not in memory.
+     */
+    getPreviousTriggeredItems(alertId) {
+        // Check memory first
+        if (this.previousTriggeredItems[alertId]) {
+            return this.previousTriggeredItems[alertId];
+        }
+        // Load from localStorage
+        try {
+            const stored = localStorage.getItem('alertTriggeredItems_' + alertId);
+            if (stored) {
+                const arr = JSON.parse(stored);
+                this.previousTriggeredItems[alertId] = new Set(arr);
+                return this.previousTriggeredItems[alertId];
+            }
+        } catch (e) {
+            console.error('Error loading triggered items from localStorage:', e);
+        }
+        return new Set();
+    },
+    
+    /**
+     * Updates the set of triggered item IDs for an alert.
+     * Persists to localStorage.
+     */
+    setPreviousTriggeredItems(alertId, itemIds) {
+        const idSet = new Set(itemIds);
+        this.previousTriggeredItems[alertId] = idSet;
+        // Persist to localStorage
+        try {
+            localStorage.setItem('alertTriggeredItems_' + alertId, JSON.stringify([...idSet]));
+        } catch (e) {
+            console.error('Error saving triggered items to localStorage:', e);
+        }
+    },
+    
+    /**
+     * Computes newly triggered items by comparing current vs previous.
+     * Returns { newItems: [...], allItems: [...], newCount: number }
+     * Handles both spread (item_id) and spike (id) data structures.
+     */
+    computeNewTriggeredItems(alertId, currentData) {
+        if (!currentData) return { newItems: [], allItems: [], newCount: 0 };
+        
+        let items = [];
+        try {
+            items = typeof currentData === 'string' ? JSON.parse(currentData) : currentData;
+            if (!Array.isArray(items)) items = [];
+        } catch (e) {
+            return { newItems: [], allItems: [], newCount: 0 };
+        }
+        
+        const previousSet = this.getPreviousTriggeredItems(alertId);
+        // Handle both spread (item_id) and spike (id) data structures
+        const currentItemIds = items.map(item => String(item.item_id || item.id));
+        
+        // On first load (no previous data in memory or localStorage), initialize tracking
+        if (previousSet.size === 0 && currentItemIds.length > 0) {
+            // First time seeing this alert - store items but report 0 new
+            this.setPreviousTriggeredItems(alertId, currentItemIds);
+            return { newItems: [], allItems: items, newCount: 0, isInitialLoad: true };
+        }
+        
+        // Find new items (in current but not in previous)
+        const newItems = items.filter(item => {
+            const itemId = String(item.item_id || item.id);
+            return !previousSet.has(itemId);
+        });
+        
+        // Update tracked items
+        this.setPreviousTriggeredItems(alertId, currentItemIds);
+        
+        return { newItems, allItems: items, newCount: newItems.length };
     }
 };
 
@@ -2979,6 +3062,7 @@ const AlertsUI = {
     
     /**
      * Renders the green notification banners for triggered alerts.
+     * For "all items" alerts, only shows notification if there are NEW triggered items.
      */
     renderTriggeredNotifications(triggeredAlerts) {
         if (!triggeredAlerts || triggeredAlerts.length === 0) {
@@ -3012,8 +3096,9 @@ const AlertsUI = {
         triggeredAlerts.forEach(alert => {
             const isSpreadAllItems = this.isSpreadAllItemsAlert(alert);
             const isSpikeAllItems = this.isSpikeAllItemsAlert(alert);
+            const isAllItemsAlert = isSpreadAllItems || isSpikeAllItems;
             
-            // Cache spread data for later use in modal
+            // Cache spread/spike data for later use in modal
             if (isSpreadAllItems) {
                 AlertsState.setSpreadData(alert.id, alert.triggered_data);
             }
@@ -3021,14 +3106,63 @@ const AlertsUI = {
                 AlertsState.setSpikeData(alert.id, alert.triggered_data);
             }
             
-            const clickHandler = isSpreadAllItems 
-                ? 'onclick="ModalManager.showSpreadDetails(' + alert.id + ')"' 
-                : (isSpikeAllItems ? 'onclick="ModalManager.showSpikeDetails(' + alert.id + ')"' : '');
-            const clickableClass = (isSpreadAllItems || isSpikeAllItems) ? 'clickable-triggered' : '';
-            
-            html += '<div class="triggered-notification" data-alert-id="' + alert.id + '">' +
-                    '<span class="' + clickableClass + '" ' + clickHandler + '>' + alert.triggered_text + '</span>' +
-                    '</div>';
+            // For "all items" alerts, check if there are NEW triggered items
+            if (isAllItemsAlert && alert.triggered_data) {
+                const result = AlertsState.computeNewTriggeredItems(alert.id, alert.triggered_data);
+                
+                // On initial load, show notification with original text (without "NEW")
+                if (result.isInitialLoad) {
+                    console.log(`Alert ${alert.id}: Initial load, showing notification with ${result.allItems.length} items`);
+                    const clickHandler = isSpreadAllItems 
+                        ? 'onclick="ModalManager.showSpreadDetails(' + alert.id + ')"' 
+                        : 'onclick="ModalManager.showSpikeDetails(' + alert.id + ')"';
+                    const clickableClass = 'clickable-triggered';
+                    
+                    html += '<div class="triggered-notification" data-alert-id="' + alert.id + '">' +
+                            '<span class="' + clickableClass + '" ' + clickHandler + '>' + alert.triggered_text + '</span>' +
+                            '</div>';
+                    return; // Continue to next alert
+                }
+                
+                // Skip notification if no new items (not initial load)
+                if (result.newCount === 0) {
+                    console.log(`Alert ${alert.id}: No new items, skipping notification`);
+                    return; // Continue to next alert
+                }
+                
+                // Build custom triggered text with NEW item count
+                let customText = alert.triggered_text;
+                // Replace the item count in the text with new count
+                // Pattern: "X item(s) matched" -> "X NEW item(s) matched"
+                const matchPattern = /\((\d+) item\(s\) matched\)/;
+                if (matchPattern.test(customText)) {
+                    customText = customText.replace(matchPattern, `(${result.newCount} NEW item(s) matched)`);
+                } else {
+                    // If no match pattern found, append the new count info
+                    customText += ` (${result.newCount} NEW item(s))`;
+                }
+                
+                console.log(`Alert ${alert.id}: ${result.newCount} new items, showing notification`);
+                
+                const clickHandler = isSpreadAllItems 
+                    ? 'onclick="ModalManager.showSpreadDetails(' + alert.id + ')"' 
+                    : 'onclick="ModalManager.showSpikeDetails(' + alert.id + ')"';
+                const clickableClass = 'clickable-triggered';
+                
+                html += '<div class="triggered-notification" data-alert-id="' + alert.id + '">' +
+                        '<span class="' + clickableClass + '" ' + clickHandler + '>' + customText + '</span>' +
+                        '</div>';
+            } else {
+                // Non "all items" alerts - show notification as normal
+                const clickHandler = isSpreadAllItems 
+                    ? 'onclick="ModalManager.showSpreadDetails(' + alert.id + ')"' 
+                    : (isSpikeAllItems ? 'onclick="ModalManager.showSpikeDetails(' + alert.id + ')"' : '');
+                const clickableClass = (isSpreadAllItems || isSpikeAllItems) ? 'clickable-triggered' : '';
+                
+                html += '<div class="triggered-notification" data-alert-id="' + alert.id + '">' +
+                        '<span class="' + clickableClass + '" ' + clickHandler + '>' + alert.triggered_text + '</span>' +
+                        '</div>';
+            }
         });
         
         return html;
@@ -6191,6 +6325,10 @@ function confirmDelete() {
  * Initialize the alerts system when the script loads.
  */
 (function init() {
+    // Validate server-rendered triggered notifications FIRST (before any other processing)
+    // This prevents flash of notifications that should be hidden
+    validateServerRenderedNotifications();
+    
     TabManager.init();
     AutocompleteManager.init();
     MultiItemSelector.init();
@@ -6218,6 +6356,40 @@ function confirmDelete() {
         window.history.replaceState({}, document.title, newUrl);
     }
 })();
+
+/**
+ * Validates server-rendered triggered notifications against localStorage.
+ * Removes notifications for "all items" alerts where we've already seen all items.
+ * Shows notifications that pass validation by adding 'validated' class.
+ */
+function validateServerRenderedNotifications() {
+    const notifications = document.querySelectorAll('.triggered-notification[data-alert-id]:not(.status-notification)');
+    
+    notifications.forEach(notification => {
+        const alertId = notification.dataset.alertId;
+        if (!alertId) {
+            // No alert ID, show it
+            notification.classList.add('validated');
+            return;
+        }
+        
+        // Check if we have stored items for this alert in localStorage
+        try {
+            const stored = localStorage.getItem('alertTriggeredItems_' + alertId);
+            if (stored) {
+                // We've seen this alert before - don't show the server-rendered notification
+                // The JS refresh will handle showing it if there are new items
+                notification.remove();
+            } else {
+                // First time seeing this alert - show it and let computeNewTriggeredItems track it
+                notification.classList.add('validated');
+            }
+        } catch (e) {
+            // On error, show the notification
+            notification.classList.add('validated');
+        }
+    });
+}
 </script>
 
 <!-- Alert Help Modal -->
