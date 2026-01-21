@@ -1650,7 +1650,12 @@ def update_favorite_group(request):
 
 
 def favorites_page(request):
-    """Display the favorites page"""
+    """Display the favorites page - renders instantly, data loads via JavaScript"""
+    return render(request, 'favorites.html', {})
+
+
+def favorites_data_api(request):
+    """API endpoint for favorites data"""
     from .models import FavoriteGroup
     
     user = request.user if request.user.is_authenticated else None
@@ -1678,7 +1683,7 @@ def favorites_page(request):
         # Calculate spread
         if high_price and low_price and low_price > 0:
             spread = high_price - low_price
-            spread_pct = (spread / low_price) * 100
+            spread_pct = round((spread / low_price) * 100, 1)
         else:
             spread = 0
             spread_pct = 0
@@ -1708,10 +1713,13 @@ def favorites_page(request):
         else:
             ungrouped_favorites.append(fav_data)
     
-    return render(request, 'favorites.html', {
+    # Convert grouped_favorites keys to strings for JSON
+    grouped_favorites_json = {str(k): v for k, v in grouped_favorites.items()}
+    
+    return JsonResponse({
         'favorites': favorites,
         'ungrouped_favorites': ungrouped_favorites,
-        'grouped_favorites': grouped_favorites,
+        'grouped_favorites': grouped_favorites_json,
         'groups': groups,
     })
 

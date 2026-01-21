@@ -20,6 +20,34 @@
         --warning: #F59E0B;
     }
 
+    /* Loading State */
+    .loading-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 60px 20px;
+        gap: 12px;
+    }
+    
+    .loading-spinner {
+        width: 36px;
+        height: 36px;
+        border: 3px solid var(--border);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+    
+    .loading-text {
+        color: var(--muted);
+        font-size: 0.9rem;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
     .page-header {
         display: flex;
         align-items: center;
@@ -865,14 +893,12 @@
         </div>
     </div>
     <div class="header-actions">
-        {% if groups %}
-        <button class="header-btn header-btn-outline" onclick="openManageGroupsModal()">
+        <button class="header-btn header-btn-outline" id="manageGroupsBtn" onclick="openManageGroupsModal()">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
             </svg>
             Manage Groups
         </button>
-        {% endif %}
         <button class="header-btn header-btn-primary" onclick="openAddFavoriteModal()">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -882,136 +908,12 @@
     </div>
 </div>
 
-{% for group in groups %}
-{% with group_items=grouped_favorites|get_item:group.id %}
-{% if group_items %}
-<div class="favorites-section" data-group-id="{{ group.id }}">
-    <div class="section-header" onclick="toggleGroup({{ group.id }})">
-        <div class="section-header-left">
-            <div class="collapse-toggle">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                </svg>
-            </div>
-            <div class="section-title">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
-                </svg>
-                {{ group.name }}
-                <span class="section-count">({{ group_items|length }} item{{ group_items|length|pluralize }})</span>
-            </div>
-        </div>
-    </div>
-    <div class="section-content" id="group-content-{{ group.id }}">
-        <div class="favorites-grid">
-            {% for fav in group_items %}
-            <div class="favorite-item" data-item-id="{{ fav.item_id }}">
-                <div class="favorite-item-header">
-                    <a href="{% url 'item_search' %}?id={{ fav.item_id }}&name={{ fav.item_name|urlencode }}" class="favorite-item-name">{{ fav.item_name }}</a>
-                    <div class="favorite-item-actions">
-                        <button class="favorite-action-btn" onclick="event.stopPropagation(); openChartModal({{ fav.item_id }}, '{{ fav.item_name|escapejs }}')" title="View Chart">
-                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/>
-                            </svg>
-                        </button>
-                        <button class="favorite-action-btn" onclick="event.stopPropagation(); editFavoriteGroups({{ fav.item_id }}, '{{ fav.item_name|escapejs }}', {{ fav.group_ids|safe }})" title="Edit Groups">
-                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                            </svg>
-                        </button>
-                        <button class="favorite-action-btn delete" onclick="event.stopPropagation(); removeFavorite({{ fav.item_id }}, '{{ fav.item_name|escapejs }}')" title="Remove">
-                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-                <div class="favorite-prices">
-                    <div class="favorite-price">
-                        <span class="favorite-price-label">High</span>
-                        <span class="favorite-price-value high">{% if fav.high_price %}{{ fav.high_price|intcomma }}{% else %}-{% endif %}</span>
-                    </div>
-                    <div class="favorite-price">
-                        <span class="favorite-price-label">Low</span>
-                        <span class="favorite-price-value low">{% if fav.low_price %}{{ fav.low_price|intcomma }}{% else %}-{% endif %}</span>
-                    </div>
-                </div>
-                <div class="favorite-spread">
-                    Spread: <strong>{{ fav.spread|floatformat:0|intcomma }}</strong> ({{ fav.spread_pct|floatformat:1 }}%)
-                </div>
-            </div>
-            {% endfor %}
-        </div>
+<div id="favorites-content">
+    <div class="loading-container">
+        <div class="loading-spinner"></div>
+        <span class="loading-text">Loading</span>
     </div>
 </div>
-{% endif %}
-{% endwith %}
-{% endfor %}
-
-{% if ungrouped_favorites or not favorites %}
-<div class="ungrouped-section">
-    {% if groups and ungrouped_favorites %}
-    <div class="section-header">
-        <div class="section-header-left">
-            <div class="section-title">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
-                </svg>
-                Ungrouped
-                <span class="section-count">({{ ungrouped_favorites|length }} item{{ ungrouped_favorites|length|pluralize }})</span>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-    <div class="favorites-grid">
-        {% for fav in ungrouped_favorites %}
-        <div class="favorite-item" data-item-id="{{ fav.item_id }}">
-            <div class="favorite-item-header">
-                <a href="{% url 'item_search' %}?id={{ fav.item_id }}&name={{ fav.item_name|urlencode }}" class="favorite-item-name">{{ fav.item_name }}</a>
-                <div class="favorite-item-actions">
-                    <button class="favorite-action-btn" onclick="event.stopPropagation(); openChartModal({{ fav.item_id }}, '{{ fav.item_name|escapejs }}')" title="View Chart">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/>
-                        </svg>
-                    </button>
-                    <button class="favorite-action-btn" onclick="event.stopPropagation(); editFavoriteGroups({{ fav.item_id }}, '{{ fav.item_name|escapejs }}', {{ fav.group_ids|safe }})" title="Edit Groups">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                        </svg>
-                    </button>
-                    <button class="favorite-action-btn delete" onclick="event.stopPropagation(); removeFavorite({{ fav.item_id }}, '{{ fav.item_name|escapejs }}')" title="Remove">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-            <div class="favorite-prices">
-                <div class="favorite-price">
-                    <span class="favorite-price-label">High</span>
-                    <span class="favorite-price-value high">{% if fav.high_price %}{{ fav.high_price|intcomma }}{% else %}-{% endif %}</span>
-                </div>
-                <div class="favorite-price">
-                    <span class="favorite-price-label">Low</span>
-                    <span class="favorite-price-value low">{% if fav.low_price %}{{ fav.low_price|intcomma }}{% else %}-{% endif %}</span>
-                </div>
-            </div>
-            <div class="favorite-spread">
-                Spread: <strong>{{ fav.spread|floatformat:0|intcomma }}</strong> ({{ fav.spread_pct|floatformat:1 }}%)
-            </div>
-        </div>
-        {% endfor %}
-        
-        <!-- Add Item Card -->
-        <div class="add-item-card" onclick="openAddFavoriteModal()">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-            </svg>
-            <span>Add Item</span>
-        </div>
-    </div>
-</div>
-{% endif %}
 
 <!-- Add Favorite Modal -->
 <div class="modal-overlay" id="addFavoriteModal">
@@ -1034,19 +936,12 @@
                 <input type="hidden" id="selectedItemId" value="">
             </div>
             
-            {% if groups %}
-            <div class="form-group">
+            <div class="form-group" id="addGroupsSection" style="display: none;">
                 <label class="form-label">Groups (Optional)</label>
                 <div class="checkbox-group" id="addGroupCheckboxes">
-                    {% for group in groups %}
-                    <div class="checkbox-item">
-                        <input type="checkbox" id="add-group-{{ group.id }}" value="{{ group.id }}">
-                        <label for="add-group-{{ group.id }}">{{ group.name }}</label>
-                    </div>
-                    {% endfor %}
+                    <!-- Populated by JavaScript -->
                 </div>
             </div>
-            {% endif %}
             
             <div class="form-group">
                 <label class="form-label">Create New Group (Optional)</label>
@@ -1071,21 +966,13 @@
                 <input type="hidden" id="editItemId">
             </div>
             
-            {% if groups %}
-            <div class="form-group">
+            <div class="form-group" id="editGroupsSection">
                 <label class="form-label">Select Groups</label>
                 <div class="checkbox-group" id="editGroupCheckboxes">
-                    {% for group in groups %}
-                    <div class="checkbox-item">
-                        <input type="checkbox" id="edit-group-{{ group.id }}" value="{{ group.id }}">
-                        <label for="edit-group-{{ group.id }}">{{ group.name }}</label>
-                    </div>
-                    {% endfor %}
+                    <!-- Populated by JavaScript -->
                 </div>
+                <p class="no-groups-msg" style="color: var(--muted); display: none;">No groups created yet.</p>
             </div>
-            {% else %}
-            <p style="color: var(--muted);">No groups created yet.</p>
-            {% endif %}
             
             <div class="form-group">
                 <label class="form-label">Create New Group</label>
@@ -1199,6 +1086,160 @@
 
 {% block extra_js %}
 <script>
+// Store loaded data globally for use by other functions
+let favoritesData = null;
+
+// Format number with commas
+function formatNumber(num) {
+    if (num === null || num === undefined) return '-';
+    return Math.round(num).toLocaleString();
+}
+
+// Escape HTML for safe insertion
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Render a single favorite item card
+function renderFavoriteItem(fav) {
+    const highPrice = fav.high_price ? formatNumber(fav.high_price) : '-';
+    const lowPrice = fav.low_price ? formatNumber(fav.low_price) : '-';
+    const spread = formatNumber(fav.spread);
+    const spreadPct = fav.spread_pct ? fav.spread_pct.toFixed(1) : '0.0';
+    const groupIds = JSON.stringify(fav.group_ids || []);
+    const itemName = escapeHtml(fav.item_name);
+    
+    return `
+        <div class="favorite-item" data-item-id="${fav.item_id}">
+            <div class="favorite-item-header">
+                <a href="/item_search/?id=${fav.item_id}&name=${encodeURIComponent(fav.item_name)}" class="favorite-item-name">${itemName}</a>
+                <div class="favorite-item-actions">
+                    <button class="favorite-action-btn" onclick="event.stopPropagation(); openChartModal(${fav.item_id}, '${fav.item_name.replace(/'/g, "\\'")}')" title="View Chart">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/>
+                        </svg>
+                    </button>
+                    <button class="favorite-action-btn" onclick="event.stopPropagation(); editFavoriteGroups(${fav.item_id}, '${fav.item_name.replace(/'/g, "\\'")}', ${groupIds})" title="Edit Groups">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        </svg>
+                    </button>
+                    <button class="favorite-action-btn delete" onclick="event.stopPropagation(); removeFavorite(${fav.item_id}, '${fav.item_name.replace(/'/g, "\\'")}')" title="Remove">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="favorite-prices">
+                <div class="favorite-price">
+                    <span class="favorite-price-label">High</span>
+                    <span class="favorite-price-value high">${highPrice}</span>
+                </div>
+                <div class="favorite-price">
+                    <span class="favorite-price-label">Low</span>
+                    <span class="favorite-price-value low">${lowPrice}</span>
+                </div>
+            </div>
+            <div class="favorite-spread">
+                Spread: <strong>${spread}</strong> (${spreadPct}%)
+            </div>
+        </div>`;
+}
+
+// Render the favorites content
+function renderFavoritesContent(data) {
+    favoritesData = data;
+    const container = document.getElementById('favorites-content');
+    const groups = data.groups || [];
+    const groupedFavorites = data.grouped_favorites || {};
+    const ungroupedFavorites = data.ungrouped_favorites || [];
+    const allFavorites = data.favorites || [];
+    
+    let html = '';
+    
+    // Render grouped favorites
+    groups.forEach(group => {
+        const groupItems = groupedFavorites[group.id] || [];
+        if (groupItems.length > 0) {
+            const itemCount = groupItems.length;
+            const plural = itemCount !== 1 ? 's' : '';
+            html += `
+                <div class="favorites-section" data-group-id="${group.id}">
+                    <div class="section-header" onclick="toggleGroup(${group.id})">
+                        <div class="section-header-left">
+                            <div class="collapse-toggle">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </div>
+                            <div class="section-title">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                                </svg>
+                                ${escapeHtml(group.name)}
+                                <span class="section-count">(${itemCount} item${plural})</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="section-content" id="group-content-${group.id}">
+                        <div class="favorites-grid">
+                            ${groupItems.map(renderFavoriteItem).join('')}
+                        </div>
+                    </div>
+                </div>`;
+        }
+    });
+    
+    // Render ungrouped section only if there are ungrouped items
+    if (ungroupedFavorites.length > 0) {
+        const showUngroupedHeader = groups.length > 0;
+        html += `
+            <div class="ungrouped-section">
+                ${showUngroupedHeader ? `
+                    <div class="section-header">
+                        <div class="section-header-left">
+                            <div class="section-title">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
+                                </svg>
+                                Ungrouped
+                                <span class="section-count">(${ungroupedFavorites.length} item${ungroupedFavorites.length !== 1 ? 's' : ''})</span>
+                            </div>
+                        </div>
+                    </div>
+                ` : ''}
+                <div class="favorites-grid">
+                    ${ungroupedFavorites.map(renderFavoriteItem).join('')}
+                </div>
+            </div>`;
+    }
+    
+    container.innerHTML = html;
+    
+    // Initialize collapsed groups state
+    initializeCollapsedGroups();
+}
+
+// Load favorites data
+function loadFavoritesData() {
+    fetch('/api/favorites/data/')
+        .then(response => response.json())
+        .then(data => {
+            renderFavoritesContent(data);
+        })
+        .catch(error => {
+            console.error('Error loading favorites:', error);
+            document.getElementById('favorites-content').innerHTML = 
+                '<div class="empty-state"><p>Error loading favorites. Please refresh the page.</p></div>';
+        });
+}
+
+// Load data on page load
+loadFavoritesData();
+
 // Group collapse state persistence
 const COLLAPSED_GROUPS_KEY = 'favorites_collapsed_groups';
 
@@ -1253,7 +1294,6 @@ function initializeCollapsedGroups() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    initializeCollapsedGroups();
     
     const modal = document.getElementById('addFavoriteModal');
     const input = document.getElementById('addFavoriteInput');
@@ -1440,14 +1480,47 @@ function submitFavorite() {
     });
 }
 
+function populateGroupCheckboxes(containerIdPrefix, selectedGroupIds = []) {
+    const container = document.getElementById(containerIdPrefix + 'Checkboxes');
+    const section = document.getElementById(containerIdPrefix.replace('add', 'addGroups').replace('edit', 'editGroups') + 'Section') || document.getElementById('addGroupsSection');
+    
+    if (!favoritesData || !favoritesData.groups || favoritesData.groups.length === 0) {
+        container.innerHTML = '';
+        if (containerIdPrefix === 'addGroup') {
+            document.getElementById('addGroupsSection').style.display = 'none';
+        } else {
+            const noGroupsMsg = document.querySelector('#editGroupsSection .no-groups-msg');
+            if (noGroupsMsg) noGroupsMsg.style.display = 'block';
+        }
+        return;
+    }
+    
+    if (containerIdPrefix === 'addGroup') {
+        document.getElementById('addGroupsSection').style.display = '';
+    } else {
+        const noGroupsMsg = document.querySelector('#editGroupsSection .no-groups-msg');
+        if (noGroupsMsg) noGroupsMsg.style.display = 'none';
+    }
+    
+    let html = '';
+    favoritesData.groups.forEach(group => {
+        const checked = selectedGroupIds.includes(group.id) ? 'checked' : '';
+        html += `
+            <div class="checkbox-item">
+                <input type="checkbox" id="${containerIdPrefix}-${group.id}" value="${group.id}" ${checked}>
+                <label for="${containerIdPrefix}-${group.id}">${escapeHtml(group.name)}</label>
+            </div>`;
+    });
+    container.innerHTML = html;
+}
+
 function openAddFavoriteModal() {
     const modal = document.getElementById('addFavoriteModal');
     const input = document.getElementById('addFavoriteInput');
     const newGroupInput = document.getElementById('newGroupInput');
     
-    // Clear checkboxes
-    const checkboxes = document.querySelectorAll('#addGroupCheckboxes input[type="checkbox"]');
-    checkboxes.forEach(cb => cb.checked = false);
+    // Populate checkboxes from loaded data
+    populateGroupCheckboxes('addGroup');
     
     modal.classList.add('show');
     clearSelectedItem();
@@ -1470,11 +1543,8 @@ function editFavoriteGroups(itemId, itemName, currentGroupIds) {
     const newGroupInput = document.getElementById('editNewGroupInput');
     if (newGroupInput) newGroupInput.value = '';
     
-    // Set checkboxes based on current groups
-    const checkboxes = document.querySelectorAll('#editGroupCheckboxes input[type="checkbox"]');
-    checkboxes.forEach(cb => {
-        cb.checked = currentGroupIds.includes(parseInt(cb.value));
-    });
+    // Populate checkboxes from loaded data with current selections
+    populateGroupCheckboxes('editGroup', currentGroupIds);
     
     modal.classList.add('show');
 }
@@ -1565,12 +1635,33 @@ function doRemoveFavorite(itemId) {
 }
 
 function checkEmptySections() {
+    // Update counts and remove empty sections
     document.querySelectorAll('.favorites-section').forEach(section => {
         const items = section.querySelectorAll('.favorite-item');
         if (items.length === 0) {
             section.remove();
+        } else {
+            // Update the counter
+            const countSpan = section.querySelector('.section-count');
+            if (countSpan) {
+                countSpan.textContent = `(${items.length} item${items.length !== 1 ? 's' : ''})`;
+            }
         }
     });
+    
+    // Also handle ungrouped section
+    const ungroupedSection = document.querySelector('.ungrouped-section');
+    if (ungroupedSection) {
+        const items = ungroupedSection.querySelectorAll('.favorite-item');
+        if (items.length === 0) {
+            ungroupedSection.remove();
+        } else {
+            const countSpan = ungroupedSection.querySelector('.section-count');
+            if (countSpan) {
+                countSpan.textContent = `(${items.length} item${items.length !== 1 ? 's' : ''})`;
+            }
+        }
+    }
 }
 
 function openManageGroupsModal() {

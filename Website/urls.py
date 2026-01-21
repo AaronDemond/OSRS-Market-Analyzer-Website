@@ -54,6 +54,7 @@ urlpatterns = [
     path('api/favorites/groups/delete/', views.delete_favorite_group, name='delete_favorite_group'),
     path('api/favorites/update-group/', views.update_favorite_group, name='update_favorite_group'),
     path('favorites/', views.favorites_page, name='favorites'),
+    path('api/favorites/data/', views.favorites_data_api, name='favorites_data_api'),
     # Authentication
     path('auth/', views.auth_page, name='auth'),
     path('login/', views.login_view, name='login'),
