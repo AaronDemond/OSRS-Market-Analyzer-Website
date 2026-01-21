@@ -397,6 +397,27 @@
         text-decoration: underline;
     }
 
+    /* Loading State */
+    .loading-state {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 40px 20px;
+    }
+    
+    .loading-spinner {
+        width: 32px;
+        height: 32px;
+        border: 3px solid var(--border);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
     /* Mobile Responsive */
     @media (max-width: 768px) {
         .stats-row {
@@ -490,32 +511,10 @@
             </h3>
             <a href="{% url 'flips' %}" class="card-header-action">View All →</a>
         </div>
-        <div class="card-body no-padding">
-            {% if profitable_flips %}
-            <ul class="flip-list">
-                {% for flip in profitable_flips %}
-                <li class="flip-item">
-                    <div class="flip-item-info">
-                        <a href="{% url 'item_detail' flip.item_id %}" class="flip-item-name">{{ flip.item_name }}</a>
-                        <span class="flip-item-details">{{ flip.quantity_held|intcomma }} × {{ flip.average_cost|floatformat:0|intcomma }} gp avg</span>
-                    </div>
-                    <div class="flip-item-profit">
-                        <div class="amount {% if flip.unrealized_net >= 0 %}positive{% else %}negative{% endif %}">
-                            {% if flip.unrealized_net >= 0 %}+{% endif %}{{ flip.unrealized_net|floatformat:0|intcomma }} gp
-                        </div>
-                        <div class="percent">{% if flip.profit_pct >= 0 %}+{% endif %}{{ flip.profit_pct|floatformat:1 }}%</div>
-                    </div>
-                </li>
-                {% endfor %}
-            </ul>
-            {% else %}
-            <div class="empty-state">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
-                </svg>
-                <p>No positions yet. <a href="{% url 'flips' %}">Add your first flip</a></p>
+        <div class="card-body no-padding" id="positions-content">
+            <div class="loading-state">
+                <div class="loading-spinner"></div>
             </div>
-            {% endif %}
         </div>
     </div>
 
@@ -530,40 +529,10 @@
             </h3>
             <a href="{% url 'alerts' %}" class="card-header-action">View All →</a>
         </div>
-        <div class="card-body no-padding">
-            {% if recent_alerts %}
-            <ul class="alert-list">
-                {% for alert in recent_alerts %}
-                <li class="alert-item">
-                    <div class="alert-icon {{ alert.type }}">
-                        {% if alert.type == 'spread' %}
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
-                        {% elif alert.type == 'spike' %}
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                        {% elif alert.type == 'above' %}
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
-                        {% elif alert.type == 'below' %}
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
-                        {% else %}
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
-                        {% endif %}
-                    </div>
-                    <div class="alert-content">
-                        <div class="alert-title">{{ alert.text }}</div>
-                        <div class="alert-description">{{ alert.triggered_text }}</div>
-                    </div>
-                    <span class="alert-time">{{ alert.triggered_at|timesince }} ago</span>
-                </li>
-                {% endfor %}
-            </ul>
-            {% else %}
-            <div class="empty-state">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-                </svg>
-                <p>No triggered alerts. <a href="{% url 'alerts' %}">Create an alert</a></p>
+        <div class="card-body no-padding" id="alerts-content">
+            <div class="loading-state">
+                <div class="loading-spinner"></div>
             </div>
-            {% endif %}
         </div>
     </div>
 
@@ -578,36 +547,10 @@
             </h3>
             <a href="{% url 'flips' %}" class="card-header-action">View All →</a>
         </div>
-        <div class="card-body no-padding">
-            {% if recent_activity %}
-            <ul class="activity-list">
-                {% for activity in recent_activity %}
-                <li class="activity-item">
-                    <div class="activity-icon {{ activity.type }}">
-                        {% if activity.type == 'buy' %}
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                        {% else %}
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>
-                        {% endif %}
-                    </div>
-                    <div class="activity-content">
-                        <div class="activity-title">
-                            <strong>{{ activity.type|title }}</strong> {{ activity.quantity|intcomma }}x {{ activity.item_name }}
-                        </div>
-                        <div class="activity-time">{{ activity.date|timesince }} ago</div>
-                    </div>
-                    <span class="activity-amount">{{ activity.total|intcomma }} gp</span>
-                </li>
-                {% endfor %}
-            </ul>
-            {% else %}
-            <div class="empty-state">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-                <p>No recent activity. <a href="{% url 'flips' %}">Record a flip</a></p>
+        <div class="card-body no-padding" id="activity-content">
+            <div class="loading-state">
+                <div class="loading-spinner"></div>
             </div>
-            {% endif %}
         </div>
     </div>
 </div>
@@ -615,6 +558,143 @@
 
 {% block extra_js %}
 <script>
-// Dashboard page - no JavaScript needed currently
+function formatNumber(num) {
+    return Math.round(num).toLocaleString();
+}
+
+function timeAgo(dateStr) {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const seconds = Math.floor((now - date) / 1000);
+    
+    if (seconds < 60) return 'just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return minutes + ' minute' + (minutes !== 1 ? 's' : '') + ' ago';
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return hours + ' hour' + (hours !== 1 ? 's' : '') + ' ago';
+    const days = Math.floor(hours / 24);
+    return days + ' day' + (days !== 1 ? 's' : '') + ' ago';
+}
+
+function renderPositions(flips) {
+    const container = document.getElementById('positions-content');
+    if (!flips || flips.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                </svg>
+                <p>No positions yet. <a href="{% url 'flips' %}">Add your first flip</a></p>
+            </div>`;
+        return;
+    }
+    
+    let html = '<ul class="flip-list">';
+    flips.forEach(flip => {
+        const profitClass = flip.unrealized_net >= 0 ? 'positive' : 'negative';
+        const profitSign = flip.unrealized_net >= 0 ? '+' : '';
+        const pctSign = flip.profit_pct >= 0 ? '+' : '';
+        html += `
+            <li class="flip-item">
+                <div class="flip-item-info">
+                    <a href="/flips/item/${flip.item_id}/" class="flip-item-name">${flip.item_name}</a>
+                    <span class="flip-item-details">${formatNumber(flip.quantity_held)} × ${formatNumber(flip.average_cost)} gp avg</span>
+                </div>
+                <div class="flip-item-profit">
+                    <div class="amount ${profitClass}">${profitSign}${formatNumber(flip.unrealized_net)} gp</div>
+                    <div class="percent">${pctSign}${flip.profit_pct}%</div>
+                </div>
+            </li>`;
+    });
+    html += '</ul>';
+    container.innerHTML = html;
+}
+
+function renderAlerts(alerts) {
+    const container = document.getElementById('alerts-content');
+    if (!alerts || alerts.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                </svg>
+                <p>No triggered alerts. <a href="{% url 'alerts' %}">Create an alert</a></p>
+            </div>`;
+        return;
+    }
+    
+    const icons = {
+        spread: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>',
+        spike: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>',
+        above: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>',
+        below: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>',
+        sustained: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>'
+    };
+    
+    let html = '<ul class="alert-list">';
+    alerts.forEach(alert => {
+        const icon = icons[alert.type] || icons.sustained;
+        html += `
+            <li class="alert-item">
+                <div class="alert-icon ${alert.type}">${icon}</div>
+                <div class="alert-content">
+                    <div class="alert-title">${alert.text}</div>
+                    <div class="alert-description">${alert.triggered_text}</div>
+                </div>
+                <span class="alert-time">${timeAgo(alert.triggered_at)}</span>
+            </li>`;
+    });
+    html += '</ul>';
+    container.innerHTML = html;
+}
+
+function renderActivity(activity) {
+    const container = document.getElementById('activity-content');
+    if (!activity || activity.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <p>No recent activity. <a href="{% url 'flips' %}">Record a flip</a></p>
+            </div>`;
+        return;
+    }
+    
+    let html = '<ul class="activity-list">';
+    activity.forEach(item => {
+        const icon = item.type === 'buy' 
+            ? '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>'
+            : '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>';
+        const typeTitle = item.type.charAt(0).toUpperCase() + item.type.slice(1);
+        html += `
+            <li class="activity-item">
+                <div class="activity-icon ${item.type}">${icon}</div>
+                <div class="activity-content">
+                    <div class="activity-title"><strong>${typeTitle}</strong> ${formatNumber(item.quantity)}x ${item.item_name}</div>
+                    <div class="activity-time">${timeAgo(item.date)}</div>
+                </div>
+                <span class="activity-amount">${formatNumber(item.total)} gp</span>
+            </li>`;
+    });
+    html += '</ul>';
+    container.innerHTML = html;
+}
+
+// Load dashboard content
+fetch('/api/dashboard/content/')
+    .then(response => response.json())
+    .then(data => {
+        renderPositions(data.profitable_flips);
+        renderAlerts(data.recent_alerts);
+        renderActivity(data.recent_activity);
+    })
+    .catch(error => {
+        console.error('Error loading dashboard content:', error);
+        document.querySelectorAll('.loading-state').forEach(el => {
+            el.innerHTML = '<div class="empty-state"><p>Error loading content</p></div>';
+        });
+    });
 </script>
 {% endblock %}

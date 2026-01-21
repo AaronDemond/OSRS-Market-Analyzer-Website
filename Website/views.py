@@ -92,37 +92,58 @@ def test(request):
 def home(request):
     from .models import FlipProfit, Alert, Flip
     from django.db.models import Sum
-    from datetime import datetime, timedelta
-    from django.utils import timezone
-    import json
     
     # Get current user (or None if not authenticated)
     user = request.user if request.user.is_authenticated else None
     
-    # Fetch all current prices
-    all_prices = get_all_current_prices()
-    
-    # Get flip profit summary (filtered by user)
+    # Get flip profit summary (filtered by user) - fast DB queries only
     flip_profits = FlipProfit.objects.filter(user=user) if user else FlipProfit.objects.none()
     total_unrealized = flip_profits.aggregate(total=Sum('unrealized_net'))['total'] or 0
     total_realized = flip_profits.aggregate(total=Sum('realized_net'))['total'] or 0
     position_size = flip_profits.aggregate(total=Sum(F('quantity_held') * F('average_cost')))['total'] or 0
     
-    # Get flips that recently became profitable (unrealized > 0, were negative or near zero before)
-    # We'll get all flips with positive unrealized and show them
+    # Get total alerts stats (filtered by user) - fast DB queries only
+    alerts_qs = Alert.objects.filter(user=user) if user else Alert.objects.none()
+    total_alerts = alerts_qs.filter(is_active=True).count()
+    triggered_alerts = alerts_qs.filter(is_triggered=True, is_dismissed=False).count()
+    
+    return render(request, 'home.html', {
+        'total_unrealized': total_unrealized,
+        'total_realized': total_realized,
+        'position_size': position_size,
+        'total_alerts': total_alerts,
+        'triggered_alerts': triggered_alerts,
+    })
+
+
+def dashboard_content_api(request):
+    """API endpoint for dashboard content - positions, alerts, activity"""
+    from .models import FlipProfit, Alert, Flip
+    from datetime import datetime, timedelta
+    from django.utils import timezone
+    import json
+    
+    user = request.user if request.user.is_authenticated else None
+    
+    # Fetch all current prices (this is the slow part)
+    all_prices = get_all_current_prices()
+    
+    # Get flip profits for positions
+    flip_profits = FlipProfit.objects.filter(user=user) if user else FlipProfit.objects.none()
+    flips_qs = Flip.objects.filter(user=user) if user else Flip.objects.none()
+    
+    # Get profitable flips
     profitable_flips = []
     for fp in flip_profits.filter(quantity_held__gt=0).order_by('-unrealized_net')[:10]:
         item_id = str(fp.item_id)
         high_price = all_prices.get(item_id, {}).get('high')
         low_price = all_prices.get(item_id, {}).get('low')
         
-        # Get item name from Flip if not on FlipProfit
         item_name = fp.item_name
         if not item_name:
-            flip = Flip.objects.filter(item_id=fp.item_id, user=user).first()
+            flip = flips_qs.filter(item_id=fp.item_id).first()
             item_name = flip.item_name if flip else f"Item {fp.item_id}"
         
-        # Calculate profit percentage
         if fp.average_cost > 0 and high_price:
             profit_pct = ((high_price * 0.98 - fp.average_cost) / fp.average_cost) * 100
         else:
@@ -136,11 +157,11 @@ def home(request):
             'unrealized_net': fp.unrealized_net,
             'high_price': high_price,
             'low_price': low_price,
-            'profit_pct': profit_pct,
+            'profit_pct': round(profit_pct, 1),
             'position_size': fp.quantity_held * fp.average_cost,
         })
     
-    # Get recent triggered alerts (filtered by user)
+    # Get recent triggered alerts
     alerts_qs = Alert.objects.filter(user=user) if user else Alert.objects.none()
     recent_alerts = alerts_qs.filter(
         is_triggered=True,
@@ -154,15 +175,10 @@ def home(request):
             'text': str(alert),
             'triggered_text': alert.triggered_text(),
             'type': alert.type,
-            'triggered_at': alert.triggered_at,
+            'triggered_at': alert.triggered_at.isoformat() if alert.triggered_at else None,
         })
     
-    # Get total alerts stats (filtered by user)
-    total_alerts = alerts_qs.filter(is_active=True).count()
-    triggered_alerts = alerts_qs.filter(is_triggered=True, is_dismissed=False).count()
-    
-    # Get recent activity (last 5 flips, filtered by user)
-    flips_qs = Flip.objects.filter(user=user) if user else Flip.objects.none()
+    # Get recent activity
     recent_flips = flips_qs.order_by('-date')[:5]
     recent_activity = []
     for flip in recent_flips:
@@ -172,18 +188,13 @@ def home(request):
             'type': flip.type,
             'quantity': flip.quantity,
             'price': flip.price,
-            'date': flip.date,
+            'date': flip.date.isoformat() if flip.date else None,
             'total': flip.quantity * flip.price,
         })
     
-    return render(request, 'home.html', {
-        'total_unrealized': total_unrealized,
-        'total_realized': total_realized,
-        'position_size': position_size,
+    return JsonResponse({
         'profitable_flips': profitable_flips,
         'recent_alerts': alert_list,
-        'total_alerts': total_alerts,
-        'triggered_alerts': triggered_alerts,
         'recent_activity': recent_activity,
     })
 
