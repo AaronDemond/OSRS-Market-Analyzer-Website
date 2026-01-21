@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Flip, Alert, AlertGroup, FlipProfit
+from .models import Flip, Alert, AlertGroup, FlipProfit, FavoriteItem
 
 @admin.register(FlipProfit)
 class FlipProfitAdmin(admin.ModelAdmin):
@@ -21,3 +21,8 @@ class AlertAdmin(admin.ModelAdmin):
 @admin.register(AlertGroup)
 class AlertGroupAdmin(admin.ModelAdmin):
     list_display = ('name', 'created_at')
+
+
+@admin.register(FavoriteItem)
+class FavoriteItemAdmin(admin.ModelAdmin):
+    list_display = ('user', 'item_id', 'item_name', 'added_at')

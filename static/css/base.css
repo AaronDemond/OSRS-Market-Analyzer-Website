@@ -168,7 +168,7 @@ body {
     position: absolute;
     bottom: 0;
     width: 100%;
-    padding: 1rem 1.5rem;
+    padding: 1rem 0;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -176,6 +176,63 @@ body {
     color: rgba(255, 255, 255, 0.5);
     font-size: 0.8rem;
     margin: 0;
+}
+
+.sidebar-footer .nav-link {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1.5rem;
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.sidebar-footer .nav-link:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.sidebar-footer .nav-link .nav-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    margin-right: 12px;
+}
+
+.sidebar-footer .user-link {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.5);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.sidebar-footer .user-link span {
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+.sidebar-footer .logout-link {
+    color: rgba(239, 68, 68, 0.8);
+}
+
+.sidebar-footer .logout-link:hover {
+    color: #EF4444;
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.sidebar-footer .login-link {
+    color: rgba(99, 102, 241, 0.9);
+}
+
+.sidebar-footer .login-link:hover {
+    color: #6366F1;
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.sidebar.collapsed .sidebar-footer .nav-link span {
+    opacity: 0;
+    width: 0;
 }
 
 /* Mobile Responsive Styles */

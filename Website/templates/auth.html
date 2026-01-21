@@ -1,0 +1,505 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if show_signup %}Sign Up{% else %}Login{% endif %} - GE Tools{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --bg: #F8F9FA;
+        --surface: #FFFFFF;
+        --surface-2: #F5F6F8;
+        --border: #E5E7EB;
+        --text: #374151;
+        --muted: #6B7280;
+        --primary: #6366F1;
+        --primary-hover: #5558E3;
+        --success: #22C55E;
+        --danger: #EF4444;
+    }
+
+    .auth-container {
+        max-width: 440px;
+        margin: 40px auto;
+        padding: 0 20px;
+    }
+
+    .auth-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    .auth-header {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        padding: 32px 24px;
+        text-align: center;
+        color: white;
+    }
+
+    .auth-header-icon {
+        width: 64px;
+        height: 64px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 16px;
+    }
+
+    .auth-header-icon svg {
+        width: 32px;
+        height: 32px;
+    }
+
+    .auth-header h1 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin: 0 0 4px 0;
+    }
+
+    .auth-header p {
+        font-size: 0.9rem;
+        opacity: 0.9;
+        margin: 0;
+    }
+
+    .auth-tabs {
+        display: flex;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .auth-tab {
+        flex: 1;
+        padding: 14px 16px;
+        text-align: center;
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: var(--muted);
+        background: none;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s;
+        position: relative;
+    }
+
+    .auth-tab:hover {
+        color: var(--text);
+        background: var(--surface-2);
+    }
+
+    .auth-tab.active {
+        color: var(--primary);
+    }
+
+    .auth-tab.active::after {
+        content: '';
+        position: absolute;
+        bottom: -1px;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: var(--primary);
+    }
+
+    .auth-body {
+        padding: 24px;
+    }
+
+    .auth-form {
+        display: none;
+    }
+
+    .auth-form.active {
+        display: block;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--text);
+        margin-bottom: 8px;
+    }
+
+    .form-group input {
+        width: 100%;
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 1rem;
+        color: var(--text);
+        background: var(--surface);
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .form-group input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    .form-group input.error {
+        border-color: var(--danger);
+    }
+
+    .form-group .help-text {
+        font-size: 0.8rem;
+        color: var(--muted);
+        margin-top: 6px;
+    }
+
+    .form-group .error-text {
+        font-size: 0.8rem;
+        color: var(--danger);
+        margin-top: 6px;
+        display: none;
+    }
+
+    .form-group .error-text.show {
+        display: block;
+    }
+
+    .password-requirements {
+        font-size: 0.8rem;
+        color: var(--muted);
+        margin-top: 8px;
+        padding: 10px 12px;
+        background: var(--surface-2);
+        border-radius: 6px;
+    }
+
+    .password-requirements ul {
+        margin: 6px 0 0 0;
+        padding-left: 20px;
+    }
+
+    .password-requirements li {
+        margin: 4px 0;
+    }
+
+    .password-requirements li.valid {
+        color: var(--success);
+    }
+
+    .password-requirements li.invalid {
+        color: var(--muted);
+    }
+
+    .auth-submit {
+        width: 100%;
+        padding: 14px 16px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+        margin-top: 8px;
+    }
+
+    .auth-submit:hover {
+        background: var(--primary-hover);
+    }
+
+    .auth-submit:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .auth-message {
+        padding: 12px 14px;
+        border-radius: 8px;
+        margin-bottom: 16px;
+        font-size: 0.9rem;
+    }
+
+    .auth-message.error {
+        background: rgba(239, 68, 68, 0.1);
+        color: #DC2626;
+        border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+
+    .auth-message.success {
+        background: rgba(34, 197, 94, 0.1);
+        color: #16A34A;
+        border: 1px solid rgba(34, 197, 94, 0.2);
+    }
+
+    .auth-footer {
+        text-align: center;
+        padding: 16px 24px 24px;
+        font-size: 0.9rem;
+        color: var(--muted);
+    }
+
+    .auth-footer a {
+        color: var(--primary);
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    .auth-footer a:hover {
+        text-decoration: underline;
+    }
+
+    .password-toggle {
+        position: relative;
+    }
+
+    .password-toggle input {
+        padding-right: 44px;
+    }
+
+    .password-toggle-btn {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: var(--muted);
+        cursor: pointer;
+        padding: 4px;
+    }
+
+    .password-toggle-btn:hover {
+        color: var(--text);
+    }
+
+    .password-toggle-btn svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    @media (max-width: 480px) {
+        .auth-container {
+            margin: 20px auto;
+        }
+
+        .auth-header {
+            padding: 24px 20px;
+        }
+
+        .auth-body {
+            padding: 20px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <div class="auth-header-icon">
+                <svg fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2L2 8v2h20V8L12 2zm0 2.5L18.5 8h-13L12 4.5zM4 12v7h2v-7H4zm5 0v7h2v-7H9zm5 0v7h2v-7h-2zm5 0v7h2v-7h-2zM2 21h20v2H2v-2z"/>
+                </svg>
+            </div>
+            <h1>GE Tools</h1>
+            <p>Track your Grand Exchange flips</p>
+        </div>
+
+        <div class="auth-tabs">
+            <button class="auth-tab {% if not show_signup %}active{% endif %}" data-tab="login">Login</button>
+            <button class="auth-tab {% if show_signup %}active{% endif %}" data-tab="signup">Sign Up</button>
+        </div>
+
+        <div class="auth-body">
+            {% if messages %}
+                {% for message in messages %}
+                <div class="auth-message {% if message.tags %}{{ message.tags }}{% endif %}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Login Form -->
+            <form class="auth-form {% if not show_signup %}active{% endif %}" id="loginForm" method="post" action="{% url 'login' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="login">
+                
+                <div class="form-group">
+                    <label for="login-email">Email Address</label>
+                    <input type="email" id="login-email" name="email" required autocomplete="email">
+                </div>
+
+                <div class="form-group">
+                    <label for="login-password">Password</label>
+                    <div class="password-toggle">
+                        <input type="password" id="login-password" name="password" required autocomplete="current-password">
+                        <button type="button" class="password-toggle-btn" onclick="togglePassword('login-password', this)">
+                            <svg class="eye-open" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                            <svg class="eye-closed" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display:none;">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" class="auth-submit">Login</button>
+            </form>
+
+            <!-- Signup Form -->
+            <form class="auth-form {% if show_signup %}active{% endif %}" id="signupForm" method="post" action="{% url 'signup' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="signup">
+                
+                <div class="form-group">
+                    <label for="signup-email">Email Address</label>
+                    <input type="email" id="signup-email" name="email" required autocomplete="email">
+                    <div class="error-text" id="email-error"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="signup-password">Password</label>
+                    <div class="password-toggle">
+                        <input type="password" id="signup-password" name="password" required autocomplete="new-password">
+                        <button type="button" class="password-toggle-btn" onclick="togglePassword('signup-password', this)">
+                            <svg class="eye-open" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                            <svg class="eye-closed" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display:none;">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="password-requirements" id="password-requirements">
+                        Password must contain:
+                        <ul>
+                            <li id="req-length" class="invalid">At least 8 characters</li>
+                            <li id="req-number" class="invalid">At least one number</li>
+                            <li id="req-symbol" class="invalid">At least one symbol (!@#$%^&*...)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="signup-password-confirm">Confirm Password</label>
+                    <div class="password-toggle">
+                        <input type="password" id="signup-password-confirm" name="password_confirm" required autocomplete="new-password">
+                        <button type="button" class="password-toggle-btn" onclick="togglePassword('signup-password-confirm', this)">
+                            <svg class="eye-open" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                            <svg class="eye-closed" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display:none;">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="error-text" id="password-match-error"></div>
+                </div>
+
+                <button type="submit" class="auth-submit" id="signup-submit">Create Account</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Tab switching
+    const tabs = document.querySelectorAll('.auth-tab');
+    const forms = document.querySelectorAll('.auth-form');
+    
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            const tabId = this.dataset.tab;
+            
+            tabs.forEach(t => t.classList.remove('active'));
+            forms.forEach(f => f.classList.remove('active'));
+            
+            this.classList.add('active');
+            document.getElementById(tabId + 'Form').classList.add('active');
+        });
+    });
+    
+    // Password validation for signup
+    const signupPassword = document.getElementById('signup-password');
+    const signupPasswordConfirm = document.getElementById('signup-password-confirm');
+    const signupSubmit = document.getElementById('signup-submit');
+    
+    const reqLength = document.getElementById('req-length');
+    const reqNumber = document.getElementById('req-number');
+    const reqSymbol = document.getElementById('req-symbol');
+    const passwordMatchError = document.getElementById('password-match-error');
+    
+    function validatePassword() {
+        const password = signupPassword.value;
+        const confirm = signupPasswordConfirm.value;
+        
+        // Check length
+        const hasLength = password.length >= 8;
+        reqLength.className = hasLength ? 'valid' : 'invalid';
+        
+        // Check number
+        const hasNumber = /\d/.test(password);
+        reqNumber.className = hasNumber ? 'valid' : 'invalid';
+        
+        // Check symbol
+        const hasSymbol = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+        reqSymbol.className = hasSymbol ? 'valid' : 'invalid';
+        
+        // Check passwords match
+        let passwordsMatch = true;
+        if (confirm.length > 0 && password !== confirm) {
+            passwordMatchError.textContent = 'Passwords do not match';
+            passwordMatchError.classList.add('show');
+            signupPasswordConfirm.classList.add('error');
+            passwordsMatch = false;
+        } else {
+            passwordMatchError.classList.remove('show');
+            signupPasswordConfirm.classList.remove('error');
+        }
+        
+        // Enable/disable submit
+        const isValid = hasLength && hasNumber && hasSymbol && passwordsMatch && confirm.length > 0;
+        signupSubmit.disabled = !isValid;
+        
+        return isValid;
+    }
+    
+    signupPassword.addEventListener('input', validatePassword);
+    signupPasswordConfirm.addEventListener('input', validatePassword);
+    
+    // Form submission validation
+    document.getElementById('signupForm').addEventListener('submit', function(e) {
+        if (!validatePassword()) {
+            e.preventDefault();
+        }
+    });
+});
+
+function togglePassword(inputId, btn) {
+    const input = document.getElementById(inputId);
+    const eyeOpen = btn.querySelector('.eye-open');
+    const eyeClosed = btn.querySelector('.eye-closed');
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        eyeOpen.style.display = 'none';
+        eyeClosed.style.display = 'block';
+    } else {
+        input.type = 'password';
+        eyeOpen.style.display = 'block';
+        eyeClosed.style.display = 'none';
+    }
+}
+</script>
+{% endblock %}

@@ -4,9 +4,12 @@ from django.db.models import Sum, F, Value
 from django.db.models.functions import Coalesce
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.models import User
 import requests
 import time
-from .models import Flip, FlipProfit, Alert, AlertGroup
+import re
+from .models import Flip, FlipProfit, Alert, AlertGroup, FavoriteItem
 
 
 # Cache for item mappings
@@ -93,18 +96,22 @@ def home(request):
     from django.utils import timezone
     import json
     
+    # Get current user (or None if not authenticated)
+    user = request.user if request.user.is_authenticated else None
+    
     # Fetch all current prices
     all_prices = get_all_current_prices()
     
-    # Get flip profit summary
-    total_unrealized = FlipProfit.objects.aggregate(total=Sum('unrealized_net'))['total'] or 0
-    total_realized = FlipProfit.objects.aggregate(total=Sum('realized_net'))['total'] or 0
-    position_size = FlipProfit.objects.aggregate(total=Sum(F('quantity_held') * F('average_cost')))['total'] or 0
+    # Get flip profit summary (filtered by user)
+    flip_profits = FlipProfit.objects.filter(user=user) if user else FlipProfit.objects.none()
+    total_unrealized = flip_profits.aggregate(total=Sum('unrealized_net'))['total'] or 0
+    total_realized = flip_profits.aggregate(total=Sum('realized_net'))['total'] or 0
+    position_size = flip_profits.aggregate(total=Sum(F('quantity_held') * F('average_cost')))['total'] or 0
     
     # Get flips that recently became profitable (unrealized > 0, were negative or near zero before)
     # We'll get all flips with positive unrealized and show them
     profitable_flips = []
-    for fp in FlipProfit.objects.filter(quantity_held__gt=0).order_by('-unrealized_net')[:10]:
+    for fp in flip_profits.filter(quantity_held__gt=0).order_by('-unrealized_net')[:10]:
         item_id = str(fp.item_id)
         high_price = all_prices.get(item_id, {}).get('high')
         low_price = all_prices.get(item_id, {}).get('low')
@@ -112,7 +119,7 @@ def home(request):
         # Get item name from Flip if not on FlipProfit
         item_name = fp.item_name
         if not item_name:
-            flip = Flip.objects.filter(item_id=fp.item_id).first()
+            flip = Flip.objects.filter(item_id=fp.item_id, user=user).first()
             item_name = flip.item_name if flip else f"Item {fp.item_id}"
         
         # Calculate profit percentage
@@ -133,8 +140,9 @@ def home(request):
             'position_size': fp.quantity_held * fp.average_cost,
         })
     
-    # Get recent triggered alerts
-    recent_alerts = Alert.objects.filter(
+    # Get recent triggered alerts (filtered by user)
+    alerts_qs = Alert.objects.filter(user=user) if user else Alert.objects.none()
+    recent_alerts = alerts_qs.filter(
         is_triggered=True,
         is_dismissed=False
     ).order_by('-triggered_at')[:5]
@@ -149,13 +157,14 @@ def home(request):
             'triggered_at': alert.triggered_at,
         })
     
-    # Get total alerts stats
-    total_alerts = Alert.objects.filter(is_active=True).count()
-    triggered_alerts = Alert.objects.filter(is_triggered=True, is_dismissed=False).count()
+    # Get total alerts stats (filtered by user)
+    total_alerts = alerts_qs.filter(is_active=True).count()
+    triggered_alerts = alerts_qs.filter(is_triggered=True, is_dismissed=False).count()
     
-    # Get favorite items with current prices
+    # Get favorite items with current prices (filtered by user)
     favorites = []
-    for fav in FavoriteItem.objects.all()[:12]:
+    favorites_qs = FavoriteItem.objects.filter(user=user) if user else FavoriteItem.objects.none()
+    for fav in favorites_qs[:12]:
         item_id = str(fav.item_id)
         price_data = all_prices.get(item_id, {})
         high_price = price_data.get('high')
@@ -178,8 +187,9 @@ def home(request):
             'spread_pct': spread_pct,
         })
     
-    # Get recent activity (last 5 flips)
-    recent_flips = Flip.objects.order_by('-date')[:5]
+    # Get recent activity (last 5 flips, filtered by user)
+    flips_qs = Flip.objects.filter(user=user) if user else Flip.objects.none()
+    recent_flips = flips_qs.order_by('-date')[:5]
     recent_activity = []
     for flip in recent_flips:
         recent_activity.append({
@@ -209,14 +219,19 @@ def flips(request):
     # Get time filter from query params
     time_filter = request.GET.get('filter', 'current')
     
-    # Get all unique items
-    item_ids = Flip.objects.values_list('item_id', flat=True).distinct()
+    # Get current user (or None if not authenticated)
+    user = request.user if request.user.is_authenticated else None
+    
+    # Get all unique items for this user
+    flips_qs = Flip.objects.filter(user=user) if user else Flip.objects.none()
+    flip_profits_qs = FlipProfit.objects.filter(user=user) if user else FlipProfit.objects.none()
+    item_ids = flips_qs.values_list('item_id', flat=True).distinct()
     
     # Fetch all current prices in one API call
     all_prices = get_all_current_prices()
     
-    # Recalculate unrealized_net for all FlipProfit objects
-    for flip_profit in FlipProfit.objects.all():
+    # Recalculate unrealized_net for all FlipProfit objects for this user
+    for flip_profit in flip_profits_qs:
         current_high = None
         if str(flip_profit.item_id) in all_prices:
             current_high = all_prices[str(flip_profit.item_id)].get('high')
@@ -229,13 +244,13 @@ def flips(request):
     
     items = []
     
-    # Calculate totals from FlipProfit
-    total_unrealized = FlipProfit.objects.aggregate(total=Sum('unrealized_net'))['total'] or 0
-    total_realized = FlipProfit.objects.aggregate(total=Sum('realized_net'))['total'] or 0
-    position_size = FlipProfit.objects.aggregate(total=Sum(F('quantity_held') * F('average_cost')))['total'] or 0
+    # Calculate totals from FlipProfit for this user
+    total_unrealized = flip_profits_qs.aggregate(total=Sum('unrealized_net'))['total'] or 0
+    total_realized = flip_profits_qs.aggregate(total=Sum('realized_net'))['total'] or 0
+    position_size = flip_profits_qs.aggregate(total=Sum(F('quantity_held') * F('average_cost')))['total'] or 0
     
     for item_id in item_ids:
-        item_flips = Flip.objects.filter(item_id=item_id)
+        item_flips = flips_qs.filter(item_id=item_id)
         item_name = item_flips.first().item_name
         
         # Calculate total bought and spent
@@ -269,8 +284,8 @@ def flips(request):
             if hist_low is not None:
                 low_price = hist_low
         
-        # Get FlipProfit for this item
-        flip_profit = FlipProfit.objects.filter(item_id=item_id).first()
+        # Get FlipProfit for this item and user
+        flip_profit = flip_profits_qs.filter(item_id=item_id).first()
         item_unrealized = flip_profit.unrealized_net if flip_profit else 0
         item_realized = flip_profit.realized_net if flip_profit else 0
         
@@ -305,6 +320,9 @@ def flips(request):
 
 def add_flip(request):
     if request.method == 'POST':
+        # Get current user
+        user = request.user if request.user.is_authenticated else None
+        
         item_name = request.POST.get('item_name')
         price = int(request.POST.get('price'))
         date = request.POST.get('date')
@@ -324,6 +342,7 @@ def add_flip(request):
             canonical_name = item_name
         
         Flip.objects.create(
+            user=user,
             item_id=item_id,
             item_name=canonical_name,
             price=price,
@@ -334,7 +353,7 @@ def add_flip(request):
         
         # Handle FlipProfit tracking for buys
         if flip_type == 'buy' and item_id != 0:
-            flip_profit = FlipProfit.objects.filter(item_id=item_id).first()
+            flip_profit = FlipProfit.objects.filter(user=user, item_id=item_id).first()
             
             if not flip_profit:
                 # Get current high price from API
@@ -351,6 +370,7 @@ def add_flip(request):
                 
                 # Create new FlipProfit
                 FlipProfit.objects.create(
+                    user=user,
                     item_id=item_id,
                     average_cost=price,
                     unrealized_net=unrealized_net,
@@ -381,7 +401,7 @@ def add_flip(request):
         
         # Handle FlipProfit tracking for sells
         if flip_type == 'sell' and item_id != 0:
-            flip_profit = FlipProfit.objects.filter(item_id=item_id).first()
+            flip_profit = FlipProfit.objects.filter(user=user, item_id=item_id).first()
             
             if flip_profit:
                 # Calculate realized gain/loss
@@ -413,13 +433,13 @@ def add_flip(request):
     return redirect('flips')
 
 
-def recalculate_flip_profit(item_id):
+def recalculate_flip_profit(item_id, user=None):
     """Recalculate FlipProfit for an item by replaying all flips in chronological order"""
-    # Delete existing FlipProfit for this item
-    FlipProfit.objects.filter(item_id=item_id).delete()
+    # Delete existing FlipProfit for this item and user
+    FlipProfit.objects.filter(user=user, item_id=item_id).delete()
     
-    # Get all flips for this item ordered by date
-    flips = Flip.objects.filter(item_id=item_id).order_by('date')
+    # Get all flips for this item and user ordered by date
+    flips = Flip.objects.filter(user=user, item_id=item_id).order_by('date')
     
     if not flips.exists():
         return
@@ -457,6 +477,7 @@ def recalculate_flip_profit(item_id):
     
     # Create new FlipProfit
     FlipProfit.objects.create(
+        user=user,
         item_id=item_id,
         average_cost=average_cost,
         unrealized_net=unrealized_net,
@@ -468,9 +489,10 @@ def recalculate_flip_profit(item_id):
 def delete_flip(request, item_id):
     """Delete all flips for a specific item"""
     if request.method == 'POST':
-        Flip.objects.filter(item_id=item_id).delete()
+        user = request.user if request.user.is_authenticated else None
+        Flip.objects.filter(user=user, item_id=item_id).delete()
         # Also delete the FlipProfit for this item
-        FlipProfit.objects.filter(item_id=item_id).delete()
+        FlipProfit.objects.filter(user=user, item_id=item_id).delete()
         messages.success(request, 'Flip deleted successfully')
     return redirect('flips')
 
@@ -478,27 +500,29 @@ def delete_flip(request, item_id):
 def delete_single_flip(request):
     """Delete a single flip by ID"""
     if request.method == 'POST':
+        user = request.user if request.user.is_authenticated else None
         flip_id = request.POST.get('flip_id')
-        flip = Flip.objects.filter(id=flip_id).first()
+        flip = Flip.objects.filter(id=flip_id, user=user).first()
         if flip:
             item_id = flip.item_id
             flip.delete()
             # Check if there are any remaining flips for this item
-            if Flip.objects.filter(item_id=item_id).exists():
+            if Flip.objects.filter(user=user, item_id=item_id).exists():
                 # Recalculate FlipProfit for this item
-                recalculate_flip_profit(item_id)
+                recalculate_flip_profit(item_id, user)
                 return redirect('item_detail', item_id=item_id)
             else:
                 # No more flips, delete FlipProfit
-                FlipProfit.objects.filter(item_id=item_id).delete()
+                FlipProfit.objects.filter(user=user, item_id=item_id).delete()
     return redirect('flips')
 
 
 def edit_flip(request):
     """Edit a single flip"""
     if request.method == 'POST':
+        user = request.user if request.user.is_authenticated else None
         flip_id = request.POST.get('flip_id')
-        flip = Flip.objects.filter(id=flip_id).first()
+        flip = Flip.objects.filter(id=flip_id, user=user).first()
         if flip:
             flip.price = int(request.POST.get('price'))
             flip.date = request.POST.get('date')
@@ -506,7 +530,7 @@ def edit_flip(request):
             flip.type = request.POST.get('type')
             flip.save()
             # Recalculate FlipProfit for this item
-            recalculate_flip_profit(flip.item_id)
+            recalculate_flip_profit(flip.item_id, user)
             return redirect('item_detail', item_id=flip.item_id)
     return redirect('flips')
 
@@ -541,7 +565,8 @@ def random_item_api(request):
 
 def item_detail(request, item_id):
     """Show all flips for a specific item"""
-    flips = Flip.objects.filter(item_id=item_id).order_by('-date')
+    user = request.user if request.user.is_authenticated else None
+    flips = Flip.objects.filter(user=user, item_id=item_id).order_by('-date')
     item_name = flips.first().item_name if flips.exists() else 'Unknown Item'
     
     return render(request, 'item_detail.html', {
@@ -640,9 +665,11 @@ def item_history_api(request):
 
 
 def alerts(request):
-    active_alerts = Alert.objects.filter(is_active=True)
-    triggered_alerts = Alert.objects.filter(is_triggered=True, is_dismissed=False).prefetch_related('groups')
-    has_alerts = Alert.objects.exists()
+    user = request.user if request.user.is_authenticated else None
+    alerts_qs = Alert.objects.filter(user=user) if user else Alert.objects.none()
+    active_alerts = alerts_qs.filter(is_active=True)
+    triggered_alerts = alerts_qs.filter(is_triggered=True, is_dismissed=False).prefetch_related('groups')
+    has_alerts = alerts_qs.exists()
     return render(request, 'alerts.html', {
         'active_alerts': active_alerts,
         'triggered_alerts': triggered_alerts,
@@ -653,6 +680,9 @@ def alerts(request):
 def create_alert(request):
     if request.method == 'POST':
         import json as json_module
+        
+        # Get current user
+        user = request.user if request.user.is_authenticated else None
         
         alert_type = request.POST.get('type')
         item_name = request.POST.get('item_name')
@@ -738,6 +768,7 @@ def create_alert(request):
         reference_value = reference if reference and alert_type != 'sustained' else None
         
         alert = Alert.objects.create(
+            user=user,
             type=alert_type,
             item_name=final_item_name,
             item_id=final_item_id,
@@ -767,7 +798,7 @@ def create_alert(request):
         if group_id:
             from Website.models import AlertGroup
             try:
-                group = AlertGroup.objects.get(name=group_id)
+                group = AlertGroup.objects.get(user=user, name=group_id)
                 alert.groups.add(group)
             except AlertGroup.DoesNotExist:
                 pass  # Group doesn't exist, skip assignment
@@ -782,6 +813,9 @@ def alerts_api(request):
     """API endpoint to fetch current alerts status"""
     from Website.models import get_item_price
     import requests
+    
+    # Get current user
+    user = request.user if request.user.is_authenticated else None
     
     # Fetch all prices once for spread calculations
     all_prices = {}
@@ -800,7 +834,9 @@ def alerts_api(request):
     # Get item mapping for icons
     mapping = get_item_mapping()
     
-    all_alerts = Alert.objects.all().order_by(Coalesce('item_name', Value('All items')).asc())
+    # Filter alerts by user
+    alerts_qs = Alert.objects.filter(user=user) if user else Alert.objects.none()
+    all_alerts = alerts_qs.order_by(Coalesce('item_name', Value('All items')).asc())
     alerts_data = []
     all_groups_set = set()
     for alert in all_alerts:
@@ -867,8 +903,8 @@ def alerts_api(request):
         
         alerts_data.append(alert_dict)
     
-    # Get recently triggered alerts (triggered and not dismissed)
-    triggered_alerts = Alert.objects.filter(is_triggered=True, is_dismissed=False)
+    # Get recently triggered alerts for this user (triggered and not dismissed)
+    triggered_alerts = alerts_qs.filter(is_triggered=True, is_dismissed=False)
     triggered_data = []
     for alert in triggered_alerts:
         triggered_dict = {
@@ -940,10 +976,11 @@ def dismiss_triggered_alert(request):
     """Dismiss a triggered alert notification"""
     if request.method == 'POST':
         import json
+        user = request.user if request.user.is_authenticated else None
         data = json.loads(request.body)
         alert_id = data.get('alert_id')
         if alert_id:
-            Alert.objects.filter(id=alert_id).update(is_dismissed=True)
+            Alert.objects.filter(id=alert_id, user=user).update(is_dismissed=True)
     return JsonResponse({'success': True})
 
 
@@ -953,11 +990,12 @@ def delete_alerts(request):
     """Delete multiple alerts"""
     if request.method == 'POST':
         import json
+        user = request.user if request.user.is_authenticated else None
         data = json.loads(request.body)
         alert_ids = data.get('alert_ids', [])
         if alert_ids:
             print(alert_ids)
-            Alert.objects.filter(id__in=alert_ids).delete()
+            Alert.objects.filter(id__in=alert_ids, user=user).delete()
     return JsonResponse({'success': True})
 
 
@@ -968,6 +1006,7 @@ def group_alerts(request):
         return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
 
     import json
+    user = request.user if request.user.is_authenticated else None
     data = json.loads(request.body)
     alert_ids = data.get('alert_ids', [])
     existing_groups = data.get('groups', [])
@@ -987,13 +1026,13 @@ def group_alerts(request):
     if not group_names:
         return JsonResponse({'success': False, 'error': 'No groups provided'}, status=400)
 
-    # Ensure groups exist
+    # Ensure groups exist for this user
     group_objs = []
     for name in group_names:
-        group_obj, _ = AlertGroup.objects.get_or_create(name=name)
+        group_obj, _ = AlertGroup.objects.get_or_create(user=user, name=name)
         group_objs.append(group_obj)
 
-    alerts = Alert.objects.filter(id__in=alert_ids)
+    alerts = Alert.objects.filter(id__in=alert_ids, user=user)
     for alert in alerts:
         alert.groups.add(*group_objs)
 
@@ -1010,6 +1049,7 @@ def delete_groups(request):
         return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
 
     import json
+    user = request.user if request.user.is_authenticated else None
     try:
         data = json.loads(request.body or b'{}')
     except json.JSONDecodeError:
@@ -1024,7 +1064,7 @@ def delete_groups(request):
 
     deleted_count = 0
     for name in cleaned:
-        count, _ = AlertGroup.objects.filter(name__iexact=name).delete()
+        count, _ = AlertGroup.objects.filter(user=user, name__iexact=name).delete()
         deleted_count += count
 
     if deleted_count == 0:
@@ -1040,6 +1080,7 @@ def unlink_groups(request):
         return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
 
     import json
+    user = request.user if request.user.is_authenticated else None
     try:
         data = json.loads(request.body or b'{}')
     except json.JSONDecodeError:
@@ -1055,13 +1096,13 @@ def unlink_groups(request):
         return JsonResponse({'success': False, 'error': 'No groups provided'}, status=400)
 
     try:
-        alert = Alert.objects.get(id=alert_id)
+        alert = Alert.objects.get(id=alert_id, user=user)
     except Alert.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Alert not found'}, status=404)
 
     # Find the group objects and remove them from the alert
     cleaned = [g.strip() for g in groups if isinstance(g, str) and g.strip()]
-    group_objs = AlertGroup.objects.filter(name__in=cleaned)
+    group_objs = AlertGroup.objects.filter(user=user, name__in=cleaned)
     
     for group in group_objs:
         alert.groups.remove(group)
@@ -1074,10 +1115,11 @@ def update_alert(request):
     """Update an existing alert"""
     if request.method == 'POST':
         import json
+        user = request.user if request.user.is_authenticated else None
         data = json.loads(request.body)
         alert_id = data.get('alert_id')
         if alert_id:
-            alert = Alert.objects.filter(id=alert_id).first()
+            alert = Alert.objects.filter(id=alert_id, user=user).first()
             if alert:
                 alert.type = data.get('type', alert.type)
                 
@@ -1204,7 +1246,8 @@ def alert_detail(request, alert_id):
     from django.shortcuts import get_object_or_404
     import json
     
-    alert = get_object_or_404(Alert, id=alert_id)
+    user = request.user if request.user.is_authenticated else None
+    alert = get_object_or_404(Alert, id=alert_id, user=user)
     
     # Get current price data if alert has an item
     current_price_data = {}
@@ -1221,9 +1264,9 @@ def alert_detail(request, alert_id):
         if current_price_data['high'] and current_price_data['low'] and current_price_data['low'] > 0:
             current_price_data['spread'] = round(((current_price_data['high'] - current_price_data['low']) / current_price_data['low']) * 100, 2)
     
-    # Get alert groups
+    # Get alert groups for this user
     groups = list(alert.groups.values_list('name', flat=True))
-    all_groups = list(AlertGroup.objects.values_list('name', flat=True))
+    all_groups = list(AlertGroup.objects.filter(user=user).values_list('name', flat=True))
     
     # Build triggered data for display
     triggered_info = None
@@ -1315,7 +1358,8 @@ def update_single_alert(request, alert_id):
     import json
     from django.shortcuts import get_object_or_404
     
-    alert = get_object_or_404(Alert, id=alert_id)
+    user = request.user if request.user.is_authenticated else None
+    alert = get_object_or_404(Alert, id=alert_id, user=user)
     
     try:
         data = json.loads(request.body)
@@ -1387,7 +1431,7 @@ def update_single_alert(request, alert_id):
         group_names = data.get('groups', [])
         alert.groups.clear()
         for name in group_names:
-            group, _ = AlertGroup.objects.get_or_create(name=name)
+            group, _ = AlertGroup.objects.get_or_create(user=user, name=name)
             alert.groups.add(group)
     
     # Reset triggered state when alert is edited
@@ -1410,6 +1454,8 @@ def add_favorite(request):
     import json
     from .models import FavoriteItem
     
+    user = request.user if request.user.is_authenticated else None
+    
     try:
         data = json.loads(request.body)
         item_id = data.get('item_id')
@@ -1419,6 +1465,7 @@ def add_favorite(request):
             return JsonResponse({'success': False, 'error': 'item_id and item_name required'}, status=400)
         
         favorite, created = FavoriteItem.objects.get_or_create(
+            user=user,
             item_id=item_id,
             defaults={'item_name': item_name}
         )
@@ -1439,6 +1486,8 @@ def remove_favorite(request):
     import json
     from .models import FavoriteItem
     
+    user = request.user if request.user.is_authenticated else None
+    
     try:
         data = json.loads(request.body)
         item_id = data.get('item_id')
@@ -1446,10 +1495,105 @@ def remove_favorite(request):
         if not item_id:
             return JsonResponse({'success': False, 'error': 'item_id required'}, status=400)
         
-        deleted, _ = FavoriteItem.objects.filter(item_id=item_id).delete()
+        deleted, _ = FavoriteItem.objects.filter(user=user, item_id=item_id).delete()
         
         return JsonResponse({'success': True, 'deleted': deleted > 0})
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+def auth_page(request):
+    """Display login/signup page"""
+    show_signup = request.GET.get('signup', '').lower() == 'true'
+    return render(request, 'auth.html', {'show_signup': show_signup})
+
+
+def login_view(request):
+    """Handle login form submission"""
+    if request.method != 'POST':
+        return redirect('auth')
+    
+    email = request.POST.get('email', '').strip().lower()
+    password = request.POST.get('password', '')
+    
+    if not email or not password:
+        messages.error(request, 'Please enter both email and password.')
+        return redirect('auth')
+    
+    # Django's User model uses username, so we use email as username
+    user = authenticate(request, username=email, password=password)
+    
+    if user is not None:
+        login(request, user)
+        messages.success(request, 'Welcome back!')
+        return redirect('home')
+    else:
+        messages.error(request, 'Invalid email or password.')
+        return redirect('auth')
+
+
+def signup_view(request):
+    """Handle signup form submission"""
+    if request.method != 'POST':
+        return redirect('auth')
+    
+    email = request.POST.get('email', '').strip().lower()
+    password = request.POST.get('password', '')
+    password_confirm = request.POST.get('password_confirm', '')
+    
+    # Validation
+    if not email or not password or not password_confirm:
+        messages.error(request, 'Please fill in all fields.')
+        return redirect('auth')
+    
+    # Validate email format
+    if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
+        messages.error(request, 'Please enter a valid email address.')
+        return redirect('auth')
+    
+    # Check if passwords match
+    if password != password_confirm:
+        messages.error(request, 'Passwords do not match.')
+        return redirect('auth')
+    
+    # Validate password requirements
+    if len(password) < 8:
+        messages.error(request, 'Password must be at least 8 characters long.')
+        return redirect('auth')
+    
+    if not re.search(r'\d', password):
+        messages.error(request, 'Password must contain at least one number.')
+        return redirect('auth')
+    
+    if not re.search(r'[!@#$%^&*()_+\-=\[\]{};\':"\\|,.<>\/?]', password):
+        messages.error(request, 'Password must contain at least one symbol.')
+        return redirect('auth')
+    
+    # Check if email already exists
+    if User.objects.filter(username=email).exists():
+        messages.error(request, 'An account with this email already exists.')
+        return redirect('auth')
+    
+    # Create user
+    try:
+        user = User.objects.create_user(
+            username=email,
+            email=email,
+            password=password
+        )
+        # Log the user in
+        login(request, user)
+        messages.success(request, 'Account created successfully! Welcome to GE Tools.')
+        return redirect('home')
+    except Exception as e:
+        messages.error(request, f'Error creating account: {str(e)}')
+        return redirect('auth')
+
+
+def logout_view(request):
+    """Handle logout"""
+    logout(request)
+    messages.success(request, 'You have been logged out.')
+    return redirect('auth')

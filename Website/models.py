@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 import requests
 
 
@@ -33,6 +34,7 @@ class Flip(models.Model):
         ('sell', 'Sell'),
     ]
 
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     item_id = models.IntegerField()
     item_name = models.CharField(max_length=255)
     price = models.IntegerField()
@@ -45,20 +47,28 @@ class Flip(models.Model):
 
 
 class FlipProfit(models.Model):
-    item_id = models.IntegerField(unique=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    item_id = models.IntegerField()
     item_name = models.CharField(max_length=255, blank=True, null=True, default=None)
     average_cost = models.FloatField(default=0)
     unrealized_net = models.FloatField(default=0)
     realized_net = models.FloatField(default=0)
     quantity_held = models.IntegerField(default=0)
 
+    class Meta:
+        unique_together = ['user', 'item_id']
+
     def __str__(self):
         return f"FlipProfit item_id={self.item_id} qty={self.quantity_held}"
 
 
 class AlertGroup(models.Model):
-    name = models.CharField(max_length=100, unique=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=100)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['user', 'name']
 
     def __str__(self):
         return self.name
@@ -89,6 +99,7 @@ class Alert(models.Model):
             ('sustained', 'Sustained Move')
     ]
     
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     type = models.CharField(max_length=10, null=True, choices=ALERT_CHOICES, default='above')
     direction = models.CharField(max_length=10, choices=DIRECTION_CHOICES, blank=True, null=True)
     # unused field
@@ -234,13 +245,15 @@ class Alert(models.Model):
 
 
 class FavoriteItem(models.Model):
-    item_id = models.IntegerField(unique=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    item_id = models.IntegerField()
     item_name = models.CharField(max_length=255)
     added_at = models.DateTimeField(auto_now_add=True)
     display_order = models.IntegerField(default=0)
 
     class Meta:
         ordering = ['display_order', '-added_at']
+        unique_together = ['user', 'item_id']
 
     def __str__(self):
         return self.item_name

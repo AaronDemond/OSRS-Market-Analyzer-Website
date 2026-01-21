@@ -48,4 +48,9 @@ urlpatterns = [
     path('api/alerts/<int:alert_id>/update/', views.update_single_alert, name='update_single_alert'),
     path('api/favorites/add/', views.add_favorite, name='add_favorite'),
     path('api/favorites/remove/', views.remove_favorite, name='remove_favorite'),
+    # Authentication
+    path('auth/', views.auth_page, name='auth'),
+    path('login/', views.login_view, name='login'),
+    path('signup/', views.signup_view, name='signup'),
+    path('logout/', views.logout_view, name='logout'),
 ]
