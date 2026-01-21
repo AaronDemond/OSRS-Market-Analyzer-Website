@@ -723,16 +723,8 @@ def item_history_api(request):
 
 
 def alerts(request):
-    user = request.user if request.user.is_authenticated else None
-    alerts_qs = Alert.objects.filter(user=user) if user else Alert.objects.none()
-    active_alerts = alerts_qs.filter(is_active=True)
-    triggered_alerts = alerts_qs.filter(is_triggered=True, is_dismissed=False).prefetch_related('groups')
-    has_alerts = alerts_qs.exists()
-    return render(request, 'alerts.html', {
-        'active_alerts': active_alerts,
-        'triggered_alerts': triggered_alerts,
-        'has_alerts': has_alerts,
-    })
+    # Render page instantly with no database calls - data loads via JavaScript
+    return render(request, 'alerts.html', {})
 
 
 def create_alert(request):

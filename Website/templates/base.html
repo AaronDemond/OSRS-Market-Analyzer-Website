@@ -98,8 +98,22 @@
         {% block content %}{% endblock %}
     </main>
 
+    <!-- Page loading overlay -->
+    <div id="pageLoadingOverlay" class="page-loading-overlay">
+        <div class="page-loading-spinner"></div>
+    </div>
+
     <script src="{% static 'js/bootstrap/bootstrap.bundle.min.js' %}"></script>
     <script>
+        // Show loading overlay on navigation to slow pages
+        document.querySelectorAll('a[href="/home/"]').forEach(link => {
+            link.addEventListener('click', function(e) {
+                // Don't show if already on that page
+                if (window.location.pathname === this.getAttribute('href')) return;
+                document.getElementById('pageLoadingOverlay').classList.add('active');
+            });
+        });
+
         document.addEventListener('DOMContentLoaded', function() {
             console.log('Sidebar toggle script loaded');
             const sidebar = document.querySelector('.sidebar');
