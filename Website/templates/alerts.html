@@ -180,12 +180,20 @@
                     <option value="spike">Spike</option>
                     <option value="sustained">Sustained Move</option>
                 </select>
+                <button type="button" class="alert-help-btn" onclick="openAlertHelpModal()">
+                    <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+                    </svg>
+                    How do alerts work?
+                </button>
             </div>
             <div class="form-group">
                 <label for="alert-group">Group</label>
                 <select name="group_id" id="alert-group">
                     <option value="">No Group</option>
                 </select>
+
+                <small class="form-hint">Group your alerts. You can always add a group later</small>
             </div>
 
             <!-- Number of items (shown for spike only) -->
@@ -195,6 +203,8 @@
                     <option value="one" selected>One</option>
                     <option value="all">All</option>
                 </select>
+
+                <small class="form-hint">Choose to track a single item or all items</small>
             </div>
             
             <!-- Spread-specific fields -->
@@ -204,6 +214,8 @@
                     <option value="all">All Items</option>
                     <option value="specific">Specific Item</option>
                 </select>
+
+                <small class="form-hint">Choose to track a single item or all items</small>
             </div>
             
             <!-- Item Name -->
@@ -213,12 +225,14 @@
                 <input type="hidden" name="item_id" id="item-id">
                 <input type="hidden" name="is_all_items" id="is-all-items" value="false">
                 <div id="item-suggestions" class="suggestions-dropdown"></div>
+                <small class="form-hint">Item name you wish to track</small>
             </div>
             
             <!-- Price Threshold -->
             <div class="form-group" id="price-group">
                 <label for="price">Price Threshold</label>
                 <input type="number" name="price" id="price">
+                <small class="form-hint">Target price</small>
             </div>
             
             <!-- Reference Price -->
@@ -228,18 +242,21 @@
                     <option value="high">High Price</option>
                     <option value="low">Low Price</option>
                 </select>
+                <small class="form-hint">Price your alert will youse to make calculations</small>
             </div>
             
             <!-- Percentage field (shown for spread or spike) -->
             <div class="form-group" id="percentage-group" style="display: none;">
                 <label for="percentage">Percentage (%)</label>
                 <input type="number" name="percentage" id="percentage" step="0.001" min="0.001">
+                <small class="form-hint">Target percentage your alert must hit</small>
             </div>
 
             <!-- Time frame field (shown for spike only) -->
             <div class="form-group" id="time-frame-group" style="display: none;">
                 <label for="time-frame">Time Frame (minutes)</label>
                 <input type="number" name="time_frame" id="time-frame" min="1" step="1" placeholder="e.g. 10">
+                <small class="form-hint">Time frame your alert must trigger within.</small>
             </div>
             
             <!-- Direction field (shown for spike only) -->
@@ -250,6 +267,8 @@
                     <option value="up">Up</option>
                     <option value="down">Down</option>
                 </select>
+
+                <small class="form-hint">Direction your alert will track</small>
             </div>
             
             <!-- Sustained Move scope selector -->
@@ -259,6 +278,7 @@
                     <option value="specific" selected>Specific Item(s)</option>
                     <option value="all">All Items</option>
                 </select>
+                <small class="form-hint">Choose to track a single item or all items</small>
             </div>
             
             <!-- Multi-item selector for sustained move -->
@@ -488,6 +508,313 @@
         /* Hover */
         --hover-orange: #F97316;
         --hover-orange-light: #FDBA74;
+    }
+
+    /* Alert Help Button */
+    .alert-help-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 8px;
+        padding: 8px 12px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    }
+    
+    .alert-help-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    
+    .alert-help-btn svg {
+        flex-shrink: 0;
+    }
+
+    /* Alert Help Modal */
+    .alert-help-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(4px);
+        z-index: 10000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        animation: fadeIn 0.2s ease;
+    }
+    
+    .alert-help-modal-overlay.open {
+        display: flex;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    .alert-help-modal {
+        background: white;
+        border-radius: 16px;
+        max-width: 800px;
+        width: 100%;
+        max-height: 85vh;
+        overflow: hidden;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        animation: slideUp 0.3s ease;
+    }
+    
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .alert-help-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .alert-help-modal-header h2 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .alert-help-modal-close {
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: white;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+        font-size: 24px;
+        line-height: 1;
+    }
+    
+    .alert-help-modal-close:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: rotate(90deg);
+    }
+    
+    .alert-help-modal-body {
+        padding: 0;
+        overflow-y: auto;
+        max-height: calc(85vh - 80px);
+    }
+    
+    .alert-help-tabs {
+        display: flex;
+        border-bottom: 1px solid var(--border);
+        background: var(--surface-2);
+        overflow-x: auto;
+    }
+    
+    .alert-help-tab {
+        padding: 14px 20px;
+        background: none;
+        border: none;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-muted);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+        border-bottom: 3px solid transparent;
+        margin-bottom: -1px;
+    }
+    
+    .alert-help-tab:hover {
+        color: var(--text);
+        background: rgba(0, 0, 0, 0.03);
+    }
+    
+    .alert-help-tab.active {
+        color: var(--primary);
+        border-bottom-color: var(--primary);
+        background: white;
+    }
+    
+    .alert-help-content {
+        padding: 24px;
+    }
+    
+    .alert-help-section {
+        display: none;
+    }
+    
+    .alert-help-section.active {
+        display: block;
+    }
+    
+    .alert-help-section h3 {
+        font-size: 22px;
+        font-weight: 600;
+        color: var(--text);
+        margin: 0 0 8px 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .alert-help-section h3 .alert-type-badge {
+        font-size: 12px;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-weight: 500;
+    }
+    
+    .alert-type-badge.above { background: #DCFCE7; color: #166534; }
+    .alert-type-badge.below { background: #FEE2E2; color: #991B1B; }
+    .alert-type-badge.spread { background: #E0E7FF; color: #3730A3; }
+    .alert-type-badge.spike { background: #FEF3C7; color: #92400E; }
+    .alert-type-badge.sustained { background: #F3E8FF; color: #6B21A8; }
+    
+    .alert-help-section .subtitle {
+        font-size: 15px;
+        color: var(--text-muted);
+        margin-bottom: 20px;
+        line-height: 1.6;
+    }
+    
+    .alert-help-card {
+        background: var(--surface-2);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .alert-help-card h4 {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text);
+        margin: 0 0 12px 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .alert-help-card h4 svg {
+        color: var(--primary);
+    }
+    
+    .alert-help-card p {
+        font-size: 14px;
+        color: var(--text-muted);
+        line-height: 1.7;
+        margin: 0;
+    }
+    
+    .alert-help-card ul {
+        margin: 12px 0 0 0;
+        padding-left: 20px;
+    }
+    
+    .alert-help-card li {
+        font-size: 14px;
+        color: var(--text-muted);
+        line-height: 1.8;
+    }
+    
+    .alert-help-card li strong {
+        color: var(--text);
+    }
+    
+    .recommended-values {
+        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        border: 1px solid #86efac;
+        border-radius: 12px;
+        padding: 20px;
+        margin-top: 20px;
+    }
+    
+    .recommended-values h4 {
+        font-size: 15px;
+        font-weight: 600;
+        color: #166534;
+        margin: 0 0 12px 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .recommended-values .value-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+    }
+    
+    .recommended-value {
+        background: white;
+        border-radius: 8px;
+        padding: 12px 16px;
+        border: 1px solid #bbf7d0;
+    }
+    
+    .recommended-value .label {
+        font-size: 12px;
+        color: #166534;
+        font-weight: 500;
+        margin-bottom: 4px;
+    }
+    
+    .recommended-value .value {
+        font-size: 16px;
+        font-weight: 600;
+        color: #14532d;
+    }
+    
+    .example-scenario {
+        background: #fffbeb;
+        border: 1px solid #fde68a;
+        border-radius: 12px;
+        padding: 20px;
+        margin-top: 16px;
+    }
+    
+    .example-scenario h4 {
+        font-size: 14px;
+        font-weight: 600;
+        color: #92400e;
+        margin: 0 0 10px 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .example-scenario p {
+        font-size: 14px;
+        color: #78350f;
+        line-height: 1.7;
+        margin: 0;
     }
 
     .page-header {
@@ -3212,6 +3539,7 @@ const AlertsUI = {
         const alertsListContainer = pane.querySelector('#alerts-list-container');
         
         const filteredAlerts = FilterManager.applyFilters(data.alerts || []);
+        const sortedAlerts = SortManager.applySort(filteredAlerts);
         
         // Check if groups filter is active
         const selectedGroups = AlertsState.getFilterValue('myGroups');
@@ -3219,13 +3547,13 @@ const AlertsUI = {
         
         // Build the new HTML
         let newHtml = '';
-        if (filteredAlerts.length === 0) {
+        if (sortedAlerts.length === 0) {
             newHtml = '<p class="no-alerts">No alerts match the current filters.</p>';
         } else if (isGroupedView) {
-            newHtml = this.renderGroupedAlertsList(filteredAlerts, selectedGroups);
+            newHtml = this.renderGroupedAlertsList(sortedAlerts, selectedGroups);
         } else {
             newHtml = '<ul class="alerts-list">';
-            filteredAlerts.forEach(alert => {
+            sortedAlerts.forEach(alert => {
                 newHtml += this.renderAlertItem(alert);
             });
             newHtml += '</ul>';
@@ -5890,6 +6218,398 @@ function confirmDelete() {
         window.history.replaceState({}, document.title, newUrl);
     }
 })();
+</script>
+
+<!-- Alert Help Modal -->
+<div class="alert-help-modal-overlay" id="alertHelpModal">
+    <div class="alert-help-modal">
+        <div class="alert-help-modal-header">
+            <h2>
+                <svg viewBox="0 0 20 20" fill="currentColor" width="24" height="24">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+                </svg>
+                Understanding Alert Types
+            </h2>
+            <button class="alert-help-modal-close" onclick="closeAlertHelpModal()">&times;</button>
+        </div>
+        <div class="alert-help-modal-body">
+            <div class="alert-help-tabs">
+                <button class="alert-help-tab active" data-help-tab="above">Above</button>
+                <button class="alert-help-tab" data-help-tab="below">Below</button>
+                <button class="alert-help-tab" data-help-tab="spread">Spread</button>
+                <button class="alert-help-tab" data-help-tab="spike">Spike</button>
+                <button class="alert-help-tab" data-help-tab="sustained">Sustained</button>
+            </div>
+            <div class="alert-help-content">
+                <!-- Above Threshold -->
+                <div class="alert-help-section active" data-help-section="above">
+                    <h3>
+                        Above Threshold Alert
+                        <span class="alert-type-badge above">Price Increase</span>
+                    </h3>
+                    <p class="subtitle">Get notified when an item's price rises above a specific value. Perfect for knowing when to sell items you're holding.</p>
+                    
+                    <div class="alert-help-card">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+                            How It Works
+                        </h4>
+                        <p>This alert monitors the Grand Exchange price of your chosen item. When the price exceeds your set threshold, you'll receive a notification. You can choose to monitor either the <strong>high price</strong> (instant buy price) or <strong>low price</strong> (instant sell price).</p>
+                        <ul>
+                            <li><strong>High Price:</strong> The price at which you can instantly buy an item (usually higher)</li>
+                            <li><strong>Low Price:</strong> The price at which you can instantly sell an item (usually lower)</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="alert-help-card">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/></svg>
+                            When To Use
+                        </h4>
+                        <ul>
+                            <li>You bought an item and want to sell when it reaches a target profit</li>
+                            <li>You're waiting for an item to become valuable enough to sell</li>
+                            <li>Tracking items that might spike in price due to game updates</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="example-scenario">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z"/></svg>
+                            Example Scenario
+                        </h4>
+                        <p>You bought a Dragon Warhammer for 32M and want to sell when it hits 35M. Set an Above Threshold alert for 35,000,000 gp on the high price. When someone buys one for 35M+, you'll be notified!</p>
+                    </div>
+                    
+                    <div class="recommended-values">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                            Recommended Starting Values
+                        </h4>
+                        <div class="value-grid">
+                            <div class="recommended-value">
+                                <div class="label">Reference Price</div>
+                                <div class="value">High Price</div>
+                            </div>
+                            <div class="recommended-value">
+                                <div class="label">Threshold</div>
+                                <div class="value">5-10% above current price</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Below Threshold -->
+                <div class="alert-help-section" data-help-section="below">
+                    <h3>
+                        Below Threshold Alert
+                        <span class="alert-type-badge below">Price Decrease</span>
+                    </h3>
+                    <p class="subtitle">Get notified when an item's price drops below a specific value. Ideal for finding buying opportunities and bargains.</p>
+                    
+                    <div class="alert-help-card">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+                            How It Works
+                        </h4>
+                        <p>This alert watches for price drops. When the item's price falls below your threshold, you'll be notified immediately. This is perfect for catching deals when items crash or finding good entry points.</p>
+                        <ul>
+                            <li><strong>High Price:</strong> Monitor when buy offers drop (good for bulk buying)</li>
+                            <li><strong>Low Price:</strong> Monitor when sell offers drop (catch panic sellers)</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="alert-help-card">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/></svg>
+                            When To Use
+                        </h4>
+                        <ul>
+                            <li>You want to buy an expensive item when it dips in price</li>
+                            <li>Tracking items that might crash due to game changes or dupes</li>
+                            <li>Finding entry points for long-term flipping investments</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="example-scenario">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z"/></svg>
+                            Example Scenario
+                        </h4>
+                        <p>You want to buy a Twisted Bow but it's currently 1.5B. Set a Below Threshold alert for 1,400,000,000 gp on the low price. If panic sellers dump it below 1.4B, you'll know instantly!</p>
+                    </div>
+                    
+                    <div class="recommended-values">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                            Recommended Starting Values
+                        </h4>
+                        <div class="value-grid">
+                            <div class="recommended-value">
+                                <div class="label">Reference Price</div>
+                                <div class="value">Low Price</div>
+                            </div>
+                            <div class="recommended-value">
+                                <div class="label">Threshold</div>
+                                <div class="value">5-15% below current price</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Spread Alert -->
+                <div class="alert-help-section" data-help-section="spread">
+                    <h3>
+                        Spread Alert
+                        <span class="alert-type-badge spread">Flip Margin</span>
+                    </h3>
+                    <p class="subtitle">Get notified when the buy/sell margin (spread) exceeds a percentage. Essential for finding profitable flipping opportunities.</p>
+                    
+                    <div class="alert-help-card">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+                            How It Works
+                        </h4>
+                        <p>The <strong>spread</strong> is the percentage difference between the high price (what buyers pay) and the low price (what sellers receive). A higher spread means more potential profit per flip.</p>
+                        <p style="margin-top: 12px;"><strong>Formula:</strong> Spread % = ((High Price - Low Price) / Low Price) × 100</p>
+                        <ul>
+                            <li><strong>All Items:</strong> Scan the entire GE for items with high spreads</li>
+                            <li><strong>Specific Item:</strong> Monitor one item's spread for flipping</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="alert-help-card">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/></svg>
+                            When To Use
+                        </h4>
+                        <ul>
+                            <li>Finding items worth flipping across the entire GE</li>
+                            <li>Monitoring your favorite flip items for optimal margins</li>
+                            <li>Setting up "All Items" alerts to discover new opportunities</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="example-scenario">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z"/></svg>
+                            Example Scenario
+                        </h4>
+                        <p>Set an "All Items" spread alert for 5% with a minimum price of 1,000,000 gp. You'll be notified whenever any item worth 1M+ has a 5%+ margin - perfect for finding high-value flips!</p>
+                    </div>
+                    
+                    <div class="recommended-values">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                            Recommended Starting Values
+                        </h4>
+                        <div class="value-grid">
+                            <div class="recommended-value">
+                                <div class="label">Spread Percentage</div>
+                                <div class="value">3-5% for high-value items</div>
+                            </div>
+                            <div class="recommended-value">
+                                <div class="label">Minimum Price</div>
+                                <div class="value">500,000 - 1,000,000 gp</div>
+                            </div>
+                            <div class="recommended-value">
+                                <div class="label">Maximum Price</div>
+                                <div class="value">Based on your cash stack</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Spike Alert -->
+                <div class="alert-help-section" data-help-section="spike">
+                    <h3>
+                        Spike Alert
+                        <span class="alert-type-badge spike">Rapid Change</span>
+                    </h3>
+                    <p class="subtitle">Get notified when an item's price changes rapidly within a time window. Catch sudden market movements as they happen.</p>
+                    
+                    <div class="alert-help-card">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+                            How It Works
+                        </h4>
+                        <p>Spike alerts track price changes over a rolling time window. If the price moves by your specified percentage within that time, you'll be notified. This catches sudden jumps or crashes.</p>
+                        <ul>
+                            <li><strong>Time Frame:</strong> How far back to compare (e.g., 30 minutes, 1 hour)</li>
+                            <li><strong>Percentage:</strong> The minimum change to trigger (e.g., 5% up or down)</li>
+                            <li><strong>Direction:</strong> Up only, Down only, or Both directions</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="alert-help-card">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/></svg>
+                            When To Use
+                        </h4>
+                        <ul>
+                            <li>Catching items that spike after game updates or news</li>
+                            <li>Detecting crash opportunities to buy low</li>
+                            <li>Monitoring volatile items for trading opportunities</li>
+                            <li>Setting "All Items" to find any item spiking in the market</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="example-scenario">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z"/></svg>
+                            Example Scenario
+                        </h4>
+                        <p>Set an "All Items" spike alert for 10% within 60 minutes, direction "Up", with minimum price 100,000 gp. When any item worth 100k+ jumps 10% in an hour, you'll be the first to know!</p>
+                    </div>
+                    
+                    <div class="recommended-values">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                            Recommended Starting Values
+                        </h4>
+                        <div class="value-grid">
+                            <div class="recommended-value">
+                                <div class="label">Percentage Change</div>
+                                <div class="value">5-10%</div>
+                            </div>
+                            <div class="recommended-value">
+                                <div class="label">Time Frame</div>
+                                <div class="value">30-60 minutes</div>
+                            </div>
+                            <div class="recommended-value">
+                                <div class="label">Direction</div>
+                                <div class="value">Both (to catch all movements)</div>
+                            </div>
+                            <div class="recommended-value">
+                                <div class="label">Minimum Price</div>
+                                <div class="value">100,000+ gp</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Sustained Move Alert -->
+                <div class="alert-help-section" data-help-section="sustained">
+                    <h3>
+                        Sustained Move Alert
+                        <span class="alert-type-badge sustained">Trend Detection</span>
+                    </h3>
+                    <p class="subtitle">Get notified when an item shows consistent price movement in one direction. Detect emerging trends before they become obvious.</p>
+                    
+                    <div class="alert-help-card">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+                            How It Works
+                        </h4>
+                        <p>Unlike spike alerts that catch sudden moves, sustained move alerts detect <strong>consistent trends</strong>. They look for multiple consecutive price movements in the same direction, filtering out noise to find real trends.</p>
+                        <ul>
+                            <li><strong>Consecutive Moves:</strong> How many price updates must move the same direction</li>
+                            <li><strong>Move Percentage:</strong> Minimum size of each individual move</li>
+                            <li><strong>Direction:</strong> Upward trend, Downward trend, or Both</li>
+                            <li><strong>Volatility Filter:</strong> Ignores normal market fluctuations</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="alert-help-card">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/></svg>
+                            When To Use
+                        </h4>
+                        <ul>
+                            <li>Detecting items being manipulated or merched</li>
+                            <li>Finding items trending up before a big spike</li>
+                            <li>Catching items in decline before they crash further</li>
+                            <li>Identifying genuine market trends vs random noise</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="example-scenario">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z"/></svg>
+                            Example Scenario
+                        </h4>
+                        <p>Set a sustained move alert for "All Items" with 5 consecutive moves, 0.5% minimum move, direction "Up". When any item moves up 5 times in a row, each by at least 0.5%, you'll catch the trend early!</p>
+                    </div>
+                    
+                    <div class="recommended-values">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                            Recommended Starting Values
+                        </h4>
+                        <div class="value-grid">
+                            <div class="recommended-value">
+                                <div class="label">Consecutive Moves</div>
+                                <div class="value">4-6 moves</div>
+                            </div>
+                            <div class="recommended-value">
+                                <div class="label">Min Move %</div>
+                                <div class="value">0.3-0.5%</div>
+                            </div>
+                            <div class="recommended-value">
+                                <div class="label">Direction</div>
+                                <div class="value">Both (catch all trends)</div>
+                            </div>
+                            <div class="recommended-value">
+                                <div class="label">Min Volume</div>
+                                <div class="value">100+ (filters low-trade items)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openAlertHelpModal() {
+    const modal = document.getElementById('alertHelpModal');
+    modal.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    
+    // Switch to the currently selected alert type
+    const alertType = document.getElementById('alert-type').value;
+    switchHelpTab(alertType);
+}
+
+function closeAlertHelpModal() {
+    const modal = document.getElementById('alertHelpModal');
+    modal.classList.remove('open');
+    document.body.style.overflow = '';
+}
+
+function switchHelpTab(tabName) {
+    // Update tabs
+    document.querySelectorAll('.alert-help-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.helpTab === tabName);
+    });
+    
+    // Update sections
+    document.querySelectorAll('.alert-help-section').forEach(section => {
+        section.classList.toggle('active', section.dataset.helpSection === tabName);
+    });
+}
+
+// Tab click handlers
+document.querySelectorAll('.alert-help-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        switchHelpTab(tab.dataset.helpTab);
+    });
+});
+
+// Close on overlay click
+document.getElementById('alertHelpModal').addEventListener('click', (e) => {
+    if (e.target.classList.contains('alert-help-modal-overlay')) {
+        closeAlertHelpModal();
+    }
+});
+
+// Close on Escape key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeAlertHelpModal();
+    }
+});
 </script>
 
 {% endblock %}

@@ -1082,13 +1082,15 @@
             font-size: 16px;
         }
         
-        /* Hide columns on mobile: Price Paid, High Price, Low Price */
+        /* Hide columns on mobile: Price Paid, Quantity Holding, High Price, Low Price */
         #flipsTable th:nth-child(2),
         #flipsTable td:nth-child(2),
-        #flipsTable th:nth-child(4),
-        #flipsTable td:nth-child(4),
+        #flipsTable th:nth-child(3),
+        #flipsTable td:nth-child(3),
         #flipsTable th:nth-child(5),
-        #flipsTable td:nth-child(5) {
+        #flipsTable td:nth-child(5),
+        #flipsTable th:nth-child(6),
+        #flipsTable td:nth-child(6) {
             display: none;
         }
         
@@ -1182,13 +1184,15 @@
             font-size: 16px;
         }
         
-        /* Hide columns on mobile: Price Paid, High Price, Low Price */
+        /* Hide columns on mobile: Price Paid, Quantity Holding, High Price, Low Price */
         #flipsTable th:nth-child(2),
         #flipsTable td:nth-child(2),
-        #flipsTable th:nth-child(4),
-        #flipsTable td:nth-child(4),
+        #flipsTable th:nth-child(3),
+        #flipsTable td:nth-child(3),
         #flipsTable th:nth-child(5),
-        #flipsTable td:nth-child(5) {
+        #flipsTable td:nth-child(5),
+        #flipsTable th:nth-child(6),
+        #flipsTable td:nth-child(6) {
             display: none;
         }
         
@@ -1639,10 +1643,11 @@
             <th class="sortable" data-col="0" data-type="string">Item <span class="sort-icon"></span></th>
             <th class="sortable" data-col="1" data-type="number">Price Paid<span class="sort-icon"></span></th>
             <th class="sortable" data-col="2" data-type="number"><span class="d-none d-md-inline">Quantity Holding</span><span class="d-md-none">Qty</span> <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="3" data-type="number">High Price <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="4" data-type="number">Low Price <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="5" data-type="number"><span class="d-none d-md-inline">Unrealized Net</span><span class="d-md-none">Unreal.</span> <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="6" data-type="number"><span class="d-none d-md-inline">Realized Net</span><span class="d-md-none">Real.</span> <span class="sort-icon"></span></th>
+            <th class="sortable" data-col="3" data-type="number"><span class="d-none d-md-inline">Position Size</span><span class="d-md-none">Pos.</span> <span class="sort-icon"></span></th>
+            <th class="sortable" data-col="4" data-type="number">High Price <span class="sort-icon"></span></th>
+            <th class="sortable" data-col="5" data-type="number">Low Price <span class="sort-icon"></span></th>
+            <th class="sortable" data-col="6" data-type="number"><span class="d-none d-md-inline">Unrealized Net</span><span class="d-md-none">Unreal.</span> <span class="sort-icon"></span></th>
+            <th class="sortable" data-col="7" data-type="number"><span class="d-none d-md-inline">Realized Net</span><span class="d-md-none">Real.</span> <span class="sort-icon"></span></th>
         </tr>
     </thead>
     <tbody>
@@ -1655,6 +1660,7 @@
             </td>
             <td data-value="{{ item.avg_price }}">{{ item.avg_price|intcomma }}</td>
             <td data-value="{{ item.quantity_holding }}">{{ item.quantity_holding|intcomma }}</td>
+            <td data-value="{{ item.position_size }}">{{ item.position_size|floatformat:0|intcomma }}</td>
             <td data-value="{{ item.high_price|default:0 }}">{% if item.high_price %}{{ item.high_price|intcomma }}{% else %}-{% endif %}</td>
             <td data-value="{{ item.low_price|default:0 }}">{% if item.low_price %}{{ item.low_price|intcomma }}{% else %}-{% endif %}</td>
             <td data-value="{{ item.unrealized_net }}" class="{% if item.unrealized_net > 0 %}pnl-pos{% elif item.unrealized_net < 0 %}pnl-neg{% else %}pnl-zero{% endif %}">{% if item.unrealized_net >= 0 %}+{% endif %}{{ item.unrealized_net|floatformat:0|intcomma }}</td>
@@ -1662,7 +1668,7 @@
         </tr>
         {% empty %}
         <tr>
-            <td colspan="7" class="text-center">No flips recorded yet.</td>
+            <td colspan="8" class="text-center">No flips recorded yet.</td>
         </tr>
         {% endfor %}
     </tbody>
@@ -1677,6 +1683,77 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(function() {
         window.location.reload();
     }, 5 * 60 * 1000);
+    
+    // =========================================================================
+    // MOBILE NUMBER FORMATTING
+    // =========================================================================
+    
+    function formatNumberMobile(num) {
+        const absNum = Math.abs(num);
+        const sign = num < 0 ? '-' : (num > 0 ? '+' : '');
+        
+        if (absNum >= 1000000) {
+            // Millions - use 1 decimal
+            return sign + (absNum / 1000000).toFixed(1) + 'M';
+        } else if (absNum >= 1000) {
+            // Thousands - no decimal
+            return sign + Math.floor(absNum / 1000) + 'K';
+        } else {
+            return sign + absNum;
+        }
+    }
+    
+    function formatNumberMobileNoSign(num) {
+        const absNum = Math.abs(num);
+        
+        if (absNum >= 1000000) {
+            return (absNum / 1000000).toFixed(1) + 'M';
+        } else if (absNum >= 1000) {
+            return Math.floor(absNum / 1000) + 'K';
+        } else {
+            return absNum.toLocaleString();
+        }
+    }
+    
+    function applyMobileFormatting() {
+        const isMobile = window.innerWidth <= 1100;
+        const rows = document.querySelectorAll('#flipsTable tbody tr[data-item-id]');
+        
+        rows.forEach(row => {
+            // Position Size (column 4)
+            const posCell = row.querySelector('td:nth-child(4)');
+            if (posCell) {
+                const value = parseFloat(posCell.dataset.value) || 0;
+                posCell.textContent = isMobile ? formatNumberMobileNoSign(value) : value.toLocaleString();
+            }
+            
+            // Unrealized Net (column 7)
+            const unrealCell = row.querySelector('td:nth-child(7)');
+            if (unrealCell) {
+                const value = parseFloat(unrealCell.dataset.value) || 0;
+                if (isMobile) {
+                    unrealCell.textContent = formatNumberMobile(value);
+                } else {
+                    unrealCell.textContent = (value >= 0 ? '+' : '') + Math.round(value).toLocaleString();
+                }
+            }
+            
+            // Realized Net (column 8)
+            const realCell = row.querySelector('td:nth-child(8)');
+            if (realCell) {
+                const value = parseFloat(realCell.dataset.value) || 0;
+                if (isMobile) {
+                    realCell.textContent = formatNumberMobile(value);
+                } else {
+                    realCell.textContent = (value >= 0 ? '+' : '') + Math.round(value).toLocaleString();
+                }
+            }
+        });
+    }
+    
+    // Apply on load and resize
+    applyMobileFormatting();
+    window.addEventListener('resize', applyMobileFormatting);
     
     // =========================================================================
     // FILTER SYSTEM
@@ -1846,13 +1923,14 @@ document.addEventListener('DOMContentLoaded', function() {
         if (filterName === 'time-held') {
             return getTimeHeldDays(row) || 0;
         } else if (filterName === 'unrealized-range') {
-            const cell = row.querySelector('td:nth-child(6)');
-            return parseFloat(cell?.dataset.value) || 0;
-        } else if (filterName === 'realized-range') {
             const cell = row.querySelector('td:nth-child(7)');
             return parseFloat(cell?.dataset.value) || 0;
+        } else if (filterName === 'realized-range') {
+            const cell = row.querySelector('td:nth-child(8)');
+            return parseFloat(cell?.dataset.value) || 0;
         } else if (filterName === 'position-size') {
-            return parseFloat(row.dataset.positionSize) || 0;
+            const cell = row.querySelector('td:nth-child(4)');
+            return parseFloat(cell?.dataset.value) || 0;
         } else if (filterName === 'quantity') {
             const cell = row.querySelector('td:nth-child(3)');
             return parseFloat(cell?.dataset.value) || 0;
@@ -2059,7 +2137,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Unrealized range filter
             if (show && unrealizedActive) {
-                const cell = row.querySelector('td:nth-child(6)');
+                const cell = row.querySelector('td:nth-child(7)');
                 const value = parseFloat(cell?.dataset.value) || 0;
                 const min = unrealizedActive.min !== null ? unrealizedActive.min : -Infinity;
                 const max = unrealizedActive.max !== null ? unrealizedActive.max : Infinity;
@@ -2070,7 +2148,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Realized range filter
             if (show && realizedActive) {
-                const cell = row.querySelector('td:nth-child(7)');
+                const cell = row.querySelector('td:nth-child(8)');
                 const value = parseFloat(cell?.dataset.value) || 0;
                 const min = realizedActive.min !== null ? realizedActive.min : -Infinity;
                 const max = realizedActive.max !== null ? realizedActive.max : Infinity;
@@ -2081,7 +2159,8 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Position size filter
             if (show && positionSizeActive) {
-                const value = parseFloat(row.dataset.positionSize) || 0;
+                const cell = row.querySelector('td:nth-child(4)');
+                const value = parseFloat(cell?.dataset.value) || 0;
                 const min = positionSizeActive.min !== null ? positionSizeActive.min : -Infinity;
                 const max = positionSizeActive.max !== null ? positionSizeActive.max : Infinity;
                 if (value < min || value > max) {
@@ -2092,7 +2171,8 @@ document.addEventListener('DOMContentLoaded', function() {
             // Show/hide position size subtext
             const positionSubtext = row.querySelector('.position-size-subtext');
             if (positionSizeActive && positionSubtext) {
-                const value = parseFloat(row.dataset.positionSize) || 0;
+                const cell = row.querySelector('td:nth-child(4)');
+                const value = parseFloat(cell?.dataset.value) || 0;
                 positionSubtext.textContent = 'Position: ' + value.toLocaleString() + ' gp';
                 positionSubtext.style.display = 'block';
             } else if (positionSubtext) {
@@ -2451,7 +2531,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Unrealized range filter
         if (activeFilters['unrealized-range']) {
-            const cell = row.querySelector('td:nth-child(6)');
+            const cell = row.querySelector('td:nth-child(7)');
             const value = parseFloat(cell?.dataset.value) || 0;
             const min = activeFilters['unrealized-range'].min !== null ? activeFilters['unrealized-range'].min : -Infinity;
             const max = activeFilters['unrealized-range'].max !== null ? activeFilters['unrealized-range'].max : Infinity;
@@ -2460,7 +2540,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Realized range filter
         if (activeFilters['realized-range']) {
-            const cell = row.querySelector('td:nth-child(7)');
+            const cell = row.querySelector('td:nth-child(8)');
             const value = parseFloat(cell?.dataset.value) || 0;
             const min = activeFilters['realized-range'].min !== null ? activeFilters['realized-range'].min : -Infinity;
             const max = activeFilters['realized-range'].max !== null ? activeFilters['realized-range'].max : Infinity;
@@ -2469,7 +2549,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Position size filter
         if (activeFilters['position-size']) {
-            const value = parseFloat(row.dataset.positionSize) || 0;
+            const cell = row.querySelector('td:nth-child(4)');
+            const value = parseFloat(cell?.dataset.value) || 0;
             const min = activeFilters['position-size'].min !== null ? activeFilters['position-size'].min : -Infinity;
             const max = activeFilters['position-size'].max !== null ? activeFilters['position-size'].max : Infinity;
             if (value < min || value > max) return false;

@@ -9,4 +9,5 @@ __pycache__
 static/img/*
 test_alerts.py
 tests_alert_models.py
-
+*.pyc
+initialize_flip_profits.py

@@ -325,7 +325,7 @@ def recalculate_flip_profit(item_id):
                 quantity_held = quantity_held + flip.quantity
         
         elif flip.type == 'sell':
-            realized_gain = flip.quantity * (flip.price - average_cost)
+            realized_gain = flip.quantity * ((flip.price * 0.98) - average_cost)
             realized_net = realized_net + realized_gain
             quantity_held = quantity_held - flip.quantity
     

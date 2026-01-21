@@ -105,11 +105,10 @@
         display: flex;
         flex-direction: column;
         flex-wrap: wrap;
-        gap: 2px 20px;
+        gap: 2px 12px;
         align-content: flex-start;
         overflow: hidden;
-        width: 100%;
-        max-width: 220px;
+        height: 112px; /* 4 rows */
     }
     
     .previous-search-item {
@@ -122,7 +121,7 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        width: 150px;
+        max-width: 300px;
         flex-shrink: 0;
         text-decoration: underline;
         text-decoration-color: #1a73e8;
@@ -163,18 +162,12 @@
         .previous-search-item:nth-child(n+4) {
             display: none;
         }
-        .previous-searches-list {
-            max-width: 220px;
-        }
     }
     
     /* Show only 6 items between 1550px and 1999px */
     @media (min-width: 1550px) and (max-width: 1999px) {
         .previous-search-item:nth-child(n+7) {
             display: none;
-        }
-        .previous-searches-list {
-            max-width: 440px;
         }
     }
     
@@ -183,9 +176,6 @@
         .previous-search-item:nth-child(n+10) {
             display: none;
         }
-        .previous-searches-list {
-            max-width: 660px;
-        }
     }
     
     /* Show only 12 items between 2450px and 2899px */
@@ -193,18 +183,12 @@
         .previous-search-item:nth-child(n+13) {
             display: none;
         }
-        .previous-searches-list {
-            max-width: 880px;
-        }
     }
     
     /* Show only 15 items at 2900px+ */
     @media (min-width: 2900px) {
         .previous-search-item:nth-child(n+16) {
             display: none;
-        }
-        .previous-searches-list {
-            max-width: 1100px;
         }
     }
     
