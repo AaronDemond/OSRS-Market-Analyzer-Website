@@ -2210,14 +2210,26 @@ document.addEventListener('DOMContentLoaded', function() {
     // Format filter value for display
     function formatFilterValue(filterName, filterData) {
         const { min, max } = filterData;
-        const formatNum = (n) => n !== null ? n.toLocaleString() : null;
+        
+        // Format number based on filter type
+        const formatNum = (n) => {
+            if (n === null) return null;
+            return n.toLocaleString();
+        };
+        
+        // Add unit suffix based on filter type
+        const getUnit = () => {
+            if (filterName === 'time-held') return ' days';
+            return '';
+        };
+        const unit = getUnit();
         
         if (min !== null && max !== null) {
-            return `${formatNum(min)} - ${formatNum(max)}`;
+            return `${formatNum(min)} - ${formatNum(max)}${unit}`;
         } else if (min !== null) {
-            return `≥ ${formatNum(min)}`;
+            return `≥ ${formatNum(min)}${unit}`;
         } else if (max !== null) {
-            return `≤ ${formatNum(max)}`;
+            return `≤ ${formatNum(max)}${unit}`;
         }
         return '';
     }
