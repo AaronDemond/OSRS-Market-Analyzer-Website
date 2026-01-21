@@ -2789,10 +2789,126 @@
         searchQuery: '',                // Current search query
         iconCache: {},                  // Cache for item icons (keyed by item_id)
         previousTriggeredItems: {},     // Track previously seen triggered items per alert (keyed by alert ID)
+        dismissedNotifications: null,   // Set of dismissed alert notification IDs (persisted to localStorage)
         sorting: {                      // Current sorting state
             sortKey: null,
             sortOrder: null,
             pendingKey: null
+        },
+
+        /**
+         * Gets the set of dismissed notification alert IDs.
+         * Loads from localStorage if not in memory.
+         */
+        getDismissedNotifications() {
+            if (this.dismissedNotifications !== null) {
+                return this.dismissedNotifications;
+            }
+            // Load from localStorage
+            try {
+                const stored = localStorage.getItem('dismissedAlertNotifications');
+                if (stored) {
+                    this.dismissedNotifications = new Set(JSON.parse(stored));
+                    return this.dismissedNotifications;
+                }
+            } catch (e) {
+                console.error('Error loading dismissed notifications from localStorage:', e);
+            }
+            this.dismissedNotifications = new Set();
+            return this.dismissedNotifications;
+        },
+
+        /**
+         * Marks a notification as dismissed.
+         * Persists to localStorage.
+         */
+        dismissNotification(alertId) {
+            const dismissed = this.getDismissedNotifications();
+            dismissed.add(String(alertId));
+            try {
+                localStorage.setItem('dismissedAlertNotifications', JSON.stringify([...dismissed]));
+            } catch (e) {
+                console.error('Error saving dismissed notifications to localStorage:', e);
+            }
+        },
+
+        /**
+         * Checks if a notification has been dismissed.
+         */
+        isNotificationDismissed(alertId) {
+            return this.getDismissedNotifications().has(String(alertId));
+        },
+
+        /**
+         * Clears a dismissed notification (e.g., when alert is re-triggered with new data).
+         */
+        clearDismissedNotification(alertId) {
+            const dismissed = this.getDismissedNotifications();
+            dismissed.delete(String(alertId));
+            try {
+                localStorage.setItem('dismissedAlertNotifications', JSON.stringify([...dismissed]));
+            } catch (e) {
+                console.error('Error saving dismissed notifications to localStorage:', e);
+            }
+        },
+
+        /**
+         * Active notifications cache - stores notification data that should be shown.
+         * This persists notifications even if they're no longer in the API response.
+         */
+        activeNotificationsCache: null,
+
+        /**
+         * Gets all active notifications from localStorage.
+         */
+        getActiveNotifications() {
+            if (this.activeNotificationsCache !== null) {
+                return this.activeNotificationsCache;
+            }
+            try {
+                const stored = localStorage.getItem('activeAlertNotifications');
+                if (stored) {
+                    this.activeNotificationsCache = JSON.parse(stored);
+                    return this.activeNotificationsCache;
+                }
+            } catch (e) {
+                console.error('Error loading active notifications from localStorage:', e);
+            }
+            this.activeNotificationsCache = {};
+            return this.activeNotificationsCache;
+        },
+
+        /**
+         * Adds or updates an active notification.
+         */
+        setActiveNotification(alertId, notificationData) {
+            const active = this.getActiveNotifications();
+            active[String(alertId)] = notificationData;
+            try {
+                localStorage.setItem('activeAlertNotifications', JSON.stringify(active));
+            } catch (e) {
+                console.error('Error saving active notifications to localStorage:', e);
+            }
+        },
+
+        /**
+         * Removes an active notification (when dismissed).
+         */
+        removeActiveNotification(alertId) {
+            const active = this.getActiveNotifications();
+            delete active[String(alertId)];
+            try {
+                localStorage.setItem('activeAlertNotifications', JSON.stringify(active));
+            } catch (e) {
+                console.error('Error saving active notifications to localStorage:', e);
+            }
+        },
+
+        /**
+         * Gets a specific active notification.
+         */
+        getActiveNotification(alertId) {
+            return this.getActiveNotifications()[String(alertId)] || null;
         },
 
         /**
@@ -3160,107 +3276,79 @@
 
         /**
          * Renders the green notification banners for triggered alerts.
-         * For "all items" alerts, only shows notification if there are NEW triggered items.
+         * Stores notifications in localStorage so they persist until explicitly dismissed.
+         * For "all items" alerts, tracks NEW triggered items.
          */
         renderTriggeredNotifications(triggeredAlerts) {
-            if (!triggeredAlerts || triggeredAlerts.length === 0) {
-                return '';
+            // First, process incoming alerts and store them in active notifications cache
+            if (triggeredAlerts && triggeredAlerts.length > 0) {
+                triggeredAlerts.forEach(alert => {
+                    // Skip if already dismissed
+                    if (AlertsState.isNotificationDismissed(alert.id)) {
+                        return;
+                    }
+                    
+                    const isSpreadAllItems = this.isSpreadAllItemsAlert(alert);
+                    const isSpikeAllItems = this.isSpikeAllItemsAlert(alert);
+                    const isAllItemsAlert = isSpreadAllItems || isSpikeAllItems;
+
+                    // Cache spread/spike data for later use in modal
+                    if (isSpreadAllItems) {
+                        AlertsState.setSpreadData(alert.id, alert.triggered_data);
+                    }
+                    if (isSpikeAllItems) {
+                        AlertsState.setSpikeData(alert.id, alert.triggered_data);
+                    }
+
+                    // Determine notification text
+                    let notificationText = alert.triggered_text;
+                    
+                    // For "all items" alerts, check for NEW items
+                    if (isAllItemsAlert && alert.triggered_data) {
+                        const result = AlertsState.computeNewTriggeredItems(alert.id, alert.triggered_data);
+                        
+                        // If this is a subsequent load with new items, update the text
+                        if (!result.isInitialLoad && result.newCount > 0) {
+                            const matchPattern = /\((\d+) item\(s\) matched\)/;
+                            if (matchPattern.test(notificationText)) {
+                                notificationText = notificationText.replace(matchPattern, `(${result.newCount} NEW item(s) matched)`);
+                            } else {
+                                notificationText += ` (${result.newCount} NEW item(s))`;
+                            }
+                        }
+                    }
+
+                    // Store in active notifications cache (persists to localStorage)
+                    AlertsState.setActiveNotification(alert.id, {
+                        id: alert.id,
+                        text: notificationText,
+                        type: alert.type,
+                        is_all_items: alert.is_all_items,
+                        isSpreadAllItems: isSpreadAllItems,
+                        isSpikeAllItems: isSpikeAllItems
+                    });
+                });
             }
 
-            // DEBUG: Log triggered alerts data
-            console.log('=== TRIGGERED ALERTS DEBUG ===');
-            console.log('Number of triggered alerts:', triggeredAlerts.length);
-            triggeredAlerts.forEach((alert, index) => {
-                console.log(`Alert ${index}:`, {
-                    id: alert.id,
-                    type: alert.type,
-                    triggered_text: alert.triggered_text,
-                    triggered_data: alert.triggered_data,
-                    direction: alert.direction,
-                    is_all_items: alert.is_all_items,
-                    // Sustained-specific fields
-                    sustained_item_name: alert.sustained_item_name,
-                    sustained_direction: alert.sustained_direction,
-                    sustained_streak_count: alert.sustained_streak_count,
-                    sustained_total_move: alert.sustained_total_move,
-                    sustained_start_price: alert.sustained_start_price,
-                    sustained_current_price: alert.sustained_current_price,
-                    sustained_volume: alert.sustained_volume
-                });
-            });
-            console.log('==============================');
-
+            // Now render ALL active notifications from localStorage
+            const activeNotifications = AlertsState.getActiveNotifications();
             let html = '';
-            triggeredAlerts.forEach(alert => {
-                const isSpreadAllItems = this.isSpreadAllItemsAlert(alert);
-                const isSpikeAllItems = this.isSpikeAllItemsAlert(alert);
-                const isAllItemsAlert = isSpreadAllItems || isSpikeAllItems;
-
-                // Cache spread/spike data for later use in modal
-                if (isSpreadAllItems) {
-                    AlertsState.setSpreadData(alert.id, alert.triggered_data);
+            
+            Object.values(activeNotifications).forEach(notification => {
+                // Double-check it's not dismissed
+                if (AlertsState.isNotificationDismissed(notification.id)) {
+                    return;
                 }
-                if (isSpikeAllItems) {
-                    AlertsState.setSpikeData(alert.id, alert.triggered_data);
-                }
+                
+                const clickHandler = notification.isSpreadAllItems
+                    ? 'onclick="ModalManager.showSpreadDetails(' + notification.id + ')"'
+                    : (notification.isSpikeAllItems ? 'onclick="ModalManager.showSpikeDetails(' + notification.id + ')"' : '');
+                const clickableClass = (notification.isSpreadAllItems || notification.isSpikeAllItems) ? 'clickable-triggered' : '';
 
-                // For "all items" alerts, check if there are NEW triggered items
-                if (isAllItemsAlert && alert.triggered_data) {
-                    const result = AlertsState.computeNewTriggeredItems(alert.id, alert.triggered_data);
-
-                    // On initial load, show notification with original text (without "NEW")
-                    if (result.isInitialLoad) {
-                        console.log(`Alert ${alert.id}: Initial load, showing notification with ${result.allItems.length} items`);
-                        const clickHandler = isSpreadAllItems
-                            ? 'onclick="ModalManager.showSpreadDetails(' + alert.id + ')"'
-                            : 'onclick="ModalManager.showSpikeDetails(' + alert.id + ')"';
-                        const clickableClass = 'clickable-triggered';
-
-                        html += '<div class="triggered-notification" data-alert-id="' + alert.id + '">' +
-                            '<span class="' + clickableClass + '" ' + clickHandler + '>' + alert.triggered_text + '</span>' +
-                            '</div>';
-                        return; // Continue to next alert
-                    }
-
-                    // Skip notification if no new items (not initial load)
-                    if (result.newCount === 0) {
-                        console.log(`Alert ${alert.id}: No new items, skipping notification`);
-                        return; // Continue to next alert
-                    }
-
-                    // Build custom triggered text with NEW item count
-                    let customText = alert.triggered_text;
-                    // Replace the item count in the text with new count
-                    // Pattern: "X item(s) matched" -> "X NEW item(s) matched"
-                    const matchPattern = /\((\d+) item\(s\) matched\)/;
-                    if (matchPattern.test(customText)) {
-                        customText = customText.replace(matchPattern, `(${result.newCount} NEW item(s) matched)`);
-                    } else {
-                        // If no match pattern found, append the new count info
-                        customText += ` (${result.newCount} NEW item(s))`;
-                    }
-
-                    console.log(`Alert ${alert.id}: ${result.newCount} new items, showing notification`);
-
-                    const clickHandler = isSpreadAllItems
-                        ? 'onclick="ModalManager.showSpreadDetails(' + alert.id + ')"'
-                        : 'onclick="ModalManager.showSpikeDetails(' + alert.id + ')"';
-                    const clickableClass = 'clickable-triggered';
-
-                    html += '<div class="triggered-notification" data-alert-id="' + alert.id + '">' +
-                        '<span class="' + clickableClass + '" ' + clickHandler + '>' + customText + '</span>' +
-                        '</div>';
-                } else {
-                    // Non "all items" alerts - show notification as normal
-                    const clickHandler = isSpreadAllItems
-                        ? 'onclick="ModalManager.showSpreadDetails(' + alert.id + ')"'
-                        : (isSpikeAllItems ? 'onclick="ModalManager.showSpikeDetails(' + alert.id + ')"' : '');
-                    const clickableClass = (isSpreadAllItems || isSpikeAllItems) ? 'clickable-triggered' : '';
-
-                    html += '<div class="triggered-notification" data-alert-id="' + alert.id + '">' +
-                        '<span class="' + clickableClass + '" ' + clickHandler + '>' + alert.triggered_text + '</span>' +
-                        '</div>';
-                }
+                html += '<div class="triggered-notification" data-alert-id="' + notification.id + '">' +
+                    '<span class="' + clickableClass + '" ' + clickHandler + '>' + notification.text + '</span>' +
+                    '<button class="dismiss-btn" onclick="dismissAlert(' + notification.id + ')">&times;</button>' +
+                    '</div>';
             });
 
             return html;
@@ -4587,6 +4675,11 @@
          * Dismisses a triggered alert notification.
          */
         async dismiss(alertId) {
+            // Mark as dismissed in localStorage so it stays dismissed across refreshes
+            AlertsState.dismissNotification(alertId);
+            // Also remove from active notifications cache
+            AlertsState.removeActiveNotification(alertId);
+            
             // Animate out immediately for responsive feedback
             const banner = document.querySelector('.triggered-notification[data-alert-id="' + alertId + '"]');
             if (banner) {
@@ -6479,6 +6572,7 @@
     /**
      * Validates server-rendered triggered notifications against localStorage.
      * Removes notifications for "all items" alerts where we've already seen all items.
+     * Also removes notifications that the user has dismissed.
      * Shows notifications that pass validation by adding 'validated' class.
      */
     function validateServerRenderedNotifications() {
@@ -6492,21 +6586,25 @@
                 return;
             }
 
-            // Check if we have stored items for this alert in localStorage
-            try {
-                const stored = localStorage.getItem('alertTriggeredItems_' + alertId);
-                if (stored) {
-                    // We've seen this alert before - don't show the server-rendered notification
-                    // The JS refresh will handle showing it if there are new items
-                    notification.remove();
-                } else {
-                    // First time seeing this alert - show it and let computeNewTriggeredItems track it
-                    notification.classList.add('validated');
-                }
-            } catch (e) {
-                // On error, show the notification
-                notification.classList.add('validated');
+            // Check if user has dismissed this notification
+            if (AlertsState.isNotificationDismissed(alertId)) {
+                notification.remove();
+                return;
             }
+
+            // Server-rendered notifications should be shown and stored in active cache
+            // Extract data and store it
+            const text = notification.textContent.replace('×', '').trim();
+            AlertsState.setActiveNotification(alertId, {
+                id: alertId,
+                text: text,
+                type: 'unknown',
+                is_all_items: false,
+                isSpreadAllItems: false,
+                isSpikeAllItems: false
+            });
+            
+            notification.classList.add('validated');
         });
     }
 </script>

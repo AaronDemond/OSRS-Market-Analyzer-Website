@@ -11,10 +11,8 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
 
-print("LOADED")
-
 # Allow running the command directly (outside manage.py) by ensuring the project is on sys.path and Django is configured
-BASE_DIR = Path(__file__).resolve().parents[3]  # Goes up from commands -> management -> Website -> OSRSWebsite
+BASE_DIR = Path(__file__).resolve().parents[2]
 if str(BASE_DIR) not in sys.path:
     sys.path.append(str(BASE_DIR))
 
@@ -456,7 +454,6 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f'Notification sent for alert: {alert}'))
         except Exception as e:
             self.stdout.write(self.style.ERROR(f'Failed to send notification: {e}'))
-            print("Sending alert for: " +alert.__str__())
 
     def check_alert(self, alert, all_prices):
         """Check if an alert should be triggered. Returns True/False or list of matching items for all_items spread."""
@@ -685,13 +682,7 @@ class Command(BaseCommand):
                         if result:
                             # Handle all_items spread alerts specially
                             if alert.type == 'spread' and alert.is_all_items and isinstance(result, list):
-                                # Check if data changed before sending notification
-                                old_triggered_data = alert.triggered_data
-                                new_triggered_data = json.dumps(result)
-                                was_triggered = alert.is_triggered
-                                data_changed = old_triggered_data != new_triggered_data
-                                
-                                alert.triggered_data = new_triggered_data
+                                alert.triggered_data = json.dumps(result)
                                 alert.is_triggered = True
                                 # Keep is_active = True for all_items spread alerts
                                 alert.is_dismissed = False  # Reset dismissed so notification shows again
@@ -700,19 +691,11 @@ class Command(BaseCommand):
                                 self.stdout.write(
                                     self.style.WARNING(f'TRIGGERED (all items spread): {len(result)} items found')
                                 )
-                                # Send email notification only if data changed or first trigger
-                                if alert.email_notification and (not was_triggered or data_changed):
+                                # Send email notification if enabled
+                                if alert.email_notification:
                                     self.send_alert_notification(alert, alert.triggered_text())
-                                elif alert.email_notification:
-                                    self.stdout.write(self.style.NOTICE('Skipping notification - data unchanged'))
                             elif alert.type == 'spike' and alert.is_all_items and isinstance(result, list):
-                                # Check if data changed before sending notification
-                                old_triggered_data = alert.triggered_data
-                                new_triggered_data = json.dumps(result)
-                                was_triggered = alert.is_triggered
-                                data_changed = old_triggered_data != new_triggered_data
-                                
-                                alert.triggered_data = new_triggered_data
+                                alert.triggered_data = json.dumps(result)
                                 alert.is_triggered = True
                                 alert.is_dismissed = False
                                 alert.is_active = True  # keep monitoring
@@ -722,25 +705,14 @@ class Command(BaseCommand):
                                 self.stdout.write(
                                     self.style.WARNING(f'TRIGGERED (all items spike): {len(result)} items found')
                                 )
-                                # Send email notification only if data changed or first trigger
-                                if alert.email_notification and (not was_triggered or data_changed):
+                                if alert.email_notification:
                                     self.send_alert_notification(alert, alert.triggered_text())
-                                elif alert.email_notification:
-                                    self.stdout.write(self.style.NOTICE('Skipping notification - data unchanged'))
                             elif alert.type == 'sustained':
-                                # Check if data changed before sending notification
-                                old_triggered_data = alert.triggered_data
-                                new_triggered_data = json.dumps(result) if isinstance(result, list) else alert.triggered_data
-                                was_triggered = alert.is_triggered
-                                data_changed = old_triggered_data != new_triggered_data
-                                
                                 # Sustained alerts stay active for re-triggering
                                 alert.is_triggered = True
                                 alert.is_dismissed = False
                                 alert.is_active = True  # Keep monitoring
                                 alert.triggered_at = timezone.now()
-                                if isinstance(result, list):
-                                    alert.triggered_data = new_triggered_data
                                 alert.save()
                                 
                                 # Log appropriately based on result type
@@ -752,11 +724,8 @@ class Command(BaseCommand):
                                     self.stdout.write(
                                         self.style.WARNING(f'TRIGGERED (sustained move): {alert.item_name or "multiple items"}')
                                     )
-                                # Send email notification only if data changed or first trigger
-                                if alert.email_notification and (not was_triggered or data_changed):
+                                if alert.email_notification:
                                     self.send_alert_notification(alert, alert.triggered_text())
-                                elif alert.email_notification:
-                                    self.stdout.write(self.style.NOTICE('Skipping notification - data unchanged'))
                             else:
                                 alert.is_triggered = True
                                 # Deactivate alert if it's not for all items
@@ -767,11 +736,11 @@ class Command(BaseCommand):
                                 self.stdout.write(
                                     self.style.WARNING(f'TRIGGERED: {alert}')
                                 )
-                                # Send email notification if enabled (single-item alerts only trigger once)
+                                # Send email notification if enabled
                                 if alert.email_notification:
                                     self.send_alert_notification(alert, alert.triggered_text())
             else:
                 self.stdout.write('No alerts to check.')
             
             # Wait 30 seconds before next check
-            time.sleep(5)
+            time.sleep(3)

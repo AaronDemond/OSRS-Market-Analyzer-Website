@@ -1720,6 +1720,24 @@ async function saveChanges() {
         const result = await response.json();
         
         if (result.success) {
+            // Clear notification caches for this alert so it can trigger fresh
+            try {
+                // Remove from dismissed notifications
+                const dismissed = JSON.parse(localStorage.getItem('dismissedAlertNotifications') || '[]');
+                const filteredDismissed = dismissed.filter(id => String(id) !== String(alertId));
+                localStorage.setItem('dismissedAlertNotifications', JSON.stringify(filteredDismissed));
+                
+                // Remove from active notifications
+                const active = JSON.parse(localStorage.getItem('activeAlertNotifications') || '{}');
+                delete active[String(alertId)];
+                localStorage.setItem('activeAlertNotifications', JSON.stringify(active));
+                
+                // Remove tracked triggered items for this alert
+                localStorage.removeItem('alertTriggeredItems_' + alertId);
+            } catch (e) {
+                console.error('Error clearing notification caches:', e);
+            }
+            
             // Redirect with edit_saved parameter to show notification
             window.location.href = window.location.pathname + '?edit_saved=1';
         } else {
