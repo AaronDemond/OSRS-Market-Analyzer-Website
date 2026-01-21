@@ -248,6 +248,9 @@ def flips_data_api(request):
     # Fetch all current prices in one API call
     all_prices = get_all_current_prices()
     
+    # GE tax is 2% capped at 5M per transaction
+    TAX_CAP = 5000000
+    
     # Recalculate unrealized_net for all FlipProfit objects for this user
     for flip_profit in flip_profits_qs:
         current_price = None
@@ -263,7 +266,11 @@ def flips_data_api(request):
                 current_price = low
         
         if current_price and flip_profit.quantity_held > 0:
-            flip_profit.unrealized_net = flip_profit.quantity_held * ((current_price * 0.98) - flip_profit.average_cost)
+            # Calculate unrealized with 5M tax cap
+            gross_value = current_price * flip_profit.quantity_held
+            tax = min(gross_value * 0.02, TAX_CAP)
+            net_value = gross_value - tax
+            flip_profit.unrealized_net = net_value - (flip_profit.average_cost * flip_profit.quantity_held)
         else:
             flip_profit.unrealized_net = 0
         flip_profit.save()
@@ -406,6 +413,9 @@ def recalculate_flip_profit(item_id, user=None):
     quantity_held = 0
     realized_net = 0
     
+    # GE tax is 2% capped at 5M per transaction
+    TAX_CAP = 5000000
+    
     # Replay all flips
     for flip in flips:
         if flip.type == 'buy':
@@ -417,7 +427,11 @@ def recalculate_flip_profit(item_id, user=None):
                 quantity_held = quantity_held + flip.quantity
         
         elif flip.type == 'sell':
-            realized_gain = flip.quantity * ((flip.price * 0.98) - average_cost)
+            # Calculate tax with 5M cap
+            gross_revenue = flip.price * flip.quantity
+            tax = min(gross_revenue * 0.02, TAX_CAP)
+            net_revenue = gross_revenue - tax
+            realized_gain = net_revenue - (average_cost * flip.quantity)
             realized_net = realized_net + realized_gain
             quantity_held = quantity_held - flip.quantity
     
@@ -436,7 +450,11 @@ def recalculate_flip_profit(item_id, user=None):
             current_price = low
     
     if current_price and quantity_held > 0:
-        unrealized_net = quantity_held * ((current_price * 0.98) - average_cost)
+        # Calculate unrealized with 5M tax cap
+        gross_value = current_price * quantity_held
+        tax = min(gross_value * 0.02, TAX_CAP)
+        net_value = gross_value - tax
+        unrealized_net = net_value - (average_cost * quantity_held)
     else:
         unrealized_net = 0
     
