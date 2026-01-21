@@ -208,6 +208,7 @@ body {
 }
 
 .sidebar-footer .user-link span {
+    font-size: 0.5em;
     text-overflow: ellipsis;
     overflow: hidden;
 }

@@ -244,8 +244,23 @@ class Alert(models.Model):
         return f"Item price is now {price_formatted}"
 
 
+class FavoriteGroup(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    name = models.CharField(max_length=100)
+    display_order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['display_order', 'name']
+        unique_together = ['user', 'name']
+
+    def __str__(self):
+        return self.name
+
+
 class FavoriteItem(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    group = models.ForeignKey(FavoriteGroup, on_delete=models.SET_NULL, null=True, blank=True, related_name='items')
     item_id = models.IntegerField()
     item_name = models.CharField(max_length=255)
     added_at = models.DateTimeField(auto_now_add=True)

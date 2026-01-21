@@ -232,12 +232,20 @@ def flips(request):
     
     # Recalculate unrealized_net for all FlipProfit objects for this user
     for flip_profit in flip_profits_qs:
-        current_high = None
+        current_price = None
         if str(flip_profit.item_id) in all_prices:
-            current_high = all_prices[str(flip_profit.item_id)].get('high')
+            price_data = all_prices[str(flip_profit.item_id)]
+            high = price_data.get('high')
+            low = price_data.get('low')
+            if high and low:
+                current_price = (high + low) / 2
+            elif high:
+                current_price = high
+            elif low:
+                current_price = low
         
-        if current_high and flip_profit.quantity_held > 0:
-            flip_profit.unrealized_net = flip_profit.quantity_held * ((current_high * 0.98) - flip_profit.average_cost)
+        if current_price and flip_profit.quantity_held > 0:
+            flip_profit.unrealized_net = flip_profit.quantity_held * ((current_price * 0.98) - flip_profit.average_cost)
         else:
             flip_profit.unrealized_net = 0
         flip_profit.save()
@@ -356,15 +364,23 @@ def add_flip(request):
             flip_profit = FlipProfit.objects.filter(user=user, item_id=item_id).first()
             
             if not flip_profit:
-                # Get current high price from API
-                current_high = None
+                # Get current price from API (average of high and low)
+                current_price = None
                 all_prices = get_all_current_prices()
                 if str(item_id) in all_prices:
-                    current_high = all_prices[str(item_id)].get('high')
+                    price_data = all_prices[str(item_id)]
+                    high = price_data.get('high')
+                    low = price_data.get('low')
+                    if high and low:
+                        current_price = (high + low) / 2
+                    elif high:
+                        current_price = high
+                    elif low:
+                        current_price = low
                 
-                # Calculate unrealized net: quantity_held * ((currentHigh * 0.98) - average_cost)
-                if current_high:
-                    unrealized_net = quantity * ((current_high * 0.98) - price)
+                # Calculate unrealized net: quantity_held * ((current_price * 0.98) - average_cost)
+                if current_price:
+                    unrealized_net = quantity * ((current_price * 0.98) - price)
                 else:
                     unrealized_net = 0
                 
@@ -388,12 +404,20 @@ def add_flip(request):
                 
                 # Recalculate unrealized_net with updated values
                 all_prices = get_all_current_prices()
-                current_high = None
+                current_price = None
                 if str(item_id) in all_prices:
-                    current_high = all_prices[str(item_id)].get('high')
+                    price_data = all_prices[str(item_id)]
+                    high = price_data.get('high')
+                    low = price_data.get('low')
+                    if high and low:
+                        current_price = (high + low) / 2
+                    elif high:
+                        current_price = high
+                    elif low:
+                        current_price = low
                 
-                if current_high:
-                    flip_profit.unrealized_net = new_quantity_held * ((current_high * 0.98) - new_average_cost)
+                if current_price:
+                    flip_profit.unrealized_net = new_quantity_held * ((current_price * 0.98) - new_average_cost)
                 else:
                     flip_profit.unrealized_net = 0
                 
@@ -418,12 +442,20 @@ def add_flip(request):
                 
                 # Recalculate unrealized_net with updated quantity_held
                 all_prices = get_all_current_prices()
-                current_high = None
+                current_price = None
                 if str(item_id) in all_prices:
-                    current_high = all_prices[str(item_id)].get('high')
+                    price_data = all_prices[str(item_id)]
+                    high = price_data.get('high')
+                    low = price_data.get('low')
+                    if high and low:
+                        current_price = (high + low) / 2
+                    elif high:
+                        current_price = high
+                    elif low:
+                        current_price = low
                 
-                if current_high and new_quantity_held > 0:
-                    flip_profit.unrealized_net = new_quantity_held * ((current_high * 0.98) - flip_profit.average_cost)
+                if current_price and new_quantity_held > 0:
+                    flip_profit.unrealized_net = new_quantity_held * ((current_price * 0.98) - flip_profit.average_cost)
                 else:
                     flip_profit.unrealized_net = 0
                 
@@ -464,14 +496,22 @@ def recalculate_flip_profit(item_id, user=None):
             realized_net = realized_net + realized_gain
             quantity_held = quantity_held - flip.quantity
     
-    # Calculate unrealized_net with current prices
+    # Calculate unrealized_net with current prices (average of high and low)
     all_prices = get_all_current_prices()
-    current_high = None
+    current_price = None
     if str(item_id) in all_prices:
-        current_high = all_prices[str(item_id)].get('high')
+        price_data = all_prices[str(item_id)]
+        high = price_data.get('high')
+        low = price_data.get('low')
+        if high and low:
+            current_price = (high + low) / 2
+        elif high:
+            current_price = high
+        elif low:
+            current_price = low
     
-    if current_high and quantity_held > 0:
-        unrealized_net = quantity_held * ((current_high * 0.98) - average_cost)
+    if current_price and quantity_held > 0:
+        unrealized_net = quantity_held * ((current_price * 0.98) - average_cost)
     else:
         unrealized_net = 0
     
@@ -1452,7 +1492,7 @@ def add_favorite(request):
         return JsonResponse({'success': False, 'error': 'POST required'}, status=405)
     
     import json
-    from .models import FavoriteItem
+    from .models import FavoriteItem, FavoriteGroup
     
     user = request.user if request.user.is_authenticated else None
     
@@ -1460,17 +1500,34 @@ def add_favorite(request):
         data = json.loads(request.body)
         item_id = data.get('item_id')
         item_name = data.get('item_name')
+        group_id = data.get('group_id')
+        new_group_name = data.get('new_group_name')
         
         if not item_id or not item_name:
             return JsonResponse({'success': False, 'error': 'item_id and item_name required'}, status=400)
         
+        # Handle group assignment
+        group = None
+        if new_group_name and user:
+            group, _ = FavoriteGroup.objects.get_or_create(user=user, name=new_group_name.strip())
+        elif group_id and user:
+            try:
+                group = FavoriteGroup.objects.get(id=group_id, user=user)
+            except FavoriteGroup.DoesNotExist:
+                pass
+        
         favorite, created = FavoriteItem.objects.get_or_create(
             user=user,
             item_id=item_id,
-            defaults={'item_name': item_name}
+            defaults={'item_name': item_name, 'group': group}
         )
         
-        return JsonResponse({'success': True, 'created': created})
+        # If item already exists but we're adding to a group, update it
+        if not created and group:
+            favorite.group = group
+            favorite.save()
+        
+        return JsonResponse({'success': True, 'created': created, 'group_id': group.id if group else None})
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
     except Exception as e:
@@ -1502,6 +1559,143 @@ def remove_favorite(request):
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def delete_favorite_group(request):
+    """API endpoint to delete a favorite group"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST required'}, status=405)
+    
+    import json
+    from .models import FavoriteGroup, FavoriteItem
+    
+    user = request.user if request.user.is_authenticated else None
+    if not user:
+        return JsonResponse({'success': False, 'error': 'Authentication required'}, status=401)
+    
+    try:
+        data = json.loads(request.body)
+        group_id = data.get('group_id')
+        
+        if not group_id:
+            return JsonResponse({'success': False, 'error': 'group_id required'}, status=400)
+        
+        # Set items in this group to have no group (don't delete them)
+        FavoriteItem.objects.filter(user=user, group_id=group_id).update(group=None)
+        
+        # Delete the group
+        deleted, _ = FavoriteGroup.objects.filter(user=user, id=group_id).delete()
+        
+        return JsonResponse({'success': True, 'deleted': deleted > 0})
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def update_favorite_group(request):
+    """API endpoint to update a favorite's group"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST required'}, status=405)
+    
+    import json
+    from .models import FavoriteGroup, FavoriteItem
+    
+    user = request.user if request.user.is_authenticated else None
+    if not user:
+        return JsonResponse({'success': False, 'error': 'Authentication required'}, status=401)
+    
+    try:
+        data = json.loads(request.body)
+        item_id = data.get('item_id')
+        group_id = data.get('group_id')  # Can be None to remove from group
+        
+        if not item_id:
+            return JsonResponse({'success': False, 'error': 'item_id required'}, status=400)
+        
+        favorite = FavoriteItem.objects.filter(user=user, item_id=item_id).first()
+        if not favorite:
+            return JsonResponse({'success': False, 'error': 'Favorite not found'}, status=404)
+        
+        if group_id:
+            group = FavoriteGroup.objects.filter(user=user, id=group_id).first()
+            if not group:
+                return JsonResponse({'success': False, 'error': 'Group not found'}, status=404)
+            favorite.group = group
+        else:
+            favorite.group = None
+        
+        favorite.save()
+        
+        return JsonResponse({'success': True})
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+def favorites_page(request):
+    """Display the favorites page"""
+    from .models import FavoriteGroup
+    
+    user = request.user if request.user.is_authenticated else None
+    
+    # Get all current prices
+    all_prices = get_all_current_prices()
+    
+    # Get favorite groups for this user
+    groups = []
+    if user:
+        groups = list(FavoriteGroup.objects.filter(user=user).values('id', 'name'))
+    
+    # Get favorite items with current prices (filtered by user)
+    favorites = []
+    ungrouped_favorites = []
+    grouped_favorites = {}  # group_id -> list of favorites
+    
+    favorites_qs = FavoriteItem.objects.filter(user=user).select_related('group') if user else FavoriteItem.objects.none()
+    for fav in favorites_qs:
+        item_id = str(fav.item_id)
+        price_data = all_prices.get(item_id, {})
+        high_price = price_data.get('high')
+        low_price = price_data.get('low')
+        
+        # Calculate spread
+        if high_price and low_price and low_price > 0:
+            spread = high_price - low_price
+            spread_pct = (spread / low_price) * 100
+        else:
+            spread = 0
+            spread_pct = 0
+        
+        fav_data = {
+            'item_id': fav.item_id,
+            'item_name': fav.item_name,
+            'high_price': high_price,
+            'low_price': low_price,
+            'spread': spread,
+            'spread_pct': spread_pct,
+            'group_id': fav.group_id,
+            'group_name': fav.group.name if fav.group else None,
+        }
+        
+        favorites.append(fav_data)
+        
+        if fav.group_id:
+            if fav.group_id not in grouped_favorites:
+                grouped_favorites[fav.group_id] = []
+            grouped_favorites[fav.group_id].append(fav_data)
+        else:
+            ungrouped_favorites.append(fav_data)
+    
+    return render(request, 'favorites.html', {
+        'favorites': favorites,
+        'ungrouped_favorites': ungrouped_favorites,
+        'grouped_favorites': grouped_favorites,
+        'groups': groups,
+    })
 
 
 def auth_page(request):

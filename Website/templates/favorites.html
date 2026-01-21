@@ -1,0 +1,1220 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% load favorites_tags %}
+
+{% block title %}My Favorites - GE Tools{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --bg: #F8F9FA;
+        --surface: #FFFFFF;
+        --surface-2: #F5F6F8;
+        --border: #E5E7EB;
+        --text: #374151;
+        --muted: #6B7280;
+        --primary: #6366F1;
+        --primary-hover: #5558E3;
+        --success: #22C55E;
+        --danger: #EF4444;
+        --warning: #F59E0B;
+    }
+
+    .page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .page-header-left {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+    
+    .page-header-icon {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+    }
+    
+    .page-header-icon svg {
+        width: 24px;
+        height: 24px;
+        color: white;
+    }
+    
+    .page-header-text h1 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--text);
+        margin: 0 0 2px 0;
+        letter-spacing: -0.02em;
+    }
+    
+    .page-header-text p {
+        color: var(--muted);
+        margin: 0;
+        font-size: 0.95rem;
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 12px;
+    }
+
+    .header-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+    }
+
+    .header-btn-primary {
+        background: var(--primary);
+        color: white;
+    }
+
+    .header-btn-primary:hover {
+        background: var(--primary-hover);
+    }
+
+    .header-btn-outline {
+        background: transparent;
+        color: var(--text);
+        border: 1px solid var(--border);
+    }
+
+    .header-btn-outline:hover {
+        background: var(--surface-2);
+    }
+
+    .header-btn svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    /* Group Section */
+    .favorites-section {
+        margin-bottom: 32px;
+    }
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .section-title svg {
+        width: 18px;
+        height: 18px;
+        color: var(--muted);
+    }
+
+    .section-count {
+        font-size: 0.85rem;
+        color: var(--muted);
+        font-weight: 400;
+    }
+
+    .section-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .section-action-btn {
+        background: none;
+        border: none;
+        color: var(--muted);
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        transition: all 0.2s;
+    }
+
+    .section-action-btn:hover {
+        background: var(--surface-2);
+        color: var(--text);
+    }
+
+    .section-action-btn.delete:hover {
+        background: rgba(239, 68, 68, 0.1);
+        color: var(--danger);
+    }
+
+    /* Favorites Grid */
+    .favorites-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 16px;
+    }
+    
+    .favorite-item {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        position: relative;
+        transition: all 0.15s;
+    }
+    
+    .favorite-item:hover {
+        border-color: var(--primary);
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
+    }
+    
+    .favorite-item-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .favorite-item-name {
+        font-weight: 600;
+        color: var(--text);
+        font-size: 1rem;
+        text-decoration: none;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .favorite-item-name:hover {
+        color: var(--primary);
+    }
+    
+    .favorite-remove {
+        background: none;
+        border: none;
+        color: var(--muted);
+        cursor: pointer;
+        padding: 4px;
+        line-height: 1;
+        font-size: 20px;
+        opacity: 0;
+        transition: opacity 0.15s, color 0.15s;
+    }
+    
+    .favorite-item:hover .favorite-remove {
+        opacity: 1;
+    }
+    
+    .favorite-remove:hover {
+        color: #DC2626;
+    }
+    
+    .favorite-prices {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.9rem;
+    }
+    
+    .favorite-price {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .favorite-price-label {
+        color: var(--muted);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        margin-bottom: 2px;
+    }
+    
+    .favorite-price-value {
+        color: var(--text);
+        font-weight: 600;
+        font-size: 1rem;
+    }
+    
+    .favorite-price-value.high { color: #16A34A; }
+    .favorite-price-value.low { color: #DC2626; }
+    
+    .favorite-spread {
+        font-size: 0.85rem;
+        color: var(--muted);
+        text-align: center;
+        padding-top: 8px;
+        border-top: 1px solid var(--border);
+    }
+    
+    .favorite-spread strong {
+        color: var(--primary);
+    }
+
+    /* Add Item Card */
+    .add-item-card {
+        background: transparent;
+        border: 2px dashed var(--border);
+        border-radius: 12px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.15s;
+        min-height: 130px;
+    }
+
+    .add-item-card:hover {
+        border-color: var(--primary);
+        background: rgba(99, 102, 241, 0.03);
+    }
+
+    .add-item-card svg {
+        width: 32px;
+        height: 32px;
+        color: var(--muted);
+        margin-bottom: 8px;
+    }
+
+    .add-item-card:hover svg {
+        color: var(--primary);
+    }
+
+    .add-item-card span {
+        font-size: 0.9rem;
+        color: var(--muted);
+        font-weight: 500;
+    }
+
+    .add-item-card:hover span {
+        color: var(--primary);
+    }
+
+    /* Add Favorite Modal */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .modal-overlay.show {
+        display: flex;
+    }
+    
+    .modal-content {
+        background: var(--surface);
+        border-radius: 12px;
+        width: 90%;
+        max-width: 440px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+    
+    .modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border);
+    }
+    
+    .modal-header h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+    
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 24px;
+        color: var(--muted);
+        cursor: pointer;
+        line-height: 1;
+    }
+    
+    .modal-close:hover {
+        color: var(--text);
+    }
+    
+    .modal-body {
+        padding: 20px;
+    }
+
+    .form-group {
+        margin-bottom: 16px;
+    }
+
+    .form-group:last-child {
+        margin-bottom: 0;
+    }
+
+    .form-label {
+        display: block;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--text);
+        margin-bottom: 8px;
+    }
+    
+    .search-input-wrapper {
+        position: relative;
+    }
+    
+    .form-input {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 1rem;
+        color: var(--text);
+        background: var(--surface);
+    }
+    
+    .form-input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+    
+    .search-suggestions {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        margin-top: 4px;
+        max-height: 200px;
+        overflow-y: auto;
+        display: none;
+        z-index: 10;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .search-suggestions.show {
+        display: block;
+    }
+    
+    .search-suggestion {
+        padding: 10px 16px;
+        cursor: pointer;
+        font-size: 0.9rem;
+    }
+    
+    .search-suggestion:hover,
+    .search-suggestion.highlighted {
+        background: var(--surface-2);
+    }
+    
+    .search-suggestion.highlighted {
+        background: rgba(99, 102, 241, 0.1);
+        color: var(--primary);
+    }
+    
+    .selected-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--surface-2);
+        padding: 10px 14px;
+        border-radius: 8px;
+    }
+    
+    .selected-item-name {
+        font-weight: 500;
+        color: var(--text);
+    }
+    
+    .selected-item-clear {
+        background: none;
+        border: none;
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 18px;
+        line-height: 1;
+    }
+    
+    .selected-item-clear:hover {
+        color: var(--danger);
+    }
+
+    .form-select {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 1rem;
+        color: var(--text);
+        background: var(--surface);
+        cursor: pointer;
+    }
+
+    .form-select:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    .new-group-input {
+        margin-top: 8px;
+    }
+    
+    .modal-submit {
+        width: 100%;
+        padding: 12px 16px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 16px;
+        transition: background 0.2s;
+    }
+    
+    .modal-submit:hover:not(:disabled) {
+        background: var(--primary-hover);
+    }
+    
+    .modal-submit:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* Delete Confirmation Modal */
+    .delete-confirm-content {
+        padding: 24px;
+        text-align: center;
+    }
+    
+    .delete-confirm-icon {
+        width: 48px;
+        height: 48px;
+        background: rgba(239, 68, 68, 0.1);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 16px;
+    }
+    
+    .delete-confirm-icon svg {
+        width: 24px;
+        height: 24px;
+        color: var(--danger);
+    }
+    
+    .delete-confirm-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin: 0 0 8px 0;
+    }
+    
+    .delete-confirm-message {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin: 0 0 20px 0;
+    }
+    
+    .delete-confirm-item-name {
+        font-weight: 600;
+        color: var(--text);
+    }
+    
+    .delete-confirm-buttons {
+        display: flex;
+        gap: 12px;
+    }
+    
+    .delete-confirm-btn {
+        flex: 1;
+        padding: 10px 16px;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        transition: all 0.2s;
+    }
+    
+    .delete-confirm-btn.cancel {
+        background: var(--surface-2);
+        color: var(--text);
+    }
+    
+    .delete-confirm-btn.cancel:hover {
+        background: var(--border);
+    }
+    
+    .delete-confirm-btn.delete {
+        background: var(--danger);
+        color: white;
+    }
+    
+    .delete-confirm-btn.delete:hover {
+        background: #DC2626;
+    }
+
+    /* Manage Groups Modal */
+    .groups-list {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    .group-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        margin-bottom: 8px;
+    }
+
+    .group-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .group-item-name {
+        font-weight: 500;
+        color: var(--text);
+    }
+
+    .group-item-count {
+        font-size: 0.85rem;
+        color: var(--muted);
+        margin-left: 8px;
+    }
+
+    .group-delete-btn {
+        background: none;
+        border: none;
+        color: var(--muted);
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+    }
+
+    .group-delete-btn:hover {
+        background: rgba(239, 68, 68, 0.1);
+        color: var(--danger);
+    }
+
+    .no-groups-message {
+        text-align: center;
+        color: var(--muted);
+        padding: 20px;
+    }
+
+    @media (max-width: 640px) {
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .favorites-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .header-actions {
+            width: 100%;
+        }
+
+        .header-btn {
+            flex: 1;
+            justify-content: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left">
+        <div class="page-header-icon">
+            <svg fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+            </svg>
+        </div>
+        <div class="page-header-text">
+            <h1>My Favorites</h1>
+            <p>Track your favorite items and their prices</p>
+        </div>
+    </div>
+    <div class="header-actions">
+        {% if groups %}
+        <button class="header-btn header-btn-outline" onclick="openManageGroupsModal()">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+            </svg>
+            Manage Groups
+        </button>
+        {% endif %}
+        <button class="header-btn header-btn-primary" onclick="openAddFavoriteModal()">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Add Item
+        </button>
+    </div>
+</div>
+
+{% for group in groups %}
+{% with group_items=grouped_favorites|default:None %}
+{% if group.id in grouped_favorites %}
+<div class="favorites-section" data-group-id="{{ group.id }}">
+    <div class="section-header">
+        <div class="section-title">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+            </svg>
+            {{ group.name }}
+            <span class="section-count">({{ grouped_favorites|get_item:group.id|length }} items)</span>
+        </div>
+    </div>
+    <div class="favorites-grid">
+        {% for fav in grouped_favorites|get_item:group.id %}
+        <div class="favorite-item" data-item-id="{{ fav.item_id }}" data-group-id="{{ fav.group_id }}">
+            <div class="favorite-item-header">
+                <a href="{% url 'item_detail' fav.item_id %}" class="favorite-item-name">{{ fav.item_name }}</a>
+                <button class="favorite-remove" onclick="removeFavorite({{ fav.item_id }}, '{{ fav.item_name|escapejs }}')" title="Remove">×</button>
+            </div>
+            <div class="favorite-prices">
+                <div class="favorite-price">
+                    <span class="favorite-price-label">High</span>
+                    <span class="favorite-price-value high">{% if fav.high_price %}{{ fav.high_price|intcomma }}{% else %}-{% endif %}</span>
+                </div>
+                <div class="favorite-price">
+                    <span class="favorite-price-label">Low</span>
+                    <span class="favorite-price-value low">{% if fav.low_price %}{{ fav.low_price|intcomma }}{% else %}-{% endif %}</span>
+                </div>
+            </div>
+            <div class="favorite-spread">
+                Spread: <strong>{{ fav.spread|floatformat:0|intcomma }}</strong> ({{ fav.spread_pct|floatformat:1 }}%)
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+{% endwith %}
+{% endfor %}
+
+{% if ungrouped_favorites or not favorites %}
+<div class="favorites-section">
+    {% if groups and ungrouped_favorites %}
+    <div class="section-header">
+        <div class="section-title">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
+            </svg>
+            Ungrouped
+            <span class="section-count">({{ ungrouped_favorites|length }} items)</span>
+        </div>
+    </div>
+    {% endif %}
+    <div class="favorites-grid">
+        {% for fav in ungrouped_favorites %}
+        <div class="favorite-item" data-item-id="{{ fav.item_id }}">
+            <div class="favorite-item-header">
+                <a href="{% url 'item_detail' fav.item_id %}" class="favorite-item-name">{{ fav.item_name }}</a>
+                <button class="favorite-remove" onclick="removeFavorite({{ fav.item_id }}, '{{ fav.item_name|escapejs }}')" title="Remove">×</button>
+            </div>
+            <div class="favorite-prices">
+                <div class="favorite-price">
+                    <span class="favorite-price-label">High</span>
+                    <span class="favorite-price-value high">{% if fav.high_price %}{{ fav.high_price|intcomma }}{% else %}-{% endif %}</span>
+                </div>
+                <div class="favorite-price">
+                    <span class="favorite-price-label">Low</span>
+                    <span class="favorite-price-value low">{% if fav.low_price %}{{ fav.low_price|intcomma }}{% else %}-{% endif %}</span>
+                </div>
+            </div>
+            <div class="favorite-spread">
+                Spread: <strong>{{ fav.spread|floatformat:0|intcomma }}</strong> ({{ fav.spread_pct|floatformat:1 }}%)
+            </div>
+        </div>
+        {% endfor %}
+        
+        <!-- Add Item Card -->
+        <div class="add-item-card" onclick="openAddFavoriteModal()">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            <span>Add Item</span>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Add Favorite Modal -->
+<div class="modal-overlay" id="addFavoriteModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Add Favorite Item</h3>
+            <button class="modal-close" onclick="closeAddFavoriteModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">Item</label>
+                <div class="search-input-wrapper">
+                    <input type="text" class="form-input" id="addFavoriteInput" placeholder="Search for an item..." autocomplete="off">
+                    <div class="search-suggestions" id="addFavoriteSuggestions"></div>
+                </div>
+                <div class="selected-item" id="addFavoriteSelected" style="display: none;">
+                    <span class="selected-item-name" id="selectedItemName"></span>
+                    <button class="selected-item-clear" onclick="clearSelectedItem()">×</button>
+                </div>
+                <input type="hidden" id="selectedItemId" value="">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Group (Optional)</label>
+                <select class="form-select" id="groupSelect" onchange="handleGroupChange()">
+                    <option value="">No Group</option>
+                    {% for group in groups %}
+                    <option value="{{ group.id }}">{{ group.name }}</option>
+                    {% endfor %}
+                    <option value="__new__">+ Create New Group</option>
+                </select>
+                <input type="text" class="form-input new-group-input" id="newGroupInput" placeholder="Enter group name..." style="display: none;">
+            </div>
+            
+            <button type="button" class="modal-submit" id="addFavoriteSubmit" onclick="submitFavorite()" disabled>Add to Favorites</button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal-overlay" id="deleteConfirmModal">
+    <div class="modal-content">
+        <div class="delete-confirm-content">
+            <div class="delete-confirm-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+            </div>
+            <h4 class="delete-confirm-title">Remove from Favorites?</h4>
+            <p class="delete-confirm-message">
+                Are you sure you want to remove <span class="delete-confirm-item-name" id="deleteItemName"></span> from your favorites?
+            </p>
+            <div class="delete-confirm-buttons">
+                <button class="delete-confirm-btn cancel" onclick="closeDeleteModal()">Cancel</button>
+                <button class="delete-confirm-btn delete" id="confirmDeleteBtn">Remove</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Manage Groups Modal -->
+<div class="modal-overlay" id="manageGroupsModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Manage Groups</h3>
+            <button class="modal-close" onclick="closeManageGroupsModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="groups-list" id="groupsList">
+                {% if groups %}
+                    {% for group in groups %}
+                    <div class="group-item" data-group-id="{{ group.id }}">
+                        <div>
+                            <span class="group-item-name">{{ group.name }}</span>
+                            <span class="group-item-count">
+                                {% with count=grouped_favorites|get_item:group.id|length|default:0 %}
+                                ({{ count }} item{{ count|pluralize }})
+                                {% endwith %}
+                            </span>
+                        </div>
+                        <button class="group-delete-btn" onclick="deleteGroup({{ group.id }}, '{{ group.name|escapejs }}')">Delete</button>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="no-groups-message">No groups created yet</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Group Confirmation Modal -->
+<div class="modal-overlay" id="deleteGroupModal">
+    <div class="modal-content">
+        <div class="delete-confirm-content">
+            <div class="delete-confirm-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+            </div>
+            <h4 class="delete-confirm-title">Delete Group?</h4>
+            <p class="delete-confirm-message">
+                Are you sure you want to delete the group <span class="delete-confirm-item-name" id="deleteGroupName"></span>? Items in this group will become ungrouped.
+            </p>
+            <div class="delete-confirm-buttons">
+                <button class="delete-confirm-btn cancel" onclick="closeDeleteGroupModal()">Cancel</button>
+                <button class="delete-confirm-btn delete" id="confirmDeleteGroupBtn">Delete Group</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('addFavoriteModal');
+    const input = document.getElementById('addFavoriteInput');
+    const suggestions = document.getElementById('addFavoriteSuggestions');
+    let debounceTimer;
+    let highlightedIndex = -1;
+    
+    // Input search
+    input.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        const query = this.value.trim();
+        highlightedIndex = -1;
+        
+        if (query.length < 2) {
+            suggestions.classList.remove('show');
+            return;
+        }
+        
+        debounceTimer = setTimeout(() => {
+            fetch(`/api/items/?q=${encodeURIComponent(query)}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (Array.isArray(data) && data.length > 0) {
+                        suggestions.innerHTML = data.slice(0, 8).map(item => 
+                            `<div class="search-suggestion" data-id="${item.id}" data-name="${item.name}">${item.name}</div>`
+                        ).join('');
+                        suggestions.classList.add('show');
+                        highlightedIndex = -1;
+                    } else {
+                        suggestions.classList.remove('show');
+                    }
+                })
+                .catch(err => {
+                    console.error('Search error:', err);
+                    suggestions.classList.remove('show');
+                });
+        }, 200);
+    });
+    
+    // Keyboard navigation
+    input.addEventListener('keydown', function(e) {
+        const items = suggestions.querySelectorAll('.search-suggestion');
+        
+        if (e.key === 'ArrowDown' || (e.key === 'Tab' && !e.shiftKey)) {
+            if (suggestions.classList.contains('show') && items.length > 0) {
+                e.preventDefault();
+                highlightedIndex = Math.min(highlightedIndex + 1, items.length - 1);
+                updateHighlight(items);
+            }
+        } else if (e.key === 'ArrowUp' || (e.key === 'Tab' && e.shiftKey)) {
+            if (suggestions.classList.contains('show') && items.length > 0) {
+                e.preventDefault();
+                highlightedIndex = Math.max(highlightedIndex - 1, 0);
+                updateHighlight(items);
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (highlightedIndex >= 0 && items[highlightedIndex]) {
+                const item = items[highlightedIndex];
+                selectItem(item.dataset.id, item.dataset.name);
+            }
+        } else if (e.key === 'Escape') {
+            closeAddFavoriteModal();
+        }
+    });
+    
+    function updateHighlight(items) {
+        items.forEach((item, idx) => {
+            if (idx === highlightedIndex) {
+                item.classList.add('highlighted');
+                item.scrollIntoView({ block: 'nearest' });
+            } else {
+                item.classList.remove('highlighted');
+            }
+        });
+    }
+    
+    // Suggestion click
+    suggestions.addEventListener('click', function(e) {
+        if (e.target.classList.contains('search-suggestion')) {
+            selectItem(e.target.dataset.id, e.target.dataset.name);
+        }
+    });
+    
+    // Close modals on background click
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        overlay.addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.classList.remove('show');
+            }
+        });
+    });
+    
+    // Global escape key handler
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.modal-overlay.show').forEach(modal => {
+                modal.classList.remove('show');
+            });
+        }
+    });
+});
+
+function selectItem(itemId, itemName) {
+    const input = document.getElementById('addFavoriteInput');
+    const suggestions = document.getElementById('addFavoriteSuggestions');
+    const selectedDiv = document.getElementById('addFavoriteSelected');
+    const selectedName = document.getElementById('selectedItemName');
+    const selectedIdInput = document.getElementById('selectedItemId');
+    const submitBtn = document.getElementById('addFavoriteSubmit');
+    
+    input.style.display = 'none';
+    suggestions.classList.remove('show');
+    selectedDiv.style.display = 'flex';
+    selectedName.textContent = itemName;
+    selectedIdInput.value = itemId;
+    selectedIdInput.dataset.name = itemName;
+    submitBtn.disabled = false;
+}
+
+function clearSelectedItem() {
+    const input = document.getElementById('addFavoriteInput');
+    const selectedDiv = document.getElementById('addFavoriteSelected');
+    const selectedIdInput = document.getElementById('selectedItemId');
+    const submitBtn = document.getElementById('addFavoriteSubmit');
+    
+    input.style.display = 'block';
+    input.value = '';
+    input.focus();
+    selectedDiv.style.display = 'none';
+    selectedIdInput.value = '';
+    selectedIdInput.dataset.name = '';
+    submitBtn.disabled = true;
+}
+
+function handleGroupChange() {
+    const select = document.getElementById('groupSelect');
+    const newGroupInput = document.getElementById('newGroupInput');
+    
+    if (select.value === '__new__') {
+        newGroupInput.style.display = 'block';
+        newGroupInput.focus();
+    } else {
+        newGroupInput.style.display = 'none';
+        newGroupInput.value = '';
+    }
+}
+
+function submitFavorite() {
+    const selectedIdInput = document.getElementById('selectedItemId');
+    const itemId = selectedIdInput.value;
+    const itemName = selectedIdInput.dataset.name;
+    const groupSelect = document.getElementById('groupSelect');
+    const newGroupInput = document.getElementById('newGroupInput');
+    
+    if (!itemId || !itemName) return;
+    
+    const payload = {
+        item_id: parseInt(itemId),
+        item_name: itemName
+    };
+    
+    if (groupSelect.value === '__new__' && newGroupInput.value.trim()) {
+        payload.new_group_name = newGroupInput.value.trim();
+    } else if (groupSelect.value && groupSelect.value !== '__new__') {
+        payload.group_id = parseInt(groupSelect.value);
+    }
+    
+    const csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+    
+    fetch('/api/favorites/add/', {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            closeAddFavoriteModal();
+            location.reload();
+        } else {
+            alert('Failed to add favorite: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(err => {
+        console.error('Error adding favorite:', err);
+        alert('Failed to add favorite. Please try again.');
+    });
+}
+
+function openAddFavoriteModal() {
+    const modal = document.getElementById('addFavoriteModal');
+    const input = document.getElementById('addFavoriteInput');
+    const groupSelect = document.getElementById('groupSelect');
+    const newGroupInput = document.getElementById('newGroupInput');
+    
+    modal.classList.add('show');
+    clearSelectedItem();
+    groupSelect.value = '';
+    newGroupInput.style.display = 'none';
+    newGroupInput.value = '';
+    input.focus();
+}
+
+function closeAddFavoriteModal() {
+    document.getElementById('addFavoriteModal').classList.remove('show');
+    document.getElementById('addFavoriteSuggestions').classList.remove('show');
+    clearSelectedItem();
+}
+
+function removeFavorite(itemId, itemName) {
+    const deleteModal = document.getElementById('deleteConfirmModal');
+    const deleteItemName = document.getElementById('deleteItemName');
+    const confirmBtn = document.getElementById('confirmDeleteBtn');
+    
+    deleteItemName.textContent = itemName;
+    deleteModal.classList.add('show');
+    
+    confirmBtn.onclick = function() {
+        doRemoveFavorite(itemId);
+    };
+}
+
+function closeDeleteModal() {
+    document.getElementById('deleteConfirmModal').classList.remove('show');
+}
+
+function doRemoveFavorite(itemId) {
+    const csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+    
+    fetch('/api/favorites/remove/', {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({ item_id: itemId })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            closeDeleteModal();
+            const item = document.querySelector(`.favorite-item[data-item-id="${itemId}"]`);
+            if (item) {
+                item.remove();
+            }
+            // Check if we need to reload (e.g., if section is now empty)
+            checkEmptySections();
+        }
+    })
+    .catch(err => {
+        console.error('Error removing favorite:', err);
+        closeDeleteModal();
+    });
+}
+
+function checkEmptySections() {
+    document.querySelectorAll('.favorites-section').forEach(section => {
+        const items = section.querySelectorAll('.favorite-item');
+        if (items.length === 0 && !section.querySelector('.add-item-card')) {
+            section.remove();
+        }
+    });
+}
+
+function openManageGroupsModal() {
+    document.getElementById('manageGroupsModal').classList.add('show');
+}
+
+function closeManageGroupsModal() {
+    document.getElementById('manageGroupsModal').classList.remove('show');
+}
+
+function deleteGroup(groupId, groupName) {
+    closeManageGroupsModal();
+    
+    const modal = document.getElementById('deleteGroupModal');
+    const nameSpan = document.getElementById('deleteGroupName');
+    const confirmBtn = document.getElementById('confirmDeleteGroupBtn');
+    
+    nameSpan.textContent = groupName;
+    modal.classList.add('show');
+    
+    confirmBtn.onclick = function() {
+        doDeleteGroup(groupId);
+    };
+}
+
+function closeDeleteGroupModal() {
+    document.getElementById('deleteGroupModal').classList.remove('show');
+}
+
+function doDeleteGroup(groupId) {
+    const csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+    
+    fetch('/api/favorites/groups/delete/', {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({ group_id: groupId })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            closeDeleteGroupModal();
+            location.reload();
+        } else {
+            alert('Failed to delete group: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(err => {
+        console.error('Error deleting group:', err);
+        closeDeleteGroupModal();
+    });
+}
+</script>
+{% endblock %}
