@@ -100,6 +100,7 @@ class Alert(models.Model):
     ]
     
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    alert_name = models.CharField(max_length=255, default='Default')
     type = models.CharField(max_length=10, null=True, choices=ALERT_CHOICES, default='above')
     direction = models.CharField(max_length=10, choices=DIRECTION_CHOICES, blank=True, null=True)
     # unused field

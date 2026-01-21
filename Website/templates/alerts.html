@@ -178,6 +178,22 @@
                     How do alerts work?
                 </button>
             </div>
+            
+            <div class="form-group">
+                <label for="alert-name-type">Alert Name</label>
+                <select name="alert_name_type" id="alert-name-type" onchange="handleAlertNameTypeChange()">
+                    <option value="default" selected>Default name</option>
+                    <option value="custom">Custom</option>
+                </select>
+                <small class="form-hint">Choose a name for your alert</small>
+            </div>
+            
+            <div class="form-group" id="custom-name-group" style="display: none;">
+                <label for="alert-custom-name">Custom Name</label>
+                <input type="text" name="alert_name" id="alert-custom-name" maxlength="255" placeholder="Enter alert name...">
+                <small class="form-hint">Enter a custom name for this alert</small>
+            </div>
+            
             <div class="form-group">
                 <label for="alert-group">Group</label>
                 <select name="group_id" id="alert-group">
@@ -3425,11 +3441,16 @@ const AlertsUI = {
             iconHtml = '<span class="alert-icon-placeholder">🔔</span>';
         }
 
+        // Determine display text - use custom name if not 'Default'
+        const displayText = (alert.alert_name && alert.alert_name !== 'Default') 
+            ? alert.alert_name 
+            : alert.text;
+
         return '<li class="alert-item clickable-alert" data-alert-id="' + alert.id + '" data-alert-text="' + (alert.text || '').replace(/"/g, '&quot;') + '" onclick="navigateToAlertDetail(event, ' + alert.id + ')">' +
                '<input type="checkbox" class="alert-checkbox" onclick="event.stopPropagation()">' +
                iconHtml +
                '<div class="alert-content">' +
-               '<span class="alert-text">' + alert.text + '</span>' +
+               '<span class="alert-text">' + displayText + '</span>' +
                sortInfoHtml +
                '</div>' +
                triggeredBadge +
@@ -5987,6 +6008,22 @@ const EventManager = {
 /**
  * These functions are exposed globally for use in onclick handlers in HTML.
  */
+
+// Alert name type handler
+function handleAlertNameTypeChange() {
+    const nameType = document.getElementById('alert-name-type').value;
+    const customNameGroup = document.getElementById('custom-name-group');
+    const customNameInput = document.getElementById('alert-custom-name');
+    
+    if (nameType === 'custom') {
+        customNameGroup.style.display = '';
+        customNameInput.required = true;
+    } else {
+        customNameGroup.style.display = 'none';
+        customNameInput.required = false;
+        customNameInput.value = '';
+    }
+}
 
 // Form handlers
 function handleAlertTypeChange() {

@@ -909,7 +909,7 @@
                 {% endif %}
             </div>
         </div>
-        <h1 class="alert-title" id="alertTitle">{{ alert }}</h1>
+        <h1 class="alert-title" id="alertTitle">{% if alert.alert_name and alert.alert_name != 'Default' %}{{ alert.alert_name }}{% else %}{{ alert }}{% endif %}</h1>
     </div>
     
     <!-- Status Notification Container -->

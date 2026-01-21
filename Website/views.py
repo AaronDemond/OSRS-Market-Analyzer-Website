@@ -734,6 +734,12 @@ def create_alert(request):
         # Get current user
         user = request.user if request.user.is_authenticated else None
         
+        alert_name_type = request.POST.get('alert_name_type', 'default')
+        alert_name = request.POST.get('alert_name', '').strip()
+        # If default selected or no custom name provided, use 'Default'
+        if alert_name_type == 'default' or not alert_name:
+            alert_name = 'Default'
+        
         alert_type = request.POST.get('type')
         item_name = request.POST.get('item_name')
         item_id = request.POST.get('item_id')
@@ -819,6 +825,7 @@ def create_alert(request):
         
         alert = Alert.objects.create(
             user=user,
+            alert_name=alert_name,
             type=alert_type,
             item_name=final_item_name,
             item_id=final_item_id,
@@ -900,6 +907,7 @@ def alerts_api(request):
         alert_dict = {
             'id': alert.id,
             'text': str(alert),
+            'alert_name': alert.alert_name,
             'is_triggered': alert.is_triggered,
             'is_active': alert.is_active,
             'triggered_text': alert.triggered_text() if alert.is_triggered else None,
