@@ -408,7 +408,7 @@
         </div>
         <div class="modal-buttons">
             <button type="button" class="btn-save" onclick="GroupManager.save()">Save</button>
-            <button type="button" class="btn-cancel" onclick="GroupManager.deleteSelectedGroups()" style="margin: 0 auto;">Delete Group(s)</button>
+            <button type="button" class="btn-delete-group" onclick="GroupManager.deleteSelectedGroups()">Delete Group(s)</button>
             <button type="button" class="btn-cancel" onclick="GroupManager.close()">Cancel</button>
         </div>
     </div>
@@ -1961,38 +1961,57 @@
     
     .btn-save {
         flex: 1;
-        background: linear-gradient(135deg, #22C55E 0%, #16A34A 100%);
-        color: white;
-        border: none;
-        padding: 12px 20px;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 15px;
-        font-weight: 600;
-        transition: all 0.15s;
-    }
-    
-    .btn-save:hover {
-        background: linear-gradient(135deg, #16A34A 0%, #15803D 100%);
-        transform: translateY(-1px);
-    }
-    
-    .btn-cancel {
-        flex: 1;
-        background: var(--surface-2);
+        background: var(--surface);
         color: var(--text);
         border: 1px solid var(--border);
         padding: 12px 20px;
         border-radius: 8px;
         cursor: pointer;
-        font-size: 15px;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.15s;
+    }
+    
+    .btn-save:hover {
+        background: var(--surface-2);
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+    
+    .btn-cancel {
+        flex: 1;
+        background: var(--surface);
+        color: var(--text);
+        border: 1px solid var(--border);
+        padding: 12px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
         font-weight: 500;
         transition: all 0.15s;
     }
     
     .btn-cancel:hover {
-        background: var(--surface);
+        background: var(--surface-2);
         border-color: var(--muted);
+    }
+
+    .btn-delete-group {
+        flex: 1;
+        background: var(--surface);
+        color: #DC2626;
+        border: 1px solid var(--border);
+        padding: 12px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.15s;
+    }
+
+    .btn-delete-group:hover {
+        background: rgba(220, 38, 38, 0.1);
+        border-color: #DC2626;
     }
     
     .btn-clear {
@@ -2097,7 +2116,12 @@
         display: flex;
         flex-wrap: wrap;
         gap: 10px;
-        padding: 5px 0;
+        padding: 10px 0;
+    }
+
+    .group-list.pill-padding {
+        gap: 12px;
+        padding: 12px 0;
     }
     
     .group-checkbox-label {

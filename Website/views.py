@@ -90,7 +90,7 @@ def test(request):
 
 
 def home(request):
-    from .models import FlipProfit, Alert, FavoriteItem, Flip
+    from .models import FlipProfit, Alert, Flip
     from django.db.models import Sum
     from datetime import datetime, timedelta
     from django.utils import timezone
@@ -161,32 +161,6 @@ def home(request):
     total_alerts = alerts_qs.filter(is_active=True).count()
     triggered_alerts = alerts_qs.filter(is_triggered=True, is_dismissed=False).count()
     
-    # Get favorite items with current prices (filtered by user)
-    favorites = []
-    favorites_qs = FavoriteItem.objects.filter(user=user) if user else FavoriteItem.objects.none()
-    for fav in favorites_qs[:12]:
-        item_id = str(fav.item_id)
-        price_data = all_prices.get(item_id, {})
-        high_price = price_data.get('high')
-        low_price = price_data.get('low')
-        
-        # Calculate spread
-        if high_price and low_price and low_price > 0:
-            spread = high_price - low_price
-            spread_pct = (spread / low_price) * 100
-        else:
-            spread = 0
-            spread_pct = 0
-            
-        favorites.append({
-            'item_id': fav.item_id,
-            'item_name': fav.item_name,
-            'high_price': high_price,
-            'low_price': low_price,
-            'spread': spread,
-            'spread_pct': spread_pct,
-        })
-    
     # Get recent activity (last 5 flips, filtered by user)
     flips_qs = Flip.objects.filter(user=user) if user else Flip.objects.none()
     recent_flips = flips_qs.order_by('-date')[:5]
@@ -210,7 +184,6 @@ def home(request):
         'recent_alerts': alert_list,
         'total_alerts': total_alerts,
         'triggered_alerts': triggered_alerts,
-        'favorites': favorites,
         'recent_activity': recent_activity,
     })
 

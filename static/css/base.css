@@ -236,6 +236,68 @@ body {
     width: 0;
 }
 
+/* User section at top of sidebar */
+.sidebar-user-mobile {
+    display: block;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-user-mobile .nav-link {
+    display: flex;
+    align-items: center;
+    padding: 0.6rem 0.75rem;
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.sidebar-user-mobile .nav-link:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.sidebar-user-mobile .nav-link .nav-icon {
+    width: 20px;
+    height: 20px;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+.sidebar-user-mobile .user-link span {
+    font-size: 0.55rem !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sidebar-user-mobile .logout-link {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.sidebar-user-mobile .logout-link:hover {
+    color: #ff6b6b;
+    background: rgba(255, 107, 107, 0.1);
+}
+
+.sidebar.collapsed .sidebar-user-mobile {
+    padding: 0.5rem;
+}
+
+.sidebar.collapsed .sidebar-user-mobile .nav-link {
+    justify-content: center;
+    padding: 0.6rem;
+}
+
+.sidebar.collapsed .sidebar-user-mobile .nav-link .nav-icon {
+    margin-right: 0;
+}
+
+.sidebar.collapsed .sidebar-user-mobile .nav-link span {
+    display: none;
+}
+
 /* Mobile Responsive Styles */
 @media (max-width: 768px) {
     .sidebar {

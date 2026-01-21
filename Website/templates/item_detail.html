@@ -5,6 +5,93 @@
 
 {% block extra_css %}
 <style>
+    :root {
+        --surface: #FFFFFF;
+        --surface-2: #F5F6F8;
+        --border: #E5E7EB;
+        --text: #374151;
+        --muted: #6B7280;
+        --primary: #6366F1;
+        --danger: #DC2626;
+    }
+
+    .item-header {
+        margin-bottom: 24px;
+    }
+
+    .item-header h1 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #1a1a2e;
+        margin: 0 0 8px 0;
+    }
+
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 500;
+        margin-bottom: 20px;
+        transition: all 0.2s ease;
+    }
+
+    .back-link:hover {
+        color: #764ba2;
+        transform: translateX(-3px);
+    }
+
+    .back-link svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+
+    .action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 14px;
+        background: var(--surface);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-weight: 500;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.15s;
+        text-decoration: none;
+    }
+
+    .action-btn:hover {
+        background: var(--surface-2);
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+
+    .action-btn svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .action-btn.edit-active {
+        background: rgba(99, 102, 241, 0.1);
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+
+    .action-btn.delete-active {
+        background: rgba(220, 38, 38, 0.1);
+        border-color: var(--danger);
+        color: var(--danger);
+    }
+
     .table-hover tbody tr:hover > * {
         --bs-table-hover-bg: #ff9800;
         background-color: #ff9800;
@@ -14,7 +101,7 @@
         user-select: none;
     }
     .sortable:hover {
-        background-color: rgba(255, 255, 255, 0.1);
+        background-color: #ff9800 !important;
     }
     .sort-icon::after {
         content: '⇅';
@@ -45,18 +132,127 @@
         background-color: #667eea;
         color: #fff;
     }
+
+    /* Delete Confirmation Modal */
+    .delete-modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1050;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .delete-modal-overlay.show {
+        display: flex;
+    }
+
+    .delete-modal-content {
+        background: var(--surface);
+        border-radius: 12px;
+        padding: 24px;
+        width: 90%;
+        max-width: 400px;
+        text-align: center;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .delete-modal-icon {
+        width: 48px;
+        height: 48px;
+        background: rgba(220, 38, 38, 0.1);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 16px;
+    }
+
+    .delete-modal-icon svg {
+        width: 24px;
+        height: 24px;
+        color: var(--danger);
+    }
+
+    .delete-modal-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--text);
+        margin: 0 0 8px 0;
+    }
+
+    .delete-modal-message {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin: 0 0 20px 0;
+    }
+
+    .delete-modal-buttons {
+        display: flex;
+        gap: 12px;
+    }
+
+    .delete-modal-btn {
+        flex: 1;
+        padding: 10px 16px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+        border: 1px solid var(--border);
+    }
+
+    .delete-modal-btn.cancel {
+        background: var(--surface);
+        color: var(--text);
+    }
+
+    .delete-modal-btn.cancel:hover {
+        background: var(--surface-2);
+    }
+
+    .delete-modal-btn.confirm {
+        background: var(--danger);
+        color: white;
+        border-color: var(--danger);
+    }
+
+    .delete-modal-btn.confirm:hover {
+        background: #B91C1C;
+        border-color: #B91C1C;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<h1>{{ item_name }}</h1>
-<a href="{% url 'flips' %}" class="btn btn-secondary mb-3">← Back to My Flips</a>
-<button type="button" class="btn btn-primary mb-3 ms-2" id="editFlipBtn">
-    Edit Flip
-</button>
-<button type="button" class="btn btn-danger mb-3 ms-2" id="deleteFlipBtn">
-    Delete Flip
-</button>
+<div class="item-header">
+    <a href="{% url 'flips' %}" class="back-link">
+        <svg fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/>
+        </svg>
+        Back to My Flips
+    </a>
+    <h1>{{ item_name }}</h1>
+    <div class="action-buttons">
+        <button type="button" class="action-btn" id="editFlipBtn">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+            </svg>
+            <span>Edit Flip</span>
+        </button>
+        <button type="button" class="action-btn" id="deleteFlipBtn">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+            <span>Delete Flip</span>
+        </button>
+    </div>
+</div>
 
 <form id="deleteForm" method="post" action="{% url 'delete_single_flip' %}">
     {% csrf_token %}
@@ -104,6 +300,23 @@
                     <button type="submit" class="btn btn-primary">Save Changes</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="delete-modal-overlay" id="deleteConfirmModal">
+    <div class="delete-modal-content">
+        <div class="delete-modal-icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+        </div>
+        <h4 class="delete-modal-title">Delete this flip?</h4>
+        <p class="delete-modal-message" id="deleteFlipInfo"></p>
+        <div class="delete-modal-buttons">
+            <button type="button" class="delete-modal-btn cancel" onclick="closeDeleteModal()">Cancel</button>
+            <button type="button" class="delete-modal-btn confirm" id="confirmDeleteBtn">Delete</button>
         </div>
     </div>
 </div>
@@ -192,15 +405,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Edit flip functionality
     const editBtn = document.getElementById('editFlipBtn');
+    const editBtnText = editBtn.querySelector('span');
     const editModal = new bootstrap.Modal(document.getElementById('editFlipModal'));
     let editMode = false;
     
     editBtn.addEventListener('click', function() {
         if (!editMode) {
             editMode = true;
-            editBtn.textContent = 'Click a row to edit';
-            editBtn.classList.add('btn-warning');
-            editBtn.classList.remove('btn-primary');
+            editBtnText.textContent = 'Click a row to edit';
+            editBtn.classList.add('edit-active');
             table.classList.add('edit-mode');
         } else {
             cancelEditMode();
@@ -209,9 +422,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function cancelEditMode() {
         editMode = false;
-        editBtn.textContent = 'Edit Flip';
-        editBtn.classList.remove('btn-warning');
-        editBtn.classList.add('btn-primary');
+        editBtnText.textContent = 'Edit Flip';
+        editBtn.classList.remove('edit-active');
         table.classList.remove('edit-mode');
     }
 
@@ -221,15 +433,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Delete flip functionality
     const deleteBtn = document.getElementById('deleteFlipBtn');
+    const deleteBtnText = deleteBtn.querySelector('span');
+    const deleteConfirmModal = document.getElementById('deleteConfirmModal');
     let deleteMode = false;
     let isProcessing = false;
+    let pendingDeleteFlipId = null;
     
     deleteBtn.addEventListener('click', function() {
         if (!deleteMode) {
             deleteMode = true;
-            deleteBtn.textContent = 'Click a row to delete';
-            deleteBtn.classList.add('btn-warning');
-            deleteBtn.classList.remove('btn-danger');
+            deleteBtnText.textContent = 'Click a row to delete';
+            deleteBtn.classList.add('delete-active');
             table.classList.add('delete-mode');
         } else {
             cancelDeleteMode();
@@ -239,11 +453,37 @@ document.addEventListener('DOMContentLoaded', function() {
     function cancelDeleteMode() {
         deleteMode = false;
         isProcessing = false;
-        deleteBtn.textContent = 'Delete Flip';
-        deleteBtn.classList.remove('btn-warning');
-        deleteBtn.classList.add('btn-danger');
+        deleteBtnText.textContent = 'Delete Flip';
+        deleteBtn.classList.remove('delete-active');
         table.classList.remove('delete-mode');
+        pendingDeleteFlipId = null;
     }
+
+    function openDeleteModal(flipId, flipInfo) {
+        pendingDeleteFlipId = flipId;
+        document.getElementById('deleteFlipInfo').textContent = flipInfo;
+        deleteConfirmModal.classList.add('show');
+    }
+
+    window.closeDeleteModal = function() {
+        deleteConfirmModal.classList.remove('show');
+        cancelDeleteMode();
+    };
+
+    // Close modal on backdrop click
+    deleteConfirmModal.addEventListener('click', function(e) {
+        if (e.target === deleteConfirmModal) {
+            closeDeleteModal();
+        }
+    });
+
+    // Confirm delete button
+    document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+        if (pendingDeleteFlipId) {
+            document.getElementById('deleteFlipId').value = pendingDeleteFlipId;
+            document.getElementById('deleteForm').submit();
+        }
+    });
 
     table.querySelector('tbody').addEventListener('click', function(e) {
         const row = e.target.closest('tr');
@@ -261,12 +501,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('editQuantity').value = row.dataset.quantity;
             document.getElementById('editType').value = row.dataset.type;
             
-            editMode = false;
-            table.classList.remove('edit-mode');
-            editBtn.textContent = 'Edit Flip';
-            editBtn.classList.remove('btn-warning');
-            editBtn.classList.add('btn-primary');
-            
+            cancelEditMode();
             editModal.show();
             return;
         }
@@ -279,16 +514,14 @@ document.addEventListener('DOMContentLoaded', function() {
         
         isProcessing = true;
         deleteMode = false;
+        deleteBtnText.textContent = 'Delete Flip';
+        deleteBtn.classList.remove('delete-active');
+        table.classList.remove('delete-mode');
         
         const flipId = row.dataset.flipId;
         const flipInfo = row.dataset.flipInfo;
         
-        if (confirm(`Are you sure you want to delete this flip?\n${flipInfo}`)) {
-            document.getElementById('deleteFlipId').value = flipId;
-            document.getElementById('deleteForm').submit();
-        } else {
-            cancelDeleteMode();
-        }
+        openDeleteModal(flipId, flipInfo);
     });
 });
 </script>

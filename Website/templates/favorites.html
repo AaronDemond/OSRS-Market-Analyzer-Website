@@ -95,13 +95,14 @@
     }
 
     .header-btn-outline {
-        background: transparent;
+        background: var(--surface);
         color: var(--text);
         border: 1px solid var(--border);
     }
 
     .header-btn-outline:hover {
         background: var(--surface-2);
+        border-color: var(--primary);
     }
 
     .header-btn svg {
@@ -217,6 +218,7 @@
         align-items: center;
         justify-content: space-between;
         gap: 8px;
+        min-width: 0;
     }
     
     .favorite-item-name {
@@ -228,6 +230,7 @@
         text-overflow: ellipsis;
         text-decoration: underline;
         flex: 1;
+        min-width: 0;
     }
 
     .favorite-item-name:hover {
@@ -817,6 +820,23 @@
 
         .favorites-grid {
             grid-template-columns: 1fr;
+        }
+
+        .favorites-section {
+            padding: 12px;
+        }
+
+        .ungrouped-section {
+            padding: 12px;
+        }
+
+        .favorite-item {
+            padding: 12px;
+            min-width: 0;
+        }
+
+        .favorite-item-name {
+            font-size: 0.85rem;
         }
 
         .header-actions {
