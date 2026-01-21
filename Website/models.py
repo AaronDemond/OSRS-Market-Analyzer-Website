@@ -260,7 +260,7 @@ class FavoriteGroup(models.Model):
 
 class FavoriteItem(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
-    group = models.ForeignKey(FavoriteGroup, on_delete=models.SET_NULL, null=True, blank=True, related_name='items')
+    groups = models.ManyToManyField(FavoriteGroup, blank=True, related_name='items')
     item_id = models.IntegerField()
     item_name = models.CharField(max_length=255)
     added_at = models.DateTimeField(auto_now_add=True)

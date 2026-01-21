@@ -1500,34 +1500,34 @@ def add_favorite(request):
         data = json.loads(request.body)
         item_id = data.get('item_id')
         item_name = data.get('item_name')
-        group_id = data.get('group_id')
+        group_ids = data.get('group_ids', [])  # List of group IDs
         new_group_name = data.get('new_group_name')
         
         if not item_id or not item_name:
             return JsonResponse({'success': False, 'error': 'item_id and item_name required'}, status=400)
         
-        # Handle group assignment
-        group = None
+        # Handle new group creation
+        groups_to_add = []
         if new_group_name and user:
-            group, _ = FavoriteGroup.objects.get_or_create(user=user, name=new_group_name.strip())
-        elif group_id and user:
-            try:
-                group = FavoriteGroup.objects.get(id=group_id, user=user)
-            except FavoriteGroup.DoesNotExist:
-                pass
+            new_group, _ = FavoriteGroup.objects.get_or_create(user=user, name=new_group_name.strip())
+            groups_to_add.append(new_group)
+        
+        # Get existing groups by IDs
+        if group_ids and user:
+            existing_groups = FavoriteGroup.objects.filter(id__in=group_ids, user=user)
+            groups_to_add.extend(existing_groups)
         
         favorite, created = FavoriteItem.objects.get_or_create(
             user=user,
             item_id=item_id,
-            defaults={'item_name': item_name, 'group': group}
+            defaults={'item_name': item_name}
         )
         
-        # If item already exists but we're adding to a group, update it
-        if not created and group:
-            favorite.group = group
-            favorite.save()
+        # Add groups to the item
+        if groups_to_add:
+            favorite.groups.add(*groups_to_add)
         
-        return JsonResponse({'success': True, 'created': created, 'group_id': group.id if group else None})
+        return JsonResponse({'success': True, 'created': created})
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
     except Exception as e:
@@ -1596,7 +1596,7 @@ def delete_favorite_group(request):
 
 @csrf_exempt
 def update_favorite_group(request):
-    """API endpoint to update a favorite's group"""
+    """API endpoint to update a favorite's groups"""
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'POST required'}, status=405)
     
@@ -1610,7 +1610,8 @@ def update_favorite_group(request):
     try:
         data = json.loads(request.body)
         item_id = data.get('item_id')
-        group_id = data.get('group_id')  # Can be None to remove from group
+        group_ids = data.get('group_ids', [])  # List of group IDs to set
+        new_group_name = data.get('new_group_name')
         
         if not item_id:
             return JsonResponse({'success': False, 'error': 'item_id required'}, status=400)
@@ -1619,15 +1620,17 @@ def update_favorite_group(request):
         if not favorite:
             return JsonResponse({'success': False, 'error': 'Favorite not found'}, status=404)
         
-        if group_id:
-            group = FavoriteGroup.objects.filter(user=user, id=group_id).first()
-            if not group:
-                return JsonResponse({'success': False, 'error': 'Group not found'}, status=404)
-            favorite.group = group
-        else:
-            favorite.group = None
+        # Handle new group creation
+        if new_group_name:
+            new_group, _ = FavoriteGroup.objects.get_or_create(user=user, name=new_group_name.strip())
+            group_ids.append(new_group.id)
         
-        favorite.save()
+        # Get groups and set them
+        if group_ids:
+            groups = FavoriteGroup.objects.filter(id__in=group_ids, user=user)
+            favorite.groups.set(groups)
+        else:
+            favorite.groups.clear()
         
         return JsonResponse({'success': True})
     except json.JSONDecodeError:
@@ -1655,7 +1658,7 @@ def favorites_page(request):
     ungrouped_favorites = []
     grouped_favorites = {}  # group_id -> list of favorites
     
-    favorites_qs = FavoriteItem.objects.filter(user=user).select_related('group') if user else FavoriteItem.objects.none()
+    favorites_qs = FavoriteItem.objects.filter(user=user).prefetch_related('groups') if user else FavoriteItem.objects.none()
     for fav in favorites_qs:
         item_id = str(fav.item_id)
         price_data = all_prices.get(item_id, {})
@@ -1670,6 +1673,9 @@ def favorites_page(request):
             spread = 0
             spread_pct = 0
         
+        fav_groups = list(fav.groups.all())
+        fav_group_ids = [g.id for g in fav_groups]
+        
         fav_data = {
             'item_id': fav.item_id,
             'item_name': fav.item_name,
@@ -1677,16 +1683,18 @@ def favorites_page(request):
             'low_price': low_price,
             'spread': spread,
             'spread_pct': spread_pct,
-            'group_id': fav.group_id,
-            'group_name': fav.group.name if fav.group else None,
+            'group_ids': fav_group_ids,
+            'group_names': [g.name for g in fav_groups],
         }
         
         favorites.append(fav_data)
         
-        if fav.group_id:
-            if fav.group_id not in grouped_favorites:
-                grouped_favorites[fav.group_id] = []
-            grouped_favorites[fav.group_id].append(fav_data)
+        # Add to each group it belongs to
+        if fav_groups:
+            for group in fav_groups:
+                if group.id not in grouped_favorites:
+                    grouped_favorites[group.id] = []
+                grouped_favorites[group.id].append(fav_data)
         else:
             ungrouped_favorites.append(fav_data)
     

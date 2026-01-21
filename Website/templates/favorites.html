@@ -112,19 +112,53 @@
     /* Group Section */
     .favorites-section {
         margin-bottom: 32px;
+        background: var(--surface);
+        border-radius: 12px;
+        padding: 20px;
     }
 
     .section-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin-bottom: 16px;
-        padding-bottom: 8px;
+        padding: 0 0 12px 0;
         border-bottom: 1px solid var(--border);
+        margin-bottom: 16px;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .section-header:hover .section-title {
+        color: var(--primary);
+    }
+
+    .section-header-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .collapse-toggle {
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--muted);
+        transition: transform 0.2s;
+    }
+
+    .collapse-toggle svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .section-header.collapsed .collapse-toggle {
+        transform: rotate(-90deg);
     }
 
     .section-title {
-        font-size: 1.1rem;
+        font-size: 1rem;
         font-weight: 600;
         color: var(--text);
         display: flex;
@@ -144,30 +178,14 @@
         font-weight: 400;
     }
 
-    .section-actions {
-        display: flex;
-        gap: 8px;
+    .section-content {
+        transition: max-height 0.3s ease-out, margin 0.3s ease-out;
+        overflow: hidden;
     }
 
-    .section-action-btn {
-        background: none;
-        border: none;
-        color: var(--muted);
-        cursor: pointer;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 0.8rem;
-        transition: all 0.2s;
-    }
-
-    .section-action-btn:hover {
-        background: var(--surface-2);
-        color: var(--text);
-    }
-
-    .section-action-btn.delete:hover {
-        background: rgba(239, 68, 68, 0.1);
-        color: var(--danger);
+    .section-content.collapsed {
+        max-height: 0 !important;
+        margin-top: 0;
     }
 
     /* Favorites Grid */
@@ -178,67 +196,84 @@
     }
     
     .favorite-item {
-        background: var(--surface);
+        background: var(--surface-2);
         border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 16px;
+        border-radius: 10px;
+        padding: 14px;
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 10px;
         position: relative;
         transition: all 0.15s;
     }
     
     .favorite-item:hover {
         border-color: var(--primary);
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
+        box-shadow: 0 2px 8px rgba(99, 102, 241, 0.1);
     }
     
     .favorite-item-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
+        gap: 8px;
     }
     
     .favorite-item-name {
         font-weight: 600;
-        color: var(--text);
-        font-size: 1rem;
-        text-decoration: underline;
-        text-underline-offset: 2px;
+        color: var(--primary);
+        font-size: 0.95rem;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        text-decoration: underline;
+        flex: 1;
     }
-    
+
     .favorite-item-name:hover {
-        color: var(--primary);
+        color: var(--primary-hover);
     }
-    
-    .favorite-remove {
+
+    .favorite-item-actions {
+        display: flex;
+        gap: 4px;
+        opacity: 0;
+        transition: opacity 0.15s;
+    }
+
+    .favorite-item:hover .favorite-item-actions {
+        opacity: 1;
+    }
+
+    .favorite-action-btn {
         background: none;
         border: none;
         color: var(--muted);
         cursor: pointer;
         padding: 4px;
         line-height: 1;
-        font-size: 20px;
-        opacity: 0;
-        transition: opacity 0.15s, color 0.15s;
+        border-radius: 4px;
+        transition: all 0.15s;
     }
-    
-    .favorite-item:hover .favorite-remove {
-        opacity: 1;
+
+    .favorite-action-btn:hover {
+        background: var(--surface);
+        color: var(--text);
     }
-    
-    .favorite-remove:hover {
-        color: #DC2626;
+
+    .favorite-action-btn.delete:hover {
+        color: var(--danger);
+    }
+
+    .favorite-action-btn svg {
+        width: 16px;
+        height: 16px;
     }
     
     .favorite-prices {
         display: flex;
         justify-content: space-between;
-        font-size: 0.9rem;
+        font-size: 0.85rem;
     }
     
     .favorite-price {
@@ -248,7 +283,7 @@
     
     .favorite-price-label {
         color: var(--muted);
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         text-transform: uppercase;
         margin-bottom: 2px;
     }
@@ -256,14 +291,14 @@
     .favorite-price-value {
         color: var(--text);
         font-weight: 600;
-        font-size: 1rem;
+        font-size: 0.95rem;
     }
     
     .favorite-price-value.high { color: #16A34A; }
     .favorite-price-value.low { color: #DC2626; }
     
     .favorite-spread {
-        font-size: 0.85rem;
+        font-size: 0.8rem;
         color: var(--muted);
         text-align: center;
         padding-top: 8px;
@@ -274,19 +309,34 @@
         color: var(--primary);
     }
 
+    .favorite-groups-badge {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-top: 4px;
+    }
+
+    .group-badge {
+        font-size: 0.7rem;
+        padding: 2px 6px;
+        background: rgba(99, 102, 241, 0.1);
+        color: var(--primary);
+        border-radius: 4px;
+    }
+
     /* Add Item Card */
     .add-item-card {
         background: transparent;
         border: 2px dashed var(--border);
-        border-radius: 12px;
-        padding: 16px;
+        border-radius: 10px;
+        padding: 14px;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
         cursor: pointer;
         transition: all 0.15s;
-        min-height: 130px;
+        min-height: 120px;
     }
 
     .add-item-card:hover {
@@ -295,10 +345,10 @@
     }
 
     .add-item-card svg {
-        width: 32px;
-        height: 32px;
+        width: 28px;
+        height: 28px;
         color: var(--muted);
-        margin-bottom: 8px;
+        margin-bottom: 6px;
     }
 
     .add-item-card:hover svg {
@@ -306,7 +356,7 @@
     }
 
     .add-item-card span {
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         color: var(--muted);
         font-weight: 500;
     }
@@ -315,7 +365,23 @@
         color: var(--primary);
     }
 
-    /* Add Favorite Modal */
+    /* Ungrouped section (no card wrapper) */
+    .ungrouped-section {
+        margin-bottom: 24px;
+        background: var(--surface);
+        border-radius: 12px;
+        padding: 20px;
+    }
+
+    .ungrouped-section .section-header {
+        cursor: default;
+    }
+
+    .ungrouped-section .section-header:hover .section-title {
+        color: var(--text);
+    }
+
+    /* Modal styles */
     .modal-overlay {
         display: none;
         position: fixed;
@@ -339,6 +405,8 @@
         width: 90%;
         max-width: 440px;
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        max-height: 90vh;
+        overflow-y: auto;
     }
     
     .modal-header {
@@ -347,6 +415,10 @@
         justify-content: space-between;
         padding: 16px 20px;
         border-bottom: 1px solid var(--border);
+        position: sticky;
+        top: 0;
+        background: var(--surface);
+        z-index: 1;
     }
     
     .modal-header h3 {
@@ -471,21 +543,41 @@
         color: var(--danger);
     }
 
-    .form-select {
-        width: 100%;
-        padding: 12px 16px;
+    /* Checkbox group for multi-select */
+    .checkbox-group {
+        max-height: 200px;
+        overflow-y: auto;
         border: 1px solid var(--border);
         border-radius: 8px;
-        font-size: 1rem;
-        color: var(--text);
-        background: var(--surface);
+    }
+
+    .checkbox-item {
+        display: flex;
+        align-items: center;
+        padding: 10px 14px;
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+
+    .checkbox-item:hover {
+        background: var(--surface-2);
+    }
+
+    .checkbox-item:not(:last-child) {
+        border-bottom: 1px solid var(--border);
+    }
+
+    .checkbox-item input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        margin-right: 10px;
         cursor: pointer;
     }
 
-    .form-select:focus {
-        outline: none;
-        border-color: var(--primary);
-        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    .checkbox-item label {
+        flex: 1;
+        cursor: pointer;
+        font-size: 0.95rem;
     }
 
     .new-group-input {
@@ -515,7 +607,7 @@
         cursor: not-allowed;
     }
 
-    /* Delete Confirmation Modal */
+    /* Delete Confirmation */
     .delete-confirm-content {
         padding: 24px;
         text-align: center;
@@ -642,6 +734,81 @@
         padding: 20px;
     }
 
+    /* Chart Modal */
+    .chart-modal-content {
+        max-width: 800px;
+        width: 95%;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 400px;
+        margin-top: 16px;
+    }
+
+    .chart-loading {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.9);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        z-index: 10;
+        border-radius: 8px;
+    }
+
+    .loading-spinner {
+        width: 48px;
+        height: 48px;
+        border: 4px solid var(--border);
+        border-top: 4px solid var(--primary);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+        font-size: 1rem;
+        color: var(--muted);
+    }
+
+    .chart-range-btns {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .chart-btn {
+        padding: 8px 16px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
+        border-radius: 6px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .chart-btn:hover {
+        background: var(--surface-2);
+    }
+
+    .chart-btn.active {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
     @media (max-width: 640px) {
         .page-header {
             flex-direction: column;
@@ -696,40 +863,65 @@
 </div>
 
 {% for group in groups %}
-{% with group_items=grouped_favorites|default:None %}
-{% if group.id in grouped_favorites %}
+{% with group_items=grouped_favorites|get_item:group.id %}
+{% if group_items %}
 <div class="favorites-section" data-group-id="{{ group.id }}">
-    <div class="section-header">
-        <div class="section-title">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
-            </svg>
-            {{ group.name }}
-            <span class="section-count">({{ grouped_favorites|get_item:group.id|length }} items)</span>
+    <div class="section-header" onclick="toggleGroup({{ group.id }})">
+        <div class="section-header-left">
+            <div class="collapse-toggle">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </div>
+            <div class="section-title">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                </svg>
+                {{ group.name }}
+                <span class="section-count">({{ group_items|length }} item{{ group_items|length|pluralize }})</span>
+            </div>
         </div>
     </div>
-    <div class="favorites-grid">
-        {% for fav in grouped_favorites|get_item:group.id %}
-        <div class="favorite-item" data-item-id="{{ fav.item_id }}" data-group-id="{{ fav.group_id }}">
-            <div class="favorite-item-header">
-                <a href="{% url 'item_search' %}?id={{ fav.item_id }}&name={{ fav.item_name|urlencode }}" class="favorite-item-name">{{ fav.item_name }}</a>
-                <button class="favorite-remove" onclick="removeFavorite({{ fav.item_id }}, '{{ fav.item_name|escapejs }}')" title="Remove">×</button>
-            </div>
-            <div class="favorite-prices">
-                <div class="favorite-price">
-                    <span class="favorite-price-label">High</span>
-                    <span class="favorite-price-value high">{% if fav.high_price %}{{ fav.high_price|intcomma }}{% else %}-{% endif %}</span>
+    <div class="section-content" id="group-content-{{ group.id }}">
+        <div class="favorites-grid">
+            {% for fav in group_items %}
+            <div class="favorite-item" data-item-id="{{ fav.item_id }}">
+                <div class="favorite-item-header">
+                    <a href="{% url 'item_search' %}?id={{ fav.item_id }}&name={{ fav.item_name|urlencode }}" class="favorite-item-name">{{ fav.item_name }}</a>
+                    <div class="favorite-item-actions">
+                        <button class="favorite-action-btn" onclick="event.stopPropagation(); openChartModal({{ fav.item_id }}, '{{ fav.item_name|escapejs }}')" title="View Chart">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/>
+                            </svg>
+                        </button>
+                        <button class="favorite-action-btn" onclick="event.stopPropagation(); editFavoriteGroups({{ fav.item_id }}, '{{ fav.item_name|escapejs }}', {{ fav.group_ids|safe }})" title="Edit Groups">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                            </svg>
+                        </button>
+                        <button class="favorite-action-btn delete" onclick="event.stopPropagation(); removeFavorite({{ fav.item_id }}, '{{ fav.item_name|escapejs }}')" title="Remove">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
-                <div class="favorite-price">
-                    <span class="favorite-price-label">Low</span>
-                    <span class="favorite-price-value low">{% if fav.low_price %}{{ fav.low_price|intcomma }}{% else %}-{% endif %}</span>
+                <div class="favorite-prices">
+                    <div class="favorite-price">
+                        <span class="favorite-price-label">High</span>
+                        <span class="favorite-price-value high">{% if fav.high_price %}{{ fav.high_price|intcomma }}{% else %}-{% endif %}</span>
+                    </div>
+                    <div class="favorite-price">
+                        <span class="favorite-price-label">Low</span>
+                        <span class="favorite-price-value low">{% if fav.low_price %}{{ fav.low_price|intcomma }}{% else %}-{% endif %}</span>
+                    </div>
+                </div>
+                <div class="favorite-spread">
+                    Spread: <strong>{{ fav.spread|floatformat:0|intcomma }}</strong> ({{ fav.spread_pct|floatformat:1 }}%)
                 </div>
             </div>
-            <div class="favorite-spread">
-                Spread: <strong>{{ fav.spread|floatformat:0|intcomma }}</strong> ({{ fav.spread_pct|floatformat:1 }}%)
-            </div>
+            {% endfor %}
         </div>
-        {% endfor %}
     </div>
 </div>
 {% endif %}
@@ -737,15 +929,17 @@
 {% endfor %}
 
 {% if ungrouped_favorites or not favorites %}
-<div class="favorites-section">
+<div class="ungrouped-section">
     {% if groups and ungrouped_favorites %}
     <div class="section-header">
-        <div class="section-title">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
-            </svg>
-            Ungrouped
-            <span class="section-count">({{ ungrouped_favorites|length }} items)</span>
+        <div class="section-header-left">
+            <div class="section-title">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
+                </svg>
+                Ungrouped
+                <span class="section-count">({{ ungrouped_favorites|length }} item{{ ungrouped_favorites|length|pluralize }})</span>
+            </div>
         </div>
     </div>
     {% endif %}
@@ -754,7 +948,23 @@
         <div class="favorite-item" data-item-id="{{ fav.item_id }}">
             <div class="favorite-item-header">
                 <a href="{% url 'item_search' %}?id={{ fav.item_id }}&name={{ fav.item_name|urlencode }}" class="favorite-item-name">{{ fav.item_name }}</a>
-                <button class="favorite-remove" onclick="removeFavorite({{ fav.item_id }}, '{{ fav.item_name|escapejs }}')" title="Remove">×</button>
+                <div class="favorite-item-actions">
+                    <button class="favorite-action-btn" onclick="event.stopPropagation(); openChartModal({{ fav.item_id }}, '{{ fav.item_name|escapejs }}')" title="View Chart">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/>
+                        </svg>
+                    </button>
+                    <button class="favorite-action-btn" onclick="event.stopPropagation(); editFavoriteGroups({{ fav.item_id }}, '{{ fav.item_name|escapejs }}', {{ fav.group_ids|safe }})" title="Edit Groups">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        </svg>
+                    </button>
+                    <button class="favorite-action-btn delete" onclick="event.stopPropagation(); removeFavorite({{ fav.item_id }}, '{{ fav.item_name|escapejs }}')" title="Remove">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
             <div class="favorite-prices">
                 <div class="favorite-price">
@@ -804,19 +1014,65 @@
                 <input type="hidden" id="selectedItemId" value="">
             </div>
             
+            {% if groups %}
             <div class="form-group">
-                <label class="form-label">Group (Optional)</label>
-                <select class="form-select" id="groupSelect" onchange="handleGroupChange()">
-                    <option value="">No Group</option>
+                <label class="form-label">Groups (Optional)</label>
+                <div class="checkbox-group" id="addGroupCheckboxes">
                     {% for group in groups %}
-                    <option value="{{ group.id }}">{{ group.name }}</option>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="add-group-{{ group.id }}" value="{{ group.id }}">
+                        <label for="add-group-{{ group.id }}">{{ group.name }}</label>
+                    </div>
                     {% endfor %}
-                    <option value="__new__">+ Create New Group</option>
-                </select>
-                <input type="text" class="form-input new-group-input" id="newGroupInput" placeholder="Enter group name..." style="display: none;">
+                </div>
+            </div>
+            {% endif %}
+            
+            <div class="form-group">
+                <label class="form-label">Create New Group (Optional)</label>
+                <input type="text" class="form-input" id="newGroupInput" placeholder="Enter group name...">
             </div>
             
             <button type="button" class="modal-submit" id="addFavoriteSubmit" onclick="submitFavorite()" disabled>Add to Favorites</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Groups Modal -->
+<div class="modal-overlay" id="editGroupsModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Edit Groups</h3>
+            <button class="modal-close" onclick="closeEditGroupsModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">Item: <span id="editItemName"></span></label>
+                <input type="hidden" id="editItemId">
+            </div>
+            
+            {% if groups %}
+            <div class="form-group">
+                <label class="form-label">Select Groups</label>
+                <div class="checkbox-group" id="editGroupCheckboxes">
+                    {% for group in groups %}
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="edit-group-{{ group.id }}" value="{{ group.id }}">
+                        <label for="edit-group-{{ group.id }}">{{ group.name }}</label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% else %}
+            <p style="color: var(--muted);">No groups created yet.</p>
+            {% endif %}
+            
+            <div class="form-group">
+                <label class="form-label">Create New Group</label>
+                <input type="text" class="form-input" id="editNewGroupInput" placeholder="Enter group name...">
+            </div>
+            
+            <button type="button" class="modal-submit" onclick="saveItemGroups()">Save Changes</button>
         </div>
     </div>
 </div>
@@ -893,11 +1149,92 @@
         </div>
     </div>
 </div>
+
+<!-- Chart Modal -->
+<div class="modal-overlay" id="chartModal">
+    <div class="modal-content chart-modal-content">
+        <div class="modal-header">
+            <h3 id="chartModalTitle">Price History</h3>
+            <button class="modal-close" onclick="closeChartModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="chart-range-btns">
+                <button class="chart-btn" data-range="day">1D</button>
+                <button class="chart-btn" data-range="week">1W</button>
+                <button class="chart-btn active" data-range="month">1M</button>
+                <button class="chart-btn" data-range="6month">6M</button>
+                <button class="chart-btn" data-range="year">1Y</button>
+            </div>
+            <div class="chart-container">
+                <div class="chart-loading" id="chartLoading">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text">Loading chart...</div>
+                </div>
+                <canvas id="favoriteChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+// Group collapse state persistence
+const COLLAPSED_GROUPS_KEY = 'favorites_collapsed_groups';
+
+function getCollapsedGroups() {
+    try {
+        return JSON.parse(localStorage.getItem(COLLAPSED_GROUPS_KEY) || '[]');
+    } catch {
+        return [];
+    }
+}
+
+function setCollapsedGroups(groups) {
+    localStorage.setItem(COLLAPSED_GROUPS_KEY, JSON.stringify(groups));
+}
+
+function toggleGroup(groupId) {
+    const section = document.querySelector(`.favorites-section[data-group-id="${groupId}"]`);
+    const header = section.querySelector('.section-header');
+    const content = document.getElementById(`group-content-${groupId}`);
+    
+    const collapsed = getCollapsedGroups();
+    const index = collapsed.indexOf(groupId);
+    
+    if (index > -1) {
+        // Expand
+        collapsed.splice(index, 1);
+        header.classList.remove('collapsed');
+        content.classList.remove('collapsed');
+    } else {
+        // Collapse
+        collapsed.push(groupId);
+        header.classList.add('collapsed');
+        content.classList.add('collapsed');
+    }
+    
+    setCollapsedGroups(collapsed);
+}
+
+function initializeCollapsedGroups() {
+    const collapsed = getCollapsedGroups();
+    collapsed.forEach(groupId => {
+        const section = document.querySelector(`.favorites-section[data-group-id="${groupId}"]`);
+        if (section) {
+            const header = section.querySelector('.section-header');
+            const content = document.getElementById(`group-content-${groupId}`);
+            if (header && content) {
+                header.classList.add('collapsed');
+                content.classList.add('collapsed');
+            }
+        }
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    initializeCollapsedGroups();
+    
     const modal = document.getElementById('addFavoriteModal');
     const input = document.getElementById('addFavoriteInput');
     const suggestions = document.getElementById('addFavoriteSuggestions');
@@ -1032,37 +1369,30 @@ function clearSelectedItem() {
     submitBtn.disabled = true;
 }
 
-function handleGroupChange() {
-    const select = document.getElementById('groupSelect');
-    const newGroupInput = document.getElementById('newGroupInput');
+function getSelectedGroupIds(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return [];
     
-    if (select.value === '__new__') {
-        newGroupInput.style.display = 'block';
-        newGroupInput.focus();
-    } else {
-        newGroupInput.style.display = 'none';
-        newGroupInput.value = '';
-    }
+    const checkboxes = container.querySelectorAll('input[type="checkbox"]:checked');
+    return Array.from(checkboxes).map(cb => parseInt(cb.value));
 }
 
 function submitFavorite() {
     const selectedIdInput = document.getElementById('selectedItemId');
     const itemId = selectedIdInput.value;
     const itemName = selectedIdInput.dataset.name;
-    const groupSelect = document.getElementById('groupSelect');
     const newGroupInput = document.getElementById('newGroupInput');
     
     if (!itemId || !itemName) return;
     
     const payload = {
         item_id: parseInt(itemId),
-        item_name: itemName
+        item_name: itemName,
+        group_ids: getSelectedGroupIds('addGroupCheckboxes')
     };
     
-    if (groupSelect.value === '__new__' && newGroupInput.value.trim()) {
+    if (newGroupInput && newGroupInput.value.trim()) {
         payload.new_group_name = newGroupInput.value.trim();
-    } else if (groupSelect.value && groupSelect.value !== '__new__') {
-        payload.group_id = parseInt(groupSelect.value);
     }
     
     const csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
@@ -1093,14 +1423,15 @@ function submitFavorite() {
 function openAddFavoriteModal() {
     const modal = document.getElementById('addFavoriteModal');
     const input = document.getElementById('addFavoriteInput');
-    const groupSelect = document.getElementById('groupSelect');
     const newGroupInput = document.getElementById('newGroupInput');
+    
+    // Clear checkboxes
+    const checkboxes = document.querySelectorAll('#addGroupCheckboxes input[type="checkbox"]');
+    checkboxes.forEach(cb => cb.checked = false);
     
     modal.classList.add('show');
     clearSelectedItem();
-    groupSelect.value = '';
-    newGroupInput.style.display = 'none';
-    newGroupInput.value = '';
+    if (newGroupInput) newGroupInput.value = '';
     input.focus();
 }
 
@@ -1108,6 +1439,66 @@ function closeAddFavoriteModal() {
     document.getElementById('addFavoriteModal').classList.remove('show');
     document.getElementById('addFavoriteSuggestions').classList.remove('show');
     clearSelectedItem();
+}
+
+function editFavoriteGroups(itemId, itemName, currentGroupIds) {
+    const modal = document.getElementById('editGroupsModal');
+    document.getElementById('editItemId').value = itemId;
+    document.getElementById('editItemName').textContent = itemName;
+    
+    // Clear new group input
+    const newGroupInput = document.getElementById('editNewGroupInput');
+    if (newGroupInput) newGroupInput.value = '';
+    
+    // Set checkboxes based on current groups
+    const checkboxes = document.querySelectorAll('#editGroupCheckboxes input[type="checkbox"]');
+    checkboxes.forEach(cb => {
+        cb.checked = currentGroupIds.includes(parseInt(cb.value));
+    });
+    
+    modal.classList.add('show');
+}
+
+function closeEditGroupsModal() {
+    document.getElementById('editGroupsModal').classList.remove('show');
+}
+
+function saveItemGroups() {
+    const itemId = document.getElementById('editItemId').value;
+    const newGroupInput = document.getElementById('editNewGroupInput');
+    
+    const payload = {
+        item_id: parseInt(itemId),
+        group_ids: getSelectedGroupIds('editGroupCheckboxes')
+    };
+    
+    if (newGroupInput && newGroupInput.value.trim()) {
+        payload.new_group_name = newGroupInput.value.trim();
+    }
+    
+    const csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+    
+    fetch('/api/favorites/update-group/', {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            closeEditGroupsModal();
+            location.reload();
+        } else {
+            alert('Failed to update groups: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(err => {
+        console.error('Error updating groups:', err);
+        alert('Failed to update groups. Please try again.');
+    });
 }
 
 function removeFavorite(itemId, itemName) {
@@ -1142,11 +1533,8 @@ function doRemoveFavorite(itemId) {
     .then(data => {
         if (data.success) {
             closeDeleteModal();
-            const item = document.querySelector(`.favorite-item[data-item-id="${itemId}"]`);
-            if (item) {
-                item.remove();
-            }
-            // Check if we need to reload (e.g., if section is now empty)
+            // Remove all instances of this item from the page
+            document.querySelectorAll(`.favorite-item[data-item-id="${itemId}"]`).forEach(el => el.remove());
             checkEmptySections();
         }
     })
@@ -1159,7 +1547,7 @@ function doRemoveFavorite(itemId) {
 function checkEmptySections() {
     document.querySelectorAll('.favorites-section').forEach(section => {
         const items = section.querySelectorAll('.favorite-item');
-        if (items.length === 0 && !section.querySelector('.add-item-card')) {
+        if (items.length === 0) {
             section.remove();
         }
     });
@@ -1217,5 +1605,305 @@ function doDeleteGroup(groupId) {
         closeDeleteGroupModal();
     });
 }
+
+// Chart Modal Functions
+let chartInstance = null;
+let chartData = null;
+let currentChartItemId = null;
+let currentTimestep = null;
+
+function openChartModal(itemId, itemName) {
+    const modal = document.getElementById('chartModal');
+    const title = document.getElementById('chartModalTitle');
+    title.textContent = `${itemName} - Price History`;
+    currentChartItemId = itemId;
+    modal.classList.add('show');
+    
+    // Reset to default range and load chart
+    document.querySelectorAll('.chart-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.range === 'month') btn.classList.add('active');
+    });
+    
+    loadChart(itemId, 'month');
+}
+
+function closeChartModal() {
+    document.getElementById('chartModal').classList.remove('show');
+    if (chartInstance) {
+        chartInstance.destroy();
+        chartInstance = null;
+    }
+    chartData = null;
+    currentChartItemId = null;
+    currentTimestep = null;
+}
+
+async function loadChart(itemId, range) {
+    const loading = document.getElementById('chartLoading');
+    loading.style.display = 'flex';
+    
+    // Determine timestep based on range
+    let timestep;
+    if (range === 'day') {
+        timestep = '5m';
+    } else if (range === 'week') {
+        timestep = '1h';
+    } else {
+        timestep = '24h';
+    }
+    
+    try {
+        const response = await fetch('/api/item/history/?id=' + itemId + '&timestep=' + timestep);
+        const data = await response.json();
+        
+        if (data.data && data.data.length > 0) {
+            chartData = data.data;
+            currentTimestep = timestep;
+            filterAndDisplayChart(range);
+        } else {
+            displayEmptyChart();
+        }
+    } catch (error) {
+        console.error('Error loading price history:', error);
+        displayEmptyChart();
+    } finally {
+        loading.style.display = 'none';
+    }
+}
+
+async function switchChartRange(range) {
+    let requiredTimestep;
+    if (range === 'day') {
+        requiredTimestep = '5m';
+    } else if (range === 'week') {
+        requiredTimestep = '1h';
+    } else {
+        requiredTimestep = '24h';
+    }
+    
+    if (currentTimestep !== requiredTimestep && currentChartItemId) {
+        const loading = document.getElementById('chartLoading');
+        loading.style.display = 'flex';
+        
+        try {
+            const response = await fetch('/api/item/history/?id=' + currentChartItemId + '&timestep=' + requiredTimestep);
+            const data = await response.json();
+            
+            if (data.data && data.data.length > 0) {
+                chartData = data.data;
+                currentTimestep = requiredTimestep;
+            }
+        } catch (error) {
+            console.error('Error loading price history:', error);
+        } finally {
+            loading.style.display = 'none';
+        }
+    }
+    
+    filterAndDisplayChart(range);
+}
+
+function filterAndDisplayChart(range) {
+    if (!chartData) return;
+    
+    const now = Date.now() / 1000;
+    let filteredData = chartData;
+    let minTime, maxTime;
+    
+    maxTime = new Date();
+    
+    switch (range) {
+        case 'day':
+            filteredData = chartData.filter(d => d.timestamp > now - 86400);
+            minTime = new Date(Date.now() - 86400 * 1000);
+            break;
+        case 'week':
+            filteredData = chartData.filter(d => d.timestamp > now - 604800);
+            minTime = new Date(Date.now() - 604800 * 1000);
+            break;
+        case 'month':
+            filteredData = chartData.filter(d => d.timestamp > now - 2592000);
+            minTime = new Date(Date.now() - 2592000 * 1000);
+            break;
+        case '6month':
+            filteredData = chartData.filter(d => d.timestamp > now - 15552000);
+            minTime = new Date(Date.now() - 15552000 * 1000);
+            break;
+        case 'year':
+            minTime = new Date(Date.now() - 365 * 86400 * 1000);
+            break;
+    }
+    
+    displayChart(filteredData, minTime, maxTime);
+}
+
+function displayChart(data, minTime, maxTime) {
+    const ctx = document.getElementById('favoriteChart').getContext('2d');
+    
+    if (chartInstance) {
+        chartInstance.destroy();
+    }
+    
+    const labels = data.map(d => new Date(d.timestamp * 1000));
+    const highPrices = data.map(d => d.avgHighPrice);
+    const lowPrices = data.map(d => d.avgLowPrice);
+    
+    chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Instant Buy (High)',
+                    data: highPrices,
+                    borderColor: '#28a745',
+                    backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    pointHoverRadius: 5,
+                    pointHitRadius: 10,
+                    tension: 0.3,
+                    fill: false,
+                    spanGaps: true
+                },
+                {
+                    label: 'Instant Sell (Low)',
+                    data: lowPrices,
+                    borderColor: '#dc3545',
+                    backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    pointHoverRadius: 5,
+                    pointHitRadius: 10,
+                    tension: 0.3,
+                    fill: false,
+                    spanGaps: true
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            layout: {
+                padding: {
+                    left: 10,
+                    right: 20
+                }
+            },
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 20
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    padding: 12,
+                    titleFont: { size: 14 },
+                    bodyFont: { size: 13 },
+                    callbacks: {
+                        title: function(context) {
+                            return new Date(context[0].parsed.x).toLocaleString();
+                        },
+                        label: function(context) {
+                            return context.dataset.label + ': ' + 
+                                (context.parsed.y ? context.parsed.y.toLocaleString() + ' gp' : 'N/A');
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    type: 'time',
+                    min: minTime,
+                    max: maxTime,
+                    time: {
+                        displayFormats: {
+                            hour: 'MMM d, HH:mm',
+                            day: 'MMM d',
+                            week: 'MMM d',
+                            month: 'MMM yyyy'
+                        }
+                    },
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        maxTicksLimit: 8
+                    }
+                },
+                y: {
+                    beginAtZero: false,
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            if (value >= 1000000) {
+                                return (value / 1000000).toFixed(1) + 'M';
+                            } else if (value >= 1000) {
+                                return (value / 1000).toFixed(0) + 'K';
+                            }
+                            return value;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function displayEmptyChart() {
+    const ctx = document.getElementById('favoriteChart').getContext('2d');
+    
+    if (chartInstance) {
+        chartInstance.destroy();
+    }
+    
+    chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: []
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                title: {
+                    display: true,
+                    text: 'No price history available',
+                    font: { size: 16 }
+                }
+            }
+        }
+    });
+}
+
+// Chart range button click handlers
+document.querySelectorAll('.chart-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.chart-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        switchChartRange(btn.dataset.range);
+    });
+});
+
+// Close modal on backdrop click
+document.getElementById('chartModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeChartModal();
+    }
+});
 </script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
 {% endblock %}
