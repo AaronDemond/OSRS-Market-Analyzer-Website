@@ -1352,6 +1352,47 @@
         transform: translateY(-1px);
     }
 
+    /* Completion filter modal */
+    .completion-filter-modal .completion-options {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 0.75rem;
+        margin-top: 0.5rem;
+    }
+
+    .completion-filter-modal .completion-card {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 0.75rem 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        transition: all 0.15s;
+        cursor: pointer;
+        background: var(--surface);
+    }
+
+    .completion-filter-modal .completion-card:hover {
+        border-color: var(--primary);
+        box-shadow: 0 4px 16px rgba(99, 102, 241, 0.12);
+        transform: translateY(-1px);
+    }
+
+    .completion-filter-modal .completion-card input {
+        accent-color: var(--primary);
+    }
+
+    .completion-filter-modal .completion-card .completion-label {
+        font-weight: 600;
+        color: var(--text);
+    }
+
+    .completion-filter-modal .completion-card .completion-hint {
+        color: var(--text-muted);
+        font-size: 13px;
+        margin: 0;
+    }
+
     /* Mobile styles */
     @media (max-width: 1100px) {
         .stats-row {
@@ -1704,6 +1745,11 @@
                         <span class="filter-check">✓</span>
                         <span class="filter-clear" title="Clear filter">×</span>
                     </div>
+                    <div class="filter-dropdown-item" data-filter="completion-state">
+                        <span>Completion</span>
+                        <span class="filter-check">✓</span>
+                        <span class="filter-clear" title="Clear filter">×</span>
+                    </div>
                     <div class="filter-dropdown-divider" id="sortByDivider" style="display: none;"></div>
                     <div class="filter-dropdown-section" id="sortBySection" style="display: none;">Sort by</div>
                     <div id="sortByOptions"></div>
@@ -1960,6 +2006,48 @@
             <div class="modal-footer">
                 <button type="button" class="btn-clear-filter" id="clearQuantityFilter">Clear</button>
                 <button type="button" class="btn-apply-filter" id="applyQuantityFilter">Apply Filter</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Completion Filter Modal -->
+<div class="modal fade filter-modal completion-filter-modal" id="completionFilterModal" tabindex="-1"
+    aria-labelledby="completionFilterModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="completionFilterModalLabel">Filter by Completion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="filter-icon">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M5 13l4 4L19 7" />
+                    </svg>
+                </div>
+                <p class="filter-description">Choose whether to show flips that are completed or still in progress.</p>
+                <div class="completion-options">
+                    <label class="completion-card">
+                        <input type="radio" name="completionState" id="completionCompleted" value="completed">
+                        <div>
+                            <div class="completion-label">Completed</div>
+                            <p class="completion-hint">Quantity held is exactly 0</p>
+                        </div>
+                    </label>
+                    <label class="completion-card">
+                        <input type="radio" name="completionState" id="completionUncompleted" value="uncompleted">
+                        <div>
+                            <div class="completion-label">Uncompleted</div>
+                            <p class="completion-hint">Quantity held is more than 1</p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-clear-filter" id="clearCompletionFilter">Clear</button>
+                <button type="button" class="btn-apply-filter" id="applyCompletionFilter">Apply Filter</button>
             </div>
         </div>
     </div>
@@ -2248,29 +2336,29 @@
         let sortAscending = false; // Default descending
         let columnSortActive = false; // Track if column header sort is active
 
-        const filterDropdownBtn = document.getElementById('filterDropdownBtn');
-        const filterDropdownMenu = document.getElementById('filterDropdownMenu');
-        const filterBadge = document.getElementById('filterBadge');
-        const tableBody = document.querySelector('#flipsTable tbody');
-        const sortIndicator = document.getElementById('sortIndicator');
-        const sortIndicatorValue = document.getElementById('sortIndicatorValue');
-        const sortIndicatorArrow = document.getElementById('sortIndicatorArrow');
-        const sortIndicatorMenu = document.getElementById('sortIndicatorMenu');
-        const sortIndicatorOptions = document.getElementById('sortIndicatorOptions');
-        const sortByDivider = document.getElementById('sortByDivider');
-        const sortBySection = document.getElementById('sortBySection');
-        const sortByOptions = document.getElementById('sortByOptions');
+        const filterDropdownBtn = document.getElementById('filterDropdownBtn'); // What: main filter button; Why: opens filter dropdown; How: DOM lookup by id.
+        const filterDropdownMenu = document.getElementById('filterDropdownMenu'); // What: filter dropdown menu; Why: houses filter options; How: DOM lookup.
+        const filterBadge = document.getElementById('filterBadge'); // What: badge showing active filter count; Why: UX indicator; How: DOM lookup.
+        const tableBody = document.querySelector('#flipsTable tbody'); // What: flips table body; Why: render and filter rows; How: querySelector.
+        const sortIndicator = document.getElementById('sortIndicator'); // What: desktop sort indicator; Why: shows current sort; How: DOM lookup.
+        const sortIndicatorValue = document.getElementById('sortIndicatorValue'); // What: sort label; Why: display sort criteria; How: DOM lookup.
+        const sortIndicatorArrow = document.getElementById('sortIndicatorArrow'); // What: sort direction arrow; Why: toggle asc/desc; How: DOM lookup.
+        const sortIndicatorMenu = document.getElementById('sortIndicatorMenu'); // What: sort dropdown; Why: choose filter sort; How: DOM lookup.
+        const sortIndicatorOptions = document.getElementById('sortIndicatorOptions'); // What: sort options container; Why: renders sort choices; How: DOM lookup.
+        const sortByDivider = document.getElementById('sortByDivider'); // What: divider inside filter dropdown; Why: separates filter and sort; How: DOM lookup.
+        const sortBySection = document.getElementById('sortBySection'); // What: sort section label; Why: UX clarity; How: DOM lookup.
+        const sortByOptions = document.getElementById('sortByOptions'); // What: container for sort options in dropdown; Why: renders list; How: DOM lookup.
 
         // Mobile sort indicator elements
-        const sortIndicatorMobileRow = document.getElementById('sortIndicatorMobileRow');
-        const sortIndicatorMobile = document.getElementById('sortIndicatorMobile');
-        const sortIndicatorValueMobile = document.getElementById('sortIndicatorValueMobile');
-        const sortIndicatorArrowMobile = document.getElementById('sortIndicatorArrowMobile');
+        const sortIndicatorMobileRow = document.getElementById('sortIndicatorMobileRow'); // What: mobile sort row; Why: show sort on small screens; How: DOM lookup.
+        const sortIndicatorMobile = document.getElementById('sortIndicatorMobile'); // What: mobile sort pill; Why: show sort label; How: DOM lookup.
+        const sortIndicatorValueMobile = document.getElementById('sortIndicatorValueMobile'); // What: mobile sort value; Why: mirrors desktop; How: DOM lookup.
+        const sortIndicatorArrowMobile = document.getElementById('sortIndicatorArrowMobile'); // What: mobile sort arrow; Why: toggle direction; How: DOM lookup.
 
         // Filter tags elements
-        const activeFilterTagsRow = document.getElementById('activeFilterTagsRow');
-        const activeFilterTags = document.getElementById('activeFilterTags');
-        const activeFilterTagsMobile = document.getElementById('activeFilterTagsMobile');
+        const activeFilterTagsRow = document.getElementById('activeFilterTagsRow'); // What: desktop tags row; Why: show active filters; How: DOM lookup.
+        const activeFilterTags = document.getElementById('activeFilterTags'); // What: desktop tags container; Why: list active filters; How: DOM lookup.
+        const activeFilterTagsMobile = document.getElementById('activeFilterTagsMobile'); // What: mobile tags container; Why: show active filters on mobile; How: DOM lookup.
 
         // Filter label mappings
         const filterLabels = {
@@ -2278,32 +2366,37 @@
             'unrealized-range': 'Unrealized',
             'realized-range': 'Realized',
             'position-size': 'Position Size',
-            'quantity': 'Quantity'
+            'quantity': 'Quantity',
+            'completion-state': 'Completion'
         };
 
         // Modal elements - declare early so click handlers can access them
-        const timeHeldModal = document.getElementById('timeHeldFilterModal');
-        const timeHeldMin = document.getElementById('timeHeldMin');
-        const timeHeldMax = document.getElementById('timeHeldMax');
-        const unrealizedModal = document.getElementById('unrealizedRangeFilterModal');
-        const unrealizedMin = document.getElementById('unrealizedMin');
-        const unrealizedMax = document.getElementById('unrealizedMax');
-        const realizedModal = document.getElementById('realizedRangeFilterModal');
-        const realizedMin = document.getElementById('realizedMin');
-        const realizedMax = document.getElementById('realizedMax');
-        const positionSizeModal = document.getElementById('positionSizeFilterModal');
-        const positionSizeMin = document.getElementById('positionSizeMin');
-        const positionSizeMax = document.getElementById('positionSizeMax');
-        const quantityModal = document.getElementById('quantityFilterModal');
-        const quantityMin = document.getElementById('quantityMin');
-        const quantityMax = document.getElementById('quantityMax');
+        const timeHeldModal = document.getElementById('timeHeldFilterModal'); // What: modal for time-held filter input; Why: allows bounds input; How: DOM lookup.
+        const timeHeldMin = document.getElementById('timeHeldMin'); // What: minimum days input; Why: lower bound for time held; How: DOM lookup.
+        const timeHeldMax = document.getElementById('timeHeldMax'); // What: maximum days input; Why: upper bound for time held; How: DOM lookup.
+        const unrealizedModal = document.getElementById('unrealizedRangeFilterModal'); // What: modal for unrealized filter; Why: capture unrealized bounds; How: DOM lookup.
+        const unrealizedMin = document.getElementById('unrealizedMin'); // What: minimum unrealized input; Why: lower bound; How: DOM lookup.
+        const unrealizedMax = document.getElementById('unrealizedMax'); // What: maximum unrealized input; Why: upper bound; How: DOM lookup.
+        const realizedModal = document.getElementById('realizedRangeFilterModal'); // What: modal for realized filter; Why: capture realized bounds; How: DOM lookup.
+        const realizedMin = document.getElementById('realizedMin'); // What: minimum realized input; Why: lower bound; How: DOM lookup.
+        const realizedMax = document.getElementById('realizedMax'); // What: maximum realized input; Why: upper bound; How: DOM lookup.
+        const positionSizeModal = document.getElementById('positionSizeFilterModal'); // What: modal for position size filter; Why: bounds on position size; How: DOM lookup.
+        const positionSizeMin = document.getElementById('positionSizeMin'); // What: minimum position size input; Why: lower bound; How: DOM lookup.
+        const positionSizeMax = document.getElementById('positionSizeMax'); // What: maximum position size input; Why: upper bound; How: DOM lookup.
+        const quantityModal = document.getElementById('quantityFilterModal'); // What: modal for quantity filter; Why: bounds on quantity held; How: DOM lookup.
+        const quantityMin = document.getElementById('quantityMin'); // What: minimum quantity input; Why: lower bound; How: DOM lookup.
+        const quantityMax = document.getElementById('quantityMax'); // What: maximum quantity input; Why: upper bound; How: DOM lookup.
+        const completionModal = document.getElementById('completionFilterModal'); // What: modal for completion filter; Why: pick completed vs uncompleted; How: DOM lookup.
+        const completionCompleted = document.getElementById('completionCompleted'); // What: radio for completed flips; Why: set filter to completed; How: DOM lookup.
+        const completionUncompleted = document.getElementById('completionUncompleted'); // What: radio for uncompleted flips; Why: set filter to uncompleted; How: DOM lookup.
 
         const filterDisplayNames = {
             'position-size': 'Position Size',
             'quantity': 'Quantity',
             'realized-range': 'Realized',
             'time-held': 'Time Held',
-            'unrealized-range': 'Unrealized'
+            'unrealized-range': 'Unrealized',
+            'completion-state': 'Completion'
         };
 
         if (!filterDropdownBtn || !filterDropdownMenu) {
@@ -2444,6 +2537,9 @@
                 const cell = row.querySelector('td:nth-child(4)');
                 return parseFloat(cell?.dataset.value) || 0;
             } else if (filterName === 'quantity') {
+                const cell = row.querySelector('td:nth-child(3)');
+                return parseFloat(cell?.dataset.value) || 0;
+            } else if (filterName === 'completion-state') {
                 const cell = row.querySelector('td:nth-child(3)');
                 return parseFloat(cell?.dataset.value) || 0;
             }
@@ -2587,24 +2683,29 @@
                 filterDropdownBtn.classList.remove('has-active');
             }
 
-            // Update dropdown item states
-            document.querySelectorAll('.filter-dropdown-item').forEach(item => {
-                const filterName = item.dataset.filter;
-                if (activeFilters[filterName]) {
-                    item.classList.add('active');
-                } else {
-                    item.classList.remove('active');
-                }
-            });
+        // Update dropdown item states
+        document.querySelectorAll('.filter-dropdown-item').forEach(item => {
+            const filterName = item.dataset.filter;
+            if (activeFilters[filterName]) {
+                item.classList.add('active');
+            } else {
+                item.classList.remove('active');
+            }
+        });
 
-            // Update filter tags
-            updateFilterTags();
+        // Update filter tags
+        updateFilterTags();
 
-            updateSortByOptions();
-        }
+        updateSortByOptions();
+    }
 
         // Format filter value for display
         function formatFilterValue(filterName, filterData) {
+            // Handle completion filter separately (boolean-like choice)
+            if (filterName === 'completion-state') {
+                return filterData === 'completed' ? 'Completed' : 'Uncompleted';
+            }
+
             const {min, max} = filterData;
 
             // Format number based on filter type
@@ -2643,7 +2744,8 @@
                     const tag = document.createElement('span');
                     tag.className = 'filter-tag';
                     tag.dataset.filter = filterName;
-                    tag.innerHTML = `${label}: ${value}<button class="filter-tag-remove" title="Remove filter">&times;</button>`;
+                    const displayValue = value || (filterName === 'completion-state' ? (activeFilters[filterName] === 'completed' ? 'Completed' : 'Uncompleted') : '');
+                    tag.innerHTML = `${label}: ${displayValue}<button class="filter-tag-remove" title="Remove filter">&times;</button>`;
                     tag.querySelector('.filter-tag-remove').addEventListener('click', () => {
                         removeFilter(filterName);
                     });
@@ -2661,7 +2763,8 @@
                     const tag = document.createElement('span');
                     tag.className = 'filter-tag';
                     tag.dataset.filter = filterName;
-                    tag.innerHTML = `${label}: ${value}<button class="filter-tag-remove" title="Remove filter">&times;</button>`;
+                    const displayValue = value || (filterName === 'completion-state' ? (activeFilters[filterName] === 'completed' ? 'Completed' : 'Uncompleted') : '');
+                    tag.innerHTML = `${label}: ${displayValue}<button class="filter-tag-remove" title="Remove filter">&times;</button>`;
                     tag.querySelector('.filter-tag-remove').addEventListener('click', () => {
                         removeFilter(filterName);
                     });
@@ -2712,6 +2815,7 @@
             const realizedActive = activeFilters['realized-range'];
             const positionSizeActive = activeFilters['position-size'];
             const quantityActive = activeFilters['quantity'];
+            const completionActive = activeFilters['completion-state'];
 
             rows.forEach(row => {
                 let show = true;
@@ -2792,6 +2896,17 @@
                     const min = quantityActive.min !== null ? quantityActive.min : -Infinity;
                     const max = quantityActive.max !== null ? quantityActive.max : Infinity;
                     if (value < min || value > max) {
+                        show = false;
+                    }
+                }
+
+                // Completion filter (completed = quantity held == 0, uncompleted = quantity held > 1)
+                if (show && completionActive) {
+                    const cell = row.querySelector('td:nth-child(3)');
+                    const value = parseFloat(cell?.dataset.value) || 0;
+                    if (completionActive === 'completed' && value !== 0) {
+                        show = false;
+                    } else if (completionActive === 'uncompleted' && value <= 1) {
                         show = false;
                     }
                 }
@@ -2883,6 +2998,9 @@
                     } else if (filterName === 'quantity') {
                         quantityMin.value = '';
                         quantityMax.value = '';
+                    } else if (filterName === 'completion-state') {
+                        completionCompleted.checked = false;
+                        completionUncompleted.checked = false;
                     }
                     updateFilterUI();
                     applyFilters();
@@ -2905,6 +3023,9 @@
                     modal.show();
                 } else if (filterName === 'quantity') {
                     const modal = new bootstrap.Modal(document.getElementById('quantityFilterModal'));
+                    modal.show();
+                } else if (filterName === 'completion-state') {
+                    const modal = new bootstrap.Modal(document.getElementById('completionFilterModal'));
                     modal.show();
                 }
                 filterDropdownMenu.classList.remove('show');
@@ -3076,8 +3197,8 @@
         });
 
         // Quantity filter modal
-        const applyQuantityBtn = document.getElementById('applyQuantityFilter');
-        const clearQuantityBtn = document.getElementById('clearQuantityFilter');
+        const applyQuantityBtn = document.getElementById('applyQuantityFilter'); // What: apply button for quantity filter; Why: saves quantity bounds; How: DOM lookup.
+        const clearQuantityBtn = document.getElementById('clearQuantityFilter'); // What: clear button for quantity filter; Why: resets quantity bounds; How: DOM lookup.
 
         applyQuantityBtn.addEventListener('click', function () {
             const min = quantityMin.value !== '' ? parseFloat(quantityMin.value) : null;
@@ -3116,13 +3237,57 @@
             }
         });
 
+        // Completion filter modal
+        const applyCompletionBtn = document.getElementById('applyCompletionFilter'); // What: apply button for completion filter; Why: sets completion state filter; How: DOM lookup.
+        const clearCompletionBtn = document.getElementById('clearCompletionFilter'); // What: clear button for completion filter; Why: removes completion filter; How: DOM lookup.
+
+        applyCompletionBtn.addEventListener('click', function () {
+            const state = completionCompleted.checked ? 'completed' : (completionUncompleted.checked ? 'uncompleted' : null);
+            if (state) {
+                activeFilters['completion-state'] = state;
+                columnSortActive = false;
+                currentSortFilter = 'completion-state';
+                clearColumnSortStyling();
+                updateFilterUI();
+                applyFilters();
+
+                sortIndicator.classList.remove('flash');
+                void sortIndicator.offsetWidth;
+                sortIndicator.classList.add('flash');
+                syncMobileSortIndicator();
+            }
+            bootstrap.Modal.getInstance(completionModal).hide();
+        });
+
+        clearCompletionBtn.addEventListener('click', function () {
+            delete activeFilters['completion-state'];
+            completionCompleted.checked = false;
+            completionUncompleted.checked = false;
+            updateFilterUI();
+            applyFilters();
+            bootstrap.Modal.getInstance(completionModal).hide();
+        });
+
+        completionModal.addEventListener('show.bs.modal', function () {
+            if (activeFilters['completion-state'] === 'completed') {
+                completionCompleted.checked = true;
+                completionUncompleted.checked = false;
+            } else if (activeFilters['completion-state'] === 'uncompleted') {
+                completionUncompleted.checked = true;
+                completionCompleted.checked = false;
+            } else {
+                completionCompleted.checked = false;
+                completionUncompleted.checked = false;
+            }
+        });
+
         // =========================================================================
         // TEXT SEARCH FILTER
         // =========================================================================
 
-        const filterInput = document.getElementById('filterSearchInput');
-        const filterClear = document.getElementById('filterSearchClear');
-        const filterWrapper = document.getElementById('filterSearchWrapper');
+        const filterInput = document.getElementById('filterSearchInput'); // What: text input for searching flips; Why: allows quick filtering by item name; How: DOM lookup by id.
+        const filterClear = document.getElementById('filterSearchClear'); // What: clear button for search; Why: lets users reset search quickly; How: DOM lookup by id.
+        const filterWrapper = document.getElementById('filterSearchWrapper'); // What: wrapper controlling clear visibility; Why: toggles styling when input has value; How: DOM lookup by id.
 
         // Check if a row passes all active dropdown filters
         function passesDropdownFilters(row) {
@@ -3169,6 +3334,15 @@
                 const min = activeFilters['quantity'].min !== null ? activeFilters['quantity'].min : -Infinity;
                 const max = activeFilters['quantity'].max !== null ? activeFilters['quantity'].max : Infinity;
                 if (value < min || value > max) return false;
+            }
+
+                // Completion filter
+            if (activeFilters['completion-state']) {
+                const cell = row.querySelector('td:nth-child(3)');
+                const value = parseFloat(cell?.dataset.value) || 0;
+                const state = activeFilters['completion-state'];
+                if (state === 'completed' && value !== 0) return false;
+                if (state === 'uncompleted' && value <= 1) return false;
             }
 
             return true;

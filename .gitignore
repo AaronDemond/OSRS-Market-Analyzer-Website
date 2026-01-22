@@ -12,3 +12,4 @@ tests_alert_models.py
 *.pyc
 initialize_flip_profits.py
 assign_user_to_existing_data.py
+.github/*
