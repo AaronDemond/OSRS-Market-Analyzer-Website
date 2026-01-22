@@ -1642,6 +1642,48 @@
         }
     }
 
+    /* ============================================================
+       FLIP ITEM ICON STYLES
+       ============================================================
+       These styles render item icons next to flip names in the table.
+       Icons are fetched from the OSRS Wiki and displayed at 24x24px
+       to fit within table rows without taking up too much space.
+       ============================================================ */
+    
+    /* Container for the icon and item name - uses flexbox for alignment */
+    .flip-item-cell {
+        display: flex;
+        align-items: center;
+        gap: 8px;  /* Space between icon and item name */
+    }
+    
+    /* The actual item icon image from the OSRS Wiki */
+    .flip-icon {
+        width: 24px;       /* Fixed width for consistent table layout */
+        height: 24px;      /* Fixed height matching width for square icons */
+        object-fit: contain;  /* Preserve aspect ratio, fit within bounds */
+        flex-shrink: 0;    /* Prevent icon from shrinking when space is tight */
+    }
+    
+    /* Placeholder shown when no icon is available for an item */
+    .flip-icon-placeholder {
+        width: 24px;       /* Same dimensions as .flip-icon for consistency */
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;   /* Size for emoji fallback */
+        flex-shrink: 0;    /* Prevent shrinking */
+        color: var(--muted);  /* Muted color for placeholder */
+    }
+    
+    /* Container for item name and subtexts - allows wrapping subtexts below name */
+    .flip-item-info {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;  /* Allow text truncation if needed */
+    }
+
 </style>
 {% endblock %}
 
@@ -2175,6 +2217,22 @@
             statsRow.classList.add('fade-in');
         }
 
+        /**
+         * Renders the flip items into the table body.
+         * 
+         * What: Populates the flips table with item data including icons, prices, and P&L.
+         * Why: Displays all user's flip positions in a sortable, interactive table.
+         * How: Iterates through items array and builds HTML rows with icon, name, and data columns.
+         * 
+         * @param {Array} items - Array of flip item objects from the API containing:
+         *   - item_id: Unique identifier for the item
+         *   - name: Display name of the item
+         *   - icon: Wiki image filename for the item (e.g., "Abyssal_whip.png")
+         *   - avg_price, high_price, low_price: Price data
+         *   - quantity_holding, position_size: Position metrics
+         *   - unrealized_net, realized_net: Profit/loss values
+         *   - first_buy_timestamp: Timestamp for time-held calculations
+         */
         function renderTableRows(items) {
             const tbody = document.getElementById('flipsTableBody');
 
@@ -2185,12 +2243,33 @@
 
             let html = '';
             items.forEach(item => {
+                // Build icon HTML - use item image from OSRS Wiki if available, otherwise show placeholder
+                // The icon field contains the wiki filename (e.g., "Abyssal_whip.png")
+                // We construct the full URL by encoding the filename and prepending the wiki images base URL
+                let iconHtml;
+                if (item.icon) {
+                    // Construct the wiki image URL:
+                    // - Replace spaces with underscores (wiki URL convention)
+                    // - URL encode the filename to handle special characters
+                    const iconUrl = 'https://oldschool.runescape.wiki/images/' + encodeURIComponent(item.icon.replace(/ /g, '_'));
+                    iconHtml = '<img class="flip-icon" src="' + iconUrl + '" alt="" loading="lazy">';
+                } else {
+                    // Fallback placeholder when no icon is available - show a coin emoji
+                    // This ensures consistent visual layout even without icons
+                    iconHtml = '<span class="flip-icon-placeholder">🪙</span>';
+                }
+                
                 html += `
             <tr data-item-id="${item.item_id}" data-item-name="${item.name}" data-first-buy="${item.first_buy_timestamp || ''}" data-position-size="${item.position_size}">
                 <td>
-                    <a href="/flips/item/${item.item_id}/">${item.name}</a>
-                    <div class="time-held-subtext" style="display: none;"></div>
-                    <div class="position-size-subtext" style="display: none;"></div>
+                    <div class="flip-item-cell">
+                        ${iconHtml}
+                        <div class="flip-item-info">
+                            <a href="/flips/item/${item.item_id}/">${item.name}</a>
+                            <div class="time-held-subtext" style="display: none;"></div>
+                            <div class="position-size-subtext" style="display: none;"></div>
+                        </div>
+                    </div>
                 </td>
                 <td data-value="${item.avg_price}">${formatNumber(item.avg_price)}</td>
                 <td data-value="${item.quantity_holding}">${formatNumber(item.quantity_holding)}</td>

@@ -264,7 +264,15 @@ def flips_stats_api(request):
 
 
 def flips_data_api(request):
-    """API endpoint for flip data - enables progressive loading"""
+    """
+    API endpoint for flip data - enables progressive loading.
+    
+    Returns JSON containing:
+    - items: List of flip items with prices, quantities, P&L, and icon data
+    - stats: Aggregated statistics (total unrealized, realized, position size)
+    
+    The icon field is used by the frontend to display item images from the OSRS Wiki.
+    """
     time_filter = request.GET.get('filter', 'current')
     
     # Get current user (or None if not authenticated)
@@ -277,6 +285,10 @@ def flips_data_api(request):
     
     # Fetch all current prices in one API call
     all_prices = get_all_current_prices()
+    
+    # Get item mapping for icon data - this mapping contains item metadata from the OSRS Wiki API
+    # including the 'icon' field which is the filename of the item's image on the wiki
+    item_mapping = get_item_mapping()
     
     # GE tax is 2% capped at 5M per transaction
     TAX_CAP = 5000000
@@ -315,6 +327,15 @@ def flips_data_api(request):
     for item_id in item_ids:
         item_flips = flips_qs.filter(item_id=item_id)
         item_name = item_flips.first().item_name
+        
+        # Look up the item icon from the mapping using the item name (case-insensitive)
+        # The mapping is keyed by lowercase item names and contains an 'icon' field
+        # with the wiki image filename (e.g., "Abyssal_whip.png")
+        icon = None
+        if item_name and item_mapping:
+            item_data = item_mapping.get(item_name.lower())
+            if item_data:
+                icon = item_data.get('icon')
         
         # Calculate total bought and spent
         buys = item_flips.filter(type='buy')
@@ -359,6 +380,7 @@ def flips_data_api(request):
         items.append({
             'item_id': item_id,
             'name': item_name,
+            'icon': icon,  # Wiki image filename for displaying item icon in the UI
             'avg_price': int(avg_price),
             'high_price': high_price,
             'low_price': low_price,
