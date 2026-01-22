@@ -287,6 +287,81 @@ class Alert(models.Model):
             return f"{self.item_name} sustained {direction} move triggered ({moves} moves in {frame})"
         return f"Item price is now {price_formatted}"
 
+    def cleanup_triggered_data_for_removed_items(self, removed_item_ids):
+        """
+        Removes triggered_data entries for items that have been removed from the alert.
+        
+        What: Filters the triggered_data JSON array to remove entries matching removed item IDs.
+        Why: When a user removes items from a multi-item alert, the corresponding triggered data
+             should also be removed to keep the data consistent and accurate.
+        How: Parses triggered_data as JSON array, filters out entries where item_id is in the
+             removed_item_ids set, then saves the filtered data back (or clears if empty).
+        
+        Args:
+            removed_item_ids: A set or list of item IDs that were removed from the alert.
+                              These IDs will be matched against 'item_id' field in each triggered_data entry.
+        
+        Returns:
+            bool: True if any changes were made to triggered_data, False otherwise.
+        
+        Side Effects:
+            - Updates self.triggered_data with filtered JSON (or None if all entries removed)
+            - Sets self.is_triggered = False if all triggered entries are removed
+            - Calls self.save() to persist the changes immediately
+        """
+        import json
+        
+        # Convert all removed IDs to strings for consistent comparison
+        # Why: triggered_data stores item_id as strings (from check_alerts.py: 'item_id': item_id_str)
+        #      but removed_item_ids may contain integers from the set subtraction
+        # How: Convert everything to strings so "123" == str(123)
+        removed_ids_as_str = set(str(x) for x in removed_item_ids)
+        
+        if not removed_ids_as_str or not self.triggered_data:
+            return False
+        
+        try:
+            # triggered_data_list: The parsed JSON array of triggered item data
+            # Each entry should have an 'item_id' field identifying which item it belongs to
+            triggered_data_list = json.loads(self.triggered_data)
+            
+            if not isinstance(triggered_data_list, list):
+                # triggered_data is not a list (might be single item dict), don't modify
+                return False
+            
+            # original_count: Number of triggered items before filtering
+            original_count = len(triggered_data_list)
+            
+            # filtered_data: List of triggered items after removing entries for deleted items
+            # We filter out any entry where item_id (converted to string) matches a removed ID
+            # This handles both cases: item_id stored as int or string in triggered_data
+            filtered_data = [
+                item for item in triggered_data_list
+                if str(item.get('item_id')) not in removed_ids_as_str
+            ]
+            
+            # Check if any items were actually removed
+            if len(filtered_data) == original_count:
+                return False  # No changes made
+            
+            if filtered_data:
+                # Some items remain - update with filtered list
+                self.triggered_data = json.dumps(filtered_data)
+            else:
+                # All triggered items were removed - clear triggered state
+                self.triggered_data = None
+                self.is_triggered = False
+            
+            # Save immediately to persist the changes
+            # Why: Ensures triggered_data cleanup is saved before any other operations
+            self.save()
+            
+            return True  # Changes were made
+            
+        except (json.JSONDecodeError, TypeError, ValueError):
+            # Invalid JSON or unexpected data format - don't modify
+            return False
+
 
 class FavoriteGroup(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)

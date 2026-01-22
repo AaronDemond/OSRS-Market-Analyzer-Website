@@ -1204,6 +1204,13 @@ def update_alert(request):
                 is_all_items = data.get('is_all_items', False)
                 alert.is_all_items = is_all_items
                 
+                # items_were_added: Track if NEW items were added to the alert
+                # What: Boolean flag indicating if the user added new items to monitor
+                # Why: We need to distinguish between adding items (requires full triggered_data reset)
+                #      and removing items (only cleanup the removed items' triggered_data entries)
+                # How: Compare old_item_ids to new_item_ids; if new has IDs not in old, items were added
+                items_were_added = False
+                
                 # Handle item_ids for multi-item spread alerts
                 # item_ids: Comma-separated string of item IDs from the frontend multi-item selector
                 # What: Stores multiple item IDs as JSON array for multi-item spread alerts
@@ -1215,6 +1222,8 @@ def update_alert(request):
                 # - None: field not provided (single item mode or unchanged)
                 # - '': empty string (all items removed, switch to single item mode)
                 # - '123,456': comma-separated IDs (multi-item mode)
+                print("DEBUG item_ids_str")
+                print(item_ids_str)
                 if item_ids_str is not None:
                     if item_ids_str == '':
                         # All items were removed - clear item_ids field
@@ -1229,41 +1238,52 @@ def update_alert(request):
                             old_item_ids = set()
                             if alert.item_ids:
                                 try:
-                                    old_item_ids = set(json_module.loads(alert.item_ids))
+                                    old_item_ids_str = set(json_module.loads(alert.item_ids))
+                                    old_item_ids = set()
+                                    for i in old_item_ids_str:
+                                        old_item_ids.add(int(i))
                                 except (json_module.JSONDecodeError, TypeError):
                                     pass
                             
                             new_item_ids = set(item_ids_list)
                             removed_item_ids = old_item_ids - new_item_ids
+                            # added_item_ids: Items that are in the new set but not in the old set (user added them)
+                            # What: Set of item IDs that the user added to the alert
+                            # Why: When items are ADDED, we need to reset triggered_data entirely because
+                            #      the new items haven't been checked yet and need to start fresh
+                            # How: Compute set difference: new - old = items that were added
+                            added_item_ids = new_item_ids - old_item_ids
                             
-                            # Clean up triggered_data for removed items
+                            # items_were_added: Update the flag if new items were added
+                            # Why: This flag is used later to determine whether to reset triggered_data
+                            # How: If there are any items in added_item_ids, set the flag to True
+                            if added_item_ids:
+                                items_were_added = True
+                            
+                            print("DEBUG removed item ids")
+                            print(removed_item_ids)
+                            print("DEBUG added item ids")
+                            print(added_item_ids)
+                            
+                            # Clean up triggered_data for removed items using the model method
                             # What: Remove triggered_data entries for items that were removed from the alert
                             # Why: Triggered data should only contain info for currently monitored items
-                            # How: Parse triggered_data JSON, filter out removed item IDs, save back
-                            if removed_item_ids and alert.triggered_data:
-                                try:
-                                    triggered_data = json_module.loads(alert.triggered_data)
-                                    if isinstance(triggered_data, list):
-                                        # Filter out entries for removed items
-                                        triggered_data = [
-                                            item for item in triggered_data 
-                                            if item.get('item_id') not in removed_item_ids
-                                        ]
-                                        if triggered_data:
-                                            alert.triggered_data = json_module.dumps(triggered_data)
-                                        else:
-                                            # All triggered items were removed - clear triggered state
-                                            alert.triggered_data = None
-                                            alert.is_triggered = False
-                                except (json_module.JSONDecodeError, TypeError):
-                                    pass
+                            # How: Use the Alert model's cleanup_triggered_data_for_removed_items method
+                            # Note: This only runs when items are REMOVED; when items are ADDED, 
+                            #       the triggered_data is reset entirely in the final save block
+                            if removed_item_ids:
+                                alert.cleanup_triggered_data_for_removed_items(removed_item_ids)
                             
                             alert.item_ids = json_module.dumps(item_ids_list)
                             # Set first item as item_id for display/fallback purposes
-                            alert.item_id = item_ids_list[0]
                             # Get item name for the first item using ID-to-name mapping
                             id_to_name_mapping = get_item_id_to_name_mapping()
-                            item_name = id_to_name_mapping.get(str(item_ids_list[0]), f'Item {item_ids_list[0]}')
+                            try:
+                                item_name = id_to_name_mapping.get(str(item_ids_list[0]), f'Item {item_ids_list[0]}')
+                                alert.item_id = item_ids_list[0]
+                            except:
+                                item_name = None
+                                alert.item_id = None
                             alert.item_name = item_name
                         else:
                             alert.item_ids = None
@@ -1382,14 +1402,39 @@ def update_alert(request):
                 show_notification = data.get('show_notification', True)
                 alert.show_notification = show_notification
                 
-                # Reset triggered state when alert is edited
-                alert.is_triggered = False
+                # Conditionally reset triggered state when alert is edited
+                # What: Only reset triggered_data if items were ADDED or this is a brand new configuration
+                # Why: When user only REMOVES items from a multi-item alert, we want to preserve 
+                #      the triggered_data for items that are still being monitored (the cleanup_triggered_data
+                #      method handles removing data for the deleted items)
+                # How: Check items_were_added flag; if True, reset everything. If False, preserve
+                #      the triggered_data that was cleaned up by cleanup_triggered_data_for_removed_items
+                
                 # is_dismissed: Set based on show_notification preference
                 # If show_notification is False, set is_dismissed=True to suppress notifications
                 alert.is_dismissed = not show_notification
                 alert.is_active = True
-                alert.triggered_data = None
-                alert.triggered_at = None
+                
+                if items_were_added:
+                    # Items were added - full reset required because new items haven't been checked
+                    # What: Clear all triggered state and data when new items are added
+                    # Why: New items need to be checked fresh; mixing old triggered data with new items
+                    #      would be confusing and potentially incorrect
+                    # How: Set is_triggered=False, clear triggered_data and triggered_at
+                    alert.is_triggered = False
+                    alert.triggered_data = None
+                    alert.triggered_at = None
+                else:
+                    # Only items were removed (or no item changes) - preserve remaining triggered_data
+                    # What: Keep the triggered_data that was already cleaned up for removed items
+                    # Why: If user removes some items from a triggered alert, the remaining items
+                    #      that already triggered should stay triggered with their data intact
+                    # How: Only reset is_triggered/triggered_at if triggered_data is now empty
+                    #      (cleanup_triggered_data_for_removed_items sets triggered_data=None if all removed)
+                    if alert.triggered_data is None:
+                        alert.is_triggered = False
+                        alert.triggered_at = None
+                
                 alert.save()
     return JsonResponse({'success': True})
 
@@ -1628,50 +1673,65 @@ def update_single_alert(request, alert_id):
     # Why: Allows spread alerts to monitor multiple specific items instead of all or one
     # How: Parse comma-separated string, convert to JSON array, store in item_ids field
     item_ids_str = data.get('item_ids')
+    print("DEBUG")
+    print(item_ids_str)
     
     if item_ids_str is not None:
         if item_ids_str == '':
-            # All items were removed - clear item_ids field
-            alert.item_ids = None
+            # All items were removed - delete the alert entirely
+            # What: Deletes the alert when all tracked items have been removed
+            # Why: An alert with no items to track has no purpose and would cause errors
+            # How: Delete the alert and return a JSON response with redirect info
+            #      The JavaScript handler will see the 'deleted' flag and redirect the user
+            # Note: We return JSON (not a Django redirect) because this is an AJAX endpoint
+            alert.delete()
+            return JsonResponse({
+                'success': True,
+                'deleted': True,
+                'redirect': '/alerts/',
+                'message': 'Alert deleted'
+            })
         else:
             # Parse comma-separated item IDs and store as JSON array
             item_ids_list = [int(x.strip()) for x in item_ids_str.split(',') if x.strip()]
+            print("DEBUG 2")
+            print(item_ids_list)
             if item_ids_list:
                 # Get the old item_ids to compare what was removed
+                # old_item_ids: Set of item IDs currently stored in the alert before this update
+                # Why: We need to compare old vs new to determine which items were removed
+                # How: Parse the existing item_ids JSON array and convert to a set of integers
                 old_item_ids = set()
                 if alert.item_ids:
                     try:
-                        old_item_ids = set(json.loads(alert.item_ids))
+                        # old_item_ids_list: The raw parsed list from JSON (may contain strings or ints)
+                        old_item_ids_list = json.loads(alert.item_ids)
+                        # Convert each ID to int and add to the set for comparison
+                        for i in old_item_ids_list:
+                            old_item_ids.add(int(i))
+                        
                     except (json.JSONDecodeError, TypeError):
                         pass
                 
+                # new_item_ids: Set of item IDs that will be stored after this update
                 new_item_ids = set(item_ids_list)
+                # removed_item_ids: Items that were in the old set but not in the new set (user removed them)
                 removed_item_ids = old_item_ids - new_item_ids
                 
-                # Clean up triggered_data for removed items
+                # Clean up triggered_data for removed items using the model method
                 # What: Remove triggered_data entries for items that were removed from the alert
                 # Why: Triggered data should only contain info for currently monitored items
-                if removed_item_ids and alert.triggered_data:
-                    try:
-                        triggered_data = json.loads(alert.triggered_data)
-                        if isinstance(triggered_data, list):
-                            # Filter out entries for removed items
-                            triggered_data = [
-                                item for item in triggered_data 
-                                if item.get('item_id') not in removed_item_ids
-                            ]
-                            if triggered_data:
-                                alert.triggered_data = json.dumps(triggered_data)
-                            else:
-                                # All triggered items were removed - clear triggered state
-                                alert.triggered_data = None
-                                alert.is_triggered = False
-                    except (json.JSONDecodeError, TypeError):
-                        pass
+                # How: Use the Alert model's cleanup_triggered_data_for_removed_items method
+                #      passing the REMOVED item IDs (not the new ones)
+                if removed_item_ids:
+                    alert.cleanup_triggered_data_for_removed_items(removed_item_ids)
                 
                 alert.item_ids = json.dumps(item_ids_list)
                 # Set first item as item_id for display/fallback purposes
-                alert.item_id = item_ids_list[0]
+                if len(item_ids_list) == 1:
+                    alert.item_id = item_ids_list[0]
+                else:
+                    alert.item_id = None
                 # Get item name for the first item using ID-to-name mapping
                 id_to_name_mapping = get_item_id_to_name_mapping()
                 item_name = id_to_name_mapping.get(str(item_ids_list[0]), f'Item {item_ids_list[0]}')

@@ -1776,6 +1776,9 @@ const EditMultiItemSelector = {
      * Sets up event listeners and pre-populates with existing items if editing.
      */
     init() {
+        // DEBUG: Log initialization data
+        console.log('DEBUG EditMultiItemSelector.init: itemIdsData =', itemIdsData);
+        
         // input: Text input where user types to search for items
         const input = document.getElementById('edit-multi-item-input');
         // suggestionsDropdown: Container showing autocomplete suggestions when typing
@@ -1791,7 +1794,10 @@ const EditMultiItemSelector = {
         // hiddenInput: Hidden field that stores comma-separated item IDs for form submission
         const hiddenInput = document.getElementById('edit-item-ids');
 
-        if (!input || !suggestionsDropdown || !toggleBtn || !hiddenInput) return;
+        if (!input || !suggestionsDropdown || !toggleBtn || !hiddenInput) {
+            console.log('DEBUG EditMultiItemSelector.init: Missing elements, input=', input, 'suggestionsDropdown=', suggestionsDropdown, 'toggleBtn=', toggleBtn, 'hiddenInput=', hiddenInput);
+            return;
+        }
 
         // Pre-populate with existing items from the alert
         this.selectedItems = [...itemIdsData];
@@ -1799,6 +1805,8 @@ const EditMultiItemSelector = {
         this.isDropdownOpen = false;
         this.updateHiddenInput();
         this.renderSelectedItems();
+        
+        console.log('DEBUG EditMultiItemSelector.init: After init, selectedItems =', this.selectedItems, 'hidden input value =', hiddenInput.value);
 
         const self = this;
 
@@ -2120,7 +2128,11 @@ const EditMultiItemSelector = {
     updateHiddenInput() {
         const hiddenInput = document.getElementById('edit-item-ids');
         if (hiddenInput) {
-            hiddenInput.value = this.selectedItems.map(item => item.id).join(',');
+            const newValue = this.selectedItems.map(item => item.id).join(',');
+            // DEBUG: Log when hidden input is updated
+            console.log('DEBUG updateHiddenInput: setting edit-item-ids to:', newValue);
+            console.log('DEBUG updateHiddenInput: selectedItems =', this.selectedItems);
+            hiddenInput.value = newValue;
         }
     },
 
@@ -2490,6 +2502,10 @@ async function saveChanges() {
     // the user explicitly cleared items vs not touching the field
     const itemIds = document.getElementById('edit-item-ids').value;
     
+    // DEBUG: Log item_ids value being sent
+    console.log('DEBUG saveChanges: edit-item-ids value =', itemIds);
+    console.log('DEBUG saveChanges: EditMultiItemSelector.selectedItems =', EditMultiItemSelector.selectedItems);
+    
     const data = {
         type: alertType,
         // name: User-editable alert name
@@ -2573,8 +2589,19 @@ async function saveChanges() {
                 console.error('Error clearing notification caches:', e);
             }
             
-            // Redirect with edit_saved parameter to show notification
-            window.location.href = window.location.pathname + '?edit_saved=1';
+            // Check if the alert was deleted (all items removed)
+            // What: Handles the case where removing all items from an alert causes it to be deleted
+            // Why: An alert with no items to track is invalid, so the backend deletes it
+            // How: If the response contains 'deleted: true', redirect to alerts page with notification
+            //      Otherwise, reload the current page to show saved changes
+            if (result.deleted) {
+                // Alert was deleted because all items were removed
+                // Redirect to alerts page with a notification message
+                window.location.href = result.redirect + '?deleted=1';
+            } else {
+                // Normal save - redirect with edit_saved parameter to show notification
+                window.location.href = window.location.pathname + '?edit_saved=1';
+            }
         } else {
             alert('Error saving changes: ' + (result.error || 'Unknown error'));
         }
