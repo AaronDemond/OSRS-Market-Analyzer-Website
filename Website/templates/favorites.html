@@ -253,12 +253,13 @@
         font-weight: 600;
         color: var(--primary);
         font-size: 0.95rem;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: unset;
         text-decoration: underline;
         flex: 1;
         min-width: 0;
+        word-break: break-word;
     }
 
     .favorite-item-name:hover {
@@ -268,12 +269,8 @@
     .favorite-item-actions {
         display: flex;
         gap: 4px;
-        opacity: 0;
-        transition: opacity 0.15s;
-    }
-
-    .favorite-item:hover .favorite-item-actions {
         opacity: 1;
+        transition: opacity 0.15s;
     }
 
     .favorite-action-btn {
