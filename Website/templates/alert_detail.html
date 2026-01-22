@@ -866,6 +866,227 @@
             order: 4;
         }
     }
+    
+    /* =========================================================================
+       MULTI-ITEM SELECTOR STYLES
+       What: Styles for the multi-item selector with dropdown arrow design
+       Why: Clean UI for selecting/removing multiple items in spread alerts
+       ========================================================================= */
+    
+    /* Main container box - input + dropdown arrow button */
+    .multi-item-selector-box {
+        position: relative;
+        display: flex;
+        align-items: stretch;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        background: white;
+        overflow: visible;
+    }
+    
+    .multi-item-selector-box:focus-within {
+        border-color: #10b981;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+    
+    /* Search input inside the box */
+    .multi-item-selector-box input[type="text"] {
+        flex: 1;
+        border: none;
+        outline: none;
+        padding: 10px 12px;
+        font-size: 0.95rem;
+        border-radius: 6px 0 0 6px;
+        min-width: 0;
+    }
+    
+    .multi-item-selector-box input[type="text"]::placeholder {
+        color: #9ca3af;
+    }
+    
+    /* Dropdown toggle button with arrow */
+    .multi-item-dropdown-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        border: none;
+        border-left: 1px solid #d1d5db;
+        background: #f9fafb;
+        cursor: pointer;
+        transition: background-color 0.15s ease;
+        border-radius: 0 6px 6px 0;
+    }
+    
+    .multi-item-dropdown-toggle:hover {
+        background: #f3f4f6;
+    }
+    
+    .multi-item-dropdown-toggle.active {
+        background: #a7f3d0;
+    }
+    
+    .multi-item-dropdown-toggle svg {
+        width: 20px;
+        height: 20px;
+        color: #6b7280;
+        transition: transform 0.2s ease;
+    }
+    
+    .multi-item-dropdown-toggle.active svg {
+        transform: rotate(180deg);
+        color: #047857;
+    }
+    
+    /* Autocomplete suggestions dropdown (shown when typing) */
+    .multi-item-suggestions-dropdown {
+        display: none;
+        position: absolute;
+        top: calc(100% + 5px);  /* 5px margin between dropdown and input box */
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;  /* Full border radius since there's a gap now */
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1001;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    
+    .multi-item-suggestions-dropdown .suggestion-item {
+        padding: 10px 12px;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+        display: flex;
+        align-items: center;
+    }
+    
+    .multi-item-suggestions-dropdown .suggestion-item:hover,
+    .multi-item-suggestions-dropdown .suggestion-item.selected {
+        background: #f0fdf4;
+    }
+    
+    .multi-item-suggestions-dropdown .suggestion-item:last-child {
+        border-bottom: none;
+    }
+    
+    /* Selected items dropdown (shown when clicking arrow) */
+    .multi-item-selected-dropdown {
+        display: none;
+        position: absolute;
+        top: calc(100% + 5px);  /* 5px margin between dropdown and search box */
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;  /* Full border radius since there's a gap now */
+        max-height: 150px;  /* Restricted height to prevent overflow beyond card */
+        overflow-y: auto;
+        z-index: 1000;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    
+    .multi-item-selected-dropdown.show {
+        display: block;
+    }
+    
+    /* Individual selected item row */
+    .selected-item-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 12px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .selected-item-row:last-child {
+        border-bottom: none;
+    }
+    
+    .selected-item-row .item-name {
+        flex: 1;
+        font-size: 0.95rem;
+        color: #374151;
+    }
+    
+    /* Red X remove button */
+    .selected-item-row .remove-item-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        color: #ef4444;
+        font-size: 1.4rem;
+        font-weight: bold;
+        line-height: 1;
+        padding: 0;
+        transition: color 0.15s ease, transform 0.15s ease;
+    }
+    
+    .selected-item-row .remove-item-btn:hover {
+        color: #dc2626;
+        transform: scale(1.1);
+    }
+    
+    /* No items message */
+    .no-items-message {
+        display: none;
+        padding: 16px 12px;
+        text-align: center;
+        color: #9ca3af;
+        font-style: italic;
+    }
+    
+    .no-items-message.show {
+        display: block;
+    }
+    
+    /* =========================================================================
+       ITEM NOTIFICATION STYLES
+       What: Small inline notifications for item add/remove feedback
+       Why: Provides immediate visual feedback without disruptive popups
+       ========================================================================= */
+    
+    /* Container for label + notification */
+    .label-with-notification {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 5px;  /* 5px margin between notification row and input box */
+    }
+    
+    /* Small inline notification shown next to "Items" label */
+    .item-notification {
+        font-size: 0.8rem;
+        padding: 3px 8px;
+        border-radius: 4px;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        white-space: nowrap;
+    }
+    
+    .item-notification.show {
+        opacity: 1;
+    }
+    
+    /* Success notification (green) - item added successfully */
+    .item-notification.success {
+        background: #d1fae5;
+        color: #065f46;
+        border: 1px solid #a7f3d0;
+    }
+    
+    /* Error notification (red) - item not found */
+    .item-notification.error {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
+    }
 </style>
 {% endblock %}
 
@@ -1037,6 +1258,12 @@
             <!-- Edit Form (shown when editing) -->
             <div class="edit-form">
                 <div class="form-grid">
+                    <!-- Alert Name (editable) -->
+                    <div class="form-group" id="alert-name-group">
+                        <label for="edit-alert-name">Alert Name</label>
+                        <input type="text" id="edit-alert-name" value="{{ alert.alert_name|default:'' }}" placeholder="Enter alert name...">
+                    </div>
+                    
                     <!-- Active Toggle -->
                     <div class="form-group toggle-group" id="active-group">
                         <label>Active</label>
@@ -1075,12 +1302,46 @@
                         <input type="hidden" id="edit-is-all-items" value="{% if alert.is_all_items %}true{% else %}false{% endif %}">
                     </div>
                     
-                    <!-- Item Name -->
+                    <!-- Item Name (single item - shown for non-multi-item alerts) -->
                     <div class="form-group" id="item-name-group">
                         <label for="edit-item-name">Item Name</label>
                         <input type="text" id="edit-item-name" value="{{ alert.item_name|default:'' }}" placeholder="Enter item name..." autocomplete="off">
                         <input type="hidden" id="edit-item-id" value="{{ alert.item_id|default:'' }}">
                         <div id="edit-item-suggestions" class="suggestions-dropdown"></div>
+                    </div>
+                    
+                    <!-- Multi-Item Selector (shown for spread alerts with multiple specific items) -->
+                    <!-- What: Allows editing the list of items for multi-item spread alerts -->
+                    <!-- Why: Users need to add/remove items from existing multi-item spread alerts -->
+                    <!-- How: Search input with dropdown arrow - arrow shows current items, input searches for new items -->
+                    <div class="form-group" id="multi-item-group" style="display: none;">
+                        <div class="label-with-notification">
+                            <label for="edit-multi-item-input">Items</label>
+                            <!-- Small notification shown when items are added or not found -->
+                            <span id="item-add-notification" class="item-notification"></span>
+                        </div>
+                        <div class="multi-item-selector-box">
+                            <!-- Search input for adding new items -->
+                            <input type="text" id="edit-multi-item-input" placeholder="Search for item to add..." autocomplete="off">
+                            <!-- Dropdown toggle button with arrow -->
+                            <button type="button" class="multi-item-dropdown-toggle" id="edit-multi-item-toggle" title="Show selected items">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </button>
+                            <!-- Hidden input for form submission -->
+                            <input type="hidden" id="edit-item-ids" value="">
+                            <!-- Autocomplete suggestions dropdown (shown when typing) -->
+                            <div id="edit-multi-item-suggestions" class="multi-item-suggestions-dropdown"></div>
+                            <!-- Selected items dropdown (shown when clicking arrow) -->
+                            <div id="edit-selected-items-dropdown" class="multi-item-selected-dropdown">
+                                <div class="selected-items-list" id="edit-selected-items-list">
+                                    <!-- Items will be populated here -->
+                                </div>
+                                <div class="no-items-message" id="edit-no-items-message">No items selected</div>
+                            </div>
+                        </div>
+                        <small class="form-hint"></small>
                     </div>
                     
                     <!-- Price Threshold (above/below only) -->
@@ -1184,7 +1445,7 @@
                             </label>
                             <span class="toggle-label">{% if alert.show_notification %}Enabled{% else %}Disabled{% endif %}</span>
                         </div>
-                        <small class="form-hint">When enabled, a notification banner appears when alert triggers</small>
+                        <small class="form-hint"></small>
                     </div>
                     
                     <!-- SMS Notification -->
@@ -1279,7 +1540,7 @@
                 <div class="triggered-items-list">
                     <ul>
                     {% for item in triggered_info.items %}
-                        <li>
+                        <li data-item-id="{{ item.item_id }}">
                             <div>
                                 <span class="triggered-item-name">{{ item.item_name }}</span>
                                 {% if triggered_info.alert_type == 'spread' %}
@@ -1489,6 +1750,506 @@ const csrfToken = '{{ csrf_token }}';
 let isEditMode = false;
 let originalValues = {};
 
+// item_ids_data: Pre-populated list of {id, name} objects for multi-item spread alerts
+// Used to initialize the multi-item selector when editing an alert with item_ids
+const itemIdsData = {{ item_ids_data_json|safe }};
+
+/**
+ * EditMultiItemSelector: Module for managing the multi-item selector in the edit form.
+ * 
+ * What: Provides item search with dropdown arrow for viewing/removing selected items
+ * Why: Spread alerts can monitor multiple specific items, need UI to add/remove items
+ * How: Search input with autocomplete, dropdown arrow reveals selected items with remove buttons
+ */
+const EditMultiItemSelector = {
+    // selectedItems: Array of {id, name} objects representing currently selected items
+    selectedItems: [],
+    // selectedIndex: Index of currently highlighted suggestion in dropdown (-1 = none)
+    selectedIndex: -1,
+    // isDropdownOpen: Tracks whether the selected items dropdown is currently open
+    isDropdownOpen: false,
+    // notificationTimeout: Stores timeout ID for auto-hiding notifications
+    notificationTimeout: null,
+
+    /**
+     * Initializes the edit multi-item selector.
+     * Sets up event listeners and pre-populates with existing items if editing.
+     */
+    init() {
+        // input: Text input where user types to search for items
+        const input = document.getElementById('edit-multi-item-input');
+        // suggestionsDropdown: Container showing autocomplete suggestions when typing
+        const suggestionsDropdown = document.getElementById('edit-multi-item-suggestions');
+        // selectedDropdown: Container showing selected items when arrow is clicked
+        const selectedDropdown = document.getElementById('edit-selected-items-dropdown');
+        // toggleBtn: The dropdown arrow button
+        const toggleBtn = document.getElementById('edit-multi-item-toggle');
+        // selectedList: Container for the selected items list
+        const selectedList = document.getElementById('edit-selected-items-list');
+        // noItemsMsg: Message shown when no items are selected
+        const noItemsMsg = document.getElementById('edit-no-items-message');
+        // hiddenInput: Hidden field that stores comma-separated item IDs for form submission
+        const hiddenInput = document.getElementById('edit-item-ids');
+
+        if (!input || !suggestionsDropdown || !toggleBtn || !hiddenInput) return;
+
+        // Pre-populate with existing items from the alert
+        this.selectedItems = [...itemIdsData];
+        this.selectedIndex = -1;
+        this.isDropdownOpen = false;
+        this.updateHiddenInput();
+        this.renderSelectedItems();
+
+        const self = this;
+
+        // Toggle button click - show/hide selected items dropdown
+        toggleBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            self.toggleSelectedDropdown();
+        });
+
+        // Handle input changes - fetch suggestions from API
+        input.addEventListener('input', async () => {
+            const query = input.value;
+
+            // Close selected items dropdown when typing
+            self.closeSelectedDropdown();
+
+            // minSearchLength: Minimum characters before searching (prevents API spam)
+            if (query.length < 2) {
+                suggestionsDropdown.style.display = 'none';
+                self.selectedIndex = -1;
+                return;
+            }
+
+            // Fetch matching items from API
+            // The item_search_api endpoint at /api/items/ accepts a 'q' query parameter
+            try {
+                const response = await fetch(`/api/items/?q=${encodeURIComponent(query)}`);
+                const items = await response.json();
+
+                // Filter out already selected items from suggestions
+                const filteredItems = items.filter(item =>
+                    !self.selectedItems.some(selected => String(selected.id) === String(item.id))
+                );
+
+                if (filteredItems.length > 0) {
+                    suggestionsDropdown.innerHTML = filteredItems.map(item =>
+                        `<div class="suggestion-item" data-id="${item.id}" data-name="${item.name}">${item.name}</div>`
+                    ).join('');
+                    suggestionsDropdown.style.display = 'block';
+                    self.selectedIndex = -1;
+                } else {
+                    suggestionsDropdown.style.display = 'none';
+                    self.selectedIndex = -1;
+                }
+            } catch (error) {
+                console.error('Error searching items:', error);
+                suggestionsDropdown.style.display = 'none';
+            }
+        });
+
+        // Handle input focus - close selected dropdown, ready for search
+        input.addEventListener('focus', () => {
+            self.closeSelectedDropdown();
+        });
+
+        // Handle keyboard navigation in suggestions dropdown
+        // Tab: Move selection down in the suggestions list
+        // Shift+Tab: Move selection up in the suggestions list
+        // Enter: Select highlighted suggestion OR submit typed text directly
+        // Escape: Close the suggestions dropdown
+        // Arrow keys also supported as alternative navigation
+        input.addEventListener('keydown', async (e) => {
+            // Handle Enter key - can work whether dropdown is open or not
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                
+                const dropdownVisible = suggestionsDropdown.style.display !== 'none' && suggestionsDropdown.style.display !== '';
+                const items = suggestionsDropdown.querySelectorAll('.suggestion-item');
+                
+                // If dropdown is visible and an item is selected, add that item
+                if (dropdownVisible && self.selectedIndex >= 0 && items.length > 0) {
+                    const selectedItem = items[self.selectedIndex];
+                    self.addItem(selectedItem.dataset.id, selectedItem.dataset.name);
+                    self.showNotification(`Added: ${selectedItem.dataset.name}`, 'success');
+                    input.value = '';
+                    suggestionsDropdown.style.display = 'none';
+                    self.selectedIndex = -1;
+                } 
+                // No selection or no dropdown - try to find exact match via API
+                else if (input.value.trim().length >= 2) {
+                    suggestionsDropdown.style.display = 'none';
+                    await self.tryAddItemByName(input.value.trim(), input, suggestionsDropdown);
+                }
+                return;
+            }
+            
+            // Other keys only matter if dropdown is visible with items
+            if (suggestionsDropdown.style.display === 'none' || suggestionsDropdown.style.display === '') {
+                return;
+            }
+
+            const items = suggestionsDropdown.querySelectorAll('.suggestion-item');
+            if (items.length === 0) return;
+
+            switch (e.key) {
+                case 'Tab':
+                    // Tab (no shift) = move down through suggestions
+                    // Shift+Tab = move up through suggestions
+                    e.preventDefault();  // Prevent focus from leaving the input
+                    if (e.shiftKey) {
+                        // Shift+Tab: Move up (wrap to bottom if at top)
+                        self.selectedIndex = self.selectedIndex <= 0
+                            ? items.length - 1
+                            : self.selectedIndex - 1;
+                    } else {
+                        // Tab: Move down (wrap to top if at bottom)
+                        self.selectedIndex = (self.selectedIndex + 1) % items.length;
+                    }
+                    self.updateSuggestionSelection(suggestionsDropdown);
+                    break;
+
+                case 'ArrowDown':
+                    // Alternative navigation: Arrow down moves selection down
+                    e.preventDefault();
+                    self.selectedIndex = (self.selectedIndex + 1) % items.length;
+                    self.updateSuggestionSelection(suggestionsDropdown);
+                    break;
+
+                case 'ArrowUp':
+                    // Alternative navigation: Arrow up moves selection up
+                    e.preventDefault();
+                    self.selectedIndex = self.selectedIndex <= 0
+                        ? items.length - 1
+                        : self.selectedIndex - 1;
+                    self.updateSuggestionSelection(suggestionsDropdown);
+                    break;
+
+                case 'Escape':
+                    // Escape: Close suggestions without selecting
+                    e.preventDefault();
+                    suggestionsDropdown.style.display = 'none';
+                    self.selectedIndex = -1;
+                    break;
+            }
+        });
+
+        // Handle mouse click on suggestion
+        suggestionsDropdown.addEventListener('click', (e) => {
+            if (e.target.classList.contains('suggestion-item')) {
+                self.addItem(e.target.dataset.id, e.target.dataset.name);
+                self.showNotification(`Added: ${e.target.dataset.name}`, 'success');
+                input.value = '';
+                suggestionsDropdown.style.display = 'none';
+            }
+        });
+
+        // Handle mouse hover on suggestion
+        suggestionsDropdown.addEventListener('mouseover', (e) => {
+            if (e.target.classList.contains('suggestion-item')) {
+                const items = suggestionsDropdown.querySelectorAll('.suggestion-item');
+                items.forEach((item, index) => {
+                    if (item === e.target) {
+                        self.selectedIndex = index;
+                    }
+                });
+                self.updateSuggestionSelection(suggestionsDropdown);
+            }
+        });
+
+        // Handle remove button clicks in selected items dropdown (event delegation)
+        if (selectedDropdown) {
+            selectedDropdown.addEventListener('click', (e) => {
+                if (e.target.classList.contains('remove-item-btn')) {
+                    e.stopPropagation();  // Prevent dropdown from closing
+                    const itemId = e.target.dataset.id;
+                    if (itemId) {
+                        // Get item name before removing for notification
+                        const itemToRemove = self.selectedItems.find(item => String(item.id) === String(itemId));
+                        const itemName = itemToRemove ? itemToRemove.name : 'Item';
+                        self.removeItem(itemId);
+                        self.showNotification(`${itemName} deleted`, 'error');
+                    }
+                }
+            });
+        }
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', (e) => {
+            const selectorBox = document.querySelector('.multi-item-selector-box');
+            if (selectorBox && !selectorBox.contains(e.target)) {
+                suggestionsDropdown.style.display = 'none';
+                self.closeSelectedDropdown();
+            }
+        });
+    },
+
+    /**
+     * Toggles the selected items dropdown visibility.
+     */
+    toggleSelectedDropdown() {
+        const selectedDropdown = document.getElementById('edit-selected-items-dropdown');
+        const toggleBtn = document.getElementById('edit-multi-item-toggle');
+        const suggestionsDropdown = document.getElementById('edit-multi-item-suggestions');
+        
+        if (!selectedDropdown || !toggleBtn) return;
+
+        // Close suggestions dropdown first
+        if (suggestionsDropdown) {
+            suggestionsDropdown.style.display = 'none';
+        }
+
+        this.isDropdownOpen = !this.isDropdownOpen;
+        
+        if (this.isDropdownOpen) {
+            selectedDropdown.classList.add('show');
+            toggleBtn.classList.add('active');
+            this.renderSelectedItems();
+        } else {
+            selectedDropdown.classList.remove('show');
+            toggleBtn.classList.remove('active');
+        }
+    },
+
+    /**
+     * Closes the selected items dropdown.
+     */
+    closeSelectedDropdown() {
+        const selectedDropdown = document.getElementById('edit-selected-items-dropdown');
+        const toggleBtn = document.getElementById('edit-multi-item-toggle');
+        
+        this.isDropdownOpen = false;
+        if (selectedDropdown) selectedDropdown.classList.remove('show');
+        if (toggleBtn) toggleBtn.classList.remove('active');
+    },
+
+    /**
+     * Updates visual selection state in suggestions dropdown.
+     */
+    updateSuggestionSelection(dropdown) {
+        const items = dropdown.querySelectorAll('.suggestion-item');
+        items.forEach((item, index) => {
+            if (index === this.selectedIndex) {
+                item.classList.add('selected');
+                item.scrollIntoView({block: 'nearest'});
+            } else {
+                item.classList.remove('selected');
+            }
+        });
+    },
+
+    /**
+     * Adds an item to the selected list.
+     * 
+     * @param {string} id - Item ID
+     * @param {string} name - Item name for display
+     */
+    addItem(id, name) {
+        // Check if already selected to prevent duplicates
+        if (this.selectedItems.some(item => String(item.id) === String(id))) {
+            return;
+        }
+
+        this.selectedItems.push({id: String(id), name});
+        this.updateHiddenInput();
+        this.renderSelectedItems();
+    },
+
+    /**
+     * Removes an item from the selected list.
+     * Also removes the corresponding triggered data entry from the UI display.
+     * 
+     * What: Removes an item from both the selected items list and triggered data display
+     * Why: When user removes an item, it should be removed from all relevant UI sections
+     * How: Filters selectedItems array, updates hidden input, re-renders list, and removes triggered data li element
+     * 
+     * @param {string} id - Item ID to remove
+     */
+    removeItem(id) {
+        this.selectedItems = this.selectedItems.filter(item => String(item.id) !== String(id));
+        this.updateHiddenInput();
+        this.renderSelectedItems();
+        
+        // Also remove from triggered data display if present
+        // The triggered items list has li elements with data-item-id attribute
+        this.removeTriggeredDataItem(id);
+    },
+
+    /**
+     * Removes an item from the triggered data display in the UI.
+     * Also updates the "Items Triggered" count displayed on the page.
+     * 
+     * What: Removes a specific item's triggered data entry from the visible list
+     * Why: Keep triggered data display in sync when user removes an item from the alert
+     * How: Finds the li element with matching data-item-id and removes it, updates count
+     * 
+     * @param {string} id - Item ID to remove from triggered data display
+     */
+    removeTriggeredDataItem(id) {
+        // Find the triggered items list
+        const triggeredList = document.querySelector('.triggered-items-list ul');
+        if (!triggeredList) return;
+        
+        // Find and remove the li element with matching item id
+        const itemToRemove = triggeredList.querySelector(`li[data-item-id="${id}"]`);
+        if (itemToRemove) {
+            itemToRemove.remove();
+            
+            // Update the "Items Triggered" count display
+            const remainingItems = triggeredList.querySelectorAll('li').length;
+            const countDisplay = document.querySelector('.triggered-info-item .detail-value.highlight');
+            if (countDisplay) {
+                countDisplay.textContent = remainingItems;
+            }
+            
+            // If no items left, hide the entire triggered data section or show a message
+            if (remainingItems === 0) {
+                const triggeredSection = document.querySelector('.triggered-items-list');
+                if (triggeredSection) {
+                    triggeredSection.innerHTML = '<p class="no-triggered-data">No triggered data - all items have been removed</p>';
+                }
+            }
+        }
+    },
+
+    /**
+     * Updates the hidden input with current selected item IDs.
+     */
+    updateHiddenInput() {
+        const hiddenInput = document.getElementById('edit-item-ids');
+        if (hiddenInput) {
+            hiddenInput.value = this.selectedItems.map(item => item.id).join(',');
+        }
+    },
+
+    /**
+     * Renders the selected items in the dropdown list.
+     * Shows each item with its name and a red X remove button.
+     */
+    renderSelectedItems() {
+        const selectedList = document.getElementById('edit-selected-items-list');
+        const noItemsMsg = document.getElementById('edit-no-items-message');
+        
+        if (!selectedList) return;
+        
+        if (this.selectedItems.length === 0) {
+            selectedList.innerHTML = '';
+            if (noItemsMsg) noItemsMsg.classList.add('show');
+        } else {
+            if (noItemsMsg) noItemsMsg.classList.remove('show');
+            selectedList.innerHTML = this.selectedItems.map(item =>
+                `<div class="selected-item-row">
+                    <span class="item-name">${item.name}</span>
+                    <button type="button" class="remove-item-btn" data-id="${item.id}" title="Remove ${item.name}">×</button>
+                </div>`
+            ).join('');
+        }
+    },
+
+    /**
+     * Shows a small notification next to the "Items" label.
+     * 
+     * What: Displays success/error feedback for item add operations
+     * Why: Provides immediate visual feedback without disruptive popups
+     * How: Updates the notification span with text and appropriate class, auto-hides after delay
+     * 
+     * @param {string} message - The notification message to display
+     * @param {string} type - 'success' for green (item added) or 'error' for red (item not found)
+     */
+    showNotification(message, type) {
+        const notification = document.getElementById('item-add-notification');
+        if (!notification) return;
+        
+        // Clear any existing timeout to prevent overlapping notifications
+        if (this.notificationTimeout) {
+            clearTimeout(this.notificationTimeout);
+        }
+        
+        // Set notification text and style
+        notification.textContent = message;
+        notification.className = `item-notification ${type} show`;
+        
+        // Auto-hide after 3 seconds
+        this.notificationTimeout = setTimeout(() => {
+            notification.classList.remove('show');
+        }, 3000);
+    },
+
+    /**
+     * Attempts to add an item by searching for an exact name match via API.
+     * 
+     * What: Looks up item by name when user presses Enter without selecting from dropdown
+     * Why: Allows quick entry for users who know exact item names
+     * How: Calls API, finds exact match (case-insensitive), adds item or shows error
+     * 
+     * @param {string} name - The item name to search for
+     * @param {HTMLInputElement} input - The input element to clear on success
+     * @param {HTMLElement} suggestionsDropdown - The dropdown to hide on success
+     */
+    async tryAddItemByName(name, input, suggestionsDropdown) {
+        try {
+            const response = await fetch(`/api/items/?q=${encodeURIComponent(name)}`);
+            const items = await response.json();
+            
+            // Find exact match (case-insensitive)
+            const exactMatch = items.find(item => 
+                item.name.toLowerCase() === name.toLowerCase()
+            );
+            
+            if (exactMatch) {
+                // Check if already selected
+                if (this.selectedItems.some(item => String(item.id) === String(exactMatch.id))) {
+                    this.showNotification(`Already added: ${exactMatch.name}`, 'error');
+                } else {
+                    this.addItem(exactMatch.id, exactMatch.name);
+                    this.showNotification(`Added: ${exactMatch.name}`, 'success');
+                    input.value = '';
+                    suggestionsDropdown.style.display = 'none';
+                }
+            } else {
+                // No exact match found
+                this.showNotification(`Item not found: "${name}"`, 'error');
+            }
+        } catch (error) {
+            console.error('Error looking up item:', error);
+            this.showNotification('Error looking up item', 'error');
+        }
+    },
+
+    /**
+     * Clears all selected items.
+     */
+    clear() {
+        this.selectedItems = [];
+        const hiddenInput = document.getElementById('edit-item-ids');
+        if (hiddenInput) hiddenInput.value = '';
+        this.renderSelectedItems();
+    },
+
+    /**
+     * Gets the selected item IDs.
+     * @returns {Array} Array of item ID strings
+     */
+    getSelectedIds() {
+        return this.selectedItems.map(item => item.id);
+    },
+
+    /**
+     * Checks if there are any items selected (multi-item mode).
+     * @returns {boolean} True if at least one item is selected
+     */
+    hasMultipleItems() {
+        return this.selectedItems.length > 0;
+    }
+};
+
+// Initialize the multi-item selector when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    EditMultiItemSelector.init();
+});
+
 // Clean up URL parameter after page loads
 if (window.location.search.includes('edit_saved=1')) {
     window.history.replaceState({}, document.title, window.location.pathname);
@@ -1508,11 +2269,17 @@ function enterEditMode() {
 
 function storeOriginalValues() {
     originalValues = {
+        // alertName: Store the original alert name for cancel restoration
+        alertName: document.getElementById('edit-alert-name').value,
         type: document.getElementById('edit-type').value,
         allItems: document.getElementById('edit-all-items').checked,
         itemName: document.getElementById('edit-item-name').value,
         itemId: document.getElementById('edit-item-id').value,
         isAllItems: document.getElementById('edit-is-all-items').value,
+        // itemIds: Store the comma-separated item IDs for multi-item alerts
+        itemIds: document.getElementById('edit-item-ids').value,
+        // multiItems: Store a copy of the selected items array for restoration
+        multiItems: [...EditMultiItemSelector.selectedItems],
         price: document.getElementById('edit-price').value,
         reference: document.getElementById('edit-reference').value,
         percentage: document.getElementById('edit-percentage').value,
@@ -1532,11 +2299,19 @@ function cancelEdit() {
     document.getElementById('groupsCard').classList.remove('edit-mode');
     
     // Restore original values
+    document.getElementById('edit-alert-name').value = originalValues.alertName;
     document.getElementById('edit-type').value = originalValues.type;
     document.getElementById('edit-all-items').checked = originalValues.allItems;
     document.getElementById('edit-item-name').value = originalValues.itemName;
     document.getElementById('edit-item-id').value = originalValues.itemId;
     document.getElementById('edit-is-all-items').value = originalValues.isAllItems;
+    
+    // Restore multi-item selector state
+    document.getElementById('edit-item-ids').value = originalValues.itemIds;
+    EditMultiItemSelector.selectedItems = [...originalValues.multiItems];
+    EditMultiItemSelector.renderSelectedItems();
+    EditMultiItemSelector.closeSelectedDropdown();
+    
     document.getElementById('edit-price').value = originalValues.price;
     document.getElementById('edit-reference').value = originalValues.reference;
     document.getElementById('edit-percentage').value = originalValues.percentage;
@@ -1652,20 +2427,36 @@ function handleTypeChange() {
 
 function handleScopeChange() {
     const isAllItems = document.getElementById('edit-all-items').checked;
+    const alertType = document.getElementById('edit-type').value;
     const itemNameGroup = document.getElementById('item-name-group');
+    const multiItemGroup = document.getElementById('multi-item-group');
     const minPriceGroup = document.getElementById('min-price-group');
     const maxPriceGroup = document.getElementById('max-price-group');
     const isAllItemsInput = document.getElementById('edit-is-all-items');
     const toggleLabel = document.querySelector('#all-items-group .toggle-label');
     
+    // hasMultipleItems: Check if this is a multi-item spread alert (has items in the selector)
+    const hasMultipleItems = EditMultiItemSelector.hasMultipleItems();
+    
     if (isAllItems) {
+        // All Items mode: hide item selectors, show price filters
         itemNameGroup.style.display = 'none';
+        multiItemGroup.style.display = 'none';
         minPriceGroup.style.display = 'block';
         maxPriceGroup.style.display = 'block';
         isAllItemsInput.value = 'true';
         if (toggleLabel) toggleLabel.textContent = 'Yes';
     } else {
-        itemNameGroup.style.display = 'block';
+        // Specific item(s) mode
+        // For spread alerts with existing multi-item selection, show multi-item selector
+        // Otherwise show single item input
+        if (alertType === 'spread' && hasMultipleItems) {
+            itemNameGroup.style.display = 'none';
+            multiItemGroup.style.display = 'block';
+        } else {
+            itemNameGroup.style.display = 'block';
+            multiItemGroup.style.display = 'none';
+        }
         minPriceGroup.style.display = 'none';
         maxPriceGroup.style.display = 'none';
         isAllItemsInput.value = 'false';
@@ -1693,11 +2484,22 @@ async function saveChanges() {
     const alertType = document.getElementById('edit-type').value;
     const isAllItems = document.getElementById('edit-is-all-items').value === 'true';
     
+    // Get item_ids from multi-item selector
+    // item_ids: Comma-separated string of item IDs for multi-item spread alerts
+    // We always send the current value (even if empty string) so the backend knows
+    // the user explicitly cleared items vs not touching the field
+    const itemIds = document.getElementById('edit-item-ids').value;
+    
     const data = {
         type: alertType,
+        // name: User-editable alert name
+        name: document.getElementById('edit-alert-name').value || null,
         item_name: document.getElementById('edit-item-name').value || null,
         item_id: document.getElementById('edit-item-id').value || null,
         is_all_items: isAllItems,
+        // item_ids: For multi-item spread alerts, send the value (can be empty string)
+        // Empty string means user cleared all items, backend will handle appropriately
+        item_ids: itemIds,
         email_notification: document.getElementById('edit-email-notification').checked,
         // show_notification: Controls whether notification banner appears when alert triggers
         show_notification: document.getElementById('edit-show-notification').checked,

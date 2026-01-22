@@ -16,6 +16,9 @@ from .models import Flip, FlipProfit, Alert, AlertGroup, FavoriteItem
 # Cache for item mappings
 _item_mapping_cache = None
 
+# Cache for item ID to name mapping
+_item_id_to_name_cache = None
+
 
 def get_item_mapping():
     """Fetch and cache item name to ID mapping from RuneScape Wiki API"""
@@ -32,6 +35,33 @@ def get_item_mapping():
         except requests.RequestException:
             _item_mapping_cache = {}
     return _item_mapping_cache
+
+
+def get_item_id_to_name_mapping():
+    """
+    Fetch and cache item ID to name mapping from RuneScape Wiki API.
+    
+    What: Returns a dictionary mapping item ID (as string) to item name
+    Why: Needed to look up item names when we have item IDs (e.g., for multi-item alerts)
+    How: Fetches the same API data as get_item_mapping but keys by ID instead of name
+    
+    Returns:
+        dict: Mapping of item_id (str) -> item_name (str)
+    """
+    global _item_id_to_name_cache
+    if _item_id_to_name_cache is None:
+        try:
+            response = requests.get(
+                'https://prices.runescape.wiki/api/v1/osrs/mapping',
+                headers={'User-Agent': 'GE-Tools (not yet live) - demondsoftware@gmail.com'}
+            )
+            if response.status_code == 200:
+                data = response.json()
+                # _item_id_to_name_cache: Dictionary mapping item ID (string) to item name
+                _item_id_to_name_cache = {str(item['id']): item['name'] for item in data}
+        except requests.RequestException:
+            _item_id_to_name_cache = {}
+    return _item_id_to_name_cache
 
 
 def get_all_current_prices():
@@ -1164,17 +1194,91 @@ def update_alert(request):
             if alert:
                 alert.type = data.get('type', alert.type)
                 
+                # Handle alert name (user-editable)
+                # name: User-defined name for the alert, allows customization for identification
+                name = data.get('name')
+                if name is not None:
+                    alert.name = name if name else None
+                
                 # Handle is_all_items
                 is_all_items = data.get('is_all_items', False)
                 alert.is_all_items = is_all_items
                 
+                # Handle item_ids for multi-item spread alerts
+                # item_ids: Comma-separated string of item IDs from the frontend multi-item selector
+                # What: Stores multiple item IDs as JSON array for multi-item spread alerts
+                # Why: Allows spread alerts to monitor multiple specific items instead of all or one
+                # How: Parse comma-separated string, convert to JSON array, store in item_ids field
+                item_ids_str = data.get('item_ids')
+                
+                # item_ids_str can be:
+                # - None: field not provided (single item mode or unchanged)
+                # - '': empty string (all items removed, switch to single item mode)
+                # - '123,456': comma-separated IDs (multi-item mode)
+                if item_ids_str is not None:
+                    if item_ids_str == '':
+                        # All items were removed - clear item_ids field
+                        alert.item_ids = None
+                    else:
+                        # Parse comma-separated item IDs and store as JSON array
+                        item_ids_list = [int(x.strip()) for x in item_ids_str.split(',') if x.strip()]
+                        if item_ids_list:
+                            import json as json_module
+                            
+                            # Get the old item_ids to compare what was removed
+                            old_item_ids = set()
+                            if alert.item_ids:
+                                try:
+                                    old_item_ids = set(json_module.loads(alert.item_ids))
+                                except (json_module.JSONDecodeError, TypeError):
+                                    pass
+                            
+                            new_item_ids = set(item_ids_list)
+                            removed_item_ids = old_item_ids - new_item_ids
+                            
+                            # Clean up triggered_data for removed items
+                            # What: Remove triggered_data entries for items that were removed from the alert
+                            # Why: Triggered data should only contain info for currently monitored items
+                            # How: Parse triggered_data JSON, filter out removed item IDs, save back
+                            if removed_item_ids and alert.triggered_data:
+                                try:
+                                    triggered_data = json_module.loads(alert.triggered_data)
+                                    if isinstance(triggered_data, list):
+                                        # Filter out entries for removed items
+                                        triggered_data = [
+                                            item for item in triggered_data 
+                                            if item.get('item_id') not in removed_item_ids
+                                        ]
+                                        if triggered_data:
+                                            alert.triggered_data = json_module.dumps(triggered_data)
+                                        else:
+                                            # All triggered items were removed - clear triggered state
+                                            alert.triggered_data = None
+                                            alert.is_triggered = False
+                                except (json_module.JSONDecodeError, TypeError):
+                                    pass
+                            
+                            alert.item_ids = json_module.dumps(item_ids_list)
+                            # Set first item as item_id for display/fallback purposes
+                            alert.item_id = item_ids_list[0]
+                            # Get item name for the first item using ID-to-name mapping
+                            id_to_name_mapping = get_item_id_to_name_mapping()
+                            item_name = id_to_name_mapping.get(str(item_ids_list[0]), f'Item {item_ids_list[0]}')
+                            alert.item_name = item_name
+                        else:
+                            alert.item_ids = None
+                
                 if is_all_items:
                     alert.item_name = None
                     alert.item_id = None
-                else:
-                    alert.item_name = data.get('item_name', alert.item_name)
-                    item_id = data.get('item_id')
-                    if item_id:
+                    alert.item_ids = None  # Clear multi-item selection when switching to all items
+                elif item_ids_str is None or item_ids_str == '':
+                    # Single item mode (no item_ids provided or all were removed)
+                    # Only update item_name/item_id if explicitly provided
+                    if data.get('item_name') is not None:
+                        alert.item_name = data.get('item_name') or alert.item_name
+                    if data.get('item_id'):
+                        item_id = data.get('item_id')
                         alert.item_id = int(item_id)
                     elif data.get('item_name'):
                         # Look up item ID if name changed but ID not provided
@@ -1457,6 +1561,23 @@ def alert_detail(request, alert_id):
     # Check if redirected after save
     edit_saved = request.GET.get('edit_saved') == '1'
     
+    # Build item_ids_data for the edit form multi-item selector
+    # What: Creates a list of {id, name} objects for items in item_ids field
+    # Why: The edit form needs this data to pre-populate the multi-item selector chips
+    # How: Parse item_ids JSON, look up item names from ID-to-name mapping, return as JSON for JavaScript
+    item_ids_data = []
+    if alert.item_ids:
+        try:
+            item_ids_list = json.loads(alert.item_ids)
+            if isinstance(item_ids_list, list):
+                # Get item ID-to-name mapping to convert IDs to names
+                id_to_name_mapping = get_item_id_to_name_mapping()
+                for item_id in item_ids_list:
+                    item_name = id_to_name_mapping.get(str(item_id), f'Item {item_id}')
+                    item_ids_data.append({'id': str(item_id), 'name': item_name})
+        except (json.JSONDecodeError, TypeError):
+            pass
+    
     context = {
         'alert': alert,
         'current_price': current_price_data,
@@ -1466,6 +1587,8 @@ def alert_detail(request, alert_id):
         'all_groups_json': json.dumps(all_groups),
         'triggered_info': triggered_info,
         'edit_saved': edit_saved,
+        # item_ids_data_json: JSON array of {id, name} objects for multi-item selector
+        'item_ids_data_json': json.dumps(item_ids_data),
     }
     
     return render(request, 'alert_detail.html', context)
@@ -1491,15 +1614,79 @@ def update_single_alert(request, alert_id):
     # Update alert fields
     alert.type = data.get('type', alert.type)
     
+    # Handle alert name (user-editable)
+    # alert_name: User-defined name for the alert (field is named alert_name in model)
+    if 'name' in data:
+        alert.alert_name = data.get('name') or 'Default'
+    
     # Handle is_all_items
     is_all_items = data.get('is_all_items', False)
     alert.is_all_items = is_all_items
     
+    # Handle item_ids for multi-item spread alerts
+    # What: Stores multiple item IDs as JSON array for multi-item spread alerts
+    # Why: Allows spread alerts to monitor multiple specific items instead of all or one
+    # How: Parse comma-separated string, convert to JSON array, store in item_ids field
+    item_ids_str = data.get('item_ids')
+    
+    if item_ids_str is not None:
+        if item_ids_str == '':
+            # All items were removed - clear item_ids field
+            alert.item_ids = None
+        else:
+            # Parse comma-separated item IDs and store as JSON array
+            item_ids_list = [int(x.strip()) for x in item_ids_str.split(',') if x.strip()]
+            if item_ids_list:
+                # Get the old item_ids to compare what was removed
+                old_item_ids = set()
+                if alert.item_ids:
+                    try:
+                        old_item_ids = set(json.loads(alert.item_ids))
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+                
+                new_item_ids = set(item_ids_list)
+                removed_item_ids = old_item_ids - new_item_ids
+                
+                # Clean up triggered_data for removed items
+                # What: Remove triggered_data entries for items that were removed from the alert
+                # Why: Triggered data should only contain info for currently monitored items
+                if removed_item_ids and alert.triggered_data:
+                    try:
+                        triggered_data = json.loads(alert.triggered_data)
+                        if isinstance(triggered_data, list):
+                            # Filter out entries for removed items
+                            triggered_data = [
+                                item for item in triggered_data 
+                                if item.get('item_id') not in removed_item_ids
+                            ]
+                            if triggered_data:
+                                alert.triggered_data = json.dumps(triggered_data)
+                            else:
+                                # All triggered items were removed - clear triggered state
+                                alert.triggered_data = None
+                                alert.is_triggered = False
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+                
+                alert.item_ids = json.dumps(item_ids_list)
+                # Set first item as item_id for display/fallback purposes
+                alert.item_id = item_ids_list[0]
+                # Get item name for the first item using ID-to-name mapping
+                id_to_name_mapping = get_item_id_to_name_mapping()
+                item_name = id_to_name_mapping.get(str(item_ids_list[0]), f'Item {item_ids_list[0]}')
+                alert.item_name = item_name
+            else:
+                alert.item_ids = None
+    
     if is_all_items:
         alert.item_name = None
         alert.item_id = None
-    else:
-        alert.item_name = data.get('item_name', alert.item_name)
+        alert.item_ids = None  # Clear multi-item selection when switching to all items
+    elif item_ids_str is None or item_ids_str == '':
+        # Single item mode (no item_ids provided or all were removed)
+        if data.get('item_name') is not None:
+            alert.item_name = data.get('item_name') or alert.item_name
         item_id = data.get('item_id')
         if item_id:
             alert.item_id = int(item_id)
@@ -1544,6 +1731,11 @@ def update_single_alert(request, alert_id):
     # Handle email notification
     alert.email_notification = data.get('email_notification', False)
     
+    # Handle show_notification
+    # show_notification: Controls whether notification banner appears when alert triggers
+    if 'show_notification' in data:
+        alert.show_notification = data.get('show_notification', True)
+    
     # Handle is_active
     if 'is_active' in data:
         alert.is_active = data.get('is_active', True)
@@ -1556,11 +1748,12 @@ def update_single_alert(request, alert_id):
             group, _ = AlertGroup.objects.get_or_create(user=user, name=name)
             alert.groups.add(group)
     
-    # Reset triggered state when alert is edited
-    alert.is_triggered = False
-    alert.is_dismissed = False
-    alert.triggered_data = None
-    alert.triggered_at = None
+    # Reset triggered state when alert is edited (unless we kept some triggered_data above)
+    # Only clear triggered_at if triggered_data was also cleared
+    if alert.triggered_data is None:
+        alert.is_triggered = False
+        alert.triggered_at = None
+    alert.is_dismissed = not alert.show_notification if alert.show_notification is not None else False
     
     alert.save()
     
