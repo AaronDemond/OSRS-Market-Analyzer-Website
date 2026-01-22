@@ -681,6 +681,12 @@ def create_alert(request):
         email_notification = request.POST.get('email_notification') == 'on'
         group_id = request.POST.get('group_id')  # Group to assign alert to
         
+        # show_notification: Controls whether a notification banner appears when alert triggers
+        # What: Boolean flag from checkbox input
+        # Why: Users may want alerts to track data without notification banners
+        # How: If unchecked, is_dismissed will be set to True so notification never shows
+        show_notification = request.POST.get('show_notification') == 'on'
+        
         # Sustained Move specific fields
         min_consecutive_moves = request.POST.get('min_consecutive_moves')
         min_move_percentage = request.POST.get('min_move_percentage')
@@ -802,6 +808,12 @@ def create_alert(request):
             email_notification=email_notification,
             is_active=True,
             is_triggered=False,
+            # is_dismissed: Set to True if show_notification is False to prevent notification
+            # What: Controls whether notification banner appears
+            # Why: If user unchecks "Show Alert Notification", they don't want banners
+            # How: Setting is_dismissed=True means notification won't display even when triggered
+            is_dismissed=not show_notification,
+            show_notification=show_notification,
             direction=direction_value,
             time_frame=time_frame_value,
             # Sustained Move fields
@@ -899,7 +911,11 @@ def alerts_api(request):
             'volatility_buffer_size': alert.volatility_buffer_size if alert.type == 'sustained' else None,
             'volatility_multiplier': alert.volatility_multiplier if alert.type == 'sustained' else None,
             'min_pressure_strength': alert.min_pressure_strength if alert.type == 'sustained' else None,
-            'min_pressure_spread_pct': alert.min_pressure_spread_pct if alert.type == 'sustained' else None
+            'min_pressure_spread_pct': alert.min_pressure_spread_pct if alert.type == 'sustained' else None,
+            # email_notification: Whether SMS/email alerts are enabled
+            'email_notification': alert.email_notification,
+            # show_notification: Whether notification banner appears when alert triggers
+            'show_notification': alert.show_notification if alert.show_notification is not None else True
         }
 
         for g in alert_dict['groups']:
@@ -1255,9 +1271,18 @@ def update_alert(request):
                 # Handle email notification preference
                 alert.email_notification = data.get('email_notification', False)
                 
+                # Handle show_notification preference
+                # What: Controls whether notification banner appears when alert triggers
+                # Why: Users may want to track alerts without seeing notification banners
+                # How: If False, is_dismissed is set to True so notification never displays
+                show_notification = data.get('show_notification', True)
+                alert.show_notification = show_notification
+                
                 # Reset triggered state when alert is edited
                 alert.is_triggered = False
-                alert.is_dismissed = False
+                # is_dismissed: Set based on show_notification preference
+                # If show_notification is False, set is_dismissed=True to suppress notifications
+                alert.is_dismissed = not show_notification
                 alert.is_active = True
                 alert.triggered_data = None
                 alert.triggered_at = None

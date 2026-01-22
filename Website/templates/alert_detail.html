@@ -1023,6 +1023,11 @@
                     {% endif %}
                     
                     <div class="detail-item">
+                        <span class="detail-label">Show Alert Notification</span>
+                        <span class="detail-value">{% if alert.show_notification %}Enabled{% else %}Disabled{% endif %}</span>
+                    </div>
+                    
+                    <div class="detail-item">
                         <span class="detail-label">SMS Notifications</span>
                         <span class="detail-value">{% if alert.email_notification %}Enabled{% else %}Disabled{% endif %}</span>
                     </div>
@@ -1167,6 +1172,19 @@
                         <label for="edit-pressure-spread">Min Spread % for Pressure</label>
                         <input type="number" id="edit-pressure-spread" value="{{ alert.min_pressure_spread_pct|default:'' }}" min="0.01" step="0.01" placeholder="e.g. 0.2">
                         <small class="form-hint">Spread % threshold for pressure</small>
+                    </div>
+                    
+                    <!-- Show Alert Notification -->
+                    <div class="form-group toggle-group" id="show-notification-group">
+                        <label>Show Alert Notification?</label>
+                        <div class="toggle-container">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="edit-show-notification" {% if alert.show_notification %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="toggle-label">{% if alert.show_notification %}Enabled{% else %}Disabled{% endif %}</span>
+                        </div>
+                        <small class="form-hint">When enabled, a notification banner appears when alert triggers</small>
                     </div>
                     
                     <!-- SMS Notification -->
@@ -1661,6 +1679,11 @@ document.getElementById('edit-is-active').addEventListener('change', function() 
     if (label) label.textContent = this.checked ? 'Enabled' : 'Disabled';
 });
 
+document.getElementById('edit-show-notification').addEventListener('change', function() {
+    const label = document.querySelector('#show-notification-group .toggle-label');
+    if (label) label.textContent = this.checked ? 'Enabled' : 'Disabled';
+});
+
 document.getElementById('edit-email-notification').addEventListener('change', function() {
     const label = document.querySelector('#sms-group .toggle-label');
     if (label) label.textContent = this.checked ? 'Enabled' : 'Disabled';
@@ -1676,6 +1699,8 @@ async function saveChanges() {
         item_id: document.getElementById('edit-item-id').value || null,
         is_all_items: isAllItems,
         email_notification: document.getElementById('edit-email-notification').checked,
+        // show_notification: Controls whether notification banner appears when alert triggers
+        show_notification: document.getElementById('edit-show-notification').checked,
         is_active: document.getElementById('edit-is-active').checked,
         groups: Array.from(document.querySelectorAll('input[name="groups"]:checked')).map(cb => cb.value)
     };

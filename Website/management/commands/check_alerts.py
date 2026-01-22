@@ -315,9 +315,11 @@ class Command(BaseCommand):
             alert.is_triggered = True
             alert.triggered_at = timezone.now()
         
-        # Only reset is_dismissed if data has actually changed
-        # This prevents the notification from re-showing when nothing changed
-        if data_changed:
+        # Only reset is_dismissed if data has actually changed AND show_notification is enabled
+        # What: Controls whether notification banner appears when alert triggers
+        # Why: Users may disable notifications but still want to track alerts
+        # How: Only set is_dismissed=False if show_notification is True
+        if data_changed and alert.show_notification:
             alert.is_dismissed = False
         
         if all_triggered:
@@ -1000,7 +1002,10 @@ class Command(BaseCommand):
                                 alert.triggered_data = json.dumps(result)
                                 alert.is_triggered = True
                                 # Keep is_active = True for all_items spread alerts
-                                alert.is_dismissed = False  # Reset dismissed so notification shows again
+                                # Only show notification if show_notification is enabled
+                                # What: Controls whether notification banner appears
+                                # Why: Users may disable notifications but still want to track alerts
+                                alert.is_dismissed = not alert.show_notification
                                 alert.triggered_at = timezone.now()
                                 alert.save()
                                 self.stdout.write(
@@ -1013,7 +1018,8 @@ class Command(BaseCommand):
                             elif alert.type == 'spike' and alert.is_all_items and isinstance(result, list):
                                 alert.triggered_data = json.dumps(result)
                                 alert.is_triggered = True
-                                alert.is_dismissed = False
+                                # Only show notification if show_notification is enabled
+                                alert.is_dismissed = not alert.show_notification
                                 alert.is_active = True  # keep monitoring
                                 alert.triggered_at = timezone.now()
                                 # Keep active for re-trigger
@@ -1026,7 +1032,8 @@ class Command(BaseCommand):
                             elif alert.type == 'sustained':
                                 # Sustained alerts stay active for re-triggering
                                 alert.is_triggered = True
-                                alert.is_dismissed = False
+                                # Only show notification if show_notification is enabled
+                                alert.is_dismissed = not alert.show_notification
                                 alert.is_active = True  # Keep monitoring
                                 alert.triggered_at = timezone.now()
                                 alert.save()
@@ -1047,6 +1054,8 @@ class Command(BaseCommand):
                                 # Deactivate alert if it's not for all items
                                 if alert.is_all_items is not True:
                                     alert.is_active = False
+                                # Only show notification if show_notification is enabled
+                                alert.is_dismissed = not alert.show_notification
                                 alert.triggered_at = timezone.now()
                                 alert.save()
                                 self.stdout.write(

@@ -114,6 +114,13 @@ class Alert(models.Model):
     is_triggered = models.BooleanField(default=False, blank=True, null=True)
     is_active = models.BooleanField(default=True, blank=True, null=True)
     is_dismissed = models.BooleanField(default=False, blank=True, null=True)
+    
+    # show_notification: Controls whether this alert shows a notification banner when triggered
+    # What: Boolean flag to enable/disable notification display for this alert
+    # Why: Users may want to track alerts without seeing notifications (e.g., just check detail page)
+    # How: When False, is_dismissed is always set to True so notification never appears
+    show_notification = models.BooleanField(default=True, blank=True, null=True)
+    
     triggered_data = models.TextField(blank=True, null=True, default=None)  # JSON string for spread all items data
     created_at = models.DateTimeField(auto_now_add=True)
     minimum_price = models.IntegerField(blank=True, null=True, default=None)
