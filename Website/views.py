@@ -1329,27 +1329,60 @@ def alert_detail(request, alert_id):
 
         if alert.type == 'sustained':
             # For sustained alerts, triggered_data contains the sustained move info
+            # What: Parse the triggered_data JSON and extract individual fields for template display
+            # Why: The template expects individual fields like sustained_item_name, sustained_direction, etc.
+            #      to render the sustained alert triggered data section
+            # How: Parse the JSON and map each field from the stored data to the triggered_info dict
+            # Note: triggered_data can be either a single object (single item) or a list (multi-item/all-items)
             if alert.triggered_data:
                 try:
                     sustained_data = json.loads(alert.triggered_data)
-                    triggered_info['sustained_data'] = sustained_data
-                    print(triggered_info['alert_type'])
-                    '''
-                    triggered_info['sustained_data'] = sustained_data
-                    triggered_info['sustained_item_name'] = sustained_data.get('item_name')
-                    triggered_info['sustained_direction'] = sustained_data.get('streak_direction')
-                    triggered_info['sustained_streak_count'] = sustained_data.get('streak_count')
-                    triggered_info['sustained_total_move'] = sustained_data.get('total_move_percent')
-                    triggered_info['sustained_start_price'] = sustained_data.get('start_price')
-                    triggered_info['sustained_current_price'] = sustained_data.get('current_price')
-                    triggered_info['sustained_volume'] = sustained_data.get('volume')
-                    '''
+                    
+                    # sustained_data can be either:
+                    # - A single dict for single-item sustained alerts
+                    # - A list of dicts for multi-item or all-items sustained alerts
+                    if isinstance(sustained_data, list):
+                        # Multi-item or all-items sustained alert - store items list for template
+                        # triggered_info['items']: List of all sustained move triggers for multi-item display
+                        triggered_info['items'] = sustained_data
+                        triggered_info['sustained_data'] = sustained_data
+                        
+                        # For backwards compatibility, also populate individual fields from first item
+                        # This allows templates that expect single-item fields to still work
+                        if sustained_data:
+                            first_item = sustained_data[0]
+                            triggered_info['sustained_item_name'] = first_item.get('item_name')
+                            triggered_info['sustained_direction'] = first_item.get('streak_direction')
+                            triggered_info['sustained_streak_count'] = first_item.get('streak_count')
+                            triggered_info['sustained_total_move'] = first_item.get('total_move_percent')
+                            triggered_info['sustained_start_price'] = first_item.get('start_price')
+                            triggered_info['sustained_current_price'] = first_item.get('current_price')
+                            triggered_info['sustained_volume'] = first_item.get('volume')
+                    else:
+                        # Single item sustained alert - sustained_data is a dict
+                        # sustained_data: The parsed JSON object containing all sustained alert trigger info
+                        triggered_info['sustained_data'] = sustained_data
+                        # sustained_item_name: Name of the item that triggered the sustained move alert
+                        triggered_info['sustained_item_name'] = sustained_data.get('item_name')
+                        # sustained_direction: Direction of the streak ('up' or 'down')
+                        triggered_info['sustained_direction'] = sustained_data.get('streak_direction')
+                        # sustained_streak_count: Number of consecutive time periods the price moved in this direction
+                        triggered_info['sustained_streak_count'] = sustained_data.get('streak_count')
+                        # sustained_total_move: Total percentage change from start to current price
+                        triggered_info['sustained_total_move'] = sustained_data.get('total_move_percent')
+                        # sustained_start_price: Price at the start of the sustained move
+                        triggered_info['sustained_start_price'] = sustained_data.get('start_price')
+                        # sustained_current_price: Current price at time of trigger
+                        triggered_info['sustained_current_price'] = sustained_data.get('current_price')
+                        # sustained_volume: Trading volume during the sustained move period (optional)
+                        triggered_info['sustained_volume'] = sustained_data.get('volume')
                 except json.JSONDecodeError:
                     pass
 
         
         # has_multiple_items: Boolean indicating if this alert monitors multiple specific items
         # This is True when item_ids contains a JSON array of item IDs (Specific Item(s) mode)
+        # For sustained alerts, we also check sustained_item_ids field
         # Used to determine if we should show the multi-item list view in the template
         has_multiple_items = False
         if alert.item_ids:
@@ -1359,25 +1392,36 @@ def alert_detail(request, alert_id):
             except (json.JSONDecodeError, TypeError):
                 pass
         
+        # Also check sustained_item_ids for sustained alerts
+        # sustained_item_ids: JSON array of item IDs for sustained alerts monitoring multiple specific items
+        if not has_multiple_items and hasattr(alert, 'sustained_item_ids') and alert.sustained_item_ids:
+            try:
+                sustained_ids_list = json.loads(alert.sustained_item_ids)
+                has_multiple_items = isinstance(sustained_ids_list, list) and len(sustained_ids_list) > 0
+            except (json.JSONDecodeError, TypeError):
+                pass
+        
         # Add has_multiple_items to triggered_info for template rendering
         # This allows the template to show the multi-item list even when is_all_items is False
         triggered_info['has_multiple_items'] = has_multiple_items
         
-        if alert.is_all_items and alert.triggered_data:
-            # Parse the JSON triggered data for all-items alerts
+        if alert.is_all_items and alert.triggered_data and alert.type != 'sustained':
+            # Parse the JSON triggered data for all-items alerts (non-sustained)
             # What: Parse triggered_data JSON into items list for template display
             # Why: All-items alerts store triggered items as JSON array in triggered_data
+            # Note: Sustained alerts are handled separately above because they need special field extraction
             try:
                 triggered_info['items'] = json.loads(alert.triggered_data)
             except json.JSONDecodeError:
                 triggered_info['items'] = []
-        elif has_multiple_items and alert.triggered_data:
+        elif has_multiple_items and alert.triggered_data and alert.type != 'sustained':
             # Multi-item specific alert (Specific Item(s) mode with item_ids set)
             # What: Parse triggered_data JSON for multi-item spread alerts
             # Why: When user selects "Specific Item(s)", the triggered_data contains
             #      a JSON array of items that met the spread threshold
             # How: Same format as all-items alerts - array of item objects with
             #      item_id, item_name, high, low, spread fields
+            # Note: Sustained alerts are handled separately above
             try:
                 triggered_info['items'] = json.loads(alert.triggered_data)
             except json.JSONDecodeError:
