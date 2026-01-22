@@ -241,14 +241,37 @@
             </div>
 
             <!-- Multi-item selector for spread alerts (shown when "Specific Item(s)" selected) -->
+            <!-- What: Allows users to select multiple specific items to monitor for spread threshold -->
+            <!-- Why: Users may want to monitor spread on a curated list of items instead of all or just one -->
+            <!-- How: Uses box-style input with dropdown arrow - matching alert_detail.html styling -->
             <div class="form-group" id="spread-items-group" style="display: none;">
-                <label for="spread-item-input">Items</label>
+                <div class="label-with-notification">
+                    <label for="spread-item-input">Items</label>
+                    <!-- Small notification shown when items are added or not found -->
+                    <span id="spread-item-notification" class="item-notification"></span>
+                </div>
                 <div class="multi-item-selector">
-                    <div class="spread-selected-items-container" id="spread-selected-items-container"></div>
-                    <input type="text" id="spread-item-input" placeholder="Type to search items..."
-                        autocomplete="off">
-                    <input type="hidden" name="spread_item_ids" id="spread-item-ids" value="">
-                    <div id="spread-item-suggestions" class="suggestions-dropdown"></div>
+                    <div class="multi-item-selector-box">
+                        <!-- Search input for adding new items -->
+                        <input type="text" id="spread-item-input" placeholder="Search for item to add..." autocomplete="off">
+                        <!-- Dropdown toggle button with chevron arrow -->
+                        <button type="button" class="multi-item-dropdown-toggle" id="spread-multi-item-toggle" title="Show selected items">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </button>
+                        <!-- Hidden input for form submission - stores comma-separated item IDs -->
+                        <input type="hidden" name="spread_item_ids" id="spread-item-ids" value="">
+                        <!-- Autocomplete suggestions dropdown (shown when typing) -->
+                        <div id="spread-item-suggestions" class="multi-item-suggestions-dropdown"></div>
+                        <!-- Selected items dropdown (shown when clicking arrow) -->
+                        <div id="spread-selected-items-dropdown" class="multi-item-selected-dropdown">
+                            <div class="selected-items-list" id="spread-selected-items-list">
+                                <!-- Items will be populated here dynamically -->
+                            </div>
+                            <div class="no-items-message" id="spread-no-items-message">No items selected</div>
+                        </div>
+                    </div>
                 </div>
                 <small class="form-hint">Add one or more items to monitor for spread threshold</small>
             </div>
@@ -317,14 +340,37 @@
             </div>
 
             <!-- Multi-item selector for sustained move -->
+            <!-- What: Allows users to select multiple specific items to monitor for sustained price moves -->
+            <!-- Why: Users may want to monitor sustained moves on a curated list of items -->
+            <!-- How: Uses box-style input with dropdown arrow - matching alert_detail.html styling -->
             <div class="form-group" id="sustained-items-group" style="display: none;">
-                <label for="sustained-item-input">Items</label>
+                <div class="label-with-notification">
+                    <label for="sustained-item-input">Items</label>
+                    <!-- Small notification shown when items are added or not found -->
+                    <span id="sustained-item-notification" class="item-notification"></span>
+                </div>
                 <div class="multi-item-selector">
-                    <div class="selected-items-container" id="selected-items-container"></div>
-                    <input type="text" id="sustained-item-input" placeholder="Type to search items..."
-                        autocomplete="off">
-                    <input type="hidden" name="sustained_item_ids" id="sustained-item-ids" value="">
-                    <div id="sustained-item-suggestions" class="suggestions-dropdown"></div>
+                    <div class="multi-item-selector-box">
+                        <!-- Search input for adding new items -->
+                        <input type="text" id="sustained-item-input" placeholder="Search for item to add..." autocomplete="off">
+                        <!-- Dropdown toggle button with chevron arrow -->
+                        <button type="button" class="multi-item-dropdown-toggle" id="sustained-multi-item-toggle" title="Show selected items">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </button>
+                        <!-- Hidden input for form submission - stores comma-separated item IDs -->
+                        <input type="hidden" name="sustained_item_ids" id="sustained-item-ids" value="">
+                        <!-- Autocomplete suggestions dropdown (shown when typing) -->
+                        <div id="sustained-item-suggestions" class="multi-item-suggestions-dropdown"></div>
+                        <!-- Selected items dropdown (shown when clicking arrow) -->
+                        <div id="sustained-selected-items-dropdown" class="multi-item-selected-dropdown">
+                            <div class="selected-items-list" id="sustained-selected-items-list">
+                                <!-- Items will be populated here dynamically -->
+                            </div>
+                            <div class="no-items-message" id="sustained-no-items-message">No items selected</div>
+                        </div>
+                    </div>
                 </div>
                 <small class="form-hint">Add one or more items to monitor</small>
             </div>
@@ -1827,84 +1873,255 @@
         line-height: 1.4;
     }
 
-    /* Multi-item selector styles */
+    /* =========================================================================
+       MULTI-ITEM SELECTOR STYLES
+       What: Styles for the multi-item selector box with dropdown arrow and selected items
+       Why: Matches the styling used in alert_detail.html for visual consistency
+       How: Uses a box-style input with dropdown toggle, showing selected items in a dropdown list
+       ========================================================================= */
+    
+    /* Main multi-item selector container - holds the input box and dropdown */
     .multi-item-selector {
         position: relative;
     }
-
-    .multi-item-selector input[type="text"] {
-        width: 100%;
-        padding: 10px 14px;
+    
+    /* The selector box containing search input and dropdown toggle arrow */
+    /* What: Container that looks like a single input field with a dropdown arrow */
+    /* Why: Provides a consistent look with native select elements and alert_detail.html */
+    .multi-item-selector-box {
+        position: relative;
+        display: flex;
+        align-items: stretch;
         border: 1px solid var(--border);
         border-radius: 8px;
-        font-size: 15px;
-        color: var(--text);
         background: var(--surface);
+        overflow: visible;
         transition: all 0.15s;
     }
-
-    .multi-item-selector input[type="text"]:focus {
-        outline: none;
+    
+    /* Focus state for the selector box - highlights when user is interacting */
+    .multi-item-selector-box:focus-within {
         border-color: var(--primary);
         box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
     }
-
-    /* Selected items container styles - used for both sustained and spread multi-item selectors */
-    .selected-items-container,
-    .spread-selected-items-container {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        margin-bottom: 8px;
-        min-height: 0;
+    
+    /* Search input inside the box - takes up most of the width */
+    /* What: Text input where users type to search for items to add */
+    /* Why: Allows free-text search with autocomplete suggestions */
+    .multi-item-selector-box input[type="text"] {
+        flex: 1;
+        border: none;
+        outline: none;
+        padding: 10px 14px;
+        font-size: 15px;
+        color: var(--text);
+        background: transparent;
+        border-radius: 8px 0 0 8px;
+        min-width: 0;
     }
-
-    .selected-items-container:empty,
-    .spread-selected-items-container:empty {
-        display: none;
+    
+    .multi-item-selector-box input[type="text"]::placeholder {
+        color: #9ca3af;
     }
-
-    .selected-item-chip {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 10px;
-        background: var(--primary);
-        color: white;
-        border-radius: 16px;
-        font-size: 13px;
-        font-weight: 500;
-        animation: chipIn 0.15s ease-out;
-    }
-
-    @keyframes chipIn {
-        from {
-            opacity: 0;
-            transform: scale(0.8);
-        }
-
-        to {
-            opacity: 1;
-            transform: scale(1);
-        }
-    }
-
-    .selected-item-chip .chip-remove {
+    
+    /* Dropdown toggle button with chevron arrow */
+    /* What: Button on the right side of the input that reveals selected items */
+    /* Why: Shows users there's a dropdown and provides access to view/manage selected items */
+    .multi-item-dropdown-toggle {
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.2);
+        width: 40px;
+        border: none;
+        border-left: 1px solid var(--border);
+        background: #f9fafb;
         cursor: pointer;
-        font-size: 12px;
-        line-height: 1;
+        transition: background-color 0.15s ease;
+        border-radius: 0 8px 8px 0;
+    }
+    
+    .multi-item-dropdown-toggle:hover {
+        background: #f3f4f6;
+    }
+    
+    /* Active state when dropdown is open - green background to indicate active */
+    .multi-item-dropdown-toggle.active {
+        background: #a7f3d0;
+    }
+    
+    .multi-item-dropdown-toggle svg {
+        width: 20px;
+        height: 20px;
+        color: #6b7280;
+        transition: transform 0.2s ease;
+    }
+    
+    /* Rotate arrow and change color when dropdown is open */
+    .multi-item-dropdown-toggle.active svg {
+        transform: rotate(180deg);
+        color: #047857;
+    }
+    
+    /* Autocomplete suggestions dropdown - appears below input when typing */
+    /* What: Shows matching items as user types in the search input */
+    /* Why: Enables quick item selection via autocomplete */
+    .multi-item-suggestions-dropdown {
+        display: none;
+        position: absolute;
+        top: calc(100% + 5px);  /* 5px gap between dropdown and input box */
+        left: 0;
+        right: 0;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;  /* Full border radius since there's a gap */
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1001;  /* Above selected items dropdown */
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .multi-item-suggestions-dropdown .suggestion-item {
+        padding: 10px 14px;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+        display: flex;
+        align-items: center;
+        font-size: 14px;
         transition: background 0.15s;
     }
-
-    .selected-item-chip .chip-remove:hover {
-        background: rgba(255, 255, 255, 0.4);
+    
+    .multi-item-suggestions-dropdown .suggestion-item:hover,
+    .multi-item-suggestions-dropdown .suggestion-item.selected {
+        background: #f0fdf4;
+    }
+    
+    .multi-item-suggestions-dropdown .suggestion-item:last-child {
+        border-bottom: none;
+    }
+    
+    /* Selected items dropdown - shows when clicking the dropdown arrow */
+    /* What: Displays all currently selected items in a list format */
+    /* Why: Allows users to see and manage (remove) selected items */
+    .multi-item-selected-dropdown {
+        display: none;
+        position: absolute;
+        top: calc(100% + 5px);  /* 5px gap between dropdown and search box */
+        left: 0;
+        right: 0;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;  /* Full border radius since there's a gap */
+        max-height: 150px;  /* Restricted height to prevent overflow */
+        overflow-y: auto;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .multi-item-selected-dropdown.show {
+        display: block;
+    }
+    
+    /* Individual selected item row - displays item name with remove button */
+    /* What: A row containing the item name and a red X button to remove it */
+    /* Why: Provides clear visual feedback of selected items and easy removal */
+    .selected-item-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 14px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .selected-item-row:last-child {
+        border-bottom: none;
+    }
+    
+    .selected-item-row .item-name {
+        flex: 1;
+        font-size: 0.95rem;
+        color: var(--text);
+    }
+    
+    /* Red X remove button - styled to match alert_detail.html */
+    /* What: A prominent red X button to remove an item from the selection */
+    /* Why: Provides clear, accessible way to remove items with visual feedback */
+    .selected-item-row .remove-item-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        color: #ef4444;  /* Red color for visibility */
+        font-size: 1.4rem;
+        font-weight: bold;
+        line-height: 1;
+        padding: 0;
+        transition: color 0.15s ease, transform 0.15s ease;
+    }
+    
+    .selected-item-row .remove-item-btn:hover {
+        color: #dc2626;  /* Darker red on hover */
+        transform: scale(1.1);  /* Slight scale up on hover */
+    }
+    
+    /* No items message - shown when no items are selected */
+    /* What: Placeholder text displayed in the dropdown when empty */
+    /* Why: Provides feedback that no items have been selected yet */
+    .no-items-message {
+        display: none;
+        padding: 16px 14px;
+        text-align: center;
+        color: #9ca3af;
+        font-style: italic;
+    }
+    
+    .no-items-message.show {
+        display: block;
+    }
+    
+    /* =========================================================================
+       ITEM NOTIFICATION STYLES
+       What: Small inline notifications for item add/remove feedback
+       Why: Provides immediate visual feedback without disruptive popups
+       ========================================================================= */
+    
+    /* Container for label + notification - displays label and notification inline */
+    .label-with-notification {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 5px;  /* 5px margin between notification row and input box */
+    }
+    
+    /* Small inline notification shown next to "Items" label */
+    .item-notification {
+        font-size: 0.8rem;
+        padding: 3px 8px;
+        border-radius: 4px;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        white-space: nowrap;
+    }
+    
+    .item-notification.show {
+        opacity: 1;
+    }
+    
+    /* Success notification (green) - item added successfully */
+    .item-notification.success {
+        background: #d1fae5;
+        color: #065f46;
+        border: 1px solid #a7f3d0;
+    }
+    
+    /* Error notification (red) - item not found */
+    .item-notification.error {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
     }
 
     .checkbox-group {
@@ -2679,12 +2896,22 @@
                 sustainedItemInput: '#sustained-item-input',
                 sustainedItemIds: '#sustained-item-ids',
                 sustainedItemSuggestions: '#sustained-item-suggestions',
-                selectedItemsContainer: '#selected-items-container',
+                // Sustained move multi-item selector elements (new dropdown-style)
+                sustainedSelectedItemsDropdown: '#sustained-selected-items-dropdown',
+                sustainedSelectedItemsList: '#sustained-selected-items-list',
+                sustainedNoItemsMessage: '#sustained-no-items-message',
+                sustainedMultiItemToggle: '#sustained-multi-item-toggle',
+                sustainedItemNotification: '#sustained-item-notification',
                 // Spread multi-item selector elements
                 spreadItemInput: '#spread-item-input',
                 spreadItemIds: '#spread-item-ids',
                 spreadItemSuggestions: '#spread-item-suggestions',
-                spreadSelectedItemsContainer: '#spread-selected-items-container',
+                // Spread multi-item selector elements (new dropdown-style)
+                spreadSelectedItemsDropdown: '#spread-selected-items-dropdown',
+                spreadSelectedItemsList: '#spread-selected-items-list',
+                spreadNoItemsMessage: '#spread-no-items-message',
+                spreadMultiItemToggle: '#spread-multi-item-toggle',
+                spreadItemNotification: '#spread-item-notification',
                 alertGroup: '#alert-group',
                 groups: {
                     spreadScope: '#spread-scope-group',
@@ -5446,30 +5673,70 @@
     // =============================================================================
     /**
      * Manages multi-item selection for sustained move alerts.
-     * Allows adding multiple items via autocomplete with chip-style display.
+     * 
+     * What: Allows users to select multiple specific items to monitor for sustained price moves
+     * Why: Users may want to monitor sustained moves on a curated list of items
+     * How: Uses box-style input with dropdown toggle showing selected items - matches alert_detail.html
+     * 
+     * This implementation mirrors the styling and behavior from alert_detail.html's MultiItemEditor
+     * for visual consistency across the application.
      */
     const MultiItemSelector = {
-        selectedItems: [],  // Array of {id, name} objects
+        // selectedItems: Array of {id, name} objects representing currently selected items
+        selectedItems: [],
+        // selectedIndex: Index of currently highlighted suggestion in dropdown (-1 = none)
         selectedIndex: -1,
+        // notificationTimeout: Reference to timeout for auto-hiding notifications
+        notificationTimeout: null,
+        // dropdownOpen: Tracks if the selected items dropdown is currently open
+        dropdownOpen: false,
 
         /**
          * Initializes the multi-item selector for sustained move alerts.
+         * 
+         * What: Sets up event listeners for the sustained item search input and dropdown toggle
+         * Why: Enables autocomplete functionality, dropdown management, and item removal
+         * How: Attaches input, keydown, click handlers to relevant DOM elements
          */
         init() {
+            // Get all DOM elements needed for the multi-item selector
+            // input: Text input where user types to search for items to add
             const input = document.querySelector(AlertsConfig.selectors.create.sustainedItemInput);
+            // dropdown: Container showing autocomplete suggestions when typing
             const dropdown = document.querySelector(AlertsConfig.selectors.create.sustainedItemSuggestions);
+            // hiddenInput: Hidden field that stores comma-separated item IDs for form submission
             const hiddenInput = document.querySelector(AlertsConfig.selectors.create.sustainedItemIds);
-            const container = document.querySelector(AlertsConfig.selectors.create.selectedItemsContainer);
+            // selectedDropdown: Container showing list of already selected items
+            const selectedDropdown = document.querySelector(AlertsConfig.selectors.create.sustainedSelectedItemsDropdown);
+            // selectedList: Inner container where selected item rows are rendered
+            const selectedList = document.querySelector(AlertsConfig.selectors.create.sustainedSelectedItemsList);
+            // noItemsMsg: Message shown when no items are selected
+            const noItemsMsg = document.querySelector(AlertsConfig.selectors.create.sustainedNoItemsMessage);
+            // toggleBtn: Button with chevron arrow to show/hide selected items dropdown
+            const toggleBtn = document.querySelector(AlertsConfig.selectors.create.sustainedMultiItemToggle);
+            // selectorBox: The main container box for the selector (for click-outside handling)
+            const selectorBox = input ? input.closest('.multi-item-selector-box') : null;
 
-            if (!input || !dropdown || !hiddenInput || !container) return;
+            if (!input || !dropdown || !hiddenInput || !selectedDropdown) return;
 
+            // Reference to 'this' for use inside closures
+            const self = this;
             this.selectedItems = [];
             this.selectedIndex = -1;
+            this.dropdownOpen = false;
 
+            /**
+             * Updates the hidden input with current selected item IDs.
+             * Called whenever items are added or removed to keep form data in sync.
+             */
             const updateHiddenInput = () => {
                 hiddenInput.value = this.selectedItems.map(item => item.id).join(',');
             };
 
+            /**
+             * Updates visual selection state in autocomplete dropdown.
+             * Highlights the currently selected suggestion item.
+             */
             const updateSelection = () => {
                 const items = dropdown.querySelectorAll('.suggestion-item');
                 items.forEach((item, index) => {
@@ -5482,29 +5749,112 @@
                 });
             };
 
+            /**
+             * Adds an item to the selected list.
+             * 
+             * What: Adds item to selectedItems array and updates UI
+             * Why: Central function for adding items from autocomplete or manual entry
+             * How: Checks for duplicates, adds to array, updates hidden input and renders list
+             * 
+             * @param {string} id - The item's unique identifier
+             * @param {string} name - The item's display name
+             */
             const addItem = (id, name) => {
-                // Check if already selected
+                // Check if already selected - prevent duplicates
                 if (this.selectedItems.some(item => item.id === id)) {
+                    this.showNotification(`${name} is already selected`, 'error');
                     return;
                 }
 
                 this.selectedItems.push({id, name});
                 updateHiddenInput();
-                this.renderChips(container);
+                this.renderSelectedItems();
                 input.value = '';
                 dropdown.style.display = 'none';
                 this.selectedIndex = -1;
+
+                // Show success notification
+                this.showNotification(`${name} added`, 'success');
             };
 
+            /**
+             * Removes an item from the selected list.
+             * 
+             * What: Removes item from selectedItems array and updates UI
+             * Why: Called when user clicks the red X button on an item
+             * 
+             * @param {string} id - The item's unique identifier to remove
+             */
             const removeItem = (id) => {
-                this.selectedItems = this.selectedItems.filter(item => item.id !== id);
+                const itemToRemove = this.selectedItems.find(item => String(item.id) === String(id));
+                const itemName = itemToRemove ? itemToRemove.name : 'Item';
+                this.selectedItems = this.selectedItems.filter(item => String(item.id) !== String(id));
                 updateHiddenInput();
-                this.renderChips(container);
+                this.renderSelectedItems();
+
+                // Show removal notification
+                this.showNotification(`${itemName} removed`, 'success');
             };
+
+            // Handle remove button clicks in selected items dropdown (event delegation)
+            if (selectedList) {
+                selectedList.addEventListener('click', function(e) {
+                    if (e.target.classList.contains('remove-item-btn')) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const itemId = e.target.dataset.id;
+                        removeItem(itemId);
+                    }
+                });
+            }
+
+            // Handle dropdown toggle button clicks
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Close autocomplete suggestions if open
+                    dropdown.style.display = 'none';
+                    this.selectedIndex = -1;
+                    
+                    // Toggle selected items dropdown
+                    this.dropdownOpen = !this.dropdownOpen;
+                    if (this.dropdownOpen) {
+                        selectedDropdown.classList.add('show');
+                        toggleBtn.classList.add('active');
+                    } else {
+                        selectedDropdown.classList.remove('show');
+                        toggleBtn.classList.remove('active');
+                    }
+                });
+            }
+
+            // Close dropdowns when clicking outside
+            document.addEventListener('click', (e) => {
+                if (selectorBox && !selectorBox.contains(e.target)) {
+                    // Close selected items dropdown
+                    if (this.dropdownOpen) {
+                        selectedDropdown.classList.remove('show');
+                        if (toggleBtn) toggleBtn.classList.remove('active');
+                        this.dropdownOpen = false;
+                    }
+                    // Close autocomplete suggestions
+                    dropdown.style.display = 'none';
+                    this.selectedIndex = -1;
+                }
+            });
 
             // Handle input changes - fetch suggestions
             input.addEventListener('input', async () => {
                 const query = input.value;
+
+                // Close selected items dropdown when user starts typing
+                if (this.dropdownOpen) {
+                    selectedDropdown.classList.remove('show');
+                    if (toggleBtn) toggleBtn.classList.remove('active');
+                    this.dropdownOpen = false;
+                }
 
                 if (query.length < AlertsConfig.timing.minSearchLength) {
                     dropdown.style.display = 'none';
@@ -5529,10 +5879,10 @@
                 }
             });
 
-            // Handle keyboard navigation
+            // Handle keyboard navigation in dropdown
             input.addEventListener('keydown', (e) => {
                 if (dropdown.style.display === 'none') {
-                    // Backspace with empty input removes last chip
+                    // Backspace with empty input removes last item
                     if (e.key === 'Backspace' && input.value === '' && this.selectedItems.length > 0) {
                         const lastItem = this.selectedItems[this.selectedItems.length - 1];
                         removeItem(lastItem.id);
@@ -5561,12 +5911,10 @@
                     case 'Tab':
                         e.preventDefault();
                         if (e.shiftKey) {
-                            // Shift+Tab moves selection up
                             this.selectedIndex = this.selectedIndex <= 0
                                 ? items.length - 1
                                 : this.selectedIndex - 1;
                         } else {
-                            // Tab moves selection down
                             this.selectedIndex = (this.selectedIndex + 1) % items.length;
                         }
                         updateSelection();
@@ -5607,38 +5955,80 @@
                     updateSelection();
                 }
             });
-
-            // Handle chip removal via event delegation on container
-            container.addEventListener('click', (e) => {
-                if (e.target.classList.contains('chip-remove')) {
-                    const chip = e.target.closest('.selected-item-chip');
-                    if (chip) {
-                        removeItem(chip.dataset.id);
-                    }
-                }
-            });
         },
 
         /**
-         * Renders the selected item chips in the container.
+         * Renders the selected items in the dropdown list.
+         * Shows each item with its name and a red X remove button - matching alert_detail.html styling.
+         * 
+         * What: Updates the DOM to display all currently selected items
+         * Why: Provides visual feedback of selected items with ability to remove
+         * How: Generates HTML rows for each item with remove button
          */
-        renderChips(container) {
-            container.innerHTML = this.selectedItems.map(item =>
-                `<span class="selected-item-chip" data-id="${item.id}">
-                ${item.name}
-                <span class="chip-remove">×</span>
-            </span>`
-            ).join('');
+        renderSelectedItems() {
+            const selectedList = document.querySelector(AlertsConfig.selectors.create.sustainedSelectedItemsList);
+            const noItemsMsg = document.querySelector(AlertsConfig.selectors.create.sustainedNoItemsMessage);
+
+            if (!selectedList) return;
+
+            if (this.selectedItems.length === 0) {
+                selectedList.innerHTML = '';
+                if (noItemsMsg) noItemsMsg.classList.add('show');
+            } else {
+                if (noItemsMsg) noItemsMsg.classList.remove('show');
+                selectedList.innerHTML = this.selectedItems.map(item =>
+                    `<div class="selected-item-row">
+                        <span class="item-name">${item.name}</span>
+                        <button type="button" class="remove-item-btn" data-id="${item.id}" title="Remove ${item.name}">×</button>
+                    </div>`
+                ).join('');
+            }
+        },
+
+        /**
+         * Shows a small notification next to the "Items" label.
+         * 
+         * What: Displays success/error feedback for item add/remove operations
+         * Why: Provides immediate visual feedback without disruptive popups
+         * How: Updates the notification span with text and appropriate class, auto-hides after delay
+         * 
+         * @param {string} message - The notification message to display
+         * @param {string} type - 'success' for green (item added/removed) or 'error' for red (duplicate)
+         */
+        showNotification(message, type) {
+            const notification = document.querySelector(AlertsConfig.selectors.create.sustainedItemNotification);
+            if (!notification) return;
+
+            // Clear any existing timeout to prevent overlapping notifications
+            if (this.notificationTimeout) {
+                clearTimeout(this.notificationTimeout);
+            }
+
+            // Set the message and styling
+            notification.textContent = message;
+            notification.className = 'item-notification ' + type + ' show';
+
+            // Auto-hide after 2.5 seconds
+            this.notificationTimeout = setTimeout(() => {
+                notification.classList.remove('show');
+            }, 2500);
         },
 
         /**
          * Clears all selected items.
+         * 
+         * What: Removes all items from the selection
+         * Why: Called when switching scope mode or after form submission
+         * How: Empties the array and clears DOM elements
          */
         clear() {
             this.selectedItems = [];
-            const container = document.querySelector(AlertsConfig.selectors.create.selectedItemsContainer);
+            const selectedList = document.querySelector(AlertsConfig.selectors.create.sustainedSelectedItemsList);
+            const noItemsMsg = document.querySelector(AlertsConfig.selectors.create.sustainedNoItemsMessage);
             const hiddenInput = document.querySelector(AlertsConfig.selectors.create.sustainedItemIds);
-            if (container) container.innerHTML = '';
+            
+            if (selectedList) selectedList.innerHTML = '';
+            if (noItemsMsg) noItemsMsg.classList.add('show');
             if (hiddenInput) hiddenInput.value = '';
         },
 
@@ -5659,49 +6049,66 @@
      * 
      * What: Allows users to select multiple specific items to monitor for spread threshold
      * Why: Users may want to monitor spread on a curated list of items instead of all or just one
-     * How: Provides autocomplete search, chip display of selected items, and stores IDs in hidden input
+     * How: Uses box-style input with dropdown toggle showing selected items - matches alert_detail.html
      * 
-     * This is similar to MultiItemSelector but uses different DOM elements specific to spread alerts.
+     * This implementation mirrors the styling and behavior from alert_detail.html's MultiItemEditor
+     * for visual consistency across the application.
      */
     const SpreadMultiItemSelector = {
         // selectedItems: Array of {id, name} objects representing currently selected items
         selectedItems: [],
         // selectedIndex: Index of currently highlighted suggestion in dropdown (-1 = none)
         selectedIndex: -1,
+        // notificationTimeout: Reference to timeout for auto-hiding notifications
+        notificationTimeout: null,
+        // dropdownOpen: Tracks if the selected items dropdown is currently open
+        dropdownOpen: false,
 
         /**
          * Initializes the spread multi-item selector.
          * 
-         * What: Sets up event listeners for the spread item search input
-         * Why: Enables autocomplete functionality and chip management
+         * What: Sets up event listeners for the spread item search input and dropdown toggle
+         * Why: Enables autocomplete functionality, dropdown management, and item removal
          * How: Attaches input, keydown, click handlers to relevant DOM elements
          */
         init() {
-            // input: Text input where user types to search for items
+            // Get all DOM elements needed for the multi-item selector
+            // input: Text input where user types to search for items to add
             const input = document.querySelector(AlertsConfig.selectors.create.spreadItemInput);
-            // dropdown: Container showing autocomplete suggestions
+            // dropdown: Container showing autocomplete suggestions when typing
             const dropdown = document.querySelector(AlertsConfig.selectors.create.spreadItemSuggestions);
             // hiddenInput: Hidden field that stores comma-separated item IDs for form submission
             const hiddenInput = document.querySelector(AlertsConfig.selectors.create.spreadItemIds);
-            // container: Container displaying selected item chips
-            const container = document.querySelector(AlertsConfig.selectors.create.spreadSelectedItemsContainer);
+            // selectedDropdown: Container showing list of already selected items
+            const selectedDropdown = document.querySelector(AlertsConfig.selectors.create.spreadSelectedItemsDropdown);
+            // selectedList: Inner container where selected item rows are rendered
+            const selectedList = document.querySelector(AlertsConfig.selectors.create.spreadSelectedItemsList);
+            // noItemsMsg: Message shown when no items are selected
+            const noItemsMsg = document.querySelector(AlertsConfig.selectors.create.spreadNoItemsMessage);
+            // toggleBtn: Button with chevron arrow to show/hide selected items dropdown
+            const toggleBtn = document.querySelector(AlertsConfig.selectors.create.spreadMultiItemToggle);
+            // selectorBox: The main container box for the selector (for click-outside handling)
+            const selectorBox = input ? input.closest('.multi-item-selector-box') : null;
 
-            if (!input || !dropdown || !hiddenInput || !container) return;
+            if (!input || !dropdown || !hiddenInput || !selectedDropdown) return;
 
+            // Reference to 'this' for use inside closures
+            const self = this;
             this.selectedItems = [];
             this.selectedIndex = -1;
+            this.dropdownOpen = false;
 
             /**
              * Updates the hidden input with current selected item IDs.
-             * Called whenever items are added or removed.
+             * Called whenever items are added or removed to keep form data in sync.
              */
             const updateHiddenInput = () => {
                 hiddenInput.value = this.selectedItems.map(item => item.id).join(',');
             };
 
             /**
-             * Updates visual selection state in dropdown.
-             * Highlights the currently selected suggestion.
+             * Updates visual selection state in autocomplete dropdown.
+             * Highlights the currently selected suggestion item.
              */
             const updateSelection = () => {
                 const items = dropdown.querySelectorAll('.suggestion-item');
@@ -5718,37 +6125,109 @@
             /**
              * Adds an item to the selected list.
              * 
-             * @param {string} id - Item ID
-             * @param {string} name - Item name for display
+             * What: Adds item to selectedItems array and updates UI
+             * Why: Central function for adding items from autocomplete or manual entry
+             * How: Checks for duplicates, adds to array, updates hidden input and renders list
+             * 
+             * @param {string} id - The item's unique identifier
+             * @param {string} name - The item's display name
              */
             const addItem = (id, name) => {
-                // Check if already selected to prevent duplicates
+                // Check if already selected - prevent duplicates
                 if (this.selectedItems.some(item => item.id === id)) {
+                    this.showNotification(`${name} is already selected`, 'error');
                     return;
                 }
 
                 this.selectedItems.push({id, name});
                 updateHiddenInput();
-                this.renderChips(container);
+                this.renderSelectedItems();
                 input.value = '';
                 dropdown.style.display = 'none';
                 this.selectedIndex = -1;
+
+                // Show success notification
+                this.showNotification(`${name} added`, 'success');
             };
 
             /**
              * Removes an item from the selected list.
              * 
-             * @param {string} id - Item ID to remove
+             * What: Removes item from selectedItems array and updates UI
+             * Why: Called when user clicks the red X button on an item
+             * 
+             * @param {string} id - The item's unique identifier to remove
              */
             const removeItem = (id) => {
-                this.selectedItems = this.selectedItems.filter(item => item.id !== id);
+                const itemToRemove = this.selectedItems.find(item => String(item.id) === String(id));
+                const itemName = itemToRemove ? itemToRemove.name : 'Item';
+                this.selectedItems = this.selectedItems.filter(item => String(item.id) !== String(id));
                 updateHiddenInput();
-                this.renderChips(container);
+                this.renderSelectedItems();
+
+                // Show removal notification
+                this.showNotification(`${itemName} removed`, 'success');
             };
+
+            // Handle remove button clicks in selected items dropdown (event delegation)
+            if (selectedList) {
+                selectedList.addEventListener('click', function(e) {
+                    if (e.target.classList.contains('remove-item-btn')) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const itemId = e.target.dataset.id;
+                        removeItem(itemId);
+                    }
+                });
+            }
+
+            // Handle dropdown toggle button clicks
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Close autocomplete suggestions if open
+                    dropdown.style.display = 'none';
+                    this.selectedIndex = -1;
+                    
+                    // Toggle selected items dropdown
+                    this.dropdownOpen = !this.dropdownOpen;
+                    if (this.dropdownOpen) {
+                        selectedDropdown.classList.add('show');
+                        toggleBtn.classList.add('active');
+                    } else {
+                        selectedDropdown.classList.remove('show');
+                        toggleBtn.classList.remove('active');
+                    }
+                });
+            }
+
+            // Close dropdowns when clicking outside
+            document.addEventListener('click', (e) => {
+                if (selectorBox && !selectorBox.contains(e.target)) {
+                    // Close selected items dropdown
+                    if (this.dropdownOpen) {
+                        selectedDropdown.classList.remove('show');
+                        if (toggleBtn) toggleBtn.classList.remove('active');
+                        this.dropdownOpen = false;
+                    }
+                    // Close autocomplete suggestions
+                    dropdown.style.display = 'none';
+                    this.selectedIndex = -1;
+                }
+            });
 
             // Handle input changes - fetch suggestions from API
             input.addEventListener('input', async () => {
                 const query = input.value;
+
+                // Close selected items dropdown when user starts typing
+                if (this.dropdownOpen) {
+                    selectedDropdown.classList.remove('show');
+                    if (toggleBtn) toggleBtn.classList.remove('active');
+                    this.dropdownOpen = false;
+                }
 
                 // minSearchLength: Minimum characters before searching (prevents API spam)
                 if (query.length < AlertsConfig.timing.minSearchLength) {
@@ -5778,7 +6257,7 @@
             // Handle keyboard navigation in dropdown
             input.addEventListener('keydown', (e) => {
                 if (dropdown.style.display === 'none') {
-                    // Backspace with empty input removes last chip
+                    // Backspace with empty input removes last item
                     if (e.key === 'Backspace' && input.value === '' && this.selectedItems.length > 0) {
                         const lastItem = this.selectedItems[this.selectedItems.length - 1];
                         removeItem(lastItem.id);
@@ -5851,34 +6330,63 @@
                     updateSelection();
                 }
             });
-
-            // Handle chip removal via event delegation on container
-            container.addEventListener('click', (e) => {
-                if (e.target.classList.contains('chip-remove')) {
-                    const chip = e.target.closest('.selected-item-chip');
-                    if (chip) {
-                        removeItem(chip.dataset.id);
-                    }
-                }
-            });
         },
 
         /**
-         * Renders the selected item chips in the container.
+         * Renders the selected items in the dropdown list.
+         * Shows each item with its name and a red X remove button - matching alert_detail.html styling.
          * 
-         * What: Creates visual chip elements for each selected item
-         * Why: Provides clear visual feedback of what items are selected
-         * How: Generates HTML for chips with item name and red X remove button
-         * 
-         * @param {HTMLElement} container - Container element to render chips into
+         * What: Updates the DOM to display all currently selected items
+         * Why: Provides visual feedback of selected items with ability to remove
+         * How: Generates HTML rows for each item with remove button
          */
-        renderChips(container) {
-            container.innerHTML = this.selectedItems.map(item =>
-                `<span class="selected-item-chip" data-id="${item.id}">
-                ${item.name}
-                <span class="chip-remove" title="Remove ${item.name}">×</span>
-            </span>`
-            ).join('');
+        renderSelectedItems() {
+            const selectedList = document.querySelector(AlertsConfig.selectors.create.spreadSelectedItemsList);
+            const noItemsMsg = document.querySelector(AlertsConfig.selectors.create.spreadNoItemsMessage);
+
+            if (!selectedList) return;
+
+            if (this.selectedItems.length === 0) {
+                selectedList.innerHTML = '';
+                if (noItemsMsg) noItemsMsg.classList.add('show');
+            } else {
+                if (noItemsMsg) noItemsMsg.classList.remove('show');
+                selectedList.innerHTML = this.selectedItems.map(item =>
+                    `<div class="selected-item-row">
+                        <span class="item-name">${item.name}</span>
+                        <button type="button" class="remove-item-btn" data-id="${item.id}" title="Remove ${item.name}">×</button>
+                    </div>`
+                ).join('');
+            }
+        },
+
+        /**
+         * Shows a small notification next to the "Items" label.
+         * 
+         * What: Displays success/error feedback for item add/remove operations
+         * Why: Provides immediate visual feedback without disruptive popups
+         * How: Updates the notification span with text and appropriate class, auto-hides after delay
+         * 
+         * @param {string} message - The notification message to display
+         * @param {string} type - 'success' for green (item added/removed) or 'error' for red (duplicate)
+         */
+        showNotification(message, type) {
+            const notification = document.querySelector(AlertsConfig.selectors.create.spreadItemNotification);
+            if (!notification) return;
+
+            // Clear any existing timeout to prevent overlapping notifications
+            if (this.notificationTimeout) {
+                clearTimeout(this.notificationTimeout);
+            }
+
+            // Set the message and styling
+            notification.textContent = message;
+            notification.className = 'item-notification ' + type + ' show';
+
+            // Auto-hide after 2.5 seconds
+            this.notificationTimeout = setTimeout(() => {
+                notification.classList.remove('show');
+            }, 2500);
         },
 
         /**
@@ -5890,9 +6398,12 @@
          */
         clear() {
             this.selectedItems = [];
-            const container = document.querySelector(AlertsConfig.selectors.create.spreadSelectedItemsContainer);
+            const selectedList = document.querySelector(AlertsConfig.selectors.create.spreadSelectedItemsList);
+            const noItemsMsg = document.querySelector(AlertsConfig.selectors.create.spreadNoItemsMessage);
             const hiddenInput = document.querySelector(AlertsConfig.selectors.create.spreadItemIds);
-            if (container) container.innerHTML = '';
+            
+            if (selectedList) selectedList.innerHTML = '';
+            if (noItemsMsg) noItemsMsg.classList.add('show');
             if (hiddenInput) hiddenInput.value = '';
         },
 
