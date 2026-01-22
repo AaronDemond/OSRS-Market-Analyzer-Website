@@ -3524,6 +3524,16 @@
             const isSpreadAllItems = this.isSpreadAllItemsAlert(alert);
             const isSpikeAllItems = this.isSpikeAllItemsAlert(alert);
 
+            // typeIconSvgs: inline SVGs keyed by alert type; ensures we show meaningful icons (spread/spike/sustained) when no item art exists (e.g., all-items alerts) by rendering semantic shapes that match alert intent. Icons use color cues for quick recognition.
+            const typeIconSvgs = {
+                // Spread: purple double-ended arrow between price ticks (margin/difference).
+                spread: '<svg fill="none" stroke="#7C3AED" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7v10M15 7v10M6 12h12M6 12l3-3M6 12l3 3M18 12l-3-3M18 12l-3 3"/></svg>',
+                // Spike: red warning triangle with exclamation.
+                spike: '<svg viewBox="0 0 24 24"><path d="M12 4l8 14H4L12 4z" fill="#DC2626" stroke="#B91C1C" stroke-width="1.5"/><path d="M12 9v5" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17.5" r="1.2" fill="#FFFFFF"/></svg>',
+                // Sustained: straight green line up/right on chart axes.
+                sustained: '<svg fill="none" stroke="#16A34A" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 18h16M4 18V6M4 18L18 6"/></svg>'
+            };
+
             // Cache spread data if triggered (for detail page)
             if (isSpreadAllItems && alert.is_triggered) {
                 AlertsState.setSpreadData(alert.id, alert.triggered_data);
@@ -3588,11 +3598,14 @@
                 }
                 const iconUrl = 'https://oldschool.runescape.wiki/images/' + encodeURIComponent(alert.icon.replace(/ /g, '_'));
                 iconHtml = '<img class="alert-icon" src="' + iconUrl + '" alt="" loading="lazy">';
+            } else if (typeIconSvgs[alert.type]) {
+                // Use semantic SVG icon when we lack item art (covers all-items and missing-icon cases) so the visual matches alert intent.
+                iconHtml = '<span class="alert-icon-placeholder alert-type-icon" aria-hidden="true">' + typeIconSvgs[alert.type] + '</span>';
             } else if (alert.is_all_items) {
-                // "All items" alerts get a stack icon
+                // "All items" alerts fallback to neutral stack icon when no type-specific SVG exists.
                 iconHtml = '<span class="alert-icon-placeholder">📊</span>';
             } else {
-                // Fallback bell for items without icons
+                // Fallback bell for items without icons and no type-specific SVG.
                 iconHtml = '<span class="alert-icon-placeholder">🔔</span>';
             }
 

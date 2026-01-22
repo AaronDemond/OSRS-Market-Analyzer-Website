@@ -624,12 +624,20 @@ function renderAlerts(alerts) {
         return;
     }
     
+    // icons: map alert type to semantic SVGs; each icon encodes meaning and uses color for fast recognition:
+    // - spread: purple double-ended arrows with high/low ticks to show price difference width;
+    // - spike: red warning triangle with exclamation to signal sudden movement;
+    // - sustained: straight green line angled up/right on chart axes to show steady upward move.
     const icons = {
-        spread: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>',
-        spike: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>',
+        // Spread icon: purple double-ended arrow between two price ticks to visualize margin width/difference.
+        spread: '<svg fill="none" stroke="#7C3AED" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7v10M15 7v10M6 12h12M6 12l3-3M6 12l3 3M18 12l-3-3M18 12l-3 3"/></svg>',
+        // Spike icon: red warning triangle with white exclamation mark for sudden spikes.
+        spike: '<svg viewBox="0 0 24 24"><path d="M12 4l8 14H4L12 4z" fill="#DC2626" stroke="#B91C1C" stroke-width="1.5"/><path d="M12 9v5" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17.5" r="1.2" fill="#FFFFFF"/></svg>',
+        // Sustained move icon: straight green line rising to the top-right on chart axes for steady trend.
+        sustained: '<svg fill="none" stroke="#16A34A" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 18h16M4 18V6M4 18L18 6"/></svg>',
+        // Existing icons kept for above/below
         above: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>',
-        below: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>',
-        sustained: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>'
+        below: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>'
     };
     
     let html = '<ul class="alert-list">';
