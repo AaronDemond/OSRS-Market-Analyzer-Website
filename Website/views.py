@@ -691,6 +691,12 @@ def create_alert(request):
         min_pressure_strength = request.POST.get('min_pressure_strength') or None
         min_pressure_spread_pct = request.POST.get('min_pressure_spread_pct')
         
+        # Spread multi-item selection (when "Specific Item(s)" is chosen for spread alerts)
+        # spread_item_ids_str: Comma-separated list of item IDs from the multi-item selector
+        spread_item_ids_str = request.POST.get('spread_item_ids', '')
+        # spread_scope: The scope selection from the dropdown (all, specific, multiple)
+        spread_scope = request.POST.get('spread_scope', 'all')
+        
         direction_value = None
         if alert_type in ['spike', 'sustained']:
             direction_value = (direction or '').lower()
@@ -716,6 +722,24 @@ def create_alert(request):
                         sustained_item_name = item['name']
                         break
         
+        # Handle spread multi-item selection
+        # What: Process the spread_item_ids when user selects "Specific Item(s)" for spread alerts
+        # Why: Allows monitoring multiple specific items for spread threshold
+        # How: Parse comma-separated IDs, convert to JSON array, get first item name for display
+        spread_item_ids_json = None
+        spread_item_name = None
+        if alert_type == 'spread' and spread_scope == 'multiple' and spread_item_ids_str:
+            # Parse comma-separated item IDs from the multi-item selector
+            item_ids = [int(x) for x in spread_item_ids_str.split(',') if x.strip()]
+            if item_ids:
+                spread_item_ids_json = json_module.dumps(item_ids)
+                # Get first item name for display purposes
+                mapping = get_item_mapping()
+                for name, item in mapping.items():
+                    if item['id'] == item_ids[0]:
+                        spread_item_name = item['name']
+                        break
+        
         # Look up item ID from name if not provided (for non-sustained alerts)
         if not item_id and item_name and alert_type != 'sustained':
             mapping = get_item_mapping()
@@ -736,12 +760,26 @@ def create_alert(request):
         if alert_type == 'sustained' and time_frame:
             time_frame_value = int(time_frame)
         
-        # For sustained alerts, use multi-item data if available
-        final_item_name = sustained_item_name if alert_type == 'sustained' and sustained_item_name else (item_name if not is_all_items else None)
+        # Determine final item name and ID based on alert type and scope
+        # final_item_name: The display name for the alert (first item name or None for all-items)
+        # final_item_id: The primary item ID (first item for multi-item, or single item ID)
+        final_item_name = None
         final_item_id = None
+        
+        if alert_type == 'sustained' and sustained_item_name:
+            final_item_name = sustained_item_name
+        elif alert_type == 'spread' and spread_item_name:
+            final_item_name = spread_item_name
+        elif not is_all_items:
+            final_item_name = item_name
+        
         if alert_type == 'sustained' and sustained_item_ids_json:
             # Store first item ID for backwards compatibility
             item_ids = json_module.loads(sustained_item_ids_json)
+            final_item_id = item_ids[0] if item_ids else None
+        elif alert_type == 'spread' and spread_item_ids_json:
+            # Store first item ID for backwards compatibility
+            item_ids = json_module.loads(spread_item_ids_json)
             final_item_id = item_ids[0] if item_ids else None
         elif item_id and not is_all_items:
             final_item_id = int(item_id)
@@ -774,7 +812,9 @@ def create_alert(request):
             min_volume=int(min_volume) if min_volume else None,
             sustained_item_ids=sustained_item_ids_json,
             min_pressure_strength=min_pressure_strength,
-            min_pressure_spread_pct=float(min_pressure_spread_pct) if min_pressure_spread_pct else None
+            min_pressure_spread_pct=float(min_pressure_spread_pct) if min_pressure_spread_pct else None,
+            # Spread multi-item field - stores JSON array of item IDs for "Specific Item(s)" mode
+            item_ids=spread_item_ids_json
         )
         
         # Assign to group if specified
@@ -1283,8 +1323,36 @@ def alert_detail(request, alert_id):
                     pass
 
         
+        # has_multiple_items: Boolean indicating if this alert monitors multiple specific items
+        # This is True when item_ids contains a JSON array of item IDs (Specific Item(s) mode)
+        # Used to determine if we should show the multi-item list view in the template
+        has_multiple_items = False
+        if alert.item_ids:
+            try:
+                item_ids_list = json.loads(alert.item_ids)
+                has_multiple_items = isinstance(item_ids_list, list) and len(item_ids_list) > 0
+            except (json.JSONDecodeError, TypeError):
+                pass
+        
+        # Add has_multiple_items to triggered_info for template rendering
+        # This allows the template to show the multi-item list even when is_all_items is False
+        triggered_info['has_multiple_items'] = has_multiple_items
+        
         if alert.is_all_items and alert.triggered_data:
             # Parse the JSON triggered data for all-items alerts
+            # What: Parse triggered_data JSON into items list for template display
+            # Why: All-items alerts store triggered items as JSON array in triggered_data
+            try:
+                triggered_info['items'] = json.loads(alert.triggered_data)
+            except json.JSONDecodeError:
+                triggered_info['items'] = []
+        elif has_multiple_items and alert.triggered_data:
+            # Multi-item specific alert (Specific Item(s) mode with item_ids set)
+            # What: Parse triggered_data JSON for multi-item spread alerts
+            # Why: When user selects "Specific Item(s)", the triggered_data contains
+            #      a JSON array of items that met the spread threshold
+            # How: Same format as all-items alerts - array of item objects with
+            #      item_id, item_name, high, low, spread fields
             try:
                 triggered_info['items'] = json.loads(alert.triggered_data)
             except json.JSONDecodeError:

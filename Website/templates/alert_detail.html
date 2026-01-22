@@ -1198,7 +1198,10 @@
     </div>
     
     <!-- Current Market Data (if item has current price) -->
+    {# Hide this section for multi-item alerts (All Items or Specific Item(s)) since #}
+    {# displaying single item market data doesn't make sense when monitoring multiple items #}
     {% if current_price.high or current_price.low %}
+    {% if not triggered_info.is_all_items and not triggered_info.has_multiple_items %}
     <div class="detail-card price-card">
         <div class="detail-card-header">
             <h3>
@@ -1224,6 +1227,7 @@
         </div>
     </div>
     {% endif %}
+    {% endif %}
     
     <!-- Alert Triggered Data -->
     {% if triggered_info %}
@@ -1235,9 +1239,13 @@
             </h3>
         </div>
         <div class="detail-card-body">
-            {% if triggered_info.is_all_items and triggered_info.items %}
+            {# Show multi-item list view for both "All Items" alerts AND "Specific Item(s)" alerts with item_ids #}
+            {# is_all_items: True when alert monitors all items in the market #}
+            {# has_multiple_items: True when alert monitors specific multiple items (item_ids JSON array) #}
+            {# We check if items exist AND (is_all_items OR has_multiple_items) to show the multi-item list #}
+            {% if triggered_info.items and triggered_info.is_all_items or triggered_info.items and triggered_info.has_multiple_items %}
 
-                <!-- All items alert - show scrollable list -->
+                <!-- Multi-item alert (All Items or Specific Item(s)) - show scrollable list -->
                 <div class="triggered-info-grid">
                     <div class="triggered-info-item">
                         <span class="detail-label">Triggered At</span>

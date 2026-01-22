@@ -234,9 +234,23 @@
                 <select name="spread_scope" id="spread-scope" onchange="handleSpreadScopeChange()">
                     <option value="all">All Items</option>
                     <option value="specific">Specific Item</option>
+                    <option value="multiple">Specific Item(s)</option>
                 </select>
 
-                <small class="form-hint">Choose to track a single item or all items</small>
+                <small class="form-hint">Choose to track all items, a single item, or multiple specific items</small>
+            </div>
+
+            <!-- Multi-item selector for spread alerts (shown when "Specific Item(s)" selected) -->
+            <div class="form-group" id="spread-items-group" style="display: none;">
+                <label for="spread-item-input">Items</label>
+                <div class="multi-item-selector">
+                    <div class="spread-selected-items-container" id="spread-selected-items-container"></div>
+                    <input type="text" id="spread-item-input" placeholder="Type to search items..."
+                        autocomplete="off">
+                    <input type="hidden" name="spread_item_ids" id="spread-item-ids" value="">
+                    <div id="spread-item-suggestions" class="suggestions-dropdown"></div>
+                </div>
+                <small class="form-hint">Add one or more items to monitor for spread threshold</small>
             </div>
 
             <!-- Item Name -->
@@ -1827,7 +1841,9 @@
         box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
     }
 
-    .selected-items-container {
+    /* Selected items container styles - used for both sustained and spread multi-item selectors */
+    .selected-items-container,
+    .spread-selected-items-container {
         display: flex;
         flex-wrap: wrap;
         gap: 6px;
@@ -1835,7 +1851,8 @@
         min-height: 0;
     }
 
-    .selected-items-container:empty {
+    .selected-items-container:empty,
+    .spread-selected-items-container:empty {
         display: none;
     }
 
@@ -2589,7 +2606,7 @@
                     if (alert.type === 'above' || alert.type === 'below') {
                         currentPrice = alert.current_price;
                     }
-                    // For spread alerts with all items, use average of min/max
+                    // For spread alerts with all items, use average of min/max (This is just for filtering)
                     else if (alert.type === 'spread' && alert.is_all_items) {
                         const minP = alert.minimum_price || 0;
                         const maxP = alert.maximum_price || 0;
@@ -2655,9 +2672,15 @@
                 sustainedItemIds: '#sustained-item-ids',
                 sustainedItemSuggestions: '#sustained-item-suggestions',
                 selectedItemsContainer: '#selected-items-container',
+                // Spread multi-item selector elements
+                spreadItemInput: '#spread-item-input',
+                spreadItemIds: '#spread-item-ids',
+                spreadItemSuggestions: '#spread-item-suggestions',
+                spreadSelectedItemsContainer: '#spread-selected-items-container',
                 alertGroup: '#alert-group',
                 groups: {
                     spreadScope: '#spread-scope-group',
+                    spreadItems: '#spread-items-group',  // New group for spread multi-item selector
                     sustainedScope: '#sustained-scope-group',
                     sustainedItems: '#sustained-items-group',
                     numberItems: '#number-items-group',
@@ -3283,9 +3306,16 @@
             // First, process incoming alerts and store them in active notifications cache
             if (triggeredAlerts && triggeredAlerts.length > 0) {
                 triggeredAlerts.forEach(alert => {
-                    // Skip if already dismissed
+                    // IMPORTANT: If the backend returns this alert with is_dismissed=False,
+                    // it means the alert data has changed and we should show it again.
+                    // Clear it from localStorage dismissed list to allow it to show.
+                    // What: Clear this alert from the localStorage dismissed list
+                    // Why: Backend sets is_dismissed=False when data changes, but localStorage still has it dismissed
+                    // How: Call clearDismissedNotification to remove from localStorage dismissed set
                     if (AlertsState.isNotificationDismissed(alert.id)) {
-                        return;
+                        // Backend says show it (is_dismissed=False), but localStorage says dismissed
+                        // Trust the backend - clear the localStorage entry so notification can show
+                        AlertsState.clearDismissedNotification(alert.id);
                     }
                     
                     const isSpreadAllItems = this.isSpreadAllItemsAlert(alert);
@@ -4528,6 +4558,13 @@
         /**
          * Updates form fields based on spread scope selection.
          * 
+         * What: Shows/hides form fields based on spread scope (all, specific, multiple)
+         * Why: Different scope options require different input fields
+         * How:
+         *   - "all": Show min/max price filters, hide item selectors
+         *   - "specific": Show single item selector, hide min/max and multi-item
+         *   - "multiple": Show multi-item selector, hide single item and min/max
+         * 
          * @param {string} formType - 'create' for create form
          */
         handleSpreadScopeChange(formType) {
@@ -4535,21 +4572,41 @@
             const spreadScope = document.querySelector(selectors.spreadScope).value;
             const groups = selectors.groups;
 
+            // itemNameGroup: Container for single item name input
             const itemNameGroup = document.querySelector(groups.itemName);
+            // spreadItemsGroup: Container for multi-item selector
+            const spreadItemsGroup = document.querySelector(groups.spreadItems);
+            // minPriceGroup/maxPriceGroup: Price filter containers for "all items" mode
             const minPriceGroup = document.querySelector(groups.minPrice);
             const maxPriceGroup = document.querySelector(groups.maxPrice);
+            // isAllItemsInput: Hidden field that tells the backend if this is an all-items alert
             const isAllItemsInput = document.querySelector(selectors.isAllItems);
 
             if (spreadScope === 'all') {
+                // All Items mode: show price filters, hide item selectors
                 itemNameGroup.style.display = 'none';
+                if (spreadItemsGroup) spreadItemsGroup.style.display = 'none';
                 minPriceGroup.style.display = 'block';
                 maxPriceGroup.style.display = 'block';
                 isAllItemsInput.value = 'true';
-            } else {
-                itemNameGroup.style.display = 'block';
+                // Clear the multi-item selector when switching away
+                SpreadMultiItemSelector.clear();
+            } else if (spreadScope === 'multiple') {
+                // Multiple Specific Items mode: show multi-item selector, hide single item and price filters
+                itemNameGroup.style.display = 'none';
+                if (spreadItemsGroup) spreadItemsGroup.style.display = 'block';
                 minPriceGroup.style.display = 'none';
                 maxPriceGroup.style.display = 'none';
                 isAllItemsInput.value = 'false';
+            } else {
+                // Single Specific Item mode: show single item input, hide multi-item and price filters
+                itemNameGroup.style.display = 'block';
+                if (spreadItemsGroup) spreadItemsGroup.style.display = 'none';
+                minPriceGroup.style.display = 'none';
+                maxPriceGroup.style.display = 'none';
+                isAllItemsInput.value = 'false';
+                // Clear the multi-item selector when switching away
+                SpreadMultiItemSelector.clear();
             }
         },
 
@@ -5587,6 +5644,262 @@
 
 
     // =============================================================================
+    // SPREAD MULTI-ITEM SELECTOR
+    // =============================================================================
+    /**
+     * Manages multi-item selection for spread alerts with "Specific Item(s)" option.
+     * 
+     * What: Allows users to select multiple specific items to monitor for spread threshold
+     * Why: Users may want to monitor spread on a curated list of items instead of all or just one
+     * How: Provides autocomplete search, chip display of selected items, and stores IDs in hidden input
+     * 
+     * This is similar to MultiItemSelector but uses different DOM elements specific to spread alerts.
+     */
+    const SpreadMultiItemSelector = {
+        // selectedItems: Array of {id, name} objects representing currently selected items
+        selectedItems: [],
+        // selectedIndex: Index of currently highlighted suggestion in dropdown (-1 = none)
+        selectedIndex: -1,
+
+        /**
+         * Initializes the spread multi-item selector.
+         * 
+         * What: Sets up event listeners for the spread item search input
+         * Why: Enables autocomplete functionality and chip management
+         * How: Attaches input, keydown, click handlers to relevant DOM elements
+         */
+        init() {
+            // input: Text input where user types to search for items
+            const input = document.querySelector(AlertsConfig.selectors.create.spreadItemInput);
+            // dropdown: Container showing autocomplete suggestions
+            const dropdown = document.querySelector(AlertsConfig.selectors.create.spreadItemSuggestions);
+            // hiddenInput: Hidden field that stores comma-separated item IDs for form submission
+            const hiddenInput = document.querySelector(AlertsConfig.selectors.create.spreadItemIds);
+            // container: Container displaying selected item chips
+            const container = document.querySelector(AlertsConfig.selectors.create.spreadSelectedItemsContainer);
+
+            if (!input || !dropdown || !hiddenInput || !container) return;
+
+            this.selectedItems = [];
+            this.selectedIndex = -1;
+
+            /**
+             * Updates the hidden input with current selected item IDs.
+             * Called whenever items are added or removed.
+             */
+            const updateHiddenInput = () => {
+                hiddenInput.value = this.selectedItems.map(item => item.id).join(',');
+            };
+
+            /**
+             * Updates visual selection state in dropdown.
+             * Highlights the currently selected suggestion.
+             */
+            const updateSelection = () => {
+                const items = dropdown.querySelectorAll('.suggestion-item');
+                items.forEach((item, index) => {
+                    if (index === this.selectedIndex) {
+                        item.classList.add('selected');
+                        item.scrollIntoView({block: 'nearest'});
+                    } else {
+                        item.classList.remove('selected');
+                    }
+                });
+            };
+
+            /**
+             * Adds an item to the selected list.
+             * 
+             * @param {string} id - Item ID
+             * @param {string} name - Item name for display
+             */
+            const addItem = (id, name) => {
+                // Check if already selected to prevent duplicates
+                if (this.selectedItems.some(item => item.id === id)) {
+                    return;
+                }
+
+                this.selectedItems.push({id, name});
+                updateHiddenInput();
+                this.renderChips(container);
+                input.value = '';
+                dropdown.style.display = 'none';
+                this.selectedIndex = -1;
+            };
+
+            /**
+             * Removes an item from the selected list.
+             * 
+             * @param {string} id - Item ID to remove
+             */
+            const removeItem = (id) => {
+                this.selectedItems = this.selectedItems.filter(item => item.id !== id);
+                updateHiddenInput();
+                this.renderChips(container);
+            };
+
+            // Handle input changes - fetch suggestions from API
+            input.addEventListener('input', async () => {
+                const query = input.value;
+
+                // minSearchLength: Minimum characters before searching (prevents API spam)
+                if (query.length < AlertsConfig.timing.minSearchLength) {
+                    dropdown.style.display = 'none';
+                    this.selectedIndex = -1;
+                    return;
+                }
+
+                // Fetch matching items from API
+                const items = await AlertsAPI.searchItems(query);
+
+                // Filter out already selected items from suggestions
+                const filteredItems = items.filter(item =>
+                    !this.selectedItems.some(selected => selected.id === item.id)
+                );
+
+                if (filteredItems.length > 0) {
+                    dropdown.innerHTML = AlertsUI.renderSuggestions(filteredItems);
+                    dropdown.style.display = 'block';
+                    this.selectedIndex = -1;
+                } else {
+                    dropdown.style.display = 'none';
+                    this.selectedIndex = -1;
+                }
+            });
+
+            // Handle keyboard navigation in dropdown
+            input.addEventListener('keydown', (e) => {
+                if (dropdown.style.display === 'none') {
+                    // Backspace with empty input removes last chip
+                    if (e.key === 'Backspace' && input.value === '' && this.selectedItems.length > 0) {
+                        const lastItem = this.selectedItems[this.selectedItems.length - 1];
+                        removeItem(lastItem.id);
+                    }
+                    return;
+                }
+
+                const items = dropdown.querySelectorAll('.suggestion-item');
+                if (items.length === 0) return;
+
+                switch (e.key) {
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        this.selectedIndex = (this.selectedIndex + 1) % items.length;
+                        updateSelection();
+                        break;
+
+                    case 'ArrowUp':
+                        e.preventDefault();
+                        this.selectedIndex = this.selectedIndex <= 0
+                            ? items.length - 1
+                            : this.selectedIndex - 1;
+                        updateSelection();
+                        break;
+
+                    case 'Tab':
+                        e.preventDefault();
+                        if (e.shiftKey) {
+                            this.selectedIndex = this.selectedIndex <= 0
+                                ? items.length - 1
+                                : this.selectedIndex - 1;
+                        } else {
+                            this.selectedIndex = (this.selectedIndex + 1) % items.length;
+                        }
+                        updateSelection();
+                        break;
+
+                    case 'Enter':
+                        if (this.selectedIndex >= 0) {
+                            e.preventDefault();
+                            const selectedItem = items[this.selectedIndex];
+                            addItem(selectedItem.dataset.id, selectedItem.dataset.name);
+                        }
+                        break;
+
+                    case 'Escape':
+                        e.preventDefault();
+                        dropdown.style.display = 'none';
+                        this.selectedIndex = -1;
+                        break;
+                }
+            });
+
+            // Handle mouse click on suggestion
+            dropdown.addEventListener('click', (e) => {
+                if (e.target.classList.contains('suggestion-item')) {
+                    addItem(e.target.dataset.id, e.target.dataset.name);
+                }
+            });
+
+            // Handle mouse hover to update selection
+            dropdown.addEventListener('mouseover', (e) => {
+                if (e.target.classList.contains('suggestion-item')) {
+                    const items = dropdown.querySelectorAll('.suggestion-item');
+                    items.forEach((item, index) => {
+                        if (item === e.target) {
+                            this.selectedIndex = index;
+                        }
+                    });
+                    updateSelection();
+                }
+            });
+
+            // Handle chip removal via event delegation on container
+            container.addEventListener('click', (e) => {
+                if (e.target.classList.contains('chip-remove')) {
+                    const chip = e.target.closest('.selected-item-chip');
+                    if (chip) {
+                        removeItem(chip.dataset.id);
+                    }
+                }
+            });
+        },
+
+        /**
+         * Renders the selected item chips in the container.
+         * 
+         * What: Creates visual chip elements for each selected item
+         * Why: Provides clear visual feedback of what items are selected
+         * How: Generates HTML for chips with item name and red X remove button
+         * 
+         * @param {HTMLElement} container - Container element to render chips into
+         */
+        renderChips(container) {
+            container.innerHTML = this.selectedItems.map(item =>
+                `<span class="selected-item-chip" data-id="${item.id}">
+                ${item.name}
+                <span class="chip-remove" title="Remove ${item.name}">×</span>
+            </span>`
+            ).join('');
+        },
+
+        /**
+         * Clears all selected items.
+         * 
+         * What: Removes all items from the selection
+         * Why: Called when switching scope mode or after form submission
+         * How: Empties the array and clears DOM elements
+         */
+        clear() {
+            this.selectedItems = [];
+            const container = document.querySelector(AlertsConfig.selectors.create.spreadSelectedItemsContainer);
+            const hiddenInput = document.querySelector(AlertsConfig.selectors.create.spreadItemIds);
+            if (container) container.innerHTML = '';
+            if (hiddenInput) hiddenInput.value = '';
+        },
+
+        /**
+         * Gets the selected item IDs.
+         * 
+         * @returns {Array} Array of item ID strings
+         */
+        getSelectedIds() {
+            return this.selectedItems.map(item => item.id);
+        }
+    };
+
+
+    // =============================================================================
     // ALERTS REFRESH
     // =============================================================================
     /**
@@ -6557,6 +6870,7 @@
         TabManager.init();
         AutocompleteManager.init();
         MultiItemSelector.init();
+        SpreadMultiItemSelector.init();  // Initialize spread multi-item selector
         EventManager.init();
         DropdownSizer.init();
         AlertsRefresh.start();
@@ -6587,6 +6901,9 @@
      * Removes notifications for "all items" alerts where we've already seen all items.
      * Also removes notifications that the user has dismissed.
      * Shows notifications that pass validation by adding 'validated' class.
+     * 
+     * IMPORTANT: Server-rendered notifications come from the backend where is_dismissed=False.
+     * If the backend says show it, we should trust that and clear any localStorage dismissal.
      */
     function validateServerRenderedNotifications() {
         const notifications = document.querySelectorAll('.triggered-notification[data-alert-id]:not(.status-notification)');
@@ -6599,10 +6916,14 @@
                 return;
             }
 
-            // Check if user has dismissed this notification
+            // If this notification is server-rendered, the backend is saying is_dismissed=False
+            // Clear any localStorage dismissal entry to ensure it shows
+            // What: Clear dismissed status from localStorage for server-rendered notifications
+            // Why: Backend has is_dismissed=False (data changed), localStorage may still have it dismissed
+            // How: Call clearDismissedNotification before checking if dismissed
             if (AlertsState.isNotificationDismissed(alertId)) {
-                notification.remove();
-                return;
+                // Backend says show it, so clear the localStorage dismissal
+                AlertsState.clearDismissedNotification(alertId);
             }
 
             // Server-rendered notifications should be shown and stored in active cache

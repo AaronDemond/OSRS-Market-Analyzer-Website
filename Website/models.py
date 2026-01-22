@@ -131,6 +131,12 @@ class Alert(models.Model):
     min_volume = models.IntegerField(blank=True, null=True, default=None)  # Minimum volume requirement
     sustained_item_ids = models.TextField(blank=True, null=True, default=None)  # JSON array of item IDs for multi-item sustained alerts
     
+    # Generic item_ids field for multi-item alerts (e.g., spread alerts with specific items)
+    # What: Stores a JSON array of item IDs that this alert should check against
+    # Why: Allows alerts like "spread" to target multiple specific items instead of just one or all
+    # How: JSON string like "[123, 456, 789]" parsed when checking the alert
+    item_ids = models.TextField(blank=True, null=True, default=None)
+    
     # Pressure filter fields for sustained alerts
     PRESSURE_STRENGTH_CHOICES = [
         ('strong', 'Strong'),
@@ -164,8 +170,24 @@ class Alert(models.Model):
     
     def __str__(self):
         if self.type == 'spread':
+            # What: Returns a human-readable string representation for spread alerts
+            # Why: Needed for admin display and debugging
+            # How: Checks is_all_items, then item_ids for multi-item, then falls back to single item
             if self.is_all_items:
                 return f"All items spread >= {self.percentage}%"
+            elif self.item_ids:
+                # Multi-item spread alert - show count of items being monitored
+                import json
+                try:
+                    ids = json.loads(self.item_ids)
+                    count = len(ids) if isinstance(ids, list) else 1
+                    if count == 1:
+                        target = self.item_name or "1 item"
+                    else:
+                        target = f"{count} items"
+                except:
+                    target = self.item_name or "Unknown"
+                return f"{target} spread >= {self.percentage}%"
             return f"{self.item_name} spread >= {self.percentage}%"
         if self.type == 'spike':
             frame = self._format_time_frame()
@@ -200,9 +222,23 @@ class Alert(models.Model):
         return f"{self.item_name} {self.type} {self.price:,} ({self.reference})"
 
     def triggered_text(self):
+        # What: Returns a human-readable description of what triggered the alert
+        # Why: Displayed to users when viewing triggered alerts
+        # How: Parses triggered_data JSON and formats based on alert type
         if self.type == "spread":
             if self.is_all_items:
                 return f"Price spread above {self.percentage}% Triggered. Click for details"
+            elif self.item_ids and self.triggered_data:
+                # Multi-item spread alert - show how many items have triggered
+                import json
+                try:
+                    triggered_items = json.loads(self.triggered_data)
+                    total_items = json.loads(self.item_ids)
+                    triggered_count = len(triggered_items) if isinstance(triggered_items, list) else 0
+                    total_count = len(total_items) if isinstance(total_items, list) else 0
+                    return f"Spread >= {self.percentage}% on {triggered_count}/{total_count} items. Click for details"
+                except Exception:
+                    pass
             return f"{self.item_name} spread has reached {self.percentage}% or higher"
         item_price = get_item_price(self.item_id, self.reference)
         price_formatted = f"{item_price:,}" if item_price else str(item_price)

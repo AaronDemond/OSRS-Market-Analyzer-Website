@@ -11,10 +11,8 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
 
-print("LOADED")
-
 # Allow running the command directly (outside manage.py) by ensuring the project is on sys.path and Django is configured
-BASE_DIR = Path(__file__).resolve().parents[3]  # Goes up from commands -> management -> Website -> OSRSWebsite
+BASE_DIR = Path(__file__).resolve().parents[2]
 if str(BASE_DIR) not in sys.path:
     sys.path.append(str(BASE_DIR))
 
@@ -83,6 +81,284 @@ class Command(BaseCommand):
         if low is None or low == 0 or high is None:
             return None
         return ((high - low) / low) * 100
+
+    def _check_spread_for_item_ids(self, alert, all_prices):
+        """
+        Check spread conditions for a multi-item spread alert (using item_ids field).
+        
+        What: Checks if specific items (stored in item_ids JSON) meet the spread threshold
+        Why: Allows users to monitor multiple specific items for spread alerts
+        How: 
+            1. Parse item_ids JSON array to get list of items to check
+            2. For each item, calculate spread and compare against threshold
+            3. Build triggered_data with items that meet the threshold
+            4. Return list of triggered items (empty list if none triggered)
+        
+        Args:
+            alert: Alert model instance with item_ids set
+            all_prices: Dictionary of all current prices keyed by item_id
+            
+        Returns:
+            List of triggered item data dicts (may be empty if none triggered)
+            Each dict contains: item_id, item_name, high, low, spread
+            Returns None only on parse error (invalid item_ids JSON)
+        """
+        try:
+            # item_ids_list: List of integer item IDs to check against
+            item_ids_list = json.loads(alert.item_ids)
+            if not isinstance(item_ids_list, list) or not item_ids_list:
+                return None
+        except (json.JSONDecodeError, TypeError):
+            return None
+        
+        # item_mapping: Dictionary mapping item_id -> item_name for display purposes
+        item_mapping = self.get_item_mapping()
+        
+        # triggered_items: List of items that currently meet the spread threshold
+        # These will be stored in triggered_data for display
+        triggered_items = []
+        
+        for item_id in item_ids_list:
+            # Convert to string for dict lookup (API returns string keys)
+            item_id_str = str(item_id)
+            price_data = all_prices.get(item_id_str)
+            
+            if not price_data:
+                continue
+            
+            high = price_data.get('high')
+            low = price_data.get('low')
+            
+            # spread: The percentage difference between high and low prices
+            spread = self.calculate_spread(high, low)
+            
+            if spread is not None and spread >= alert.percentage:
+                # item_name: Human-readable name for display, defaults to "Item {id}" if not found
+                item_name = item_mapping.get(item_id_str, f'Item {item_id}')
+                triggered_items.append({
+                    'item_id': item_id_str,
+                    'item_name': item_name,
+                    'high': high,
+                    'low': low,
+                    'spread': round(spread, 2)
+                })
+        
+        # Sort by spread descending so highest spreads appear first
+        if triggered_items:
+            triggered_items.sort(key=lambda x: x['spread'], reverse=True)
+        
+        # Always return the list (even if empty) so handle() can update triggered_data
+        # This ensures that when items drop below threshold, the UI reflects that change
+        return triggered_items
+
+    def _has_triggered_data_changed(self, old_data_json, new_triggered_items):
+        """
+        Check if triggered data has meaningfully changed from the previous state.
+        
+        What: Compares old triggered_data with new triggered items to detect changes
+        Why: We should only send notifications when there's actual new information
+        How: 
+            1. Parse old data JSON
+            2. Compare item IDs and all data values (spread, high, low)
+            3. Return True if any item is new, dropped out, or has different values
+        
+        Args:
+            old_data_json: JSON string of previous triggered_data (or None)
+            new_triggered_items: List of newly triggered item dicts (may be empty)
+            
+        Returns:
+            Boolean indicating if there are meaningful changes worth notifying about
+        """
+        # Handle case where new_triggered_items is empty
+        if not new_triggered_items:
+            # If old data exists and had items, that's a change (all items dropped out)
+            if old_data_json:
+                try:
+                    old_items = json.loads(old_data_json)
+                    if isinstance(old_items, list) and len(old_items) > 0:
+                        return True  # Had items before, now have none
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            return False  # No old data and no new data = no change
+        
+        if not old_data_json:
+            # No previous data but we have new items - this is a new trigger
+            return True
+        
+        try:
+            # old_items: List of previously triggered item data
+            old_items = json.loads(old_data_json)
+            if not isinstance(old_items, list):
+                return True
+        except (json.JSONDecodeError, TypeError):
+            return True
+        
+        # old_items_map: Dictionary mapping item_id -> item data for quick lookup
+        # Used to compare individual item data values
+        old_items_map = {str(item.get('item_id')): item for item in old_items}
+        
+        # new_items_map: Dictionary of new triggered items for comparison
+        new_items_map = {str(item.get('item_id')): item for item in new_triggered_items}
+        
+        # Check for new items that weren't in old data
+        # What: Detect items that are now triggering but weren't before
+        # Why: New items triggering is a meaningful change worth notifying about
+        for item_id in new_items_map:
+            if item_id not in old_items_map:
+                # New item triggered that wasn't triggered before
+                return True
+        
+        # Check for items that dropped out (no longer meet threshold)
+        # What: Detect items that were triggering but no longer are
+        # Why: Items dropping out is a meaningful change worth notifying about
+        for item_id in old_items_map:
+            if item_id not in new_items_map:
+                # An item that was triggered is no longer triggered
+                return True
+        
+        # Check for data value changes on items that exist in both old and new
+        # What: Compare spread, high, and low values for items present in both
+        # Why: Even if same items are triggering, price/spread changes are meaningful
+        # How: Compare rounded values to avoid float precision false positives
+        for item_id, new_item in new_items_map.items():
+            old_item = old_items_map.get(item_id)
+            if old_item:
+                # Compare spread values
+                old_spread = round(old_item.get('spread', 0), 2)
+                new_spread = round(new_item.get('spread', 0), 2)
+                if old_spread != new_spread:
+                    return True
+                
+                # Compare high values
+                old_high = old_item.get('high')
+                new_high = new_item.get('high')
+                if old_high != new_high:
+                    return True
+                
+                # Compare low values
+                old_low = old_item.get('low')
+                new_low = new_item.get('low')
+                if old_low != new_low:
+                    return True
+        
+        # No meaningful changes detected
+        return False
+
+    def _handle_multi_item_spread_trigger(self, alert, triggered_items):
+        """
+        Handle trigger logic for multi-item spread alerts (using item_ids field).
+        
+        What: Processes triggered items for spread alerts monitoring multiple specific items
+        Why: Multi-item spread alerts should only fully deactivate when ALL monitored items trigger
+        How:
+            1. Get the total list of items being monitored (from item_ids)
+            2. Check if triggered data has meaningfully changed (items added/removed/spread changed)
+            3. Compare against currently triggered items
+            4. If all items have triggered, deactivate the alert
+            5. Otherwise, keep the alert active and update triggered_data
+            6. Only send notification if data has changed
+        
+        Args:
+            alert: Alert model instance with item_ids set
+            triggered_items: List of item data dicts that currently meet the spread threshold
+                            (may be empty if no items meet threshold)
+        
+        Deactivation Logic:
+            - Alert stays active until EVERY item in item_ids has triggered at least once
+            - triggered_data shows current items meeting the threshold (updated each check)
+            - Only when triggered_items contains ALL item_ids does the alert deactivate
+            
+        Notification Logic:
+            - Only send notification if triggered data has meaningfully changed
+            - Changes include: new items triggering, items dropping out, spread values changing
+            - Prevents spam when data stays the same between checks
+            
+        Data Update Logic:
+            - ALWAYS update triggered_data with latest values on every check
+            - This ensures the UI always shows current high/low/spread values
+        """
+        try:
+            # total_item_ids: List of all item IDs the alert is meant to monitor
+            total_item_ids = json.loads(alert.item_ids)
+            if not isinstance(total_item_ids, list):
+                total_item_ids = []
+        except (json.JSONDecodeError, TypeError):
+            total_item_ids = []
+        
+        # old_triggered_data: Previous triggered_data for comparison
+        # Used to determine if we should send a notification
+        old_triggered_data = alert.triggered_data
+        
+        # data_changed: Boolean indicating if triggered data has meaningfully changed
+        # If False, we skip notification to avoid spam
+        data_changed = self._has_triggered_data_changed(old_triggered_data, triggered_items)
+        
+        # triggered_item_ids: Set of item IDs that triggered in this check cycle
+        # Using set for O(1) lookup when comparing against total_item_ids
+        triggered_item_ids = set(str(item['item_id']) for item in triggered_items)
+        
+        # total_item_ids_set: Set of all item IDs for comparison
+        total_item_ids_set = set(str(item_id) for item_id in total_item_ids)
+        
+        # Check if ALL items have triggered
+        # all_triggered: Boolean indicating if every monitored item has reached the threshold
+        all_triggered = len(triggered_items) > 0 and total_item_ids_set.issubset(triggered_item_ids)
+        
+        # ALWAYS update triggered_data with current snapshot (even if empty)
+        # What: Store current triggered items (or empty array) in triggered_data
+        # Why: The UI should always reflect the current state of which items meet threshold
+        # How: Serialize triggered_items list to JSON (may be empty array "[]")
+        alert.triggered_data = json.dumps(triggered_items)
+        
+        # Only update is_triggered and triggered_at if we have actual triggered items
+        if triggered_items:
+            alert.is_triggered = True
+            alert.triggered_at = timezone.now()
+        
+        # Only reset is_dismissed if data has actually changed
+        # This prevents the notification from re-showing when nothing changed
+        if data_changed:
+            alert.is_dismissed = False
+        
+        if all_triggered:
+            # All items have triggered - deactivate the alert
+            # What: Set is_active to False to stop checking this alert
+            # Why: User requested to be notified when ALL items meet the condition
+            alert.is_active = False
+            self.stdout.write(
+                self.style.WARNING(
+                    f'TRIGGERED (multi-item spread - ALL {len(total_item_ids)} items): Deactivating alert'
+                )
+            )
+        else:
+            # Some items triggered but not all (or none) - keep alert active
+            # What: Keep is_active True to continue monitoring remaining items
+            # Why: Alert should not deactivate until ALL items have triggered
+            alert.is_active = True
+            if data_changed and triggered_items:
+                self.stdout.write(
+                    self.style.WARNING(
+                        f'TRIGGERED (multi-item spread): {len(triggered_items)}/{len(total_item_ids)} items triggered'
+                    )
+                )
+            elif data_changed and not triggered_items:
+                self.stdout.write(
+                    self.style.WARNING(
+                        f'Multi-item spread alert {alert.id}: All items dropped below threshold (0/{len(total_item_ids)})'
+                    )
+                )
+            else:
+                self.stdout.write(
+                    f'Multi-item spread alert {alert.id}: No changes ({len(triggered_items)}/{len(total_item_ids)} items)'
+                )
+        
+        alert.save()
+        
+        # Only send email notification if data has changed AND notifications are enabled
+        # AND there are actually triggered items to report
+        # This prevents email spam when the same items keep triggering with same values
+        if alert.email_notification and data_changed and triggered_items:
+            self.send_alert_notification(alert, alert.triggered_text())
 
     def get_volume_from_timeseries(self, item_id, time_window_minutes):
         """
@@ -437,9 +713,6 @@ class Command(BaseCommand):
         Why: Users need to be notified even when not viewing the website
         How: Uses Django's send_mail with the alert's triggered_text as content
         """
-        print("Sending alert for: ")
-        print(alert)
-        print("==================")
         # Skip if not configured
         if not settings.EMAIL_HOST_USER or not settings.EMAIL_HOST_PASSWORD:
             self.stdout.write(self.style.WARNING('Email not configured - skipping notification'))
@@ -461,7 +734,18 @@ class Command(BaseCommand):
             self.stdout.write(self.style.ERROR(f'Failed to send notification: {e}'))
 
     def check_alert(self, alert, all_prices):
-        """Check if an alert should be triggered. Returns True/False or list of matching items for all_items spread."""
+        """
+        Check if an alert should be triggered.
+        
+        What: Evaluates alert conditions against current price data
+        Why: Core function that determines when users should be notified
+        How: Dispatches to type-specific handlers (spread, spike, sustained, above/below)
+        
+        Returns:
+            - True/False for simple alerts
+            - List of matching items for all_items spread/spike
+            - List of triggered items for multi-item spread (via item_ids)
+        """
         
         # Handle sustained move alerts
         if alert.type == 'sustained':
@@ -473,7 +757,10 @@ class Command(BaseCommand):
                 return False
             
             if alert.is_all_items:
+                # All items spread check - scan entire market
+                # item_mapping: dictionary mapping item_id -> item_name for display
                 item_mapping = self.get_item_mapping()
+                # matching_items: list of items that meet the spread threshold
                 matching_items = []
                 
                 for item_id, price_data in all_prices.items():
@@ -505,8 +792,16 @@ class Command(BaseCommand):
                     return matching_items
                 
                 return False
+            
+            elif alert.item_ids:
+                # Multi-item spread alert - check specific list of items
+                # What: Check spread for each item in item_ids JSON array
+                # Why: Allows users to monitor specific items instead of all or just one
+                # How: Parse item_ids, check each item's spread, build triggered_data
+                return self._check_spread_for_item_ids(alert, all_prices)
+            
             else:
-                # Check specific item for spread threshold
+                # Check specific single item for spread threshold
                 if not alert.item_id:
                     return False
                 price_data = all_prices.get(str(alert.item_id))
@@ -668,10 +963,17 @@ class Command(BaseCommand):
         while True:
             # Get all active alerts (include triggered all_items spread alerts for re-check)
             active_alerts = Alert.objects.filter(is_active=True)
-            # Filter to non-triggered OR is_all_items spread/spike (which can re-trigger) OR sustained (which can re-trigger)
+            # alerts_to_check: Filter to non-triggered OR alerts that can re-trigger
+            # What: Determines which alerts need to be checked this cycle
+            # Why: Some alerts (all_items spread, spike, sustained, multi-item spread) can re-trigger
+            # How: Include non-triggered alerts PLUS special alert types that stay active
             alerts_to_check = [
                 a for a in active_alerts
-                if (not a.is_triggered) or (a.type == 'spread' and a.is_all_items) or (a.type == 'spike' and a.is_all_items) or (a.type == 'sustained')
+                if (not a.is_triggered) 
+                   or (a.type == 'spread' and a.is_all_items)  # All items spread can re-trigger
+                   or (a.type == 'spread' and a.item_ids)  # Multi-item spread can re-trigger
+                   or (a.type == 'spike' and a.is_all_items)  # All items spike can re-trigger
+                   or (a.type == 'sustained')  # Sustained always re-checks
             ]
             
             if alerts_to_check:
@@ -684,16 +986,18 @@ class Command(BaseCommand):
                     for alert in alerts_to_check:
                         result = self.check_alert(alert, all_prices)
                         
+                        # Handle multi-item spread alerts FIRST, even when result is empty list
+                        # What: Always process multi-item spread alerts to update triggered_data
+                        # Why: When items drop below threshold, we need to update the display
+                        # How: Check if this is a multi-item spread alert and result is a list (even empty)
+                        if alert.type == 'spread' and alert.item_ids and isinstance(result, list):
+                            self._handle_multi_item_spread_trigger(alert, result)
+                            continue  # Skip to next alert, already handled
+                        
                         if result:
                             # Handle all_items spread alerts specially
                             if alert.type == 'spread' and alert.is_all_items and isinstance(result, list):
-                                # Check if data changed before sending notification
-                                old_triggered_data = alert.triggered_data
-                                new_triggered_data = json.dumps(result)
-                                was_triggered = alert.is_triggered
-                                data_changed = old_triggered_data != new_triggered_data
-                                
-                                alert.triggered_data = new_triggered_data
+                                alert.triggered_data = json.dumps(result)
                                 alert.is_triggered = True
                                 # Keep is_active = True for all_items spread alerts
                                 alert.is_dismissed = False  # Reset dismissed so notification shows again
@@ -702,19 +1006,12 @@ class Command(BaseCommand):
                                 self.stdout.write(
                                     self.style.WARNING(f'TRIGGERED (all items spread): {len(result)} items found')
                                 )
-                                # Send email notification only if data changed or first trigger
-                                if alert.email_notification and (not was_triggered or data_changed):
+                                # Send email notification if enabled
+                                if alert.email_notification:
                                     self.send_alert_notification(alert, alert.triggered_text())
-                                elif alert.email_notification:
-                                    self.stdout.write(self.style.NOTICE('Skipping notification - data unchanged'))
+                            
                             elif alert.type == 'spike' and alert.is_all_items and isinstance(result, list):
-                                # Check if data changed before sending notification
-                                old_triggered_data = alert.triggered_data
-                                new_triggered_data = json.dumps(result)
-                                was_triggered = alert.is_triggered
-                                data_changed = old_triggered_data != new_triggered_data
-                                
-                                alert.triggered_data = new_triggered_data
+                                alert.triggered_data = json.dumps(result)
                                 alert.is_triggered = True
                                 alert.is_dismissed = False
                                 alert.is_active = True  # keep monitoring
@@ -724,25 +1021,14 @@ class Command(BaseCommand):
                                 self.stdout.write(
                                     self.style.WARNING(f'TRIGGERED (all items spike): {len(result)} items found')
                                 )
-                                # Send email notification only if data changed or first trigger
-                                if alert.email_notification and (not was_triggered or data_changed):
+                                if alert.email_notification:
                                     self.send_alert_notification(alert, alert.triggered_text())
-                                elif alert.email_notification:
-                                    self.stdout.write(self.style.NOTICE('Skipping notification - data unchanged'))
                             elif alert.type == 'sustained':
-                                # Check if data changed before sending notification
-                                old_triggered_data = alert.triggered_data
-                                new_triggered_data = json.dumps(result) if isinstance(result, list) else alert.triggered_data
-                                was_triggered = alert.is_triggered
-                                data_changed = old_triggered_data != new_triggered_data
-                                
                                 # Sustained alerts stay active for re-triggering
                                 alert.is_triggered = True
                                 alert.is_dismissed = False
                                 alert.is_active = True  # Keep monitoring
                                 alert.triggered_at = timezone.now()
-                                if isinstance(result, list):
-                                    alert.triggered_data = new_triggered_data
                                 alert.save()
                                 
                                 # Log appropriately based on result type
@@ -754,11 +1040,8 @@ class Command(BaseCommand):
                                     self.stdout.write(
                                         self.style.WARNING(f'TRIGGERED (sustained move): {alert.item_name or "multiple items"}')
                                     )
-                                # Send email notification only if data changed or first trigger
-                                if alert.email_notification and (not was_triggered or data_changed):
+                                if alert.email_notification:
                                     self.send_alert_notification(alert, alert.triggered_text())
-                                elif alert.email_notification:
-                                    self.stdout.write(self.style.NOTICE('Skipping notification - data unchanged'))
                             else:
                                 alert.is_triggered = True
                                 # Deactivate alert if it's not for all items
@@ -769,11 +1052,11 @@ class Command(BaseCommand):
                                 self.stdout.write(
                                     self.style.WARNING(f'TRIGGERED: {alert}')
                                 )
-                                # Send email notification if enabled (single-item alerts only trigger once)
+                                # Send email notification if enabled
                                 if alert.email_notification:
                                     self.send_alert_notification(alert, alert.triggered_text())
             else:
                 self.stdout.write('No alerts to check.')
             
             # Wait 30 seconds before next check
-            time.sleep(5)
+            time.sleep(3)
