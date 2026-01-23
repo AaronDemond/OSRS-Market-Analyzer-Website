@@ -274,9 +274,9 @@
     
     .alert-icon.spread { background: rgba(139, 92, 246, 0.15); color: #7C3AED; }
     .alert-icon.spike { background: rgba(239, 68, 68, 0.15); color: #DC2626; }
-    .alert-icon.above { background: rgba(34, 197, 94, 0.15); color: #16A34A; }
-    .alert-icon.below { background: rgba(59, 130, 246, 0.15); color: #2563EB; }
     .alert-icon.sustained { background: rgba(249, 115, 22, 0.15); color: #EA580C; }
+    /* NOTE: Above/Below Threshold alert types were removed. */
+    .alert-icon.threshold { background: rgba(14, 165, 233, 0.15); color: #0284C7; }
     
     .alert-icon svg {
         width: 16px;
@@ -635,9 +635,8 @@ function renderAlerts(alerts) {
         spike: '<svg viewBox="0 0 24 24"><path d="M12 4l8 14H4L12 4z" fill="#DC2626" stroke="#B91C1C" stroke-width="1.5"/><path d="M12 9v5" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17.5" r="1.2" fill="#FFFFFF"/></svg>',
         // Sustained move icon: straight green line rising to the top-right on chart axes for steady trend.
         sustained: '<svg fill="none" stroke="#16A34A" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 18h16M4 18V6M4 18L18 6"/></svg>',
-        // Existing icons kept for above/below
-        above: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>',
-        below: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>'
+        // Threshold icon: crosshair/target to represent a defined trigger boundary.
+        threshold: '<svg fill="none" stroke="#0284C7" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2v4m0 12v4m10-10h-4M6 12H2m4.929-7.071l2.828 2.828M14.243 14.243l2.828 2.828m0-12.728l-2.828 2.828M9.757 14.243l-2.828 2.828"/><circle cx="12" cy="12" r="3" stroke-width="2"/></svg>'
     };
     
     let html = '<ul class="alert-list">';

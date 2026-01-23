@@ -1283,7 +1283,7 @@ class Command(BaseCommand):
         
         What: Evaluates alert conditions against current price data
         Why: Core function that determines when users should be notified
-        How: Dispatches to type-specific handlers (spread, spike, sustained, threshold, above/below)
+        How: Dispatches to type-specific handlers (spread, spike, sustained, threshold)
         
         Returns:
             - True/False for simple alerts
@@ -1673,29 +1673,12 @@ class Command(BaseCommand):
                 return True
             return False
         
-        # Handle above/below alerts
-        if not alert.item_id or not alert.price or not alert.reference:
-            return False
-        
-        price_data = all_prices.get(str(alert.item_id))
-        if not price_data:
-            return False
-        
-        # Get the appropriate price based on reference
-        if alert.reference == 'high':
-            current_price = price_data.get('high')
-        else:
-            current_price = price_data.get('low')
-        
-        if current_price is None:
-            return False
-        
-        # Check if condition is met
-        if alert.type == 'above' and current_price > alert.price:
-            return True
-        elif alert.type == 'below' and current_price < alert.price:
-            return True
-        
+        # NOTE: Legacy 'above'/'below' alert types were removed.
+        # What: Previously, we evaluated simple "price > X" / "price < X" conditions here.
+        # Why: Keeping this logic would allow creation/evaluation of removed alert types and make the
+        #      codebase harder to maintain.
+        # How: With above/below removed, if we reach this point it means the alert type was not handled
+        #      by any of the supported branches above, so we safely do not trigger.
         return False
 
     def handle(self, *args, **options):
@@ -1817,7 +1800,7 @@ class Command(BaseCommand):
                                     alert.email_notification = False
                                     alert.save()
                             else:
-                                # Generic alert handler (above/below, single-item alerts, etc.)
+                                # Generic alert handler (single-item alerts, etc.)
                                 alert.is_triggered = True
                                 # Keep alert active - never auto-deactivate
                                 # What: All alerts stay active until manually deactivated by user

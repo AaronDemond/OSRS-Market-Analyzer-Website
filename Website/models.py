@@ -83,8 +83,11 @@ class Alert(models.Model):
     How: Stores alert configuration including type, item(s) to track, thresholds, and trigger state.
     
     Alert Types:
-        - above: Triggers when price goes above a specific value
-        - below: Triggers when price falls below a specific value
+        # NOTE: The legacy "Above Threshold" / "Below Threshold" alert types were removed from the product.
+        # What: This list documents the currently supported alert types.
+        # Why: Keeping this up-to-date prevents UI/backend drift and avoids users creating alert types
+        #      that no longer have evaluation logic.
+        # How: We explicitly list only the remaining alert types.
         - spread: Triggers when buy/sell spread exceeds a percentage
         - spike: Triggers when price changes rapidly within a time frame
         - sustained: Triggers when price moves consistently in one direction
@@ -110,7 +113,7 @@ class Alert(models.Model):
     # REFERENCE_CHOICES: Options for which price to use as reference for calculations
     # What: Defines whether to use high (instant sell), low (instant buy), or average price
     # Why: Different trading strategies require different price references
-    # How: Used by above/below/threshold alerts to determine which current price to compare against
+    # How: Used by spike/threshold alerts to determine which current price to compare against
     REFERENCE_CHOICES = [
         ('high', 'High Price'),
         ('low', 'Low Price'),
@@ -121,12 +124,14 @@ class Alert(models.Model):
     # What: Defines the different types of alerts users can create
     # Why: Each type has different triggering logic and configuration options
     ALERT_CHOICES = [
-        ('above', 'Above Threshold'),
-        ('below', 'Below Threshold'),
+        # NOTE: "Above Threshold" and "Below Threshold" were intentionally removed.
+        # What: The remaining supported alert types.
+        # Why: Django uses this to validate forms/admin and to keep the UI constrained to valid types.
+        # How: Only include alert types that still have UI + evaluation logic.
         ('spread', 'Spread'),
         ('spike', 'Spike'),
         ('sustained', 'Sustained Move'),
-        ('threshold', 'Threshold'),  # New: Percentage or value-based threshold from reference price
+        ('threshold', 'Threshold'),  # Percentage or value-based threshold from reference price
     ]
     
     # THRESHOLD_TYPE_CHOICES: Options for how threshold alerts calculate their trigger condition
@@ -140,7 +145,11 @@ class Alert(models.Model):
     
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     alert_name = models.CharField(max_length=255, default='Default')
-    type = models.CharField(max_length=10, null=True, choices=ALERT_CHOICES, default='above')
+    # type: The alert type selector (validated by ALERT_CHOICES)
+    # What: Stores which alert evaluation strategy to use (spread/spike/sustained/threshold).
+    # Why: We removed legacy above/below alert types; default must be a supported type to avoid invalid forms.
+    # How: Default is set to 'threshold' because it is the closest modern replacement for value/percentage triggers.
+    type = models.CharField(max_length=10, null=True, choices=ALERT_CHOICES, default='threshold')
     direction = models.CharField(max_length=10, choices=DIRECTION_CHOICES, blank=True, null=True)
     # unused field
     above_below = models.CharField(max_length=10, choices=ABOVE_BELOW_CHOICES, blank=True, null=True)
@@ -149,7 +158,7 @@ class Alert(models.Model):
     price = models.IntegerField(blank=True, null=True, default=None)
     percentage = models.FloatField(blank=True, null=True, default=None)
     is_all_items = models.BooleanField(default=False, blank=True, null=True)
-    # reference: The price type to use as the baseline for threshold/above/below comparisons
+    # reference: The price type to use as the baseline for spike/threshold comparisons
     # What: Stores which price reference the alert should use ('high', 'low', or 'average')
     # Why: Users may want to compare against different price points depending on their trading strategy
     # How: When evaluating the alert, this field determines which current price to fetch for comparison
@@ -403,12 +412,13 @@ class Alert(models.Model):
                 except Exception:
                     pass
             return f"{self.item_name} spread has reached {self.percentage}% or higher"
+        # item_price: Current price fetched for display for alert types that need a spot-price in messaging
+        # What: Fetches a current price using the alert's reference type (high/low/average)
+        # Why: Some alert types (like spike) may include a reference price in messaging; we keep the helper
+        #      call here because it is shared and inexpensive, but we removed the legacy above/below branches.
+        # How: get_item_price() handles the reference type selection.
         item_price = get_item_price(self.item_id, self.reference)
         price_formatted = f"{item_price:,}" if item_price else str(item_price)
-        if self.type == "above":
-            return f"{self.item_name} has risen above {self.price:,} to {price_formatted}"
-        if self.type == "below":
-            return f"{self.item_name} has fallen below {self.price:,} to {price_formatted}"
         if self.type == "spike":
             # What: Returns a human-readable description of what triggered the spike alert
             # Why: Users need to understand which items spiked and by how much

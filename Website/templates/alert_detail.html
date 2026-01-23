@@ -1418,18 +1418,21 @@
     <div class="alert-header" id="alertHeader">
         <div class="alert-header-top">
             <div class="alert-type-badge" id="typeBadge">
-                {% if alert.type == 'above' %}
-                    <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
-                    Above Threshold
-                {% elif alert.type == 'below' %}
-                    <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-                    Below Threshold
-                {% elif alert.type == 'spread' %}
+                {# NOTE: Above/Below Threshold alerts were removed; this badge only handles supported types. #}
+                {% if alert.type == 'spread' %}
                     <svg fill="currentColor" viewBox="0 0 20 20"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/><path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd"/></svg>
                     Spread Alert
                 {% elif alert.type == 'spike' %}
                     <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
                     Spike Alert
+                {% elif alert.type == 'sustained' %}
+                    <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 3a1 1 0 011 1v11.586l3.293-3.293a1 1 0 011.414 1.414l-5 5A1 1 0 014 19H3a1 1 0 110-2h1V4a1 1 0 011-1zm7.293 2.293a1 1 0 011.414 0L16 8.586V6a1 1 0 112 0v5a1 1 0 01-1 1h-5a1 1 0 110-2h2.586l-3.293-3.293a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                    Sustained Move
+                {% elif alert.type == 'threshold' %}
+                    <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 2a8 8 0 100 16 8 8 0 000-16zM8.5 5.5a1 1 0 112 0v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3h-3a1 1 0 110-2h3v-3z" clip-rule="evenodd"/></svg>
+                    Threshold
+                {% else %}
+                    {{ alert.type|title }}
                 {% endif %}
             </div>
             <div class="alert-status">
@@ -1488,9 +1491,8 @@
                     <div class="detail-item">
                         <span class="detail-label">Alert Type</span>
                         <span class="detail-value">
-                            {% if alert.type == 'above' %}Above Threshold
-                            {% elif alert.type == 'below' %}Below Threshold
-                            {% elif alert.type == 'spread' %}Spread
+                            {# NOTE: Above/Below Threshold alerts were removed. #}
+                            {% if alert.type == 'spread' %}Spread
                             {% elif alert.type == 'spike' %}Spike
                             {% elif alert.type == 'threshold' %}Threshold
                             {% elif alert.type == 'sustained' %}Sustained Move
@@ -1525,16 +1527,6 @@
                         {% endif %}
                     {% endif %}
                     
-                    {% if alert.type == 'above' or alert.type == 'below' %}
-                    <div class="detail-item">
-                        <span class="detail-label">Price Threshold</span>
-                        <span class="detail-value price">{% if alert.price %}{{ alert.price|intcomma }}{% else %}Not Set{% endif %}</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Reference Price</span>
-                        <span class="detail-value">{% if alert.reference == 'high' %}High Price{% else %}Low Price{% endif %}</span>
-                    </div>
-                    {% endif %}
                     
                     {% if alert.type == 'spread' or alert.type == 'spike' %}
                     <div class="detail-item">
@@ -1673,8 +1665,7 @@
                     <div class="form-group" id="type-group">
                         <label for="edit-type">Alert Type</label>
                         <select id="edit-type" onchange="handleTypeChange()">
-                            <option value="above" {% if alert.type == 'above' %}selected{% endif %}>Above Threshold</option>
-                            <option value="below" {% if alert.type == 'below' %}selected{% endif %}>Below Threshold</option>
+                            <!-- NOTE: Above/Below Threshold alert types were removed; do not re-add without backend support. -->
                             <option value="spread" {% if alert.type == 'spread' %}selected{% endif %}>Spread</option>
                             <option value="spike" {% if alert.type == 'spike' %}selected{% endif %}>Spike</option>
                             <option value="sustained" {% if alert.type == 'sustained' %}selected{% endif %}>Sustained Move</option>
@@ -1817,14 +1808,14 @@
                         <small class="form-hint">Percent change threshold to trigger alert</small>
                     </div>
                     
-                    <!-- Price Threshold (above/below only) -->
+                    <!-- Price Threshold (legacy above/below removed; field retained for other alert types that reuse it) -->
                     <div class="form-group" id="price-group">
                         <label for="edit-price">Price Threshold</label>
                         <input type="number" id="edit-price" value="{{ alert.price|default:'' }}" placeholder="Enter price...">
                         <small class="form-hint">Price value that triggers the alert</small>
                     </div>
                     
-                    <!-- Reference Price (above/below/spike/threshold) -->
+                    <!-- Reference Price (spike/threshold) -->
                     <div class="form-group" id="reference-group">
                         <label for="edit-reference">Reference Price</label>
                         <select id="edit-reference">
@@ -2088,15 +2079,6 @@
                         <div class="triggered-info-item">
                             <span class="detail-label">Spread Percentage</span>
                             <span class="detail-value highlight">{% if triggered_info.spread_percentage %}{{ triggered_info.spread_percentage }}%{% else %}N/A{% endif %}</span>
-                        </div>
-                    {% elif triggered_info.alert_type == 'above' or triggered_info.alert_type == 'below' %}
-                        <div class="triggered-info-item">
-                            <span class="detail-label">Threshold Price</span>
-                            <span class="detail-value price">{% if triggered_info.threshold_price %}{{ triggered_info.threshold_price|intcomma }}{% else %}N/A{% endif %}</span>
-                        </div>
-                        <div class="triggered-info-item">
-                            <span class="detail-label">Current {{ triggered_info.reference|title }} Price</span>
-                            <span class="detail-value price {% if triggered_info.alert_type == 'above' %}positive{% else %}negative{% endif %}">{% if triggered_info.current_price %}{{ triggered_info.current_price|intcomma }}{% else %}N/A{% endif %}</span>
                         </div>
                     {% elif triggered_info.alert_type == 'spike' and triggered_info.spike_data %}
                         <div class="triggered-info-item">
@@ -3298,11 +3280,15 @@ function handleTypeChange() {
         // Let scope change handler determine item/min/max visibility
         handleThresholdScopeChange();
     } else {
-        // Above/Below: show item, price, reference
+        // NOTE: Above/Below Threshold alerts were removed.
+        //
+        // What: This branch used to show item/price/reference fields for legacy above/below alert types.
+        // Why: If we hit this branch now, it indicates an unsupported/unknown alert type.
+        // How: Hide everything to prevent editing/saving malformed alert payloads.
         groups.allItems.style.display = 'none';
-        groups.itemName.style.display = 'block';
-        groups.price.style.display = 'block';
-        groups.reference.style.display = 'block';
+        groups.itemName.style.display = 'none';
+        groups.price.style.display = 'none';
+        groups.reference.style.display = 'none';
         groups.percentage.style.display = 'none';
         groups.timeFrame.style.display = 'none';
         groups.direction.style.display = 'none';
@@ -3311,7 +3297,7 @@ function handleTypeChange() {
         hideSustainedFields();
         hideThresholdFields();
         
-        // Reset is_all_items for above/below
+        // Reset is_all_items
         document.getElementById('edit-is-all-items').value = 'false';
         document.getElementById('edit-all-items').checked = false;
     }
@@ -3707,10 +3693,11 @@ async function saveChanges() {
     };
     
     // Type-specific fields
-    if (alertType === 'above' || alertType === 'below') {
-        data.price = document.getElementById('edit-price').value || null;
-        data.reference = document.getElementById('edit-reference').value || null;
-    } else if (alertType === 'spread') {
+    // NOTE: Above/Below Threshold alert types were removed.
+    // What: Previously sent "price" + "reference" for legacy above/below alert types.
+    // Why: Keeping that branch would imply those types are still supported.
+    // How: We now only send type-specific fields for supported types.
+    if (alertType === 'spread') {
         data.percentage = document.getElementById('edit-percentage').value || null;
         if (isAllItems) {
             data.minimum_price = document.getElementById('edit-minimum-price').value || null;

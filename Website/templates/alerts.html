@@ -181,7 +181,7 @@
 
             <div class="form-group">
                 <label for="alert-type">Alert Type</label>
-                <select name="type" id="alert-type" required onchange="handleAlertTypeChange()">
+                <select name="type" id="alert-type" required onchange="handleAlertTypeChange()" tabindex="1">
                     <option value="above" selected>Above Threshold</option>
                     <option value="below">Below Threshold</option>
                     <option value="spread">Spread</option>
@@ -189,7 +189,7 @@
                     <option value="sustained">Sustained Move</option>
                     <option value="threshold">Threshold</option>
                 </select>
-                <button type="button" class="alert-help-btn" onclick="openAlertHelpModal()">
+                <button type="button" class="alert-help-btn" onclick="openAlertHelpModal()" tabindex="2">
                     <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
                         <path fill-rule="evenodd"
                             d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z"
@@ -201,7 +201,7 @@
 
             <div class="form-group">
                 <label for="alert-name-type">Alert Name</label>
-                <select name="alert_name_type" id="alert-name-type" onchange="handleAlertNameTypeChange()">
+                <select name="alert_name_type" id="alert-name-type" onchange="handleAlertNameTypeChange()" tabindex="3">
                     <option value="default" selected>Default name</option>
                     <option value="custom">Custom</option>
                 </select>
@@ -211,7 +211,7 @@
             <div class="form-group" id="custom-name-group" style="display: none;">
                 <label for="alert-custom-name">Custom Name</label>
                 <input type="text" name="alert_name" id="alert-custom-name" maxlength="255"
-                    placeholder="Enter alert name...">
+                    placeholder="Enter alert name..." tabindex="4">
                 <small class="form-hint">Enter a custom name for this alert</small>
             </div>
 
@@ -222,10 +222,10 @@
             <div class="form-group">
                 <label for="alert-group">Group</label>
                 <div class="group-selector-wrapper">
-                    <select name="group_id" id="alert-group">
+                    <select name="group_id" id="alert-group" tabindex="5">
                         <option value="">No Group</option>
                     </select>
-                    <button type="button" class="btn-add-group" onclick="openNewGroupModal()" title="Create new group">
+                    <button type="button" class="btn-add-group" onclick="openNewGroupModal()" title="Create new group" tabindex="6">
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
                         </svg>
@@ -241,7 +241,7 @@
             <!-- Note: "Specific Item(s)" handles both single and multiple items - no need for separate single item option -->
             <div class="form-group" id="spike-scope-group" style="display: none;">
                 <label for="spike-scope">Apply To</label>
-                <select name="spike_scope" id="spike-scope" onchange="handleSpikeScopeChange()">
+                <select name="spike_scope" id="spike-scope" onchange="handleSpikeScopeChange()" tabindex="10">
                     <option value="multiple" selected>Specific Item(s)</option>
                     <option value="all">All Items</option>
                 </select>
@@ -262,9 +262,9 @@
                 <div class="multi-item-selector">
                     <div class="multi-item-selector-box">
                         <!-- Search input for adding new items -->
-                        <input type="text" id="spike-item-input" placeholder="Search for item to add..." autocomplete="off">
+                        <input type="text" id="spike-item-input" placeholder="Search for item to add..." autocomplete="off" tabindex="20">
                         <!-- Dropdown toggle button with chevron arrow -->
-                        <button type="button" class="multi-item-dropdown-toggle" id="spike-multi-item-toggle" title="Show selected items">
+                        <button type="button" class="multi-item-dropdown-toggle" id="spike-multi-item-toggle" title="Show selected items" tabindex="21">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="6 9 12 15 18 9"></polyline>
                             </svg>
@@ -286,15 +286,17 @@
             </div>
 
             <!-- Spread-specific fields -->
+            <!-- What: Dropdown to choose scope for spread alerts (all items or specific items) -->
+            <!-- Why: Users may want to monitor spread on all items or a curated list of specific items -->
+            <!-- How: Changes form visibility based on selection; "Specific Item(s)" handles both single and multiple items -->
             <div class="form-group" id="spread-scope-group" style="display: none;">
                 <label for="spread-scope">Apply To</label>
-                <select name="spread_scope" id="spread-scope" onchange="handleSpreadScopeChange()">
+                <select name="spread_scope" id="spread-scope" onchange="handleSpreadScopeChange()" tabindex="11">
+                    <option value="multiple" selected>Specific Item(s)</option>
                     <option value="all">All Items</option>
-                    <option value="specific">Specific Item</option>
-                    <option value="multiple">Specific Item(s)</option>
                 </select>
 
-                <small class="form-hint">Choose to track all items, a single item, or multiple specific items</small>
+                <small class="form-hint">Choose to track specific items or all items at once</small>
             </div>
 
             <!-- Multi-item selector for spread alerts (shown when "Specific Item(s)" selected) -->
@@ -310,9 +312,9 @@
                 <div class="multi-item-selector">
                     <div class="multi-item-selector-box">
                         <!-- Search input for adding new items -->
-                        <input type="text" id="spread-item-input" placeholder="Search for item to add..." autocomplete="off">
+                        <input type="text" id="spread-item-input" placeholder="Search for item to add..." autocomplete="off" tabindex="22">
                         <!-- Dropdown toggle button with chevron arrow -->
-                        <button type="button" class="multi-item-dropdown-toggle" id="spread-multi-item-toggle" title="Show selected items">
+                        <button type="button" class="multi-item-dropdown-toggle" id="spread-multi-item-toggle" title="Show selected items" tabindex="23">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="6 9 12 15 18 9"></polyline>
                             </svg>
@@ -334,9 +336,12 @@
             </div>
 
             <!-- Item Name -->
+            <!-- What: Input field for selecting a single item to track (used by Above/Below Threshold alerts) -->
+            <!-- Why: Some alert types need a specific item rather than multiple items or all items -->
+            <!-- How: Uses autocomplete to help users find items by name -->
             <div class="form-group" id="item-name-group">
                 <label for="item-name">Item Name</label>
-                <input type="text" name="item_name" id="item-name" autocomplete="off">
+                <input type="text" name="item_name" id="item-name" autocomplete="off" tabindex="24">
                 <input type="hidden" name="item_id" id="item-id">
                 <input type="hidden" name="is_all_items" id="is-all-items" value="false">
                 <div id="item-suggestions" class="suggestions-dropdown"></div>
@@ -344,16 +349,20 @@
             </div>
 
             <!-- Price Threshold -->
+            <!-- What: Input field for target price (used by Above/Below Threshold alerts) -->
+            <!-- Why: Users need to specify the price that triggers the alert -->
             <div class="form-group" id="price-group">
                 <label for="price">Price Threshold</label>
-                <input type="number" name="price" id="price">
+                <input type="number" name="price" id="price" tabindex="51">
                 <small class="form-hint">Target price</small>
             </div>
 
             <!-- Reference Price -->
+            <!-- What: Dropdown to choose which price to use for comparison (high, low, or average) -->
+            <!-- Why: Different strategies monitor different price points -->
             <div class="form-group" id="reference-group">
                 <label for="reference">Reference Price</label>
-                <select name="reference" id="reference">
+                <select name="reference" id="reference" tabindex="54">
                     <option value="high">High Price</option>
                     <option value="low">Low Price</option>
                     <option value="average">Average Price</option>
@@ -364,21 +373,21 @@
             <!-- Percentage field (shown for spread or spike) -->
             <div class="form-group" id="percentage-group" style="display: none;">
                 <label for="percentage">Percentage (%)</label>
-                <input type="number" name="percentage" id="percentage" step="0.001" min="0.001">
+                <input type="number" name="percentage" id="percentage" step="0.001" min="0.001" tabindex="52">
                 <small class="form-hint">Target percentage your alert must hit</small>
             </div>
 
             <!-- Time frame field (shown for spike only) -->
             <div class="form-group" id="time-frame-group" style="display: none;">
                 <label for="time-frame">Time Frame (minutes)</label>
-                <input type="number" name="time_frame" id="time-frame" min="1" step="1" placeholder="e.g. 10">
+                <input type="number" name="time_frame" id="time-frame" min="1" step="1" placeholder="e.g. 10" tabindex="54">
                 <small class="form-hint">Time frame your alert must trigger within.</small>
             </div>
 
             <!-- Direction field (shown for spike only) -->
             <div class="form-group" id="direction-group" style="display: none;">
                 <label for="direction">Direction</label>
-                <select name="direction" id="direction">
+                <select name="direction" id="direction" tabindex="30">
                     <option value="both" selected>Both</option>
                     <option value="up">Up</option>
                     <option value="down">Down</option>
@@ -390,7 +399,7 @@
             <!-- Sustained Move scope selector -->
             <div class="form-group" id="sustained-scope-group" style="display: none;">
                 <label for="sustained-scope">Apply To</label>
-                <select name="sustained_scope" id="sustained-scope" onchange="handleSustainedScopeChange()">
+                <select name="sustained_scope" id="sustained-scope" onchange="handleSustainedScopeChange()" tabindex="12">
                     <option value="specific" selected>Specific Item(s)</option>
                     <option value="all">All Items</option>
                 </select>
@@ -410,9 +419,9 @@
                 <div class="multi-item-selector">
                     <div class="multi-item-selector-box">
                         <!-- Search input for adding new items -->
-                        <input type="text" id="sustained-item-input" placeholder="Search for item to add..." autocomplete="off">
+                        <input type="text" id="sustained-item-input" placeholder="Search for item to add..." autocomplete="off" tabindex="25">
                         <!-- Dropdown toggle button with chevron arrow -->
-                        <button type="button" class="multi-item-dropdown-toggle" id="sustained-multi-item-toggle" title="Show selected items">
+                        <button type="button" class="multi-item-dropdown-toggle" id="sustained-multi-item-toggle" title="Show selected items" tabindex="26">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="6 9 12 15 18 9"></polyline>
                             </svg>
@@ -434,50 +443,59 @@
             </div>
 
             <!-- Min/Max price fields -->
+            <!-- What: Input fields for filtering which items to monitor based on their price -->
+            <!-- Why: Users may only want to track items within a certain price range (e.g., high-value items only) -->
+            <!-- How: These filters apply when "All Items" is selected, narrowing down the monitored items -->
             <div class="form-group" id="min-price-group" style="display: none;">
                 <label for="minimum-price">Minimum Price</label>
-                <input type="number" name="minimum_price" id="minimum-price" min="0">
+                <input type="number" name="minimum_price" id="minimum-price" min="0" tabindex="40">
+                <small class="form-hint">The minimum price of an item to track</small>
             </div>
             <div class="form-group" id="max-price-group" style="display: none;">
                 <label for="maximum-price">Maximum Price</label>
-                <input type="number" name="maximum_price" id="maximum-price" min="0">
+                <input type="number" name="maximum_price" id="maximum-price" min="0" tabindex="41">
+                <small class="form-hint">The maximum price of an item to track</small>
             </div>
 
             <!-- Sustained Move specific fields -->
+            <!-- What: Configuration inputs for Sustained Move alerts -->
+            <!-- Why: Users need to define what constitutes a "sustained" price movement -->
             <div class="form-group" id="min-consecutive-moves-group" style="display: none;">
                 <label for="min-consecutive-moves">Min Consecutive Moves</label>
                 <input type="number" name="min_consecutive_moves" id="min-consecutive-moves" min="2" step="1"
-                    placeholder="e.g. 5">
+                    placeholder="e.g. 5" tabindex="42">
                 <small class="form-hint">Number of price changes in same direction</small>
             </div>
             <div class="form-group" id="min-move-percentage-group" style="display: none;">
                 <label for="min-move-percentage">Min Move %</label>
                 <input type="number" name="min_move_percentage" id="min-move-percentage" min="0.01" step="0.01"
-                    placeholder="e.g. 0.5">
+                    placeholder="e.g. 0.5" tabindex="43">
                 <small class="form-hint">Min % change to count as move</small>
             </div>
             <div class="form-group" id="min-volume-group" style="display: none;">
                 <label for="min-volume">Min Volume</label>
-                <input type="number" name="min_volume" id="min-volume" min="0" step="1" placeholder="e.g. 10000">
+                <input type="number" name="min_volume" id="min-volume" min="0" step="1" placeholder="e.g. 10000" tabindex="47">
                 <small class="form-hint">Min trading volume</small>
             </div>
             <div class="form-group" id="volatility-buffer-group" style="display: none;">
                 <label for="volatility-buffer-size">Volatility Buffer (N)</label>
                 <input type="number" name="volatility_buffer_size" id="volatility-buffer-size" min="5" step="1"
-                    placeholder="e.g. 20">
+                    placeholder="e.g. 20" tabindex="54">
                 <small class="form-hint">Rolling buffer size for avg volatility</small>
             </div>
             <div class="form-group" id="volatility-multiplier-group" style="display: none;">
                 <label for="volatility-multiplier">Volatility Multiplier (K)</label>
                 <input type="number" name="volatility_multiplier" id="volatility-multiplier" min="0.1" step="0.1"
-                    placeholder="e.g. 1.5">
+                    placeholder="e.g. 1.5" tabindex="55">
                 <small class="form-hint">Streak must move ≥ K × avg volatility</small>
             </div>
 
             <!-- Market Pressure Filter (sustained only) -->
+            <!-- What: Filters for market pressure conditions on sustained move alerts -->
+            <!-- Why: Users may want to only trigger alerts when there's buying/selling pressure -->
             <div class="form-group" id="pressure-strength-group" style="display: none;">
                 <label for="min-pressure-strength">Market Pressure</label>
-                <select name="min_pressure_strength" id="min-pressure-strength">
+                <select name="min_pressure_strength" id="min-pressure-strength" tabindex="40">
                     <option value="">No Pressure Filter</option>
                     <option value="weak">Weak+ (any time delta)</option>
                     <option value="moderate">Moderate+ (&lt;5min)</option>
@@ -488,7 +506,7 @@
             <div class="form-group" id="pressure-spread-group" style="display: none;">
                 <label for="min-pressure-spread">Min Spread % for Pressure</label>
                 <input type="number" name="min_pressure_spread_pct" id="min-pressure-spread" min="0.01" step="0.01"
-                    placeholder="e.g. 0.2">
+                    placeholder="e.g. 0.2" tabindex="46">
                 <small class="form-hint">Minimum high-low spread % to confirm pressure</small>
             </div>
 
@@ -503,16 +521,17 @@
             <!-- What: Dropdown to choose between tracking all items or specific items -->
             <!-- Why: Users may want to monitor threshold on all items or a curated list -->
             <!-- How: Shows/hides the specific items selector based on selection -->
+            <!-- Note: "Specific Item(s)" is the default for consistency with other alert types -->
             <div class="form-group" id="threshold-items-tracked-group" style="display: none;">
-                <label for="threshold-items-tracked">Items Tracked</label>
-                <select name="threshold_items_tracked" id="threshold-items-tracked" onchange="handleThresholdItemsTrackedChange()">
+                <label for="threshold-items-tracked">Apply To</label>
+                <select name="threshold_items_tracked" id="threshold-items-tracked" onchange="handleThresholdItemsTrackedChange()" tabindex="13">
+                    <option value="specific" selected>Specific Item(s)</option>
                     <option value="all">All Items</option>
-                    <option value="specific">Specific Items</option>
                 </select>
-                <small class="form-hint">Choose to track all items or select specific items</small>
+                <small class="form-hint">Choose to track specific items or all items at once</small>
             </div>
 
-            <!-- Threshold: Multi-item selector (shown when "Specific Items" is selected) -->
+            <!-- Threshold: Multi-item selector (shown when "Specific Item(s)" is selected) -->
             <!-- What: Allows users to select multiple specific items to monitor for threshold -->
             <!-- Why: Users may want to monitor threshold on a curated list of items -->
             <!-- How: Uses box-style input with dropdown arrow - matching spread alert styling -->
@@ -525,9 +544,9 @@
                 <div class="multi-item-selector">
                     <div class="multi-item-selector-box">
                         <!-- Search input for adding new items -->
-                        <input type="text" id="threshold-item-input" placeholder="Search for item to add..." autocomplete="off">
+                        <input type="text" id="threshold-item-input" placeholder="Search for item to add..." autocomplete="off" tabindex="27">
                         <!-- Dropdown toggle button with chevron arrow -->
-                        <button type="button" class="multi-item-dropdown-toggle" id="threshold-multi-item-toggle" title="Show selected items">
+                        <button type="button" class="multi-item-dropdown-toggle" id="threshold-multi-item-toggle" title="Show selected items" tabindex="28">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="6 9 12 15 18 9"></polyline>
                             </svg>
@@ -548,29 +567,29 @@
                 <small class="form-hint">Add one or more items to monitor for threshold</small>
             </div>
 
+            <!-- Threshold: Direction selector -->
+            <!-- What: Dropdown to choose whether to alert on price going up or down -->
+            <!-- Why: Users may only care about price increases (for selling) or decreases (for buying) -->
+            <div class="form-group" id="threshold-direction-group" style="display: none;">
+                <label for="threshold-direction">Direction</label>
+                <select name="threshold_direction" id="threshold-direction" tabindex="31">
+                    <option value="up" selected>Up</option>
+                    <option value="down">Down</option>
+                </select>
+                <small class="form-hint">Alert when price moves up or down from reference</small>
+            </div>
+
             <!-- Threshold: Threshold Type selector -->
             <!-- What: Dropdown to choose between percentage-based or value-based threshold -->
             <!-- Why: Users may want "10% increase" or "1000gp increase" depending on their strategy -->
             <!-- How: Auto-selects percentage when All Items or multiple specific items selected -->
             <div class="form-group" id="threshold-type-group" style="display: none;">
                 <label for="threshold-type">Threshold Type</label>
-                <select name="threshold_type" id="threshold-type">
+                <select name="threshold_type" id="threshold-type" tabindex="32">
                     <option value="percentage" selected>Percentage</option>
                     <option value="value">Value (GP)</option>
                 </select>
                 <small class="form-hint">How to measure the threshold (percentage locks when tracking multiple items)</small>
-            </div>
-
-            <!-- Threshold: Direction selector -->
-            <!-- What: Dropdown to choose whether to alert on price going up or down -->
-            <!-- Why: Users may only care about price increases (for selling) or decreases (for buying) -->
-            <div class="form-group" id="threshold-direction-group" style="display: none;">
-                <label for="threshold-direction">Direction</label>
-                <select name="threshold_direction" id="threshold-direction">
-                    <option value="up" selected>Up</option>
-                    <option value="down">Down</option>
-                </select>
-                <small class="form-hint">Alert when price moves up or down from reference</small>
             </div>
 
             <!-- Threshold: Threshold value input -->
@@ -579,8 +598,8 @@
             <!-- How: Value is interpreted as percentage or GP based on threshold_type selection -->
             <div class="form-group" id="threshold-value-group" style="display: none;">
                 <label for="threshold-value">Threshold</label>
-                <input type="number" name="threshold_value" id="threshold-value" step="0.01" min="0.01" placeholder="e.g. 5">
-                <small class="form-hint" id="threshold-value-hint">The percentage or value change that triggers the alert</small>
+                <input type="number" name="threshold_value" id="threshold-value" step="0.01" min="0.01" placeholder="e.g. 5" tabindex="56">
+                <small class="form-hint" id="threshold-value-hint">The percentage or value change that triggers the alert (use numbers between 0-100)</small>
             </div>
 
             <!-- Threshold: Reference Price selector -->
@@ -589,7 +608,7 @@
             <!-- How: Determines which current price is compared against the threshold -->
             <div class="form-group" id="threshold-reference-group" style="display: none;">
                 <label for="threshold-reference">Reference Price</label>
-                <select name="threshold_reference" id="threshold-reference">
+                <select name="threshold_reference" id="threshold-reference" tabindex="49">
                     <option value="high">High (Instant Sell)</option>
                     <option value="low">Low (Instant Buy)</option>
                     <option value="average">Average</option>
@@ -597,22 +616,32 @@
                 <small class="form-hint">Which price to monitor for threshold changes</small>
             </div>
 
-            <div class="form-group checkbox-group">
-                <label class="checkbox-label">
-                    <input type="checkbox" name="show_notification" id="show-notification" checked>
-                    Show Alert Notification?
+            <!-- =====================================================================================
+                 NOTIFICATION OPTIONS (ALWAYS LAST)
+
+                 What: These are the two “delivery channel” toggles for an alert.
+                 Why: You requested these appear LAST for Threshold/Sustained/Spike/Spread (and visually this
+                      is also the most natural place for them for other alert types).
+                 How: We give the container divs stable IDs so CSS can:
+                      1) force them to the end of the form (via flexbox order)
+                      2) render them on ONE LINE (by removing the old 100%-width rule)
+                 ===================================================================================== -->
+            <div class="form-check d-flex align-items-center" style="margin-top:35px !important" id="show-notification-group">
+                    <input style = "transform: scale(1.35); margin-top: 0;" type="checkbox" class="form-check-input me-2" name="show_notification" id="show-notification" checked tabindex="100">
+                <label class="form-check-label">
+                    <span>Show Alert Notification?</span>
                 </label>
-                <small class="form-hint"></small>
             </div>
 
-            <div class="form-group checkbox-group">
-                <label class="checkbox-label">
-                    <input type="checkbox" name="email_notification" id="email-notification">
-                    Receive SMS Notification
+            <div class="form-check d-flex align-items-center" style="margin-top:35px !important" id="sms-notification-group">
+                <input style = "transform: scale(1.35); margin-top: 0;" type="checkbox" class="form-check-input me-2" name="email_notification" id="email-notification" tabindex="101">
+                <label class="form-check-label">
+                  
+                    <span>Receive SMS Notification</span>
                 </label>
             </div>
 
-            <button type="submit" class="btn-create-alert">Create Alert</button>
+            <button type="submit" class="btn-create-alert" tabindex="200">Create Alert</button>
         </form>
     </div>
 </div>
@@ -1967,20 +1996,114 @@
         margin-bottom: 0;
     }
 
+    /* =====================================================================================
+       CREATE ALERT FORM: NOTIFICATION OPTIONS LAYOUT
+
+       What: Controls how the two notification checkbox rows are laid out.
+       Why: Previously these two checkboxes were forced to stack because they were set to 100% width.
+            You requested they render on one line (side-by-side) and still live at the bottom.
+       How:
+         - Remove the forced full-width sizing so each checkbox group behaves like a normal 250px form-group.
+         - The “always last” behavior is enforced separately via the flexbox `order` rules below.
+       ===================================================================================== */
     .create-alert-form>.checkbox-group {
-        width: 100%;
-        flex-basis: 100%;
+        width: 250px;
+        flex-basis: 250px;
     }
 
     .create-alert-form>button {
         width: 100%;
         flex-basis: 100%;
         margin-top: 8px;
+        order: 1000; /* Keep the submit button AFTER the checkbox options. */
     }
+
+    /* =====================================================================================
+       CREATE ALERT FORM: FIELD ORDER STANDARDIZATION (Threshold / Sustained / Spike / Spread)
+
+       What: Standardizes the visible field order for the alert types you called out.
+       Why: The create form is a single shared template where JS shows/hides many different fields.
+            Moving large HTML blocks around is fragile and hard to maintain; flexbox ordering lets us
+            enforce a consistent UX while keeping backend field names/IDs and JS selectors unchanged.
+       How:
+         - The form container is `display: flex`.
+         - Each direct child `.form-group` is a flex item.
+         - We assign explicit `order` values to the *field containers* (divs with IDs like
+           `#spike-scope-group`, `#min-price-group`, etc.).
+         - Hidden fields (display:none) naturally disappear from the layout, so the “visible order”
+           becomes the standardized order automatically.
+
+       Requested UX sequence for Threshold/Sustained/Spike/Spread:
+         1) Alert Name (and Custom Name if enabled)  [these already appear before Group in the template]
+         2) Group
+         3) Apply To
+         4) If “Specific Items”, the item selector immediately after
+         5) Remaining visible inputs alphabetical by label (Direction, Maximum Price, Minimum Price, ...)
+         6) Notification options last (Show Alert Notification? + Receive SMS Notification)
+       ===================================================================================== */
+
+    /* --- Apply To (scope) selectors --- */
+    .create-alert-form > #spike-scope-group { order: 50; }
+    .create-alert-form > #spread-scope-group { order: 51; }
+    .create-alert-form > #sustained-scope-group { order: 52; }
+    .create-alert-form > #threshold-items-tracked-group { order: 53; }
+
+    /* --- Item selectors (must appear immediately after Apply To when relevant) --- */
+    .create-alert-form > #spike-items-group { order: 60; }
+    .create-alert-form > #spread-items-group { order: 61; }
+    .create-alert-form > #sustained-items-group { order: 62; }
+    .create-alert-form > #threshold-items-group { order: 63; }
+    .create-alert-form > #item-name-group { order: 64; }
+
+    /* --- Alphabetical remainder (by visible label text) --- */
+    .create-alert-form > #direction-group { order: 70; }
+    .create-alert-form > #threshold-direction-group { order: 71; }
+
+    .create-alert-form > #pressure-strength-group { order: 80; }  /* Market Pressure */
+
+    .create-alert-form > #max-price-group { order: 81; }          /* Maximum Price */
+
+    .create-alert-form > #min-consecutive-moves-group { order: 82; }
+    .create-alert-form > #min-move-percentage-group { order: 83; }
+    .create-alert-form > #pressure-spread-group { order: 84; }
+    .create-alert-form > #min-volume-group { order: 85; }
+
+    .create-alert-form > #min-price-group { order: 86; }          /* Minimum Price */
+
+    .create-alert-form > #percentage-group { order: 90; }
+    .create-alert-form > #price-group { order: 91; }
+
+    .create-alert-form > #reference-group { order: 95; }
+    .create-alert-form > #threshold-reference-group { order: 96; }
+
+    .create-alert-form > #threshold-value-group { order: 100; }
+    .create-alert-form > #threshold-type-group { order: 72; }  /* Immediately after Direction (71) */
+
+    .create-alert-form > #time-frame-group { order: 110; }
+
+    .create-alert-form > #volatility-buffer-group { order: 120; }
+    .create-alert-form > #volatility-multiplier-group { order: 121; }
+
+    /* --- Notification options (must be last, but still before the submit button) --- */
+    .create-alert-form > #show-notification-group { order: 900; }
+    .create-alert-form > #sms-notification-group { order: 901; }
 
     @media (max-width: 600px) {
         .create-alert-form>.form-group {
             width: 100%;
+        }
+
+        /* =====================================================================================
+           MOBILE: KEEP NOTIFICATION CHECKBOXES SIDE-BY-SIDE
+
+           What: Overrides the mobile "full width" rule specifically for the two checkbox rows.
+           Why: The requirement is to render "Show Alert Notification" + "Receive SMS Notification" on
+                ONE line rather than stacked.
+           How: Use 50% width (minus half the flex gap) so two items fit in a single row.
+           ===================================================================================== */
+        .create-alert-form>.checkbox-group {
+            width: calc(50% - 8px);
+            flex-basis: calc(50% - 8px);
         }
     }
 
@@ -2297,6 +2420,7 @@
     }
 
     .checkbox-label {
+        padding-top: 35px !important;
         display: flex;
         align-items: center;
         gap: 10px;
@@ -2306,6 +2430,8 @@
     }
 
     .checkbox-label input[type="checkbox"] {
+
+        padding-top: 35px !important;
         width: 18px;
         height: 18px;
         cursor: pointer;
@@ -2601,7 +2727,8 @@
         display: flex;
         align-items: center;
         gap: 8px;
-        padding: 8px 14px;
+        padding-top: 35px !important;
+        /* padding: 8px 14px; */
         border: 1px solid var(--border);
         border-radius: 20px;
         background: var(--surface);

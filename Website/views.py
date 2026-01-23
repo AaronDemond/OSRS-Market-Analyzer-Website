@@ -1317,8 +1317,11 @@ def alerts_api(request):
                     alert_dict['spread_low'] = low
                     alert_dict['spread_percentage'] = spread
         
-        # Add current price for above/below alerts
-        if alert.type in ['above', 'below', 'spike'] and alert.item_id and all_prices:
+        # Add current price for spike alerts
+        # What: Include the current reference price (high/low) in the API response for spike alerts.
+        # Why: The front-end uses this to show context/progress for a spike alert on a specific item.
+        # How: Read from the cached all_prices mapping; choose low/high based on the alert's reference.
+        if alert.type == 'spike' and alert.item_id and all_prices:
             price_data = all_prices.get(str(alert.item_id))
             if price_data:
                 if alert.reference == 'low':
@@ -1329,7 +1332,7 @@ def alerts_api(request):
         # Add current price for single-item threshold alerts
         # What: Include current price for threshold alerts to show progress in UI
         # Why: Users want to see how close the price is to their threshold
-        # How: Similar to above/below alerts, get price based on reference type
+        # How: Similar to spike alerts, get price based on reference type
         if alert.type == 'threshold' and alert.item_id and all_prices and not alert.is_all_items and not alert.item_ids:
             price_data = all_prices.get(str(alert.item_id))
             if price_data:
@@ -1375,8 +1378,11 @@ def alerts_api(request):
                     triggered_dict['spread_low'] = low
                     triggered_dict['spread_percentage'] = spread
         
-        # Add current price for above/below alerts
-        if alert.type in ['above', 'below', 'spike'] and alert.item_id and all_prices:
+        # Add current price for spike alerts
+        # What: Include current reference price (high/low) for triggered spike alerts.
+        # Why: The triggered alerts list shows additional context for spike alerts.
+        # How: Read from cached all_prices; choose low/high based on alert.reference.
+        if alert.type == 'spike' and alert.item_id and all_prices:
             price_data = all_prices.get(str(alert.item_id))
             if price_data:
                 if alert.reference == 'low':
@@ -1957,13 +1963,6 @@ def alert_detail(request, alert_id):
                     triggered_info['spread_high'] = high
                     triggered_info['spread_low'] = low
                     triggered_info['spread_percentage'] = round(((high - low) / low) * 100, 2)
-            elif alert.type in ['above', 'below']:
-                triggered_info['threshold_price'] = alert.price
-                triggered_info['reference'] = alert.reference
-                if alert.reference == 'low':
-                    triggered_info['current_price'] = price_data.get('low')
-                else:
-                    triggered_info['current_price'] = price_data.get('high')
             elif alert.type == 'spike':
                 # For spike alerts, triggered_data contains the spike info
                 if alert.triggered_data:
