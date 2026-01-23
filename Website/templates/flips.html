@@ -1640,6 +1640,26 @@
             height: 14px;
             font-size: 12px;
         }
+
+        /* =============================================================================
+           HIDE ITEM ICONS ON MOBILE
+           =============================================================================
+           What: Hides the item icons (OSRS Wiki images) and their placeholders on mobile
+           Why: On small screens, table space is limited. Hiding icons allows more room
+                for the item name and critical data columns (prices, P&L) to remain readable.
+           How: Sets display:none on both .flip-icon (actual images) and .flip-icon-placeholder
+                (fallback emoji shown when no icon available). Also removes the gap in the
+                container since there's no icon to space from the text anymore.
+        */
+        .flip-icon,
+        .flip-icon-placeholder {
+            display: none;
+        }
+
+        /* Remove the gap in the item cell container since there's no icon on mobile */
+        .flip-item-cell {
+            gap: 0;
+        }
     }
 
     /* ============================================================

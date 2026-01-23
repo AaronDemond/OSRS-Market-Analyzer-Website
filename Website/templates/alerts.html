@@ -181,11 +181,14 @@
 
             <div class="form-group">
                 <label for="alert-type">Alert Type</label>
+                <!-- What: Dropdown to select the type of alert to create
+                     Why: Different alert types have different configuration options and behaviors
+                     How: Default is "threshold" as it's the most commonly used alert type -->
                 <select name="type" id="alert-type" required onchange="handleAlertTypeChange()" tabindex="1">
                     <option value="spread">Spread</option>
                     <option value="spike">Spike</option>
                     <option value="sustained">Sustained Move</option>
-                    <option value="threshold">Threshold</option>
+                    <option value="threshold" selected>Threshold</option>
                 </select>
                 <button type="button" class="alert-help-btn" onclick="openAlertHelpModal()" tabindex="2">
                     <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
@@ -569,12 +572,12 @@
             <!-- What: Dropdown to choose whether to alert on price going up or down -->
             <!-- Why: Users may only care about price increases (for selling) or decreases (for buying) -->
             <div class="form-group" id="threshold-direction-group" style="display: none;">
-                <label for="threshold-direction">Direction</label>
+                <label for="threshold-direction">Above or Below</label>
                 <select name="threshold_direction" id="threshold-direction" tabindex="31">
-                    <option value="up" selected>Up</option>
-                    <option value="down">Down</option>
+                    <option value="up" selected>Above</option>
+                    <option value="down">Down Below</option>
                 </select>
-                <small class="form-hint">Alert when price moves up or down from reference</small>
+                <small class="form-hint">Alert when price hits percentage threshold above or below its current value (or above/below a specified value) </small>
             </div>
 
             <!-- Threshold: Threshold Type selector -->
@@ -587,7 +590,7 @@
                     <option value="percentage" selected>Percentage</option>
                     <option value="value">Value (GP)</option>
                 </select>
-                <small class="form-hint">How to measure the threshold (percentage locks when tracking multiple items)</small>
+                <small class="form-hint">How to measure the threshold (percentage only for multiple items)</small>
             </div>
 
             <!-- Threshold: Threshold value input -->
@@ -5044,6 +5047,7 @@
             // Get all form group elements
             const elements = {
                 spreadScope: document.querySelector(groups.spreadScope),
+                spreadItems: document.querySelector(groups.spreadItems),  // Spread multi-item selector group
                 spikeScope: document.querySelector(groups.spikeScope),
                 spikeItems: document.querySelector(groups.spikeItems),
                 itemName: document.querySelector(groups.itemName),
@@ -5116,6 +5120,22 @@
                     SpikeMultiItemSelector.clear();
                 }
             };
+            
+            /**
+             * Helper to hide all spread alert specific fields
+             * What: Hides the spread scope selector and multi-item selector
+             * Why: When switching away from spread alert type, these fields should be hidden
+             *      to prevent duplicate item input elements from appearing
+             * How: Sets display to 'none' for spread-specific field groups and clears selected items
+             */
+            const hideSpreadFields = () => {
+                if (elements.spreadScope) elements.spreadScope.style.display = 'none';
+                if (elements.spreadItems) elements.spreadItems.style.display = 'none';
+                // Clear selected items when hiding
+                if (typeof SpreadMultiItemSelector !== 'undefined') {
+                    SpreadMultiItemSelector.clear();
+                }
+            };
 
             if (alertType === AlertsConfig.alertTypes.SPREAD) {
                 // Spread alerts: show spread-specific fields
@@ -5137,7 +5157,7 @@
                 // What: Configure form fields for spike alert creation
                 // Why: Spike alerts can monitor all items or specific item(s) via the multi-item selector
                 // How: Show spike-specific fields and use handleSpikeScopeChange to manage item selector visibility
-                elements.spreadScope.style.display = 'none';
+                hideSpreadFields();  // Hide spread items to prevent duplicate item inputs
                 if (elements.spikeScope) elements.spikeScope.style.display = 'block';
                 // Note: itemName is hidden for spike alerts - we use the multi-item selector instead
                 elements.itemName.style.display = 'none';
@@ -5150,10 +5170,9 @@
                 hideThresholdFields();
                 // Spike uses min/max only when all items selected; handleSpikeScopeChange manages visibility
                 this.handleSpikeScopeChange(formType);
-                this.handleSpikeScopeChange(formType);
             } else if (alertType === AlertsConfig.alertTypes.SUSTAINED) {
                 // Sustained Move alerts: scope selector + time frame + direction + sustained-specific fields
-                elements.spreadScope.style.display = 'none';
+                hideSpreadFields();  // Hide spread items to prevent duplicate item inputs
                 hideSpikeFields();
                 elements.itemName.style.display = 'none';
                 elements.price.style.display = 'none';
@@ -5184,9 +5203,11 @@
                  * Threshold alerts configuration
                  * What: Shows threshold-specific fields and hides other alert type fields
                  * Why: Threshold alerts have a unique set of configuration options
-                 * How: Hides spread/sustained/above/below specific fields, shows threshold fields
+                 * How: Hides spread/sustained/spike/above/below specific fields, shows threshold fields
                  */
-                elements.spreadScope.style.display = 'none';
+                hideSpreadFields();  // Hide spread items to prevent duplicate item inputs
+                hideSpikeFields();   // Hide spike items to prevent duplicate item inputs
+                hideSustainedFields();
                 if (elements.numberItems) elements.numberItems.style.display = 'none';
                 elements.itemName.style.display = 'none';  // Using threshold's own item selector
                 elements.price.style.display = 'none';  // Using threshold value instead
@@ -5196,7 +5217,6 @@
                 elements.direction.style.display = 'none';  // Using threshold direction instead
                 elements.minPrice.style.display = 'none';
                 elements.maxPrice.style.display = 'none';
-                hideSustainedFields();
 
                 // Show threshold-specific fields
                 if (elements.thresholdItemsTracked) elements.thresholdItemsTracked.style.display = 'block';
@@ -5215,7 +5235,10 @@
                 }
             } else {
                 // Above/Below alerts: show threshold fields
-                elements.spreadScope.style.display = 'none';
+                hideSpreadFields();  // Hide spread items to prevent duplicate item inputs
+                hideSpikeFields();   // Hide spike items to prevent duplicate item inputs
+                hideSustainedFields();
+                hideThresholdFields();
                 if (elements.numberItems) elements.numberItems.style.display = 'none';
                 elements.itemName.style.display = 'block';
                 elements.price.style.display = 'block';
@@ -5225,8 +5248,6 @@
                 elements.direction.style.display = 'none';
                 elements.minPrice.style.display = 'none';
                 elements.maxPrice.style.display = 'none';
-                hideSustainedFields();
-                hideThresholdFields();
 
                 // Reset is_all_items
                 document.querySelector(selectors.isAllItems).value = 'false';
@@ -6336,8 +6357,15 @@
              * @param {string} name - The item's display name
              */
             const addItem = (id, name) => {
-                // Check if already selected - prevent duplicates
-                if (this.selectedItems.some(item => item.id === id)) {
+                // =============================================================================
+                // CHECK FOR DUPLICATE ITEMS BEFORE ADDING
+                // =============================================================================
+                // What: Prevents the same item from being added multiple times to the selection
+                // Why: Users shouldn't be able to add duplicate items - this would cause confusion
+                //      and potentially duplicate alert notifications for the same item
+                // How: Compares IDs using String() conversion to handle type mismatches
+                //      (API returns numbers, DOM stores strings from dataset attributes)
+                if (this.selectedItems.some(item => String(item.id) === String(id))) {
                     this.showNotification(`${name} is already selected`, 'error');
                     return;
                 }
@@ -6440,9 +6468,16 @@
 
                 const items = await AlertsAPI.searchItems(query);
 
-                // Filter out already selected items
+                // =============================================================================
+                // FILTER OUT ALREADY SELECTED ITEMS FROM SUGGESTIONS
+                // =============================================================================
+                // What: Removes items that are already in the selectedItems array from the suggestions
+                // Why: Once a user has added an item to be tracked, it shouldn't appear in the
+                //      dropdown suggestions anymore - this prevents confusion and duplicate selection attempts
+                // How: Uses Array.filter() to keep only items whose ID is not found in selectedItems.
+                //      String conversion ensures type-safe comparison (API may return number, DOM stores string)
                 const filteredItems = items.filter(item =>
-                    !this.selectedItems.some(selected => selected.id === item.id)
+                    !this.selectedItems.some(selected => String(selected.id) === String(item.id))
                 );
 
                 if (filteredItems.length > 0) {
@@ -6709,8 +6744,15 @@
              * @param {string} name - The item's display name
              */
             const addItem = (id, name) => {
-                // Check if already selected - prevent duplicates
-                if (this.selectedItems.some(item => item.id === id)) {
+                // =============================================================================
+                // CHECK FOR DUPLICATE ITEMS BEFORE ADDING
+                // =============================================================================
+                // What: Prevents the same item from being added multiple times to the selection
+                // Why: Users shouldn't be able to add duplicate items - this would cause confusion
+                //      and potentially duplicate alert notifications for the same item
+                // How: Compares IDs using String() conversion to handle type mismatches
+                //      (API returns numbers, DOM stores strings from dataset attributes)
+                if (this.selectedItems.some(item => String(item.id) === String(id))) {
                     this.showNotification(`${name} is already selected`, 'error');
                     return;
                 }
@@ -6815,9 +6857,16 @@
                 // Fetch matching items from API
                 const items = await AlertsAPI.searchItems(query);
 
-                // Filter out already selected items from suggestions
+                // =============================================================================
+                // FILTER OUT ALREADY SELECTED ITEMS FROM SUGGESTIONS
+                // =============================================================================
+                // What: Removes items that are already in the selectedItems array from the suggestions
+                // Why: Once a user has added an item to be tracked, it shouldn't appear in the
+                //      dropdown suggestions anymore - this prevents confusion and duplicate selection attempts
+                // How: Uses Array.filter() to keep only items whose ID is not found in selectedItems.
+                //      String conversion ensures type-safe comparison (API returns number IDs, DOM stores string IDs)
                 const filteredItems = items.filter(item =>
-                    !this.selectedItems.some(selected => selected.id === item.id)
+                    !this.selectedItems.some(selected => String(selected.id) === String(item.id))
                 );
 
                 if (filteredItems.length > 0) {
@@ -7069,9 +7118,22 @@
 
             /**
              * Adds an item to the selected list.
+             * 
+             * What: Adds item to selectedItems array and updates UI
+             * Why: Central function for adding items from autocomplete or manual entry
+             * How: Checks for duplicates using String() conversion for type-safe comparison,
+             *      adds to array, updates hidden input and renders list
              */
             const addItem = (id, name) => {
-                if (this.selectedItems.some(item => item.id === id)) {
+                // =============================================================================
+                // CHECK FOR DUPLICATE ITEMS BEFORE ADDING
+                // =============================================================================
+                // What: Prevents the same item from being added multiple times to the selection
+                // Why: Users shouldn't be able to add duplicate items - this would cause confusion
+                //      and potentially duplicate alert notifications for the same item
+                // How: Compares IDs using String() conversion to handle type mismatches
+                //      (API returns numbers, DOM stores strings from dataset attributes)
+                if (this.selectedItems.some(item => String(item.id) === String(id))) {
                     this.showNotification(`${name} is already selected`, 'error');
                     return;
                 }
@@ -7159,8 +7221,20 @@
                 }
 
                 const items = await AlertsAPI.searchItems(query);
-                if (items && items.length > 0) {
-                    dropdown.innerHTML = items.map(item =>
+                
+                // =============================================================================
+                // FILTER OUT ALREADY SELECTED ITEMS FROM SUGGESTIONS
+                // =============================================================================
+                // What: Removes items that are already in the selectedItems array from the suggestions
+                // Why: Once a user has added an item to be tracked, it shouldn't appear in the
+                //      dropdown suggestions anymore - this prevents confusion and duplicate selection attempts
+                // How: Uses Array.filter() to keep only items whose ID is not found in selectedItems
+                const filteredItems = items ? items.filter(item =>
+                    !this.selectedItems.some(selected => String(selected.id) === String(item.id))
+                ) : [];
+                
+                if (filteredItems.length > 0) {
+                    dropdown.innerHTML = filteredItems.map(item =>
                         `<div class="suggestion-item" data-id="${item.id}" data-name="${item.name}">${item.name}</div>`
                     ).join('');
                     dropdown.style.display = 'block';
@@ -7173,8 +7247,9 @@
                         });
                     });
                 } else {
-                    dropdown.innerHTML = '<div class="no-suggestions">No items found</div>';
-                    dropdown.style.display = 'block';
+                    // If no items left after filtering, hide the dropdown entirely
+                    // (don't show "No items found" since items exist but are already selected)
+                    dropdown.style.display = 'none';
                     this.selectedIndex = -1;
                 }
             });
@@ -7461,8 +7536,15 @@
              * @param {string} name - The item's display name
              */
             const addItem = (id, name) => {
-                // Check if already selected - prevent duplicates
-                if (this.selectedItems.some(item => item.id === id)) {
+                // =============================================================================
+                // CHECK FOR DUPLICATE ITEMS BEFORE ADDING
+                // =============================================================================
+                // What: Prevents the same item from being added multiple times to the selection
+                // Why: Users shouldn't be able to add duplicate items - this would cause confusion
+                //      and potentially duplicate alert notifications for the same item
+                // How: Compares IDs using String() conversion to handle type mismatches
+                //      (API returns numbers, DOM stores strings from dataset attributes)
+                if (this.selectedItems.some(item => String(item.id) === String(id))) {
                     this.showNotification(`${name} is already selected`, 'error');
                     return;
                 }
@@ -7573,9 +7655,16 @@
                 // Fetch matching items from API
                 const items = await AlertsAPI.searchItems(query);
 
-                // Filter out already selected items from suggestions
+                // =============================================================================
+                // FILTER OUT ALREADY SELECTED ITEMS FROM SUGGESTIONS
+                // =============================================================================
+                // What: Removes items that are already in the selectedItems array from the suggestions
+                // Why: Once a user has added an item to be tracked, it shouldn't appear in the
+                //      dropdown suggestions anymore - this prevents confusion and duplicate selection attempts
+                // How: Uses Array.filter() to keep only items whose ID is not found in selectedItems.
+                //      String conversion ensures type-safe comparison (API returns number IDs, DOM stores string IDs)
                 const filteredItems = items.filter(item =>
-                    !this.selectedItems.some(selected => selected.id === item.id)
+                    !this.selectedItems.some(selected => String(selected.id) === String(item.id))
                 );
 
                 if (filteredItems.length > 0) {
@@ -7922,17 +8011,50 @@
          * @param {string} message - The error message to display
          */
         showError(message) {
-            // Try to show in create-alert tab's notification area, or fall back to My Alerts tab
-            let container = document.getElementById('create-alert');
-            let notificationsContainer = container ? container.querySelector('.form-error-container') : null;
+            // =============================================================================
+            // DETERMINE WHERE TO SHOW THE ERROR NOTIFICATION
+            // =============================================================================
+            // What: Find or create a container to display the error notification
+            // Why: Errors can occur on either the Create Alert tab (form validation) or
+            //       the My Alerts tab (validation errors passed from alert_detail.html)
+            // How: Check which tab is currently visible by checking the display style
+            //       If Create Alert is visible, show error above the form card
+            //       If My Alerts is visible, use triggered-notifications container
+            
+            let notificationsContainer = null;
+            
+            // Check which tab is currently visible by checking the display style of tab panes
+            // The active tab pane has display: block (or non-empty), inactive ones have display: none
+            const createAlertTab = document.getElementById('create-alert');
+            const myAlertsTab = document.getElementById('my-alerts');
+            
+            // isCreateAlertVisible: True if Create Alert tab pane is currently displayed
+            // Check for display === 'block' because that's what TabManager.switchTo sets
+            const isCreateAlertVisible = createAlertTab && createAlertTab.style.display === 'block';
+            
+            if (isCreateAlertVisible) {
+                // We're on the Create Alert tab - show error ABOVE the form card
+                notificationsContainer = createAlertTab.querySelector('.form-error-container');
 
-            // If no dedicated error container, create one at the top of the create alert form
-            if (!notificationsContainer) {
-                const form = document.querySelector('.create-alert-form');
-                if (form) {
-                    notificationsContainer = document.createElement('div');
-                    notificationsContainer.className = 'form-error-container';
-                    form.insertBefore(notificationsContainer, form.firstChild);
+                // If no dedicated error container exists, create one above the form (not inside it)
+                // What: Create a container div that sits above the white form card
+                // Why: User wants the error notification to appear above the form, not within it
+                // How: Insert the container as the first child of the tab pane, before the form
+                if (!notificationsContainer) {
+                    const form = document.querySelector('.create-alert-form');
+                    if (form && createAlertTab) {
+                        notificationsContainer = document.createElement('div');
+                        notificationsContainer.className = 'form-error-container';
+                        // Insert before the form, making it appear above the white card
+                        createAlertTab.insertBefore(notificationsContainer, form);
+                    }
+                }
+            } else {
+                // We're on My Alerts tab (or fallback) - use triggered-notifications container
+                // This is used when errors are passed from alert_detail.html via sessionStorage
+                const triggeredNotificationsContainer = document.getElementById('triggered-notifications');
+                if (triggeredNotificationsContainer) {
+                    notificationsContainer = triggeredNotificationsContainer;
                 }
             }
 
@@ -7958,6 +8080,10 @@
             }
 
             notificationsContainer.appendChild(notification);
+            
+            // Scroll to top of the form/container so user can see the error notification
+            // This ensures visibility even if user has scrolled down
+            notificationsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
             // Auto-dismiss after 5 seconds
             setTimeout(() => {
@@ -8329,6 +8455,36 @@
                         if (!selectedItemIds || selectedItemIds.trim() === '') {
                             errors.push('Please select at least one item');
                         }
+                    }
+                }
+
+                // =============================================================================
+                // ALL ITEMS MIN/MAX PRICE VALIDATION
+                // =============================================================================
+                // What: Validates that both minimum and maximum price fields have values when
+                //       "All Items" is selected for any alert type
+                // Why: When monitoring all items, price range filters are REQUIRED to narrow
+                //       down the items being tracked - without them, the alert would monitor
+                //       every single item in the database which is impractical and noisy
+                // How: Check the hidden is-all-items field value, and if true, verify both
+                //       minimum-price and maximum-price inputs have non-empty values
+                // Note: This validation applies to ALL alert types (spread, spike, sustained, threshold)
+                //       when they are configured to track "All Items"
+                const isAllItemsValue = document.getElementById('is-all-items').value;
+                if (isAllItemsValue === 'true') {
+                    // minPriceValue: The value from the minimum price input field
+                    // maxPriceValue: The value from the maximum price input field
+                    // We check for empty string, null, or undefined to catch all cases
+                    const minPriceValue = document.getElementById('minimum-price').value;
+                    const maxPriceValue = document.getElementById('maximum-price').value;
+                    
+                    // Both fields must have values when All Items is selected
+                    // We trim to catch whitespace-only inputs as invalid
+                    if (!minPriceValue || minPriceValue.trim() === '') {
+                        errors.push('Minimum Price is required when tracking All Items');
+                    }
+                    if (!maxPriceValue || maxPriceValue.trim() === '') {
+                        errors.push('Maximum Price is required when tracking All Items');
                     }
                 }
 
@@ -8760,6 +8916,33 @@
             const newUrl = window.location.pathname;
             window.history.replaceState({}, document.title, newUrl);
         }
+        
+        // =============================================================================
+        // CHECK FOR VALIDATION ERROR FROM ALERT DETAIL PAGE
+        // =============================================================================
+        // What: Checks sessionStorage for error messages passed from alert_detail.html
+        // Why: When server-side validation fails during alert edit (e.g., missing min/max
+        //       price for All Items), the server returns a redirect URL. The alert_detail.html
+        //       stores the error in sessionStorage before redirecting here.
+        // How: Check sessionStorage for 'alertValidationError' key, if present show it
+        //       as an error notification and remove the key to prevent re-showing on refresh
+        const validationError = sessionStorage.getItem('alertValidationError');
+        if (validationError) {
+            // Remove the error from sessionStorage immediately so it doesn't show again on refresh
+            sessionStorage.removeItem('alertValidationError');
+            // Show the error notification using FormValidation (red error notification)
+            FormValidation.showError(validationError);
+        }
+        
+        // =============================================================================
+        // INITIALIZE DEFAULT ALERT TYPE FORM FIELDS
+        // =============================================================================
+        // What: Triggers the alert type change handler on page load
+        // Why: The default alert type is now "threshold" but the form fields need to be
+        //       configured to show the correct inputs for threshold alerts on initial load
+        // How: Call handleAlertTypeChange which will read the current selected value and
+        //       show/hide the appropriate form fields
+        handleAlertTypeChange();
     })();
 
     /**
@@ -8825,8 +9008,6 @@
         </div>
         <div class="alert-help-modal-body">
             <div class="alert-help-tabs">
-                <button class="alert-help-tab active" data-help-tab="above">Above</button>
-                <button class="alert-help-tab" data-help-tab="below">Below</button>
                 <button class="alert-help-tab" data-help-tab="spread">Spread</button>
                 <button class="alert-help-tab" data-help-tab="spike">Spike</button>
                 <button class="alert-help-tab" data-help-tab="sustained">Sustained</button>
@@ -9197,7 +9378,7 @@
                             </svg>
                             How It Works
                         </h4>
-                        <p>Threshold alerts compare the current price against a <strong>baseline price</strong> (captured when the alert is created).
+                        <p>Threshold alerts compare the current price against a <strong>baseline price</strong> (captured when the alert is created), or when price crosses over a specific value you specify. When tracking more than one item, only percentage thresholds are available.
                             When the price changes by your specified percentage or GP amount, you'll be notified. Unlike spike alerts that use
                             rolling time windows, threshold alerts use a fixed reference point.</p>
                         
@@ -9219,8 +9400,8 @@
                                 </li>
                                 <li><strong>Threshold Type:</strong> How to measure the price change:
                                     <ul style="margin-top: 4px; margin-left: 16px;">
-                                        <li><em>Percentage</em> - Alert triggers when price changes by X%. For example, "10" means a 10% change from baseline. Best for comparing items of different values.</li>
-                                        <li><em>Value (GP)</em> - Alert triggers when price changes by X GP. For example, "1000000" means a 1M GP change. Only available when tracking a single specific item.</li>
+                                        <li><em>Percentage</em> - Alert triggers when price changes by X% with respect to its value at alert creation time. For example, "10" means a 10% change from baseline. Best for comparing items of different values.</li>
+                                        <li><em>Value (GP)</em> - Alert triggers when price crosses above or below a specified value.</li>
                                     </ul>
                                 </li>
                                 <li><strong>Threshold:</strong> The amount of change required to trigger the alert. Enter a number between 0.01 and 100 for percentages, or any GP value for Value mode. For percentage, enter "10" for 10%, not "0.10".</li>

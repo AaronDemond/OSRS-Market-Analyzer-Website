@@ -733,6 +733,27 @@ def create_alert(request):
         email_notification = request.POST.get('email_notification') == 'on'
         group_id = request.POST.get('group_id')  # Group to assign alert to
         
+        # =============================================================================
+        # SERVER-SIDE VALIDATION: ALL ITEMS REQUIRES MIN/MAX PRICE
+        # =============================================================================
+        # What: Validates that both minimum and maximum price fields have values when
+        #       "All Items" is selected for any alert type
+        # Why: This is a critical server-side backup validation in case client-side
+        #       validation is bypassed (e.g., disabled JavaScript, direct API calls)
+        #       When monitoring all items, price range filters are REQUIRED to narrow
+        #       down the items being tracked and prevent noisy alerts
+        # How: Check if is_all_items_flag is True, and if so, verify both minimum_price
+        #       and maximum_price have non-empty values. If validation fails, add an
+        #       error message and redirect back to the alerts page
+        # Note: This validation applies to ALL alert types (spread, spike, sustained, threshold)
+        if is_all_items_flag:
+            # Check if either minimum_price or maximum_price is missing or empty
+            # minimum_price and maximum_price come as strings from POST, so we check
+            # for None, empty string, or whitespace-only values
+            if not minimum_price or not minimum_price.strip() or not maximum_price or not maximum_price.strip():
+                messages.error(request, 'Minimum Price and Maximum Price are required when tracking All Items')
+                return redirect('alerts')
+        
         # show_notification: Controls whether a notification banner appears when alert triggers
         # What: Boolean flag from checkbox input
         # Why: Users may want alerts to track data without notification banners
@@ -955,10 +976,24 @@ def create_alert(request):
         # What: Calculate the percentage/threshold value to store
         # Why: Different alert types use the percentage field for different purposes
         # How: For threshold alerts, use threshold_value; for others use percentage
+        # =============================================================================
+        # IMPORTANT: For threshold alerts, we must store in the correct field based on threshold_type:
+        #   - 'percentage' type: Store in percentage field, target_price should be None
+        #   - 'value' type: Store in target_price field, percentage should be None
+        # This ensures data integrity and prevents confusion about which field is authoritative
         percentage_value = None
+        target_price_value = None
+        
         if alert_type == 'threshold' and threshold_value:
-            percentage_value = float(threshold_value)
+            # For threshold alerts, determine which field to store the value in
+            if threshold_type == 'value':
+                # Value-based threshold: Store in target_price, leave percentage as None
+                target_price_value = int(float(threshold_value))
+            else:
+                # Percentage-based threshold: Store in percentage, leave target_price as None
+                percentage_value = float(threshold_value)
         elif percentage:
+            # Non-threshold alerts use percentage field normally
             percentage_value = float(percentage)
         
         # =============================================================================
@@ -984,6 +1019,8 @@ def create_alert(request):
             price=price_value,
             reference=reference_value,
             percentage=percentage_value,
+            # target_price: Set only for value-based threshold alerts, None otherwise
+            target_price=target_price_value,
             is_all_items=is_all_items,
             minimum_price=int(minimum_price) if minimum_price else None,
             maximum_price=int(maximum_price) if maximum_price else None,
@@ -1092,14 +1129,14 @@ def create_alert(request):
                     alert.save()
         
         # =============================================================================
-        # THRESHOLD ALERT: CAPTURE REFERENCE PRICES AND TARGET PRICE
+        # THRESHOLD ALERT: CAPTURE REFERENCE PRICES OR VALIDATE TARGET PRICE
         # =============================================================================
-        # What: For threshold alerts, capture baseline prices or target price based on threshold_type
+        # What: For threshold alerts, capture baseline prices for percentage-based OR validate value-based
         # Why: Percentage-based thresholds need a baseline to calculate % change from
-        #      Value-based thresholds need a target price to compare against
+        #      Value-based thresholds already have target_price set from creation
         # How: 
         #      - For percentage: Fetch current prices and store in reference_prices JSON dict
-        #      - For value: Store the threshold value in target_price field
+        #      - For value: Just ensure reference_prices is cleared (target_price already set above)
         if alert_type == 'threshold':
             # Validate: Value-based thresholds only allowed for single items
             # What: Block value-based threshold with multiple items
@@ -1112,20 +1149,22 @@ def create_alert(request):
             
             if threshold_type == 'value' and has_multiple_items:
                 # This shouldn't happen if the UI is working correctly, but handle it gracefully
-                # Force switch to percentage mode and recapture reference prices
+                # Force switch to percentage mode: move value from target_price to percentage
+                # What: Convert value-based alert to percentage-based when multiple items detected
+                # Why: Value-based thresholds are only valid for single items
+                # How: Transfer the value to percentage field, clear target_price, update threshold_type
                 alert.threshold_type = 'percentage'
+                alert.percentage = float(alert.target_price) if alert.target_price else float(threshold_value) if threshold_value else None
+                alert.target_price = None
                 threshold_type = 'percentage'
                 alert.save()
             
             if threshold_type == 'value':
-                # Value-based threshold: Store the target price
-                # What: For value-based alerts, the threshold value becomes the target price
-                # Why: Alert triggers when current price crosses this exact value
-                # How: Store the threshold_value in the target_price field
-                if threshold_value:
-                    alert.target_price = int(float(threshold_value))
-                    alert.reference_prices = None  # Clear any reference prices
-                    alert.save()
+                # Value-based threshold: target_price already set in create(), just clear reference_prices
+                # What: Ensure reference_prices is None for value-based alerts
+                # Why: Value-based alerts use target_price, not reference_prices
+                alert.reference_prices = None
+                alert.save()
             else:
                 # Percentage-based threshold: Capture reference prices for all monitored items
                 # What: Fetch current prices and store as baseline for % calculations
@@ -1579,6 +1618,38 @@ def update_alert(request):
                 
                 # Handle is_all_items
                 is_all_items = data.get('is_all_items', False)
+                
+                # =============================================================================
+                # SERVER-SIDE VALIDATION: ALL ITEMS REQUIRES MIN/MAX PRICE
+                # =============================================================================
+                # What: Validates that both minimum and maximum price fields have values when
+                #       "All Items" is selected for any alert type during an UPDATE operation
+                # Why: This is a critical server-side backup validation in case client-side
+                #       validation is bypassed (e.g., disabled JavaScript, direct API calls)
+                #       When monitoring all items, price range filters are REQUIRED to narrow
+                #       down the items being tracked and prevent noisy alerts
+                # How: Check if is_all_items is True, and if so, verify both minimum_price
+                #       and maximum_price have non-empty values in the request data.
+                #       If validation fails, return a JSON error response with redirect URL
+                # Note: This validation applies to ALL alert types (spread, spike, sustained, threshold)
+                if is_all_items:
+                    # minimum_price and maximum_price: Extract from request data
+                    # These values may be None (not provided), empty string (cleared), or a valid number
+                    minimum_price_val = data.get('minimum_price')
+                    maximum_price_val = data.get('maximum_price')
+                    
+                    # Check if either value is missing, None, or empty string
+                    # We need to handle both None and empty string cases
+                    min_missing = minimum_price_val is None or (isinstance(minimum_price_val, str) and not minimum_price_val.strip())
+                    max_missing = maximum_price_val is None or (isinstance(maximum_price_val, str) and not maximum_price_val.strip())
+                    
+                    if min_missing or max_missing:
+                        return JsonResponse({
+                            'status': 'error',
+                            'error': 'Minimum Price and Maximum Price are required when tracking All Items',
+                            'redirect': '/alerts/'
+                        }, status=400)
+                
                 alert.is_all_items = is_all_items
                 
                 # items_were_added: Track if NEW items were added to the alert
@@ -2299,9 +2370,32 @@ def update_single_alert(request, alert_id):
     else:
         alert.direction = None
     
-    # Handle percentage
+    # =============================================================================
+    # HANDLE PERCENTAGE/TARGET_PRICE BASED ON ALERT TYPE AND THRESHOLD_TYPE
+    # =============================================================================
+    # What: Set the correct field (percentage or target_price) based on alert configuration
+    # Why: For threshold alerts, only one of these fields should be populated:
+    #      - 'percentage' type: Store in percentage field, target_price should be None
+    #      - 'value' type: Store in target_price field, percentage should be None
+    #      This ensures data integrity and prevents confusion about which field is authoritative
+    # How: Check alert type and threshold_type to determine which field to update
     percentage = data.get('percentage')
-    alert.percentage = float(percentage) if percentage else None
+    
+    if alert.type == 'threshold':
+        # Threshold alerts: Determine which field to use based on threshold_type
+        new_threshold_type = data.get('threshold_type') or alert.threshold_type or 'percentage'
+        
+        if new_threshold_type == 'value':
+            # Value-based: Store in target_price, clear percentage
+            # Note: target_price is handled separately below in the threshold-specific section
+            alert.percentage = None
+        else:
+            # Percentage-based: Store in percentage, clear target_price
+            alert.percentage = float(percentage) if percentage else None
+            # Note: target_price clearing is handled in the threshold-specific section below
+    else:
+        # Non-threshold alerts use percentage field normally
+        alert.percentage = float(percentage) if percentage else None
     
     # =============================================================================
     # THRESHOLD ALERT: HANDLE THRESHOLD_TYPE CHANGES AND TARGET_PRICE
@@ -2346,10 +2440,11 @@ def update_single_alert(request, alert_id):
             alert.threshold_type = new_threshold_type
             
             if new_threshold_type == 'value':
-                # Switching to value-based: clear reference_prices, set target_price
-                # What: When changing to value mode, baseline prices are no longer needed
+                # Switching to value-based: clear reference_prices and percentage, set target_price
+                # What: When changing to value mode, baseline prices and percentage are no longer needed
                 # Why: Value mode compares against a fixed target price, not % from baseline
                 alert.reference_prices = None
+                alert.percentage = None  # Clear percentage field for value-based alerts
                 target_price = data.get('target_price') or data.get('percentage')
                 if target_price:
                     alert.target_price = int(float(target_price))
@@ -2357,7 +2452,7 @@ def update_single_alert(request, alert_id):
                 # Switching to percentage-based: clear target_price, recapture reference_prices
                 # What: When changing to percentage mode, need to capture new baselines
                 # Why: Baselines are needed to calculate % change
-                alert.target_price = None
+                alert.target_price = None  # Clear target_price field for percentage-based alerts
                 
                 # Recapture reference prices for all monitored items
                 all_prices = get_all_current_prices()

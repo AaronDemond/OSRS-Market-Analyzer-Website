@@ -296,7 +296,7 @@ class Alert(models.Model):
             # Why: Needed for admin display and debugging
             # How: Checks is_all_items, then item_ids for multi-item, then falls back to single item
             if self.is_all_items:
-                return f"All items spread >= {self.percentage}%"
+                return f"All items with a spread >= {self.percentage}%"
             elif self.item_ids:
                 # Multi-item spread alert - show count of items being monitored
                 import json
@@ -361,14 +361,24 @@ class Alert(models.Model):
         # How: Formats based on threshold_type (percentage vs value) and tracks items (all vs specific)
         if self.type == 'threshold':
             direction = (self.direction or 'up').capitalize()
-            threshold_val = self.percentage if self.percentage is not None else 0
             threshold_type = self.threshold_type or 'percentage'
             reference = (self.reference or 'high').capitalize()
             
-            # Format threshold based on type
+            # =============================================================================
+            # DETERMINE THRESHOLD VALUE BASED ON TYPE
+            # =============================================================================
+            # What: Gets the correct threshold value depending on whether this is a percentage or value alert
+            # Why: Percentage alerts store their value in self.percentage, but value-based alerts store
+            #      their target price in self.target_price - using the wrong field causes display bugs
+            # How: Check threshold_type and use the appropriate field:
+            #      - 'percentage': Use self.percentage (e.g., 5 for "5% change")
+            #      - 'value': Use self.target_price (e.g., 1500000 for "above 1,500,000 gp")
             if threshold_type == 'percentage':
+                threshold_val = self.percentage if self.percentage is not None else 0
                 threshold_str = f"{threshold_val}%"
             else:
+                # Value-based threshold uses target_price, not percentage
+                threshold_val = self.target_price if self.target_price is not None else 0
                 threshold_str = f"{int(threshold_val):,} gp"
             
             # Determine target (all items, multiple specific, or single item)
@@ -388,7 +398,10 @@ class Alert(models.Model):
             else:
                 target = self.item_name or "Unknown item"
             
-            return f"{target} threshold {direction} {threshold_str} ({reference})"
+            if direction == "Up":
+                return f"{target}  above {threshold_str} ({reference})"
+            else:
+                return f"{target}  below {threshold_str} ({reference})"
         if self.is_all_items:
             return f"All items {self.type} {self.price:,} ({self.reference})"
         return f"{self.item_name} {self.type} {self.price:,} ({self.reference})"
@@ -485,14 +498,24 @@ class Alert(models.Model):
         # How: Parses triggered_data JSON and formats based on items and threshold type
         if self.type == "threshold":
             direction = self.direction or 'up'
-            threshold_val = self.percentage if self.percentage is not None else 0
             threshold_type = self.threshold_type or 'percentage'
             reference = self.reference or 'high'
             
-            # Format threshold based on type
+            # =============================================================================
+            # DETERMINE THRESHOLD VALUE BASED ON TYPE
+            # =============================================================================
+            # What: Gets the correct threshold value depending on whether this is a percentage or value alert
+            # Why: Percentage alerts store their value in self.percentage, but value-based alerts store
+            #      their target price in self.target_price - using the wrong field causes display bugs
+            # How: Check threshold_type and use the appropriate field:
+            #      - 'percentage': Use self.percentage (e.g., 5 for "5% change")
+            #      - 'value': Use self.target_price (e.g., 1500000 for "above 1,500,000 gp")
             if threshold_type == 'percentage':
+                threshold_val = self.percentage if self.percentage is not None else 0
                 threshold_str = f"{threshold_val}%"
             else:
+                # Value-based threshold uses target_price, not percentage
+                threshold_val = self.target_price if self.target_price is not None else 0
                 threshold_str = f"{int(threshold_val):,} gp"
             
             direction_word = "up" if direction == "up" else "down"

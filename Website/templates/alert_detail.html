@@ -1402,6 +1402,88 @@
         transform: translateY(-1px);
         box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
     }
+    
+    /* =============================================================================
+       ERROR NOTIFICATION STYLES
+       ============================================================================= */
+    /* What: Styles for inline error notification banners shown at the top of the page
+       Why: Provides visual feedback when form validation fails (e.g., missing min/max price)
+       How: Fixed-position red notification with dismiss button and fade-out animation */
+    
+    /* error-notification-container: Container for error notification banners
+       positioned at the top of the content area */
+    .error-notification-container {
+        margin-bottom: 20px;
+    }
+    
+    /* error-notification: The red notification banner itself
+       Styled to match the triggered-notification pattern from alerts.html */
+    .error-notification {
+        background: linear-gradient(135deg, #ff4757 0%, #ff6b81 100%);
+        border-radius: 12px;
+        padding: 15px 45px 15px 20px;
+        color: white;
+        font-weight: 500;
+        box-shadow: 0 4px 15px rgba(255, 71, 87, 0.3);
+        position: relative;
+        margin-bottom: 10px;
+        animation: slideInDown 0.3s ease-out;
+    }
+    
+    /* dismiss-btn: X button to manually close the notification */
+    .error-notification .dismiss-btn {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: white;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        font-size: 18px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s ease;
+        line-height: 1;
+    }
+    
+    .error-notification .dismiss-btn:hover {
+        background: rgba(255, 255, 255, 0.35);
+    }
+    
+    /* dismissing: Class added when notification is being dismissed
+       Triggers the fade-out animation */
+    .error-notification.dismissing {
+        animation: slideOutUp 0.3s ease-out forwards;
+    }
+    
+    /* slideInDown: Animation for notification appearing */
+    @keyframes slideInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    /* slideOutUp: Animation for notification being dismissed */
+    @keyframes slideOutUp {
+        from {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        to {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+    }
 </style>
 {% endblock %}
 
@@ -1413,6 +1495,15 @@
         </svg>
         Back to Alerts
     </a>
+    
+    <!-- =============================================================================
+         ERROR NOTIFICATION CONTAINER
+         ============================================================================= -->
+    <!-- What: Container for displaying validation error notifications at the top of the page
+         Why: When form validation fails (e.g., missing min/max price for All Items),
+              we need a visible area to show the red error notification
+         How: Empty div that gets populated by showValidationError() JavaScript function -->
+    <div id="error-notification-container" class="error-notification-container"></div>
     
     <!-- Header Card -->
     <div class="alert-header" id="alertHeader">
@@ -1541,10 +1632,13 @@
                         <span class="detail-value">{% if alert.price %}{{ alert.time_frame_display }}{% else %}Not Set{% endif %}</span>
                     </div>
                     <div class="detail-item">
-                        <span class="detail-label">Direction</span>
+                        <!-- What: Displays the direction setting for spike/sustained alerts
+                             Why: Users need to see whether the alert triggers on price increases, decreases, or both
+                             How: Maps database values (up/down/both) to user-friendly labels (Above/Below/Both) -->
+                        <span class="detail-label">Above / Below</span>
                         <span class="detail-value">
-                            {% if alert.direction == 'up' %}Up Only
-                            {% elif alert.direction == 'down' %}Down Only
+                            {% if alert.direction == 'up' %}Above
+                            {% elif alert.direction == 'down' %}Below
                             {% else %}Both{% endif %}
                         </span>
                     </div>
@@ -1562,10 +1656,13 @@
                     ============================================================================= -->
                     {% if alert.type == 'threshold' %}
                     <div class="detail-item">
-                        <span class="detail-label">Direction</span>
+                        <!-- What: Displays the direction setting for threshold alerts
+                             Why: Users need to see whether the alert triggers when price goes above or below threshold
+                             How: Maps database values (up/down) to user-friendly labels (Above/Below) -->
+                        <span class="detail-label">Above / Below</span>
                         <span class="detail-value">
-                            {% if alert.direction == 'up' %}Up Only
-                            {% elif alert.direction == 'down' %}Down Only
+                            {% if alert.direction == 'up' %}Above
+                            {% elif alert.direction == 'down' %}Below
                             {% else %}Both{% endif %}
                         </span>
                     </div>
@@ -1674,25 +1771,31 @@
                         <small class="form-hint">The condition that triggers this alert</small>
                     </div>
                     
-                    <!-- Direction (spike/sustained) -->
+                    <!-- Above / Below (spike/sustained) -->
+                    <!-- What: Dropdown to select price movement direction for spike/sustained alerts
+                         Why: Users can choose to trigger on price increases (Above), decreases (Below), or both
+                         How: Displays "Above/Below" labels but saves as "up/down" values to the database -->
                     <div class="form-group" id="direction-group" style="display: none;">
-                        <label for="edit-direction">Direction</label>
+                        <label for="edit-direction">Above / Below</label>
                         <select id="edit-direction">
                             <option value="both" {% if alert.direction == 'both' or not alert.direction %}selected{% endif %}>Both</option>
-                            <option value="up" {% if alert.direction == 'up' %}selected{% endif %}>Up</option>
-                            <option value="down" {% if alert.direction == 'down' %}selected{% endif %}>Down</option>
+                            <option value="up" {% if alert.direction == 'up' %}selected{% endif %}>Above</option>
+                            <option value="down" {% if alert.direction == 'down' %}selected{% endif %}>Below</option>
                         </select>
-                        <small class="form-hint">Direction of price movement to trigger</small>
+                        <small class="form-hint">Price movement direction to trigger alert</small>
                     </div>
                     
-                    <!-- Direction (threshold - up/down only, no 'both') -->
+                    <!-- Above / Below (threshold - up/down only, no 'both') -->
+                    <!-- What: Dropdown to select price movement direction for threshold alerts
+                         Why: Threshold alerts trigger when price goes above or below a target
+                         How: Displays "Above/Below" labels but saves as "up/down" values to the database -->
                     <div class="form-group" id="threshold-direction-group" style="display: none;">
-                        <label for="edit-threshold-direction">Direction</label>
+                        <label for="edit-threshold-direction">Above / Below</label>
                         <select id="edit-threshold-direction">
-                            <option value="up" {% if alert.direction == 'up' or not alert.direction %}selected{% endif %}>Up</option>
-                            <option value="down" {% if alert.direction == 'down' %}selected{% endif %}>Down</option>
+                            <option value="up" {% if alert.direction == 'up' or not alert.direction %}selected{% endif %}>Above</option>
+                            <option value="down" {% if alert.direction == 'down' %}selected{% endif %}>Below</option>
                         </select>
-                        <small class="form-hint">Direction of price movement to trigger alert</small>
+                        <small class="form-hint">Price movement direction to trigger alert</small>
                     </div>
                     
                     <!-- Group -->
@@ -3652,9 +3755,100 @@ document.getElementById('edit-email-notification').addEventListener('change', fu
     if (label) label.textContent = this.checked ? 'Enabled' : 'Disabled';
 });
 
+// =============================================================================
+// VALIDATION ERROR NOTIFICATION DISPLAY
+// =============================================================================
+/**
+ * Shows a validation error notification at the top of the page.
+ * 
+ * What: Displays a red notification banner with the error message and a dismiss button
+ * Why: Provides immediate visual feedback when form validation fails (e.g., missing
+ *      required fields like min/max price when All Items is selected)
+ * How: Creates a notification element, appends it to the error-notification-container,
+ *      adds click handler for dismiss button, and auto-dismisses after 5 seconds
+ * 
+ * @param {string} message - The error message to display to the user
+ */
+function showValidationError(message) {
+    // container: The div element where error notifications are displayed
+    // Located at the top of the page, after the back-link
+    const container = document.getElementById('error-notification-container');
+    if (!container) return;
+    
+    // Remove any existing error notifications before showing new one
+    // This prevents multiple error notifications from stacking up
+    container.querySelectorAll('.error-notification').forEach(n => n.remove());
+    
+    // Create the notification element with the error message and dismiss button
+    // notification: The red banner element that displays the error
+    const notification = document.createElement('div');
+    notification.className = 'error-notification';
+    notification.innerHTML = `${message}<button class="dismiss-btn" type="button">&times;</button>`;
+    
+    // Add click handler for the dismiss button
+    // Clicking the X triggers the fade-out animation then removes the element
+    const dismissBtn = notification.querySelector('.dismiss-btn');
+    if (dismissBtn) {
+        dismissBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            // Add dismissing class to trigger the slideOutUp animation
+            notification.classList.add('dismissing');
+            // Remove the element after the animation completes (300ms)
+            setTimeout(() => notification.remove(), 300);
+        });
+    }
+    
+    // Append the notification to the container
+    container.appendChild(notification);
+    
+    // Scroll to top so user can see the error notification
+    // This ensures visibility even if user has scrolled down the page
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // Auto-dismiss after 5 seconds if not manually dismissed
+    // This matches the behavior of error notifications in alerts.html
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.classList.add('dismissing');
+            setTimeout(() => notification.remove(), 300);
+        }
+    }, 5000);
+}
+
 async function saveChanges() {
     const alertType = document.getElementById('edit-type').value;
     const isAllItems = document.getElementById('edit-is-all-items').value === 'true';
+    
+    // =============================================================================
+    // CLIENT-SIDE VALIDATION: ALL ITEMS REQUIRES MIN/MAX PRICE
+    // =============================================================================
+    // What: Validates that both minimum and maximum price fields have values when
+    //       "All Items" is selected for any alert type during an UPDATE operation
+    // Why: When monitoring all items, price range filters are REQUIRED to narrow
+    //       down the items being tracked - without them, the alert would monitor
+    //       every single item in the database which is impractical and noisy
+    // How: Check if isAllItems is true, and if so, verify both edit-minimum-price
+    //       and edit-maximum-price inputs have non-empty values. If validation fails,
+    //       show an error notification and abort the save operation
+    // Note: This validation applies to ALL alert types (spread, spike, sustained, threshold)
+    if (isAllItems) {
+        // minPriceValue: The value from the minimum price input field
+        // maxPriceValue: The value from the maximum price input field
+        const minPriceValue = document.getElementById('edit-minimum-price').value;
+        const maxPriceValue = document.getElementById('edit-maximum-price').value;
+        
+        // Both fields must have values when All Items is selected
+        // We trim to catch whitespace-only inputs as invalid
+        const minMissing = !minPriceValue || minPriceValue.trim() === '';
+        const maxMissing = !maxPriceValue || maxPriceValue.trim() === '';
+        
+        if (minMissing || maxMissing) {
+            // Show validation error notification and abort save
+            showValidationError('Minimum Price and Maximum Price are required when tracking All Items');
+            return;  // Stop save operation - don't send request to server
+        }
+    }
     
     // Get item_ids from multi-item selector
     // item_ids: Comma-separated string of item IDs for multi-item spread alerts
@@ -3822,7 +4016,22 @@ async function saveChanges() {
                 window.location.href = window.location.pathname + '?edit_saved=1';
             }
         } else {
-            showErrorModal('Error Saving', result.error || 'An unknown error occurred while saving changes.');
+            // =============================================================================
+            // HANDLE SERVER-SIDE VALIDATION ERRORS WITH REDIRECT
+            // =============================================================================
+            // What: Checks if the server response includes a redirect URL (e.g., for validation errors)
+            // Why: When server-side validation fails (e.g., missing min/max price for All Items),
+            //       the server returns an error with a redirect URL to send the user back to /alerts/
+            // How: If result.redirect exists, redirect to that URL. Otherwise, show the error modal.
+            if (result.redirect) {
+                // Server requested a redirect (e.g., validation failed)
+                // Store error message in sessionStorage so it can be displayed on the alerts page
+                // The alerts page will check for this and show the notification
+                sessionStorage.setItem('alertValidationError', result.error || 'An error occurred');
+                window.location.href = result.redirect;
+            } else {
+                showErrorModal('Error Saving', result.error || 'An unknown error occurred while saving changes.');
+            }
         }
     } catch (error) {
         console.error('Error:', error);
