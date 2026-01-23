@@ -1,0 +1,300 @@
+/* =============================================================================
+   GROUP SELECTOR CSS
+   What: Shared styles for the group dropdown with "+" button and new group modal
+   Why: Reusable component used on both alert creation and alert edit pages
+   How: Provides consistent styling for group selection and creation UI
+   
+   Used by:
+   - alerts.html (alert creation page)
+   - alert_detail.html (alert edit page)
+============================================================================= */
+
+/* =============================================================================
+   GROUP SELECTOR WRAPPER
+   What: Container for group dropdown and add button
+   Why: Allows the "+" button to be positioned next to the dropdown
+   How: Flex layout with small gap between elements
+============================================================================= */
+
+.group-selector-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* The group dropdown should take most of the space */
+/* What: Makes the select element fill available width */
+/* Why: Button should be fixed size, dropdown should expand */
+/* How: flex: 1 makes it grow to fill remaining space */
+.group-selector-wrapper select {
+    flex: 1;
+}
+
+/* =============================================================================
+   ADD GROUP BUTTON
+   What: Green circular "+" button that opens the new group modal
+   Why: Allows users to create new groups inline without leaving the page
+   How: Circular green button with plus icon, hover effects for feedback
+============================================================================= */
+
+.btn-add-group {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    border-radius: 50%;
+    background: #28a745;
+    color: white;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    font-weight: bold;
+    transition: background-color 0.2s, transform 0.1s;
+    padding: 0;
+    line-height: 1;
+}
+
+/* Hover state - slightly darker green and scale up */
+/* What: Visual feedback when user hovers over the button */
+/* Why: Indicates the button is interactive */
+/* How: Darker background color and slight scale increase */
+.btn-add-group:hover {
+    background: #218838;
+    transform: scale(1.1);
+}
+
+/* Active/click state - scale down for "press" effect */
+/* What: Visual feedback when user clicks the button */
+/* Why: Provides tactile feedback that click was registered */
+/* How: Scale down slightly to simulate button press */
+.btn-add-group:active {
+    transform: scale(0.95);
+}
+
+/* SVG icon inside the button */
+/* What: Sizes the plus icon inside the button */
+/* Why: Ensures consistent icon size */
+/* How: Fixed width and height */
+.btn-add-group svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* =============================================================================
+   NEW GROUP MODAL
+   What: Modal dialog for creating a new alert group
+   Why: Users need a way to create groups inline while on alert pages
+   How: Overlay with centered modal content, slide-in animation
+============================================================================= */
+
+/* Modal overlay - the dark backdrop behind the modal */
+/* What: Semi-transparent overlay that covers the entire screen */
+/* Why: Focuses attention on the modal, prevents interaction with page behind */
+/* How: Fixed positioning, full screen coverage, centered flexbox for content */
+.new-group-modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Show state - displays the modal with flex centering */
+/* What: Makes the modal visible */
+/* Why: Modal is hidden by default, shown via JavaScript */
+/* How: Changes display from none to flex */
+.new-group-modal-overlay.show {
+    display: flex;
+}
+
+/* Modal content container */
+/* What: The actual modal box that contains the form */
+/* Why: Contains and styles the modal content */
+/* How: White background, rounded corners, shadow, max-width for readability */
+.new-group-modal-content {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    max-width: 400px;
+    width: 90%;
+    animation: newGroupModalSlideIn 0.2s ease-out;
+}
+
+/* Slide-in animation for modal appearance */
+/* What: Animates the modal sliding down and fading in */
+/* Why: Provides smooth, polished appearance */
+/* How: Keyframes animation from translateY(-20px) and opacity 0 to normal */
+@keyframes newGroupModalSlideIn {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Modal header */
+/* What: Top section of modal with icon and title */
+/* Why: Identifies the purpose of the modal */
+/* How: Flex layout with gap, padding, bottom border for separation */
+.new-group-modal-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 24px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+/* Header icon styling */
+/* What: Styles the group icon in the header */
+/* Why: Visual indicator of modal purpose */
+/* How: Fixed size, green color to match add button */
+.new-group-modal-header svg {
+    width: 28px;
+    height: 28px;
+    color: #28a745;
+}
+
+/* Header title */
+/* What: "Create New Group" text */
+/* Why: Clearly states modal purpose */
+/* How: No margin, appropriate font size and color */
+.new-group-modal-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: #333;
+}
+
+/* Modal body - contains the input form */
+/* What: Main content area of the modal */
+/* Why: Contains the group name input field */
+/* How: Padding for spacing */
+.new-group-modal-body {
+    padding: 24px;
+}
+
+/* Label for the input field */
+/* What: "Group Name" label */
+/* Why: Identifies the input field */
+/* How: Block display, bold, appropriate spacing */
+.new-group-modal-body label {
+    display: block;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+/* Input field for group name */
+/* What: Text input where user types the new group name */
+/* Why: Allows user to enter the group name */
+/* How: Full width, padding, border, smooth transitions for focus state */
+.new-group-modal-body input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-sizing: border-box;
+}
+
+/* Input focus state */
+/* What: Visual feedback when input is focused */
+/* Why: Indicates active input field */
+/* How: Green border and subtle green shadow ring */
+.new-group-modal-body input:focus {
+    outline: none;
+    border-color: #28a745;
+    box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.15);
+}
+
+/* Help text below input */
+/* What: Hint text explaining what to enter */
+/* Why: Guides users on what to type */
+/* How: Smaller font, muted color, top margin */
+.new-group-modal-body .form-hint {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-top: 6px;
+}
+
+/* Modal footer - contains action buttons */
+/* What: Bottom section with Cancel and Create buttons */
+/* Why: Provides actions to complete or cancel group creation */
+/* How: Flex layout, right-aligned, subtle background for separation */
+.new-group-modal-footer {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    padding: 16px 24px;
+    border-top: 1px solid #e9ecef;
+    background: #f8f9fa;
+    border-radius: 0 0 12px 12px;
+}
+
+/* Base button styling for modal buttons */
+/* What: Shared styles for Cancel and Create buttons */
+/* Why: Consistent button appearance */
+/* How: Padding, border-radius, font settings, transitions */
+.new-group-modal-btn {
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+}
+
+/* Cancel button - secondary/neutral style */
+/* What: Button to close modal without creating group */
+/* Why: Allows user to back out of group creation */
+/* How: Light gray background, dark text, subtle border */
+.new-group-modal-btn.cancel {
+    background: #f8f9fa;
+    color: #495057;
+    border: 1px solid #ced4da;
+}
+
+/* Cancel button hover state */
+/* What: Hover feedback for cancel button */
+/* Why: Indicates interactivity */
+/* How: Slightly darker background */
+.new-group-modal-btn.cancel:hover {
+    background: #e9ecef;
+}
+
+/* Create button - primary/action style */
+/* What: Button to create the new group */
+/* Why: Primary action - creates the group */
+/* How: Green background to match add button, white text */
+.new-group-modal-btn.create {
+    background: #28a745;
+    color: white;
+}
+
+/* Create button hover state */
+/* What: Hover feedback for create button */
+/* Why: Indicates interactivity */
+/* How: Darker green background */
+.new-group-modal-btn.create:hover {
+    background: #218838;
+}
+
+/* Create button disabled state */
+/* What: Appearance when button cannot be clicked */
+/* Why: Prevents action when input is invalid */
+/* How: Gray background, not-allowed cursor */
+.new-group-modal-btn.create:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+}

@@ -1,9 +1,13 @@
 {% extends 'base.html' %}
 {% load humanize %}
+{% load static %}
 
 {% block title %}Alert Details - GE Tools{% endblock %}
 
 {% block extra_css %}
+<!-- Group selector styles (shared with alerts.html) -->
+<link rel="stylesheet" href="{% static 'css/group-selector.css' %}">
+
 <style>
     .alert-detail-container {
         max-width: 900px;
@@ -215,7 +219,7 @@
         background: #f8f9fa;
         border: 1px solid #e9ecef;
         border-radius: 8px;
-        padding: 12px;
+        padding: 8px;
         max-height: 200px;
         overflow-y: auto;
     }
@@ -223,12 +227,20 @@
     .reference-prices-display-view .reference-price-item {
         display: flex;
         justify-content: space-between;
-        padding: 6px 8px;
-        border-bottom: 1px solid #e9ecef;
+        padding: 8px 12px;
+        border-radius: 4px;
     }
     
-    .reference-prices-display-view .reference-price-item:last-child {
-        border-bottom: none;
+    /* Zebra striping for view mode reference prices */
+    /* What: Alternating row colors for better readability */
+    /* Why: Makes it easier to scan long lists of items and prices */
+    /* How: nth-child selectors with subtle color alternation */
+    .reference-prices-display-view .reference-price-item:nth-child(odd) {
+        background: #ffffff;
+    }
+    
+    .reference-prices-display-view .reference-price-item:nth-child(even) {
+        background: #eef2ff;  /* Light purple/blue tint to match site theme */
     }
     
     .reference-prices-display-view .item-name {
@@ -238,7 +250,7 @@
     
     .reference-prices-display-view .item-price {
         font-weight: 600;
-        color: #667eea;
+        color: #1cb537;
     }
     
     .reference-prices-display-view .no-data {
@@ -452,6 +464,14 @@
     .form-group {
         margin-bottom: 0;
         min-width: 0;  /* Prevent content from expanding grid cell */
+    }
+    
+    /* Full-width form group - spans all grid columns */
+    /* What: Makes certain form groups span the entire form width */
+    /* Why: Reference prices display needs more space and should be at the bottom */
+    /* How: grid-column: 1 / -1 spans from first to last column */
+    .form-group.form-group-full-width {
+        grid-column: 1 / -1;
     }
     
     .form-group label {
@@ -675,12 +695,19 @@
         padding: 4px;
     }
     
+    /* =============================================================================
+       FORM HINT STYLES
+       What: Small help text displayed below form inputs
+       Why: Provides guidance to users about what each field does
+       How: Subtle gray text with small font size
+    ============================================================================= */
     .form-hint {
         font-size: 0.8rem;
         color: #6c757d;
-        margin: -4px 0 8px 0;
+        margin-top: 4px;
     }
-    
+    }
+
     /* =============================================================================
        THRESHOLD ALERT SPECIFIC STYLES
        What: Styles for threshold alert editing UI elements
@@ -755,7 +782,7 @@
         background: #f8f9fa;
         border: 1px solid #dee2e6;
         border-radius: 6px;
-        padding: 12px;
+        padding: 8px;
         max-height: 200px;
         overflow-y: auto;
         font-size: 0.9rem;
@@ -769,12 +796,20 @@
     .reference-prices-display .reference-price-item {
         display: flex;
         justify-content: space-between;
-        padding: 4px 0;
-        border-bottom: 1px solid #e9ecef;
+        padding: 8px 12px;
+        border-radius: 4px;
     }
     
-    .reference-prices-display .reference-price-item:last-child {
-        border-bottom: none;
+    /* Zebra striping for edit mode reference prices */
+    /* What: Alternating row colors for better readability */
+    /* Why: Makes it easier to scan long lists of items and prices */
+    /* How: nth-child selectors with subtle color alternation */
+    .reference-prices-display .reference-price-item:nth-child(odd) {
+        background: #ffffff;
+    }
+    
+    .reference-prices-display .reference-price-item:nth-child(even) {
+        background: #eef2ff;  /* Light purple/blue tint to match site theme */
     }
     
     .reference-prices-display .item-name {
@@ -834,6 +869,8 @@
         gap: 6px;
     }
     
+    /* Note: Group selector and new group modal styles are in static/css/group-selector.css */
+    
     /* Price Card */
     .price-card {
         background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
@@ -886,6 +923,7 @@
         border: 1px solid #e9ecef;
         border-radius: 8px;
         background: #f8f9fa;
+        padding: 4px;
     }
     
     .triggered-items-list ul {
@@ -899,15 +937,23 @@
         justify-content: space-between;
         align-items: center;
         padding: 12px 16px;
-        border-bottom: 1px solid #e9ecef;
+        border-radius: 4px;
     }
     
-    .triggered-items-list li:last-child {
-        border-bottom: none;
+    /* Zebra striping for triggered items list */
+    /* What: Alternating row colors for better readability */
+    /* Why: Makes it easier to scan long lists of triggered items */
+    /* How: nth-child selectors with subtle color alternation */
+    .triggered-items-list li:nth-child(odd) {
+        background: #ffffff;
+    }
+    
+    .triggered-items-list li:nth-child(even) {
+        background: #eef2ff;  /* Light purple/blue tint to match site theme */
     }
     
     .triggered-items-list li:hover {
-        background: #e9ecef;
+        background: #e2e8f0;  /* Slightly darker on hover */
     }
     
     .triggered-item-name {
@@ -1117,9 +1163,13 @@
         align-items: center;
     }
     
+    /* What: Highlight styling for autocomplete suggestion items */
+    /* Why: User needs visual feedback when hovering/selecting items */
+    /* How: Light green background with explicit black text for readability */
     .multi-item-suggestions-dropdown .suggestion-item:hover,
     .multi-item-suggestions-dropdown .suggestion-item.selected {
         background: #f0fdf4;
+        color: #000000;  /* Ensure text stays black and readable on green background */
     }
     
     .multi-item-suggestions-dropdown .suggestion-item:last-child {
@@ -1551,17 +1601,6 @@
                             {% else %}High Price{% endif %}
                         </span>
                     </div>
-                    <!-- Reference Prices Display (baseline prices at creation) -->
-                    <!-- What: Shows the stored reference prices for each monitored item -->
-                    <!-- Why: Users need to see what baseline their threshold is compared against -->
-                    <!-- How: Render from reference_prices_display_data passed from view context -->
-                    <div class="detail-item detail-item-full">
-                        <span class="detail-label">Reference Prices (Baseline)</span>
-                        <div class="reference-prices-display-view" id="reference-prices-display-view">
-                            <!-- Will be populated by JavaScript on page load -->
-                            <span class="no-data">Loading...</span>
-                        </div>
-                    </div>
                     {% endif %}
                     
                     {% if alert.is_all_items %}
@@ -1584,35 +1623,56 @@
                         <span class="detail-label">SMS Notifications</span>
                         <span class="detail-value">{% if alert.email_notification %}Enabled{% else %}Disabled{% endif %}</span>
                     </div>
+                    
+                    <!-- Group Display -->
+                    <!-- What: Shows which group(s) this alert belongs to in the config card -->
+                    <!-- Why: Users need to see alert grouping at a glance before editing -->
+                    <!-- How: Display group names or "No group" if none assigned -->
+                    <div class="detail-item">
+                        <span class="detail-label">Group</span>
+                        <span class="detail-value">{% if groups %}{{ groups|join:", " }}{% else %}No group{% endif %}</span>
+                    </div>
+                    
+                    {% if alert.type == 'threshold' %}
+                    <!-- Reference Prices Display (baseline prices at creation) -->
+                    <!-- What: Shows the stored reference prices for each monitored item -->
+                    <!-- Why: Users need to see what baseline their threshold is compared against -->
+                    <!-- How: Render from reference_prices_display_data passed from view context -->
+                    <!-- Note: Positioned at end of display grid to keep other fields grouped -->
+                    <div class="detail-item detail-item-full">
+                        <span class="detail-label">Reference Prices (Baseline)</span>
+                        <div class="reference-prices-display-view" id="reference-prices-display-view">
+                            <!-- Will be populated by JavaScript on page load -->
+                            <span class="no-data">Loading...</span>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
             
             <!-- Edit Form (shown when editing) -->
+            <!-- =============================================================================
+                 FORM ELEMENT ORDER:
+                 1. All regular inputs in alphabetical order by label
+                 2. Toggle buttons at the end: Active, All Items, Show Alert Notification, SMS Notification
+                 3. Reference Prices (Baseline) at the very end
+                 This ordering applies to all alert types - visibility is controlled by JS
+            ============================================================================= -->
             <div class="edit-form">
                 <div class="form-grid">
-                    <!-- Alert Name (editable) -->
+                    <!-- ======================= ALPHABETICAL INPUTS SECTION ======================= -->
+                    
+                    <!-- Alert Name -->
                     <div class="form-group" id="alert-name-group">
                         <label for="edit-alert-name">Alert Name</label>
                         <input type="text" id="edit-alert-name" value="{{ alert.alert_name|default:'' }}" placeholder="Enter alert name...">
-                    </div>
-                    
-                    <!-- Active Toggle -->
-                    <div class="form-group toggle-group" id="active-group">
-                        <label>Active</label>
-                        <div class="toggle-container">
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="edit-is-active" {% if alert.is_active %}checked{% endif %}>
-                                <span class="toggle-slider"></span>
-                            </label>
-                            <span class="toggle-label">{% if alert.is_active %}Enabled{% else %}Disabled{% endif %}</span>
-                        </div>
+                        <small class="form-hint">A friendly name to identify this alert</small>
                     </div>
                     
                     <!-- Alert Type -->
                     <div class="form-group" id="type-group">
                         <label for="edit-type">Alert Type</label>
                         <select id="edit-type" onchange="handleTypeChange()">
-                            
                             <option value="above" {% if alert.type == 'above' %}selected{% endif %}>Above Threshold</option>
                             <option value="below" {% if alert.type == 'below' %}selected{% endif %}>Below Threshold</option>
                             <option value="spread" {% if alert.type == 'spread' %}selected{% endif %}>Spread</option>
@@ -1620,92 +1680,7 @@
                             <option value="sustained" {% if alert.type == 'sustained' %}selected{% endif %}>Sustained Move</option>
                             <option value="threshold" {% if alert.type == 'threshold' %}selected{% endif %}>Threshold</option>
                         </select>
-                    </div>
-                    
-                    <!-- All Items Toggle (spike/spread only) -->
-                    <div class="form-group toggle-group" id="all-items-group" style="display: none;">
-                        <label>All Items</label>
-                        <div class="toggle-container">
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="edit-all-items" {% if alert.is_all_items %}checked{% endif %} onchange="handleScopeChange()">
-                                <span class="toggle-slider"></span>
-                            </label>
-                            <span class="toggle-label">{% if alert.is_all_items %}Yes{% else %}No{% endif %}</span>
-                        </div>
-                        <input type="hidden" id="edit-is-all-items" value="{% if alert.is_all_items %}true{% else %}false{% endif %}">
-                    </div>
-                    
-                    <!-- Item Name (single item - shown for non-multi-item alerts) -->
-                    <div class="form-group" id="item-name-group">
-                        <label for="edit-item-name">Item Name</label>
-                        <input type="text" id="edit-item-name" value="{{ alert.item_name|default:'' }}" placeholder="Enter item name..." autocomplete="off">
-                        <input type="hidden" id="edit-item-id" value="{{ alert.item_id|default:'' }}">
-                        <div id="edit-item-suggestions" class="suggestions-dropdown"></div>
-                    </div>
-                    
-                    <!-- Multi-Item Selector (shown for spread alerts with multiple specific items) -->
-                    <!-- What: Allows editing the list of items for multi-item spread alerts -->
-                    <!-- Why: Users need to add/remove items from existing multi-item spread alerts -->
-                    <!-- How: Search input with dropdown arrow - arrow shows current items, input searches for new items -->
-                    <div class="form-group" id="multi-item-group" style="display: none;">
-                        <div class="label-with-notification">
-                            <label for="edit-multi-item-input">Items</label>
-                            <!-- Small notification shown when items are added or not found -->
-                            <span id="item-add-notification" class="item-notification"></span>
-                        </div>
-                        <div class="multi-item-selector-box">
-                            <!-- Search input for adding new items -->
-                            <input type="text" id="edit-multi-item-input" placeholder="Search for item to add..." autocomplete="off">
-                            <!-- Dropdown toggle button with arrow -->
-                            <button type="button" class="multi-item-dropdown-toggle" id="edit-multi-item-toggle" title="Show selected items">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="6 9 12 15 18 9"></polyline>
-                                </svg>
-                            </button>
-                            <!-- Hidden input for form submission -->
-                            <input type="hidden" id="edit-item-ids" value="">
-                            <!-- Autocomplete suggestions dropdown (shown when typing) -->
-                            <div id="edit-multi-item-suggestions" class="multi-item-suggestions-dropdown"></div>
-                            <!-- Selected items dropdown (shown when clicking arrow) -->
-                            <div id="edit-selected-items-dropdown" class="multi-item-selected-dropdown">
-                                <div class="selected-items-list" id="edit-selected-items-list">
-                                    <!-- Items will be populated here -->
-                                </div>
-                                <div class="no-items-message" id="edit-no-items-message">No items selected</div>
-                            </div>
-                        </div>
-                        <small class="form-hint"></small>
-                    </div>
-                    
-                    <!-- Price Threshold (above/below only) -->
-                    <div class="form-group" id="price-group">
-                        <label for="edit-price">Price Threshold</label>
-                        <input type="number" id="edit-price" value="{{ alert.price|default:'' }}" placeholder="Enter price...">
-                    </div>
-                    
-                    <!-- Reference Price (above/below/spike/threshold) -->
-                    <!-- What: Dropdown to select which price point to monitor -->
-                    <!-- Why: Users can choose high, low, or average price depending on their strategy -->
-                    <!-- How: Three options - high, low, average (average is used for threshold alerts) -->
-                    <div class="form-group" id="reference-group">
-                        <label for="edit-reference">Reference Price</label>
-                        <select id="edit-reference">
-                            <option value="high" {% if alert.reference == 'high' %}selected{% endif %}>High Price</option>
-                            <option value="low" {% if alert.reference == 'low' or not alert.reference %}selected{% endif %}>Low Price</option>
-                            <option value="average" {% if alert.reference == 'average' %}selected{% endif %}>Average Price</option>
-                        </select>
-                    </div>
-                    
-                    <!-- Percentage (spread/spike) -->
-                    <div class="form-group" id="percentage-group" style="display: none;">
-                        <label for="edit-percentage">Percentage (%)</label>
-                        <input type="number" id="edit-percentage" value="{{ alert.percentage|default:'' }}" step="0.001" min="0.001" placeholder="Enter percentage...">
-                    </div>
-                    
-                    <!-- Time Frame (spike/sustained) -->
-                    <div class="form-group" id="time-frame-group" style="display: none;">
-                        <label for="edit-time-frame">Time Frame (minutes)</label>
-                        <input type="number" id="edit-time-frame" value="{% if alert.type == 'spike' %}{{ alert.price|default:'' }}{% elif alert.type == 'sustained' %}{{ alert.time_frame|default:'' }}{% endif %}" min="1" step="1" placeholder="e.g. 10">
+                        <small class="form-hint">The condition that triggers this alert</small>
                     </div>
                     
                     <!-- Direction (spike/sustained) -->
@@ -1716,19 +1691,10 @@
                             <option value="up" {% if alert.direction == 'up' %}selected{% endif %}>Up</option>
                             <option value="down" {% if alert.direction == 'down' %}selected{% endif %}>Down</option>
                         </select>
+                        <small class="form-hint">Direction of price movement to trigger</small>
                     </div>
                     
-                    <!-- =============================================================================
-                         THRESHOLD ALERT SPECIFIC FIELDS
-                         What: Form fields specific to threshold alert type editing
-                         Why: Threshold alerts have unique configuration (threshold_type, target_price, etc.)
-                         How: These fields are shown/hidden by handleTypeChange() based on alert type
-                    ============================================================================= -->
-                    
-                    <!-- Threshold Direction (up/down only, no 'both') -->
-                    <!-- What: Direction selector for threshold alerts -->
-                    <!-- Why: Threshold alerts only support up or down direction, not both -->
-                    <!-- How: Separate dropdown from spike/sustained direction which includes 'both' -->
+                    <!-- Direction (threshold - up/down only, no 'both') -->
                     <div class="form-group" id="threshold-direction-group" style="display: none;">
                         <label for="edit-threshold-direction">Direction</label>
                         <select id="edit-threshold-direction">
@@ -1738,89 +1704,59 @@
                         <small class="form-hint">Direction of price movement to trigger alert</small>
                     </div>
                     
-                    <!-- Threshold Type (percentage/value) -->
-                    <!-- What: Dropdown to select how threshold is measured -->
-                    <!-- Why: Users can choose percentage change or absolute value threshold -->
-                    <!-- How: Disabled with tooltip when multiple items selected (only percentage allowed) -->
-                    <div class="form-group" id="threshold-type-group" style="display: none;">
-                        <label for="edit-threshold-type">Threshold Type</label>
-                        <div class="threshold-type-wrapper">
-                            <select id="edit-threshold-type" onchange="handleThresholdTypeChange()">
-                                <option value="percentage" {% if alert.threshold_type == 'percentage' or not alert.threshold_type %}selected{% endif %}>Percentage</option>
-                                <option value="value" {% if alert.threshold_type == 'value' %}selected{% endif %}>Value (GP)</option>
+                    <!-- Group -->
+                    <!-- What: Dropdown to select which group this alert belongs to -->
+                    <!-- Why: Users can organize alerts into groups for easier management -->
+                    <!-- How: Dropdown populated from user's groups with "+" button to create new -->
+                    <div class="form-group" id="group-edit-group">
+                        <label for="edit-group">Group</label>
+                        <div class="group-selector-wrapper">
+                            <select id="edit-group">
+                                <option value="">No Group</option>
+                                <!-- Options populated by JavaScript from all_groups -->
                             </select>
-                            <!-- Tooltip shown when trying to select value with multiple items -->
-                            <!-- What: Warning tooltip explaining why value type is unavailable -->
-                            <!-- Why: Users need to understand the restriction on multi-item alerts -->
-                            <!-- How: Displayed on click when dropdown is disabled -->
-                            <span id="threshold-type-tooltip" class="threshold-type-tooltip" style="display: none;">
-                                Percentage is the only available metric when tracking more than one item. To use a specific value threshold, please select only one item.
-                            </span>
+                            <button type="button" class="btn-add-group" onclick="openNewGroupModal()" title="Create new group">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+                                </svg>
+                            </button>
                         </div>
-                        <small class="form-hint">How to measure the threshold</small>
+                        <small class="form-hint">Organize alerts into groups for easier management</small>
                     </div>
                     
-                    <!-- Target Price (value-based threshold only) -->
-                    <!-- What: Input field for target price when using value-based threshold -->
-                    <!-- Why: Value-based alerts trigger when price crosses this exact value -->
-                    <!-- How: Only shown when threshold_type is 'value' -->
-                    <div class="form-group" id="target-price-group" style="display: none;">
-                        <label for="edit-target-price">Target Price (GP)</label>
-                        <input type="number" id="edit-target-price" value="{{ alert.target_price|default:'' }}" min="1" step="1" placeholder="Enter target price...">
-                        <small class="form-hint">Alert triggers when price crosses this value</small>
+                    <!-- Item Name (single item) -->
+                    <div class="form-group" id="item-name-group">
+                        <label for="edit-item-name">Item Name</label>
+                        <input type="text" id="edit-item-name" value="{{ alert.item_name|default:'' }}" placeholder="Enter item name..." autocomplete="off">
+                        <input type="hidden" id="edit-item-id" value="{{ alert.item_id|default:'' }}">
+                        <div id="edit-item-suggestions" class="suggestions-dropdown"></div>
+                        <small class="form-hint">The item to monitor for this alert</small>
                     </div>
                     
-                    <!-- Reference Prices Display (non-editable) -->
-                    <!-- What: Display field showing baseline prices captured at alert creation -->
-                    <!-- Why: Users need to see what baseline prices are being compared against -->
-                    <!-- How: Non-editable field populated from alert.reference_prices JSON -->
-                    <div class="form-group" id="reference-prices-group" style="display: none;">
-                        <label>Reference Prices (Baseline)</label>
-                        <div id="reference-prices-display" class="reference-prices-display">
-                            <!-- Populated by JavaScript from alert data -->
-                            <span class="no-data">No reference prices stored</span>
+                    <!-- Items (multi-item selector) -->
+                    <div class="form-group" id="multi-item-group" style="display: none;">
+                        <div class="label-with-notification">
+                            <label for="edit-multi-item-input">Items</label>
+                            <span id="item-add-notification" class="item-notification"></span>
                         </div>
-                        <small class="form-hint">Baseline prices captured when alert was created (not editable)</small>
+                        <div class="multi-item-selector-box">
+                            <input type="text" id="edit-multi-item-input" placeholder="Search for item to add..." autocomplete="off">
+                            <button type="button" class="multi-item-dropdown-toggle" id="edit-multi-item-toggle" title="Show selected items">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </button>
+                            <input type="hidden" id="edit-item-ids" value="">
+                            <div id="edit-multi-item-suggestions" class="multi-item-suggestions-dropdown"></div>
+                            <div id="edit-selected-items-dropdown" class="multi-item-selected-dropdown">
+                                <div class="selected-items-list" id="edit-selected-items-list"></div>
+                                <div class="no-items-message" id="edit-no-items-message">No items selected</div>
+                            </div>
+                        </div>
+                        <small class="form-hint">Add or remove items to monitor</small>
                     </div>
                     
-                    <!-- Min/Max Price (all items only) -->
-                    <div class="form-group" id="min-price-group" style="display: none;">
-                        <label for="edit-minimum-price">Minimum Price</label>
-                        <input type="number" id="edit-minimum-price" value="{{ alert.minimum_price|default:'' }}" min="0" placeholder="Enter minimum price...">
-                    </div>
-                    <div class="form-group" id="max-price-group" style="display: none;">
-                        <label for="edit-maximum-price">Maximum Price</label>
-                        <input type="number" id="edit-maximum-price" value="{{ alert.maximum_price|default:'' }}" min="0" placeholder="Enter maximum price...">
-                    </div>
-                    
-                    <!-- Sustained Move specific fields -->
-                    <div class="form-group" id="min-consecutive-moves-group" style="display: none;">
-                        <label for="edit-min-consecutive-moves">Min Consecutive Moves</label>
-                        <input type="number" id="edit-min-consecutive-moves" value="{{ alert.min_consecutive_moves|default:'' }}" min="2" step="1" placeholder="e.g. 5">
-                        <small class="form-hint">Number of price changes in same direction</small>
-                    </div>
-                    <div class="form-group" id="min-move-percentage-group" style="display: none;">
-                        <label for="edit-min-move-percentage">Min Move %</label>
-                        <input type="number" id="edit-min-move-percentage" value="{{ alert.min_move_percentage|default:'' }}" min="0.01" step="0.01" placeholder="e.g. 0.5">
-                        <small class="form-hint">Min % change to count as move</small>
-                    </div>
-                    <div class="form-group" id="min-volume-group" style="display: none;">
-                        <label for="edit-min-volume">Min Volume</label>
-                        <input type="number" id="edit-min-volume" value="{{ alert.min_volume|default:'' }}" min="0" step="1" placeholder="e.g. 10000">
-                        <small class="form-hint">Min trading volume</small>
-                    </div>
-                    <div class="form-group" id="volatility-buffer-group" style="display: none;">
-                        <label for="edit-volatility-buffer-size">Volatility Buffer (N)</label>
-                        <input type="number" id="edit-volatility-buffer-size" value="{{ alert.volatility_buffer_size|default:'' }}" min="5" step="1" placeholder="e.g. 20">
-                        <small class="form-hint">Rolling buffer size for avg volatility</small>
-                    </div>
-                    <div class="form-group" id="volatility-multiplier-group" style="display: none;">
-                        <label for="edit-volatility-multiplier">Volatility Multiplier (K)</label>
-                        <input type="number" id="edit-volatility-multiplier" value="{{ alert.volatility_multiplier|default:'' }}" min="0.1" step="0.1" placeholder="e.g. 1.5">
-                        <small class="form-hint">Streak must move ≥ K × avg volatility</small>
-                    </div>
-                    
-                    <!-- Pressure Filter fields (sustained only) -->
+                    <!-- Market Pressure (sustained only) -->
                     <div class="form-group" id="pressure-strength-group" style="display: none;">
                         <label for="edit-pressure-strength">Market Pressure</label>
                         <select id="edit-pressure-strength">
@@ -1831,13 +1767,148 @@
                         </select>
                         <small class="form-hint">BUY=up, SELL=down direction match</small>
                     </div>
+                    
+                    <!-- Maximum Price (all items only) -->
+                    <div class="form-group" id="max-price-group" style="display: none;">
+                        <label for="edit-maximum-price">Maximum Price</label>
+                        <input type="number" id="edit-maximum-price" value="{{ alert.maximum_price|default:'' }}" min="0" placeholder="Enter maximum price...">
+                        <small class="form-hint">Only monitor items below this price</small>
+                    </div>
+                    
+                    <!-- Min Consecutive Moves (sustained) -->
+                    <div class="form-group" id="min-consecutive-moves-group" style="display: none;">
+                        <label for="edit-min-consecutive-moves">Min Consecutive Moves</label>
+                        <input type="number" id="edit-min-consecutive-moves" value="{{ alert.min_consecutive_moves|default:'' }}" min="2" step="1" placeholder="e.g. 5">
+                        <small class="form-hint">Number of price changes in same direction</small>
+                    </div>
+                    
+                    <!-- Min Move % (sustained) -->
+                    <div class="form-group" id="min-move-percentage-group" style="display: none;">
+                        <label for="edit-min-move-percentage">Min Move %</label>
+                        <input type="number" id="edit-min-move-percentage" value="{{ alert.min_move_percentage|default:'' }}" min="0.01" step="0.01" placeholder="e.g. 0.5">
+                        <small class="form-hint">Min % change to count as move</small>
+                    </div>
+                    
+                    <!-- Min Spread % for Pressure (sustained) -->
                     <div class="form-group" id="pressure-spread-group" style="display: none;">
                         <label for="edit-pressure-spread">Min Spread % for Pressure</label>
                         <input type="number" id="edit-pressure-spread" value="{{ alert.min_pressure_spread_pct|default:'' }}" min="0.01" step="0.01" placeholder="e.g. 0.2">
                         <small class="form-hint">Spread % threshold for pressure</small>
                     </div>
                     
-                    <!-- Show Alert Notification -->
+                    <!-- Min Volume (sustained) -->
+                    <div class="form-group" id="min-volume-group" style="display: none;">
+                        <label for="edit-min-volume">Min Volume</label>
+                        <input type="number" id="edit-min-volume" value="{{ alert.min_volume|default:'' }}" min="0" step="1" placeholder="e.g. 10000">
+                        <small class="form-hint">Min trading volume</small>
+                    </div>
+                    
+                    <!-- Minimum Price (all items only) -->
+                    <div class="form-group" id="min-price-group" style="display: none;">
+                        <label for="edit-minimum-price">Minimum Price</label>
+                        <input type="number" id="edit-minimum-price" value="{{ alert.minimum_price|default:'' }}" min="0" placeholder="Enter minimum price...">
+                        <small class="form-hint">Only monitor items above this price</small>
+                    </div>
+                    
+                    <!-- Percentage (spread/spike/threshold) -->
+                    <div class="form-group" id="percentage-group" style="display: none;">
+                        <label for="edit-percentage">Percentage (%)</label>
+                        <input type="number" id="edit-percentage" value="{{ alert.percentage|default:'' }}" step="0.001" min="0.001" placeholder="Enter percentage...">
+                        <small class="form-hint">Percent change threshold to trigger alert</small>
+                    </div>
+                    
+                    <!-- Price Threshold (above/below only) -->
+                    <div class="form-group" id="price-group">
+                        <label for="edit-price">Price Threshold</label>
+                        <input type="number" id="edit-price" value="{{ alert.price|default:'' }}" placeholder="Enter price...">
+                        <small class="form-hint">Price value that triggers the alert</small>
+                    </div>
+                    
+                    <!-- Reference Price (above/below/spike/threshold) -->
+                    <div class="form-group" id="reference-group">
+                        <label for="edit-reference">Reference Price</label>
+                        <select id="edit-reference">
+                            <option value="high" {% if alert.reference == 'high' %}selected{% endif %}>High Price</option>
+                            <option value="low" {% if alert.reference == 'low' or not alert.reference %}selected{% endif %}>Low Price</option>
+                            <option value="average" {% if alert.reference == 'average' %}selected{% endif %}>Average Price</option>
+                        </select>
+                        <small class="form-hint">Which price to compare against</small>
+                    </div>
+                    
+                    <!-- Target Price (value-based threshold only) -->
+                    <div class="form-group" id="target-price-group" style="display: none;">
+                        <label for="edit-target-price">Target Price (GP)</label>
+                        <input type="number" id="edit-target-price" value="{{ alert.target_price|default:'' }}" min="1" step="1" placeholder="Enter target price...">
+                        <small class="form-hint">Alert triggers when price crosses this value</small>
+                    </div>
+                    
+                    <!-- Threshold Type (percentage/value) -->
+                    <div class="form-group" id="threshold-type-group" style="display: none;">
+                        <label for="edit-threshold-type">Threshold Type</label>
+                        <div class="threshold-type-wrapper">
+                            <select id="edit-threshold-type" onchange="handleThresholdTypeChange()">
+                                <option value="percentage" {% if alert.threshold_type == 'percentage' or not alert.threshold_type %}selected{% endif %}>Percentage</option>
+                                <option value="value" {% if alert.threshold_type == 'value' %}selected{% endif %}>Value (GP)</option>
+                            </select>
+                            <span id="threshold-type-tooltip" class="threshold-type-tooltip" style="display: none;">
+                                Percentage is the only available metric when tracking more than one item. To use a specific value threshold, please select only one item.
+                            </span>
+                        </div>
+                        <small class="form-hint">How to measure the threshold</small>
+                    </div>
+                    
+                    <!-- Time Frame (spike/sustained) -->
+                    <div class="form-group" id="time-frame-group" style="display: none;">
+                        <label for="edit-time-frame">Time Frame (minutes)</label>
+                        <input type="number" id="edit-time-frame" value="{% if alert.type == 'spike' %}{{ alert.price|default:'' }}{% elif alert.type == 'sustained' %}{{ alert.time_frame|default:'' }}{% endif %}" min="1" step="1" placeholder="e.g. 10">
+                        <small class="form-hint">Time window for detecting price movement</small>
+                    </div>
+                    
+                    <!-- Volatility Buffer (sustained) -->
+                    <div class="form-group" id="volatility-buffer-group" style="display: none;">
+                        <label for="edit-volatility-buffer-size">Volatility Buffer (N)</label>
+                        <input type="number" id="edit-volatility-buffer-size" value="{{ alert.volatility_buffer_size|default:'' }}" min="5" step="1" placeholder="e.g. 20">
+                        <small class="form-hint">Rolling buffer size for avg volatility</small>
+                    </div>
+                    
+                    <!-- Volatility Multiplier (sustained) -->
+                    <div class="form-group" id="volatility-multiplier-group" style="display: none;">
+                        <label for="edit-volatility-multiplier">Volatility Multiplier (K)</label>
+                        <input type="number" id="edit-volatility-multiplier" value="{{ alert.volatility_multiplier|default:'' }}" min="0.1" step="0.1" placeholder="e.g. 1.5">
+                        <small class="form-hint">Streak must move ≥ K × avg volatility</small>
+                    </div>
+                    
+                    <!-- ======================= TOGGLE BUTTONS SECTION ======================= -->
+                    <!-- Toggles appear at end, in order: Active, All Items, Show Alert Notification, SMS Notification -->
+                    
+                    <!-- 1. Active Toggle -->
+                    <div class="form-group toggle-group" id="active-group">
+                        <label>Active</label>
+                        <div class="toggle-container">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="edit-is-active" {% if alert.is_active %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="toggle-label">{% if alert.is_active %}Enabled{% else %}Disabled{% endif %}</span>
+                        </div>
+                        <small class="form-hint">Enable or disable alert checking</small>
+                    </div>
+                    
+                    <!-- 2. All Items Toggle (spike/spread only) -->
+                    <div class="form-group toggle-group" id="all-items-group" style="display: none;">
+                        <label>All Items</label>
+                        <div class="toggle-container">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="edit-all-items" {% if alert.is_all_items %}checked{% endif %} onchange="handleScopeChange()">
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="toggle-label">{% if alert.is_all_items %}Yes{% else %}No{% endif %}</span>
+                        </div>
+                        <input type="hidden" id="edit-is-all-items" value="{% if alert.is_all_items %}true{% else %}false{% endif %}">
+                        <small class="form-hint">Monitor all items in the database</small>
+                    </div>
+                    
+                    <!-- 3. Show Alert Notification -->
                     <div class="form-group toggle-group" id="show-notification-group">
                         <label>Show Alert Notification?</label>
                         <div class="toggle-container">
@@ -1847,10 +1918,10 @@
                             </label>
                             <span class="toggle-label">{% if alert.show_notification %}Enabled{% else %}Disabled{% endif %}</span>
                         </div>
-                        <small class="form-hint"></small>
+                        <small class="form-hint">Show popup notification when triggered</small>
                     </div>
                     
-                    <!-- SMS Notification -->
+                    <!-- 4. SMS Notification -->
                     <div class="form-group toggle-group" id="sms-group">
                         <label>SMS Notification</label>
                         <div class="toggle-container">
@@ -1860,6 +1931,18 @@
                             </label>
                             <span class="toggle-label">{% if alert.email_notification %}Enabled{% else %}Disabled{% endif %}</span>
                         </div>
+                        <small class="form-hint">Send SMS when alert is triggered</small>
+                    </div>
+                    
+                    <!-- ======================= REFERENCE PRICES (LAST) ======================= -->
+                    
+                    <!-- Reference Prices (Baseline) - Non-editable display for threshold alerts -->
+                    <div class="form-group form-group-full-width" id="reference-prices-group" style="display: none;">
+                        <label>Reference Prices (Baseline)</label>
+                        <div id="reference-prices-display" class="reference-prices-display">
+                            <span class="no-data">No reference prices stored</span>
+                        </div>
+                        <small class="form-hint">Baseline prices captured when alert was created (not editable)</small>
                     </div>
                 </div>
                 
@@ -2204,6 +2287,32 @@
         </div>
     </div>
 </div>
+
+<!-- =============================================================================
+     NEW GROUP MODAL
+     What: Modal dialog for creating a new alert group while editing
+     Why: Users need a way to create groups inline without leaving the edit form
+     How: Overlay with input field, Create/Cancel buttons, calls createNewGroup()
+============================================================================= -->
+<div id="new-group-modal" class="new-group-modal-overlay">
+    <div class="new-group-modal-content">
+        <div class="new-group-modal-header">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+            </svg>
+            <h3>Create New Group</h3>
+        </div>
+        <div class="new-group-modal-body">
+            <label for="new-group-name-input">Group Name</label>
+            <input type="text" id="new-group-name-input" placeholder="Enter group name..." maxlength="100" autocomplete="off">
+            <p class="form-hint">Choose a descriptive name for your alert group</p>
+        </div>
+        <div class="new-group-modal-footer">
+            <button type="button" class="new-group-modal-btn cancel" onclick="closeNewGroupModal()">Cancel</button>
+            <button type="button" class="new-group-modal-btn create" id="create-group-btn" onclick="createNewGroup()">Create Group</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -2227,6 +2336,20 @@ const referencePricesJson = {{ reference_prices_json|safe }};
 const itemIdToNameMapping = {{ item_id_to_name_mapping_json|safe }};
 const alertThresholdType = '{{ alert.threshold_type|default:"percentage" }}';
 const alertTargetPrice = {{ alert.target_price|default:"null" }};
+
+// =============================================================================
+// ALERT GROUPS DATA FROM DJANGO
+// What: Data about the alert's current groups and all available groups
+// Why: Need to populate the group dropdown in the edit form
+// How: Django template variables rendered as JavaScript arrays
+// Note: allGroups is declared with 'let' later in the code for the groups card,
+//       so we use a different variable name here for the edit form
+// =============================================================================
+// alertGroups: Array of group names this alert currently belongs to
+const alertGroups = {{ groups_json|safe }};
+// allGroupsForEdit: Array of all group names available for this user (for edit form dropdown)
+// Note: Named differently from 'allGroups' which is used by the groups card section
+let allGroupsForEdit = {{ all_groups_json|safe }};
 
 /**
  * EditMultiItemSelector: Module for managing the multi-item selector in the edit form.
@@ -2537,6 +2660,13 @@ const EditMultiItemSelector = {
         this.selectedItems.push({id: String(id), name});
         this.updateHiddenInput();
         this.renderSelectedItems();
+        
+        // What: Update threshold type dropdown state after adding an item
+        // Why: If user now has multiple items, threshold type must be locked to percentage
+        // How: Call updateThresholdTypeState which checks selectedItems.length
+        if (typeof updateThresholdTypeState === 'function') {
+            updateThresholdTypeState();
+        }
     },
 
     /**
@@ -2557,6 +2687,13 @@ const EditMultiItemSelector = {
         // Also remove from triggered data display if present
         // The triggered items list has li elements with data-item-id attribute
         this.removeTriggeredDataItem(id);
+        
+        // What: Update threshold type dropdown state after removing an item
+        // Why: If user now has only one or zero items, threshold type should be unlocked
+        // How: Call updateThresholdTypeState which checks selectedItems.length
+        if (typeof updateThresholdTypeState === 'function') {
+            updateThresholdTypeState();
+        }
     },
 
     /**
@@ -2780,6 +2917,171 @@ if (window.location.search.includes('edit_saved=1')) {
     window.history.replaceState({}, document.title, window.location.pathname);
 }
 
+// =============================================================================
+// GROUP DROPDOWN MANAGEMENT
+// What: Functions for managing the group dropdown in the edit form
+// Why: Users need to select or create groups for their alerts
+// How: Populate dropdown from allGroups, handle selection, create new groups via modal
+// =============================================================================
+
+/**
+ * Populates the group dropdown with all available groups.
+ * What: Fills the group select element with options from allGroups array
+ * Why: User needs to see all available groups when editing an alert
+ * How: Clear existing options (except "No Group"), add option for each group,
+ *      select the current group if one exists
+ */
+function populateGroupDropdown() {
+    const select = document.getElementById('edit-group');
+    if (!select) return;
+    
+    // Clear existing options except the first "No Group" option
+    while (select.options.length > 1) {
+        select.remove(1);
+    }
+    
+    // Sort groups alphabetically for consistent display
+    // What: Creates a sorted copy of allGroupsForEdit array
+    // Why: Users expect groups to appear in alphabetical order
+    // How: Use localeCompare for proper string sorting
+    const sortedGroups = [...allGroupsForEdit].sort((a, b) => a.localeCompare(b));
+    
+    // Add an option for each group
+    // What: Creates <option> elements for each group name
+    // Why: Populates the dropdown with available choices
+    // How: Loop through sortedGroups, create option, append to select
+    sortedGroups.forEach(groupName => {
+        const option = document.createElement('option');
+        option.value = groupName;
+        option.textContent = groupName;
+        select.appendChild(option);
+    });
+    
+    // Select the current group if one exists
+    // What: Sets the dropdown to show the alert's current group
+    // Why: User should see which group the alert currently belongs to
+    // How: Check if alertGroups has entries, select the first one (alerts typically have one group)
+    if (alertGroups && alertGroups.length > 0) {
+        select.value = alertGroups[0];
+    }
+}
+
+/**
+ * Opens the modal for creating a new group.
+ * What: Shows the new group modal dialog
+ * Why: Users need a way to create groups without leaving the edit form
+ * How: Add 'show' class to modal overlay, focus the input field
+ */
+function openNewGroupModal() {
+    const modal = document.getElementById('new-group-modal');
+    const input = document.getElementById('new-group-name-input');
+    
+    // Show the modal
+    modal.classList.add('show');
+    
+    // Clear any previous input and focus
+    input.value = '';
+    input.focus();
+    
+    // Add event listener for Enter key
+    // What: Allows user to press Enter to create the group
+    // Why: Faster workflow than clicking the button
+    // How: Listen for keydown, check for Enter, call createNewGroup
+    input.onkeydown = function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            createNewGroup();
+        } else if (e.key === 'Escape') {
+            closeNewGroupModal();
+        }
+    };
+}
+
+/**
+ * Closes the new group modal.
+ * What: Hides the new group modal dialog
+ * Why: User cancelled or finished creating a group
+ * How: Remove 'show' class from modal overlay
+ */
+function closeNewGroupModal() {
+    const modal = document.getElementById('new-group-modal');
+    modal.classList.remove('show');
+}
+
+/**
+ * Creates a new group and adds it to the dropdown.
+ * What: Validates input, adds new group to dropdown, selects it
+ * Why: User wants to create a new group for this alert
+ * How: Get input value, validate, add to allGroups array, repopulate dropdown, select new group
+ */
+function createNewGroup() {
+    const input = document.getElementById('new-group-name-input');
+    const groupName = input.value.trim();
+    
+    // Validate input
+    // What: Ensure the group name is not empty
+    // Why: Empty group names are not allowed
+    // How: Check trimmed value length
+    if (!groupName) {
+        input.focus();
+        return;
+    }
+    
+    // Check for duplicates (case-insensitive)
+    // What: Prevent creating duplicate groups
+    // Why: Group names should be unique per user
+    // How: Check if any existing group matches (ignoring case)
+    const isDuplicate = allGroupsForEdit.some(g => g.toLowerCase() === groupName.toLowerCase());
+    if (isDuplicate) {
+        // Show error - group already exists
+        input.style.borderColor = '#dc3545';
+        setTimeout(() => {
+            input.style.borderColor = '';
+        }, 2000);
+        return;
+    }
+    
+    // Add new group to allGroupsForEdit array
+    // What: Adds the new group name to the available groups
+    // Why: Makes it available in the dropdown
+    // How: Push to array (will be properly sorted when dropdown repopulates)
+    allGroupsForEdit.push(groupName);
+    
+    // Also add to the allGroups array used by the groups card section
+    // What: Keeps both group arrays in sync
+    // Why: The groups card has its own copy of all groups
+    // How: Check if allGroups exists and push to it if so
+    if (typeof allGroups !== 'undefined') {
+        allGroups.push(groupName);
+    }
+    
+    // Repopulate dropdown with new group included
+    populateGroupDropdown();
+    
+    // Select the newly created group
+    // What: Automatically selects the new group in the dropdown
+    // Why: User likely wants to use the group they just created
+    // How: Set the select value to the new group name
+    const select = document.getElementById('edit-group');
+    select.value = groupName;
+    
+    // Close the modal
+    closeNewGroupModal();
+}
+
+/**
+ * Closes the new group modal when clicking outside of it.
+ * What: Click handler for modal overlay backdrop
+ * Why: Standard UX pattern - clicking outside modal closes it
+ * How: Check if click target is the overlay itself (not the content)
+ */
+document.addEventListener('click', function(e) {
+    const modal = document.getElementById('new-group-modal');
+    if (e.target === modal) {
+        closeNewGroupModal();
+    }
+});
+
 function enterEditMode() {
     isEditMode = true;
     document.getElementById('configCard').classList.add('edit-mode');
@@ -2787,6 +3089,12 @@ function enterEditMode() {
     
     // Store original values for cancel
     storeOriginalValues();
+    
+    // Populate the group dropdown
+    // What: Fills the group dropdown with all available groups and selects current one
+    // Why: User needs to see and change which group the alert belongs to
+    // How: Clear dropdown, add options for each group, select current group
+    populateGroupDropdown();
     
     // Set up form based on current alert type
     handleTypeChange();
@@ -2814,6 +3122,8 @@ function storeOriginalValues() {
         maximumPrice: document.getElementById('edit-maximum-price').value,
         emailNotification: document.getElementById('edit-email-notification').checked,
         isActive: document.getElementById('edit-is-active').checked,
+        // group: Store the current group selection for cancel restoration
+        group: document.getElementById('edit-group').value,
         groups: Array.from(document.querySelectorAll('input[name="groups"]:checked')).map(cb => cb.value)
     };
 }
@@ -2846,6 +3156,12 @@ function cancelEdit() {
     document.getElementById('edit-maximum-price').value = originalValues.maximumPrice;
     document.getElementById('edit-email-notification').checked = originalValues.emailNotification;
     document.getElementById('edit-is-active').checked = originalValues.isActive;
+    
+    // Restore group selection
+    // What: Restores the group dropdown to its original value when cancel is clicked
+    // Why: User may have changed the group selection but then decided to cancel
+    // How: Set the dropdown value back to what was stored in originalValues.group
+    document.getElementById('edit-group').value = originalValues.group;
     
     // Restore groups
     document.querySelectorAll('input[name="groups"]').forEach(cb => {
@@ -3364,7 +3680,16 @@ async function saveChanges() {
         // show_notification: Controls whether notification banner appears when alert triggers
         show_notification: document.getElementById('edit-show-notification').checked,
         is_active: document.getElementById('edit-is-active').checked,
-        groups: Array.from(document.querySelectorAll('input[name="groups"]:checked')).map(cb => cb.value)
+        // groups: Array of group names this alert belongs to
+        // What: Collects the selected group from the dropdown
+        // Why: Backend expects an array of group names to set for this alert
+        // How: Get dropdown value, wrap in array if not empty, otherwise empty array
+        groups: (function() {
+            const selectedGroup = document.getElementById('edit-group').value;
+            // If a group is selected, return it as an array
+            // If "No Group" (empty string) is selected, return empty array to clear groups
+            return selectedGroup ? [selectedGroup] : [];
+        })()
     };
     
     // Type-specific fields

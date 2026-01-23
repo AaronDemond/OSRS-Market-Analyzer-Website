@@ -1,6 +1,12 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Alerts - GE Tools{% endblock %}
+
+{% block extra_css %}
+<!-- Group selector styles (shared with alert_detail.html) -->
+<link rel="stylesheet" href="{% static 'css/group-selector.css' %}">
+{% endblock %}
 
 {% block content %}
 <div class="page-header">
@@ -209,13 +215,23 @@
                 <small class="form-hint">Enter a custom name for this alert</small>
             </div>
 
+            <!-- Group Selection -->
+            <!-- What: Dropdown to select which group to assign to the new alert -->
+            <!-- Why: Users can organize alerts into groups for easier management -->
+            <!-- How: Dropdown populated from user's groups with "+" button to create new -->
             <div class="form-group">
                 <label for="alert-group">Group</label>
-                <select name="group_id" id="alert-group">
-                    <option value="">No Group</option>
-                </select>
-
-                <small class="form-hint">Group your alerts. You can always add a group later</small>
+                <div class="group-selector-wrapper">
+                    <select name="group_id" id="alert-group">
+                        <option value="">No Group</option>
+                    </select>
+                    <button type="button" class="btn-add-group" onclick="openNewGroupModal()" title="Create new group">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+                        </svg>
+                    </button>
+                </div>
+                <small class="form-hint">Group your alerts. Click + to create a new group</small>
             </div>
 
             <!-- Number of items (shown for spike only) -->
@@ -2096,9 +2112,13 @@
         transition: background 0.15s;
     }
     
+    /* What: Highlight styling for autocomplete suggestion items */
+    /* Why: User needs visual feedback when hovering/selecting items */
+    /* How: Light green background with explicit black text for readability */
     .multi-item-suggestions-dropdown .suggestion-item:hover,
     .multi-item-suggestions-dropdown .suggestion-item.selected {
         background: #f0fdf4;
+        color: #000000;  /* Ensure text stays black and readable on green background */
     }
     
     .multi-item-suggestions-dropdown .suggestion-item:last-child {
@@ -2848,6 +2868,32 @@
     }
 
 </style>
+
+<!-- =============================================================================
+     NEW GROUP MODAL
+     What: Modal dialog for creating a new alert group while creating an alert
+     Why: Users need a way to create groups inline without leaving the page
+     How: Overlay with input field, Create/Cancel buttons, adds to AlertsState.alertGroups
+============================================================================= -->
+<div id="new-group-modal" class="new-group-modal-overlay">
+    <div class="new-group-modal-content">
+        <div class="new-group-modal-header">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+            </svg>
+            <h3>Create New Group</h3>
+        </div>
+        <div class="new-group-modal-body">
+            <label for="new-group-name-input">Group Name</label>
+            <input type="text" id="new-group-name-input" placeholder="Enter group name..." maxlength="100" autocomplete="off">
+            <p class="form-hint">Choose a descriptive name for your alert group</p>
+        </div>
+        <div class="new-group-modal-footer">
+            <button type="button" class="new-group-modal-btn cancel" onclick="closeNewGroupModal()">Cancel</button>
+            <button type="button" class="new-group-modal-btn create" id="create-group-btn" onclick="createNewGroup()">Create Group</button>
+        </div>
+    </div>
+</div>
 
 <script>
     /**
@@ -8628,6 +8674,119 @@
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             closeAlertHelpModal();
+        }
+    });
+
+    // =============================================================================
+    // NEW GROUP MODAL FUNCTIONS
+    // What: Functions for the "Create New Group" modal triggered by the "+" button
+    // Why: Users need a way to create groups inline while creating an alert
+    // How: Opens modal, handles input, creates group, updates AlertsState and dropdown
+    // =============================================================================
+    
+    /**
+     * Opens the modal for creating a new group.
+     * What: Shows the new group modal dialog
+     * Why: Users need a way to create groups without leaving the create alert form
+     * How: Add 'show' class to modal overlay, focus the input field
+     */
+    function openNewGroupModal() {
+        const modal = document.getElementById('new-group-modal');
+        const input = document.getElementById('new-group-name-input');
+        
+        // Show the modal
+        modal.classList.add('show');
+        
+        // Clear any previous input and focus
+        input.value = '';
+        input.focus();
+        
+        // Add event listener for Enter key
+        // What: Allows user to press Enter to create the group
+        // Why: Faster workflow than clicking the button
+        // How: Listen for keydown, check for Enter, call createNewGroup
+        input.onkeydown = function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                createNewGroup();
+            } else if (e.key === 'Escape') {
+                closeNewGroupModal();
+            }
+        };
+    }
+    
+    /**
+     * Closes the new group modal.
+     * What: Hides the new group modal dialog
+     * Why: User cancelled or finished creating a group
+     * How: Remove 'show' class from modal overlay
+     */
+    function closeNewGroupModal() {
+        const modal = document.getElementById('new-group-modal');
+        modal.classList.remove('show');
+    }
+    
+    /**
+     * Creates a new group and adds it to the dropdown.
+     * What: Validates input, adds new group to AlertsState, updates dropdown, selects it
+     * Why: User wants to create a new group for their alert
+     * How: Get input value, validate, add to AlertsState.alertGroups, update dropdown, select
+     */
+    function createNewGroup() {
+        const input = document.getElementById('new-group-name-input');
+        const groupName = input.value.trim();
+        
+        // Validate input
+        // What: Ensure the group name is not empty
+        // Why: Empty group names are not allowed
+        // How: Check trimmed value length
+        if (!groupName) {
+            input.focus();
+            return;
+        }
+        
+        // Check for duplicates (case-insensitive)
+        // What: Prevent creating duplicate groups
+        // Why: Group names should be unique per user
+        // How: Check if any existing group matches (ignoring case)
+        const existingGroups = AlertsState.getAlertGroups();
+        const isDuplicate = existingGroups.some(g => g.toLowerCase() === groupName.toLowerCase());
+        if (isDuplicate) {
+            // Show error - group already exists
+            input.style.borderColor = '#dc3545';
+            setTimeout(() => {
+                input.style.borderColor = '';
+            }, 2000);
+            return;
+        }
+        
+        // Add new group to AlertsState
+        // What: Adds the new group name to the application state
+        // Why: Makes it available in the dropdown and for future reference
+        // How: Push to alertGroups array and call updateGroupDropdown
+        existingGroups.push(groupName);
+        AlertsState.setAlertGroups(existingGroups);
+        
+        // Select the newly created group in the dropdown
+        // What: Automatically selects the new group in the dropdown
+        // Why: User likely wants to use the group they just created
+        // How: Set the select value to the new group name
+        const dropdown = document.getElementById('alert-group');
+        if (dropdown) {
+            dropdown.value = groupName;
+        }
+        
+        // Close the modal
+        closeNewGroupModal();
+    }
+    
+    // Close new group modal on overlay click
+    // What: Click handler for modal overlay backdrop
+    // Why: Standard UX pattern - clicking outside modal closes it
+    // How: Check if click target is the overlay itself (not the content)
+    document.getElementById('new-group-modal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeNewGroupModal();
         }
     });
 </script>
