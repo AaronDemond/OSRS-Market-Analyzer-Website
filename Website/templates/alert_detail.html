@@ -709,12 +709,13 @@
         right: 0;
         background: #dc3545;
         color: white;
-        padding: 8px 12px;
-        border-radius: 4px;
-        font-size: 0.8rem;
-        margin-top: 4px;
+        padding: 10px 14px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        line-height: 1.4;
+        margin-top: 6px;
         z-index: 100;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
     }
     
     .threshold-type-tooltip::before {
@@ -725,6 +726,24 @@
         border-left: 6px solid transparent;
         border-right: 6px solid transparent;
         border-bottom: 6px solid #dc3545;
+    }
+    
+    /* Restricted state for threshold type wrapper */
+    /* What: Visual indicator that the dropdown is restricted */
+    /* Why: Helps users understand they need to click to see why it's disabled */
+    /* How: Cursor change and subtle opacity on the disabled select */
+    .threshold-type-wrapper {
+        position: relative;
+    }
+    
+    .threshold-type-wrapper.restricted {
+        cursor: pointer;
+    }
+    
+    .threshold-type-wrapper.restricted select {
+        cursor: pointer;
+        opacity: 0.7;
+        background-color: #f5f5f5;
     }
     
     /* Reference prices display (non-editable) */
@@ -1220,6 +1239,98 @@
         color: #991b1b;
         border: 1px solid #fecaca;
     }
+    
+    /* =============================================================================
+       ERROR MODAL STYLES
+       What: Styles for the error modal dialog
+       Why: Provides a nicer alternative to browser alert() dialogs
+       How: Fixed overlay with centered content box, animation on show
+    ============================================================================= */
+    .error-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.2s ease;
+    }
+    
+    .error-modal-overlay.active {
+        opacity: 1;
+        visibility: visible;
+    }
+    
+    .error-modal-content {
+        background: white;
+        border-radius: 12px;
+        width: 100%;
+        max-width: 420px;
+        margin: 20px;
+        transform: scale(0.95);
+        transition: transform 0.2s ease;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+    
+    .error-modal-overlay.active .error-modal-content {
+        transform: scale(1);
+    }
+    
+    .error-modal-header {
+        padding: 20px;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .error-modal-header .error-icon {
+        width: 28px;
+        height: 28px;
+        color: #dc3545;
+    }
+    
+    .error-modal-header h3 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #333;
+        margin: 0;
+    }
+    
+    .error-modal-body {
+        padding: 20px;
+        color: #555;
+        line-height: 1.6;
+    }
+    
+    .error-modal-footer {
+        padding: 16px 20px;
+        border-top: 1px solid #e5e7eb;
+        display: flex;
+        justify-content: flex-end;
+    }
+    
+    .error-modal-btn {
+        padding: 10px 24px;
+        border-radius: 8px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border: none;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .error-modal-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
 </style>
 {% endblock %}
 
@@ -1618,8 +1729,11 @@
                                 <option value="value" {% if alert.threshold_type == 'value' %}selected{% endif %}>Value (GP)</option>
                             </select>
                             <!-- Tooltip shown when trying to select value with multiple items -->
+                            <!-- What: Warning tooltip explaining why value type is unavailable -->
+                            <!-- Why: Users need to understand the restriction on multi-item alerts -->
+                            <!-- How: Displayed on click when dropdown is disabled -->
                             <span id="threshold-type-tooltip" class="threshold-type-tooltip" style="display: none;">
-                                Only percentage is allowed with multiple items
+                                Percentage is the only available metric when tracking more than one item. To use a specific value threshold, please select only one item.
                             </span>
                         </div>
                         <small class="form-hint">How to measure the threshold</small>
@@ -2046,6 +2160,29 @@
         </div>
     </div>
 </div>
+
+<!-- =============================================================================
+     ERROR MODAL
+     What: Modal dialog for displaying validation errors
+     Why: Provides a nicer user experience than browser alert() dialogs
+     How: Hidden by default, shown by JavaScript when validation fails
+============================================================================= -->
+<div id="error-modal" class="error-modal-overlay">
+    <div class="error-modal-content">
+        <div class="error-modal-header">
+            <svg class="error-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <h3 id="error-modal-title">Error</h3>
+        </div>
+        <div class="error-modal-body">
+            <p id="error-modal-message">An error occurred.</p>
+        </div>
+        <div class="error-modal-footer">
+            <button class="error-modal-btn" onclick="closeErrorModal()">OK</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -2467,7 +2604,16 @@ const EditMultiItemSelector = {
             if (noItemsMsg) noItemsMsg.classList.add('show');
         } else {
             if (noItemsMsg) noItemsMsg.classList.remove('show');
-            selectedList.innerHTML = this.selectedItems.map(item =>
+            
+            // Sort items alphabetically by name before rendering
+            // What: Sorts selected items by name for consistent display
+            // Why: Easier for users to find and manage items in the list
+            // How: Create sorted copy of array, sort by name using localeCompare
+            const sortedItems = [...this.selectedItems].sort((a, b) => 
+                a.name.localeCompare(b.name)
+            );
+            
+            selectedList.innerHTML = sortedItems.map(item =>
                 `<div class="selected-item-row">
                     <span class="item-name">${item.name}</span>
                     <button type="button" class="remove-item-btn" data-id="${item.id}" title="Remove ${item.name}">×</button>
@@ -2890,6 +3036,8 @@ function handleThresholdTypeChange() {
     const thresholdType = document.getElementById('edit-threshold-type');
     const percentageGroup = document.getElementById('percentage-group');
     const targetPriceGroup = document.getElementById('target-price-group');
+    const percentageInput = document.getElementById('edit-percentage');
+    const targetPriceInput = document.getElementById('edit-target-price');
     
     if (!thresholdType) return;
     
@@ -2897,10 +3045,22 @@ function handleThresholdTypeChange() {
         // Value mode: show target price, hide percentage
         if (percentageGroup) percentageGroup.style.display = 'none';
         if (targetPriceGroup) targetPriceGroup.style.display = 'block';
+        
+        // Clear the percentage input when switching to value mode
+        // What: Clears the percentage field when user switches to value threshold
+        // Why: Prevents old percentage value from being submitted with value-type alert
+        // How: Set the input value to empty string
+        if (percentageInput) percentageInput.value = '';
     } else {
         // Percentage mode: show percentage, hide target price
         if (percentageGroup) percentageGroup.style.display = 'block';
         if (targetPriceGroup) targetPriceGroup.style.display = 'none';
+        
+        // Clear the target price input when switching to percentage mode
+        // What: Clears the target price field when user switches to percentage threshold
+        // Why: Prevents old target price value from being submitted with percentage-type alert
+        // How: Set the input value to empty string
+        if (targetPriceInput) targetPriceInput.value = '';
     }
 }
 
@@ -2913,6 +3073,7 @@ function handleThresholdTypeChange() {
 function updateThresholdTypeState() {
     const thresholdTypeSelect = document.getElementById('edit-threshold-type');
     const thresholdTypeTooltip = document.getElementById('threshold-type-tooltip');
+    const thresholdTypeWrapper = thresholdTypeSelect ? thresholdTypeSelect.parentElement : null;
     const isAllItems = document.getElementById('edit-all-items').checked;
     
     if (!thresholdTypeSelect) return;
@@ -2925,21 +3086,45 @@ function updateThresholdTypeState() {
         thresholdTypeSelect.value = 'percentage';
         thresholdTypeSelect.disabled = true;
         handleThresholdTypeChange();  // Update display
+        
+        // Add visual indicator that dropdown is restricted
+        if (thresholdTypeWrapper) {
+            thresholdTypeWrapper.classList.add('restricted');
+        }
     } else {
         // Single or no items: allow choice
         thresholdTypeSelect.disabled = false;
+        
+        // Remove visual indicator
+        if (thresholdTypeWrapper) {
+            thresholdTypeWrapper.classList.remove('restricted');
+        }
+        
+        // Hide tooltip if it was showing
+        if (thresholdTypeTooltip) {
+            thresholdTypeTooltip.style.display = 'none';
+        }
     }
     
-    // Add click handler to show tooltip when disabled
-    thresholdTypeSelect.onclick = function(e) {
-        if (this.disabled && thresholdTypeTooltip) {
-            thresholdTypeTooltip.style.display = 'block';
-            // Hide tooltip after 3 seconds
-            setTimeout(() => {
-                thresholdTypeTooltip.style.display = 'none';
-            }, 3000);
-        }
-    };
+    // Add click handler to wrapper to show tooltip when disabled
+    // What: Shows tooltip when user clicks on the disabled dropdown
+    // Why: Disabled elements don't reliably fire click events, so we use the wrapper
+    // How: Wrapper click checks if select is disabled, shows tooltip if so
+    if (thresholdTypeWrapper && !thresholdTypeWrapper._tooltipHandlerAdded) {
+        thresholdTypeWrapper._tooltipHandlerAdded = true;
+        
+        thresholdTypeWrapper.addEventListener('click', function(e) {
+            if (thresholdTypeSelect.disabled && thresholdTypeTooltip) {
+                // Show the tooltip
+                thresholdTypeTooltip.style.display = 'block';
+                
+                // Hide tooltip after 4 seconds
+                setTimeout(() => {
+                    thresholdTypeTooltip.style.display = 'none';
+                }, 4000);
+            }
+        });
+    }
 }
 
 /**
@@ -3021,11 +3206,21 @@ function populateReferencePricesDisplay(referencePricesData, itemMapping) {
             return;
         }
         
+        // Sort entries alphabetically by item name
+        // What: Sorts reference prices by item name for consistent display
+        // Why: Easier for users to find specific items in the list
+        // How: Map entries to include resolved names, sort by name, then render
+        const sortedEntries = entries
+            .map(([itemId, price]) => ({
+                itemId,
+                price,
+                itemName: (itemMapping && itemMapping[itemId]) || `Item ${itemId}`
+            }))
+            .sort((a, b) => a.itemName.localeCompare(b.itemName));
+        
         // Build HTML for each item
         let html = '';
-        entries.forEach(([itemId, price]) => {
-            // Get item name from mapping or use ID
-            const itemName = (itemMapping && itemMapping[itemId]) || `Item ${itemId}`;
+        sortedEntries.forEach(({ itemId, price, itemName }) => {
             const formattedPrice = Number(price).toLocaleString();
             html += `
                 <div class="reference-price-item">
@@ -3073,11 +3268,21 @@ function populateReferencePricesDisplayView(referencePricesData, itemMapping) {
             return;
         }
         
+        // Sort entries alphabetically by item name
+        // What: Sorts reference prices by item name for consistent display
+        // Why: Easier for users to find specific items in the list
+        // How: Map entries to include resolved names, sort by name, then render
+        const sortedEntries = entries
+            .map(([itemId, price]) => ({
+                itemId,
+                price,
+                itemName: (itemMapping && itemMapping[itemId]) || `Item ${itemId}`
+            }))
+            .sort((a, b) => a.itemName.localeCompare(b.itemName));
+        
         // Build HTML for each item
         let html = '';
-        entries.forEach(([itemId, price]) => {
-            // Get item name from mapping or use ID
-            const itemName = (itemMapping && itemMapping[itemId]) || `Item ${itemId}`;
+        sortedEntries.forEach(({ itemId, price, itemName }) => {
             const formattedPrice = Number(price).toLocaleString();
             html += `
                 <div class="reference-price-item">
@@ -3184,6 +3389,22 @@ async function saveChanges() {
         
         // Get threshold type (percentage or value)
         const thresholdType = document.getElementById('edit-threshold-type').value || 'percentage';
+        
+        // =============================================================================
+        // VALIDATE: Value type not allowed with multiple items
+        // What: Prevent saving a value-based threshold alert with multiple items
+        // Why: Value thresholds only make sense for a single item (specific price target)
+        // How: Check if value type AND (all items OR multiple items selected), show error modal
+        // =============================================================================
+        const hasMultipleItems = isAllItems || EditMultiItemSelector.selectedItems.length > 1;
+        if (thresholdType === 'value' && hasMultipleItems) {
+            showErrorModal(
+                'Invalid Configuration',
+                'Value-based thresholds can only be used when tracking a single item. Please switch to percentage mode, or select only one item to track.'
+            );
+            return;  // Stop save operation
+        }
+        
         data.threshold_type = thresholdType;
         
         // Get direction from threshold-specific direction dropdown (up/down only)
@@ -3254,11 +3475,11 @@ async function saveChanges() {
                 window.location.href = window.location.pathname + '?edit_saved=1';
             }
         } else {
-            alert('Error saving changes: ' + (result.error || 'Unknown error'));
+            showErrorModal('Error Saving', result.error || 'An unknown error occurred while saving changes.');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('Error saving changes. Please try again.');
+        showErrorModal('Connection Error', 'Unable to save changes. Please check your connection and try again.');
     }
 }
 
@@ -3282,11 +3503,11 @@ async function deleteAlert() {
         if (result.success) {
             window.location.href = '{% url "alerts" %}?deleted=1';
         } else {
-            alert('Error deleting alert: ' + (result.error || 'Unknown error'));
+            showErrorModal('Error Deleting', result.error || 'An unknown error occurred while deleting the alert.');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('Error deleting alert. Please try again.');
+        showErrorModal('Connection Error', 'Unable to delete alert. Please check your connection and try again.');
     }
 }
 
@@ -3650,6 +3871,58 @@ const ItemAutocomplete = {
         this.selectedIndex = -1;
     }
 };
+
+// =============================================================================
+// ERROR MODAL FUNCTIONS
+// What: Functions to show and close the error modal dialog
+// Why: Provides a nicer alternative to browser alert() dialogs
+// How: Toggle the 'active' class on the modal overlay, set message content
+// =============================================================================
+
+/**
+ * Shows the error modal with a custom title and message.
+ * What: Displays a styled modal dialog with the given error information
+ * Why: Better UX than browser alert() - matches site styling
+ * How: Sets title and message content, adds 'active' class to show modal
+ * 
+ * @param {string} title - The title to display in the modal header
+ * @param {string} message - The error message to display in the modal body
+ */
+function showErrorModal(title, message) {
+    const modal = document.getElementById('error-modal');
+    const titleEl = document.getElementById('error-modal-title');
+    const messageEl = document.getElementById('error-modal-message');
+    
+    if (titleEl) titleEl.textContent = title;
+    if (messageEl) messageEl.textContent = message;
+    if (modal) modal.classList.add('active');
+}
+
+/**
+ * Closes the error modal.
+ * What: Hides the error modal dialog
+ * Why: Allow user to dismiss the error and continue
+ * How: Removes 'active' class from modal overlay
+ */
+function closeErrorModal() {
+    const modal = document.getElementById('error-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+// Close modal when clicking outside content
+document.addEventListener('click', function(e) {
+    const modal = document.getElementById('error-modal');
+    if (e.target === modal) {
+        closeErrorModal();
+    }
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeErrorModal();
+    }
+});
 
 // Initialize autocomplete when page loads
 ItemAutocomplete.init();
