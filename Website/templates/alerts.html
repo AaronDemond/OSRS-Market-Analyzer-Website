@@ -242,7 +242,7 @@
             <!-- Note: "Specific Item(s)" handles both single and multiple items - no need for separate single item option -->
             <div class="form-group" id="spike-scope-group" style="display: none;">
                 <label for="spike-scope">Apply To</label>
-                <select name="spike_scope" id="spike-scope" onchange="handleSpikeScopeChange()" tabindex="10">
+                <select name="spike_scope" id="spike-scope" onchange="handleSpikeScopeChange()" tabindex="7">
                     <option value="multiple" selected>Specific Item(s)</option>
                     <option value="all">All Items</option>
                 </select>
@@ -263,9 +263,9 @@
                 <div class="multi-item-selector">
                     <div class="multi-item-selector-box">
                         <!-- Search input for adding new items -->
-                        <input type="text" id="spike-item-input" placeholder="Search for item to add..." autocomplete="off" tabindex="20">
+                        <input type="text" id="spike-item-input" placeholder="Search for item to add..." autocomplete="off" tabindex="8">
                         <!-- Dropdown toggle button with chevron arrow -->
-                        <button type="button" class="multi-item-dropdown-toggle" id="spike-multi-item-toggle" title="Show selected items" tabindex="21">
+                        <button type="button" class="multi-item-dropdown-toggle" id="spike-multi-item-toggle" title="Show selected items" tabindex="9">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="6 9 12 15 18 9"></polyline>
                             </svg>
@@ -292,7 +292,7 @@
             <!-- How: Changes form visibility based on selection; "Specific Item(s)" handles both single and multiple items -->
             <div class="form-group" id="spread-scope-group" style="display: none;">
                 <label for="spread-scope">Apply To</label>
-                <select name="spread_scope" id="spread-scope" onchange="handleSpreadScopeChange()" tabindex="11">
+                <select name="spread_scope" id="spread-scope" onchange="handleSpreadScopeChange()" tabindex="7">
                     <option value="multiple" selected>Specific Item(s)</option>
                     <option value="all">All Items</option>
                 </select>
@@ -313,9 +313,9 @@
                 <div class="multi-item-selector">
                     <div class="multi-item-selector-box">
                         <!-- Search input for adding new items -->
-                        <input type="text" id="spread-item-input" placeholder="Search for item to add..." autocomplete="off" tabindex="22">
+                        <input type="text" id="spread-item-input" placeholder="Search for item to add..." autocomplete="off" tabindex="8">
                         <!-- Dropdown toggle button with chevron arrow -->
-                        <button type="button" class="multi-item-dropdown-toggle" id="spread-multi-item-toggle" title="Show selected items" tabindex="23">
+                        <button type="button" class="multi-item-dropdown-toggle" id="spread-multi-item-toggle" title="Show selected items" tabindex="9">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="6 9 12 15 18 9"></polyline>
                             </svg>
@@ -342,7 +342,7 @@
             <!-- How: Uses autocomplete to help users find items by name -->
             <div class="form-group" id="item-name-group">
                 <label for="item-name">Item Name</label>
-                <input type="text" name="item_name" id="item-name" autocomplete="off" tabindex="24">
+                <input type="text" name="item_name" id="item-name" autocomplete="off" tabindex="8">
                 <input type="hidden" name="item_id" id="item-id">
                 <input type="hidden" name="is_all_items" id="is-all-items" value="false">
                 <div id="item-suggestions" class="suggestions-dropdown"></div>
@@ -354,41 +354,42 @@
             <!-- Why: Users need to specify the price that triggers the alert -->
             <div class="form-group" id="price-group">
                 <label for="price">Price Threshold</label>
-                <input type="number" name="price" id="price" tabindex="51">
+                <input type="number" name="price" id="price" tabindex="9">
                 <small class="form-hint">Target price</small>
             </div>
 
             <!-- Reference Price -->
             <!-- What: Dropdown to choose which price to use for comparison (high, low, or average) -->
             <!-- Why: Different strategies monitor different price points -->
+            <!-- Note: Used by Spike and Sustained alerts - Threshold has its own separate dropdown -->
             <div class="form-group" id="reference-group">
                 <label for="reference">Reference Price</label>
-                <select name="reference" id="reference" tabindex="54">
-                    <option value="high">High Price</option>
-                    <option value="low">Low Price</option>
-                    <option value="average">Average Price</option>
+                <select name="reference" id="reference" tabindex="16">
+                    <option value="high">High (Instant Buy)</option>
+                    <option value="low">Low (Instant Sell)</option>
+                    <option value="average" selected>Average</option>
                 </select>
-                <small class="form-hint">Price your alert will use to make calculations</small>
+                <small class="form-hint">Which price to monitor for alert calculations</small>
             </div>
 
             <!-- Percentage field (shown for spread or spike) -->
             <div class="form-group" id="percentage-group" style="display: none;">
                 <label for="percentage">Percentage (%)</label>
-                <input type="number" name="percentage" id="percentage" step="0.001" min="0.001" tabindex="52">
+                <input type="number" name="percentage" id="percentage" step="0.001" min="0.001" tabindex="11">
                 <small class="form-hint">Target percentage your alert must hit</small>
             </div>
 
             <!-- Time frame field (shown for spike only) -->
             <div class="form-group" id="time-frame-group" style="display: none;">
                 <label for="time-frame">Time Frame (minutes)</label>
-                <input type="number" name="time_frame" id="time-frame" min="1" step="1" placeholder="e.g. 10" tabindex="54">
+                <input type="number" name="time_frame" id="time-frame" min="1" step="1" placeholder="e.g. 10" tabindex="17">
                 <small class="form-hint">Time frame your alert must trigger within.</small>
             </div>
 
             <!-- Direction field (shown for spike only) -->
             <div class="form-group" id="direction-group" style="display: none;">
                 <label for="direction">Direction</label>
-                <select name="direction" id="direction" tabindex="30">
+                <select name="direction" id="direction" tabindex="10">
                     <option value="both" selected>Both</option>
                     <option value="up">Up</option>
                     <option value="down">Down</option>
@@ -400,7 +401,7 @@
             <!-- Sustained Move scope selector -->
             <div class="form-group" id="sustained-scope-group" style="display: none;">
                 <label for="sustained-scope">Apply To</label>
-                <select name="sustained_scope" id="sustained-scope" onchange="handleSustainedScopeChange()" tabindex="12">
+                <select name="sustained_scope" id="sustained-scope" onchange="handleSustainedScopeChange()" tabindex="7">
                     <option value="specific" selected>Specific Item(s)</option>
                     <option value="all">All Items</option>
                 </select>
@@ -420,9 +421,9 @@
                 <div class="multi-item-selector">
                     <div class="multi-item-selector-box">
                         <!-- Search input for adding new items -->
-                        <input type="text" id="sustained-item-input" placeholder="Search for item to add..." autocomplete="off" tabindex="25">
+                        <input type="text" id="sustained-item-input" placeholder="Search for item to add..." autocomplete="off" tabindex="8">
                         <!-- Dropdown toggle button with chevron arrow -->
-                        <button type="button" class="multi-item-dropdown-toggle" id="sustained-multi-item-toggle" title="Show selected items" tabindex="26">
+                        <button type="button" class="multi-item-dropdown-toggle" id="sustained-multi-item-toggle" title="Show selected items" tabindex="9">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="6 9 12 15 18 9"></polyline>
                             </svg>
@@ -449,12 +450,12 @@
             <!-- How: These filters apply when "All Items" is selected, narrowing down the monitored items -->
             <div class="form-group" id="min-price-group" style="display: none;">
                 <label for="minimum-price">Minimum Price</label>
-                <input type="number" name="minimum_price" id="minimum-price" min="0" tabindex="40">
+                <input type="number" name="minimum_price" id="minimum-price" min="0" tabindex="15">
                 <small class="form-hint">The minimum price of an item to track</small>
             </div>
             <div class="form-group" id="max-price-group" style="display: none;">
                 <label for="maximum-price">Maximum Price</label>
-                <input type="number" name="maximum_price" id="maximum-price" min="0" tabindex="41">
+                <input type="number" name="maximum_price" id="maximum-price" min="0" tabindex="14">
                 <small class="form-hint">The maximum price of an item to track</small>
             </div>
 
@@ -464,30 +465,30 @@
             <div class="form-group" id="min-consecutive-moves-group" style="display: none;">
                 <label for="min-consecutive-moves">Min Consecutive Moves</label>
                 <input type="number" name="min_consecutive_moves" id="min-consecutive-moves" min="2" step="1"
-                    placeholder="e.g. 5" tabindex="42">
+                    placeholder="e.g. 5" tabindex="12">
                 <small class="form-hint">Number of price changes in same direction</small>
             </div>
             <div class="form-group" id="min-move-percentage-group" style="display: none;">
                 <label for="min-move-percentage">Min Move %</label>
                 <input type="number" name="min_move_percentage" id="min-move-percentage" min="0.01" step="0.01"
-                    placeholder="e.g. 0.5" tabindex="43">
+                    placeholder="e.g. 0.5" tabindex="13">
                 <small class="form-hint">Min % change to count as move</small>
             </div>
             <div class="form-group" id="min-volume-group" style="display: none;">
                 <label for="min-volume">Min Volume</label>
-                <input type="number" name="min_volume" id="min-volume" min="0" step="1" placeholder="e.g. 10000" tabindex="47">
+                <input type="number" name="min_volume" id="min-volume" min="0" step="1" placeholder="e.g. 10000" tabindex="15">
                 <small class="form-hint">Min trading volume</small>
             </div>
             <div class="form-group" id="volatility-buffer-group" style="display: none;">
                 <label for="volatility-buffer-size">Volatility Buffer (N)</label>
                 <input type="number" name="volatility_buffer_size" id="volatility-buffer-size" min="5" step="1"
-                    placeholder="e.g. 20" tabindex="54">
+                    placeholder="e.g. 20" tabindex="18">
                 <small class="form-hint">Rolling buffer size for avg volatility</small>
             </div>
             <div class="form-group" id="volatility-multiplier-group" style="display: none;">
                 <label for="volatility-multiplier">Volatility Multiplier (K)</label>
                 <input type="number" name="volatility_multiplier" id="volatility-multiplier" min="0.1" step="0.1"
-                    placeholder="e.g. 1.5" tabindex="55">
+                    placeholder="e.g. 1.5" tabindex="19">
                 <small class="form-hint">Streak must move ≥ K × avg volatility</small>
             </div>
 
@@ -496,7 +497,7 @@
             <!-- Why: Users may want to only trigger alerts when there's buying/selling pressure -->
             <div class="form-group" id="pressure-strength-group" style="display: none;">
                 <label for="min-pressure-strength">Market Pressure</label>
-                <select name="min_pressure_strength" id="min-pressure-strength" tabindex="40">
+                <select name="min_pressure_strength" id="min-pressure-strength" tabindex="11">
                     <option value="">No Pressure Filter</option>
                     <option value="weak">Weak+ (any time delta)</option>
                     <option value="moderate">Moderate+ (&lt;5min)</option>
@@ -507,7 +508,7 @@
             <div class="form-group" id="pressure-spread-group" style="display: none;">
                 <label for="min-pressure-spread">Min Spread % for Pressure</label>
                 <input type="number" name="min_pressure_spread_pct" id="min-pressure-spread" min="0.01" step="0.01"
-                    placeholder="e.g. 0.2" tabindex="46">
+                    placeholder="e.g. 0.2" tabindex="14">
                 <small class="form-hint">Minimum high-low spread % to confirm pressure</small>
             </div>
 
@@ -525,7 +526,7 @@
             <!-- Note: "Specific Item(s)" is the default for consistency with other alert types -->
             <div class="form-group" id="threshold-items-tracked-group" style="display: none;">
                 <label for="threshold-items-tracked">Apply To</label>
-                <select name="threshold_items_tracked" id="threshold-items-tracked" onchange="handleThresholdItemsTrackedChange()" tabindex="13">
+                <select name="threshold_items_tracked" id="threshold-items-tracked" onchange="handleThresholdItemsTrackedChange()" tabindex="7">
                     <option value="specific" selected>Specific Item(s)</option>
                     <option value="all">All Items</option>
                 </select>
@@ -545,9 +546,9 @@
                 <div class="multi-item-selector">
                     <div class="multi-item-selector-box">
                         <!-- Search input for adding new items -->
-                        <input type="text" id="threshold-item-input" placeholder="Search for item to add..." autocomplete="off" tabindex="27">
+                        <input type="text" id="threshold-item-input" placeholder="Search for item to add..." autocomplete="off" tabindex="8">
                         <!-- Dropdown toggle button with chevron arrow -->
-                        <button type="button" class="multi-item-dropdown-toggle" id="threshold-multi-item-toggle" title="Show selected items" tabindex="28">
+                        <button type="button" class="multi-item-dropdown-toggle" id="threshold-multi-item-toggle" title="Show selected items" tabindex="9">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="6 9 12 15 18 9"></polyline>
                             </svg>
@@ -573,9 +574,9 @@
             <!-- Why: Users may only care about price increases (for selling) or decreases (for buying) -->
             <div class="form-group" id="threshold-direction-group" style="display: none;">
                 <label for="threshold-direction">Above or Below</label>
-                <select name="threshold_direction" id="threshold-direction" tabindex="31">
+                <select name="threshold_direction" id="threshold-direction" tabindex="10">
                     <option value="up" selected>Above</option>
-                    <option value="down">Down Below</option>
+                    <option value="down">Below</option>
                 </select>
                 <small class="form-hint">Alert when price hits percentage threshold above or below its current value (or above/below a specified value) </small>
             </div>
@@ -585,11 +586,27 @@
             <!-- Why: Users may want "10% increase" or "1000gp increase" depending on their strategy -->
             <!-- How: Auto-selects percentage when All Items or multiple specific items selected -->
             <div class="form-group" id="threshold-type-group" style="display: none;">
-                <label for="threshold-type">Threshold Type</label>
-                <select name="threshold_type" id="threshold-type" tabindex="32">
+                <label for="threshold-type">
+                    Threshold Type
+                    <!-- Locked indicator: Shows when threshold type is forced to percentage -->
+                    <!-- What: Visual indicator (🚫) that the dropdown is locked -->
+                    <!-- Why: Users need to understand why they can't change the threshold type -->
+                    <!-- How: Icon appears when dropdown is disabled; clicking shows explanatory tooltip -->
+                    <span id="threshold-type-locked-indicator" class="locked-indicator" style="display: none;" title="Click for more info">🚫</span>
+                </label>
+                <select name="threshold_type" id="threshold-type" tabindex="11">
                     <option value="percentage" selected>Percentage</option>
                     <option value="value">Value (GP)</option>
                 </select>
+                <!-- Tooltip that appears when user clicks the locked indicator -->
+                <!-- What: Explanation popup for why threshold type is locked -->
+                <!-- Why: Provides context so users understand the restriction -->
+                <!-- How: Shown/hidden via JavaScript when indicator is clicked -->
+                <div id="threshold-type-locked-tooltip" class="locked-tooltip" style="display: none;">
+                    <span class="locked-tooltip-close">&times;</span>
+                    <p>Value-based thresholds can only be used when monitoring a <strong>single item</strong>.</p>
+                    <p>When monitoring multiple items or all items, percentage-based thresholds must be used because each item has a different price.</p>
+                </div>
                 <small class="form-hint">How to measure the threshold (percentage only for multiple items)</small>
             </div>
 
@@ -599,7 +616,7 @@
             <!-- How: Value is interpreted as percentage or GP based on threshold_type selection -->
             <div class="form-group" id="threshold-value-group" style="display: none;">
                 <label for="threshold-value">Threshold</label>
-                <input type="number" name="threshold_value" id="threshold-value" step="0.01" min="0.01" placeholder="e.g. 5" tabindex="56">
+                <input type="number" name="threshold_value" id="threshold-value" step="0.01" min="0.01" placeholder="e.g. 5" tabindex="13">
                 <small class="form-hint" id="threshold-value-hint">The percentage or value change that triggers the alert (use numbers between 0-100)</small>
             </div>
 
@@ -609,10 +626,10 @@
             <!-- How: Determines which current price is compared against the threshold -->
             <div class="form-group" id="threshold-reference-group" style="display: none;">
                 <label for="threshold-reference">Reference Price</label>
-                <select name="threshold_reference" id="threshold-reference" tabindex="49">
-                    <option value="high">High (Instant Sell)</option>
-                    <option value="low">Low (Instant Buy)</option>
-                    <option value="average">Average</option>
+                <select name="threshold_reference" id="threshold-reference" tabindex="12">
+                    <option value="high">High (Instant Buy)</option>
+                    <option value="low">Low (Instant Sell)</option>
+                    <option value="average" selected>Average</option>
                 </select>
                 <small class="form-hint">Which price to monitor for threshold changes</small>
             </div>
@@ -627,22 +644,22 @@
                       1) force them to the end of the form (via flexbox order)
                       2) render them on ONE LINE (by removing the old 100%-width rule)
                  ===================================================================================== -->
-            <div class="form-check d-flex align-items-center" style="margin-top:35px !important" id="show-notification-group">
-                    <input style = "transform: scale(1.35); margin-top: 0;" type="checkbox" class="form-check-input me-2" name="show_notification" id="show-notification" checked tabindex="100">
+            <div class="form-check d-flex align-items-center" style="padding-right: 4em; margin-top:35px !important" id="show-notification-group">
+                    <input style = "transform: scale(1.35); margin-top: 0;" type="checkbox" class="form-check-input me-2" name="show_notification" id="show-notification" checked tabindex="90">
                 <label class="form-check-label">
                     <span>Show Alert Notification?</span>
                 </label>
             </div>
 
-            <div class="form-check d-flex align-items-center" style="margin-top:35px !important" id="sms-notification-group">
-                <input style = "transform: scale(1.35); margin-top: 0;" type="checkbox" class="form-check-input me-2" name="email_notification" id="email-notification" tabindex="101">
+            <div class="form-check d-flex align-items-center" style="padding-right: 4em; margin-top:35px !important" id="sms-notification-group">
+                <input style = "transform: scale(1.35); margin-top: 0;" type="checkbox" class="form-check-input me-2" name="email_notification" id="email-notification" tabindex="91">
                 <label class="form-check-label">
                   
-                    <span>Receive SMS Notification</span>
+                    <span>Receive SMS Notification?</span>
                 </label>
             </div>
 
-            <button type="submit" class="btn-create-alert" tabindex="200">Create Alert</button>
+            <button type="submit" class="btn-create-alert" tabindex="100">Create Alert</button>
         </form>
     </div>
 </div>
@@ -2164,6 +2181,92 @@
         color: var(--muted);
         margin-top: 4px;
         line-height: 1.4;
+    }
+
+    /* =========================================================================
+       LOCKED FIELD INDICATOR STYLES
+       What: Styles for the locked indicator icon and tooltip
+       Why: Provides visual feedback when a dropdown is locked and explains why
+       How: Icon appears inline with label; tooltip appears on click
+       ========================================================================= */
+    
+    /* Locked indicator icon - appears next to label when field is locked */
+    /* What: A no-entry symbol (🚫) that indicates the field cannot be changed */
+    /* Why: Users need visual feedback that the field is intentionally locked */
+    /* How: Displayed inline with the label, with hover effect to indicate clickability */
+    .locked-indicator {
+        margin-left: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        opacity: 0.8;
+        transition: opacity 0.15s, transform 0.15s;
+        display: inline-block;
+        vertical-align: middle;
+    }
+    
+    /* Hover state for locked indicator - makes it clear it's clickable */
+    .locked-indicator:hover {
+        opacity: 1;
+        transform: scale(1.15);
+    }
+    
+    /* Tooltip container - explains why the field is locked */
+    /* What: A popup box with explanation text */
+    /* Why: Users need to understand why they can't change the threshold type */
+    /* How: Positioned 15px below the locked indicator icon, styled as an info box */
+    .locked-tooltip {
+        position: absolute;
+        top: 30px;  /* Position 15px below the label line (label ~15px + 15px gap) */
+        left: 0;
+        right: 0;
+        padding: 12px 16px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        z-index: 100;
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--text);
+    }
+    
+    /* Tooltip paragraph spacing */
+    .locked-tooltip p {
+        margin: 0 0 8px 0;
+    }
+    
+    /* Remove bottom margin from last paragraph */
+    .locked-tooltip p:last-of-type {
+        margin-bottom: 0;
+    }
+    
+    /* Close button for the tooltip */
+    /* What: X button in top-right corner to dismiss the tooltip */
+    /* Why: Users need a way to close the tooltip after reading */
+    /* How: Positioned absolutely, styled as a subtle close button */
+    .locked-tooltip-close {
+        position: absolute;
+        top: 8px;
+        right: 12px;
+        cursor: pointer;
+        font-size: 18px;
+        color: var(--muted);
+        line-height: 1;
+        transition: color 0.15s;
+    }
+    
+    .locked-tooltip-close:hover {
+        color: var(--text);
+    }
+    
+    /* Disabled/locked select styling */
+    /* What: Red background for disabled dropdown to indicate it's locked */
+    /* Why: Provides strong visual feedback that the field cannot be changed */
+    /* How: Targets disabled select elements with a light red background */
+    select:disabled {
+        background-color: rgba(239, 68, 68, 0.15);  /* Light red background */
+        border-color: rgba(239, 68, 68, 0.4);       /* Red-tinted border */
+        cursor: not-allowed;
     }
 
     /* =========================================================================
@@ -4216,7 +4319,16 @@
             } else if (currentSort === 'thresholdDistance') {
                 const thresholdDistance = SortManager.getThresholdDistance(alert);
                 let distText = 'N/A';
-                if (typeof thresholdDistance === 'number' && !Number.isNaN(thresholdDistance)) {
+                // =============================================================================
+                // DISPLAY THRESHOLD DISTANCE OR MULTI-ITEM MESSAGE
+                // =============================================================================
+                // What: Format the threshold distance for display in the sort info section
+                // Why: Users need visual feedback on how close alerts are to triggering
+                // How: Check if result is a number (show %), 'multi' (show tracking message), or null (show N/A)
+                if (thresholdDistance === 'multi') {
+                    // Multi-item alert - distance calculation not applicable
+                    distText = 'N/A - Tracking Multiple Items';
+                } else if (typeof thresholdDistance === 'number' && !Number.isNaN(thresholdDistance)) {
                     distText = thresholdDistance.toFixed(2) + '%';
                 }
                 sortInfoHtml = '<div class="alert-sort-info">Threshold distance: ' + distText + '</div>';
@@ -4625,6 +4737,101 @@
                 // Fallback to current price vs stored baseline in current_price if available (no baseline -> null)
                 return null;
             }
+            // =============================================================================
+            // THRESHOLD ALERT DISTANCE CALCULATION
+            // =============================================================================
+            // What: Calculate how close a threshold alert is to being triggered
+            // Why: Users want to see progress towards their alert threshold in the UI
+            // How: For value-based: Calculate % difference between current price and target
+            //      For percentage-based: Calculate current % change from baseline vs threshold
+            // Note: Only works for single-item alerts; multi-item returns 'multi' flag for UI display
+            if (alert.type === alertTypes.THRESHOLD) {
+                // Check if this is a multi-item alert (item_ids contains multiple items or is_all_items)
+                // What: Determine if alert tracks multiple items
+                // Why: Threshold distance calculation only makes sense for single items
+                // How: Parse item_ids JSON and check length, or check is_all_items flag
+                if (alert.is_all_items) {
+                    return 'multi';  // Signal to UI to show "N/A - Tracking Multiple Items"
+                }
+                if (alert.item_ids) {
+                    try {
+                        const itemIds = JSON.parse(alert.item_ids);
+                        if (Array.isArray(itemIds) && itemIds.length > 1) {
+                            return 'multi';  // Signal to UI to show "N/A - Tracking Multiple Items"
+                        }
+                    } catch (e) {
+                        // Ignore parse errors, continue with calculation attempt
+                    }
+                }
+                
+                // Single-item threshold alert - calculate distance
+                const thresholdType = alert.threshold_type || 'percentage';
+                const currentPrice = Number(alert.current_price);
+                
+                if (!Number.isFinite(currentPrice) || currentPrice === 0) {
+                    return null;  // No current price data available
+                }
+                
+                if (thresholdType === 'value') {
+                    // Value-based threshold: Calculate % distance from current price to target price
+                    // What: How far is current price from the target in percentage terms
+                    // Why: Gives user a sense of how close they are to their price target
+                    // How: ((target - current) / current) * 100 for up direction
+                    //      ((current - target) / current) * 100 for down direction
+                    const targetPrice = Number(alert.target_price);
+                    if (!Number.isFinite(targetPrice) || targetPrice === 0) {
+                        return null;
+                    }
+                    
+                    const direction = alert.direction || 'up';
+                    if (direction === 'up') {
+                        // For "up" alerts, positive = price needs to go up, negative = already above target
+                        return ((targetPrice - currentPrice) / currentPrice) * 100;
+                    } else {
+                        // For "down" alerts, positive = price needs to go down, negative = already below target
+                        return ((currentPrice - targetPrice) / currentPrice) * 100;
+                    }
+                } else {
+                    // Percentage-based threshold: Calculate current % change from baseline
+                    // What: How much has the price changed from baseline, compared to threshold
+                    // Why: Shows progress towards the percentage threshold
+                    // How: Parse reference_prices to get baseline, calculate current % change
+                    if (!alert.reference_prices) {
+                        return null;  // No baseline prices stored
+                    }
+                    
+                    let baseline = null;
+                    try {
+                        const refPrices = JSON.parse(alert.reference_prices);
+                        // For single-item alerts, get the baseline for the tracked item
+                        const itemId = String(alert.item_id);
+                        baseline = Number(refPrices[itemId]);
+                    } catch (e) {
+                        return null;  // Parse error
+                    }
+                    
+                    if (!Number.isFinite(baseline) || baseline === 0) {
+                        return null;  // Invalid baseline
+                    }
+                    
+                    // Calculate current % change from baseline
+                    // What: The actual percentage change that has occurred
+                    // Why: Compare this to the threshold percentage to see how close to triggering
+                    const currentChange = ((currentPrice - baseline) / baseline) * 100;
+                    const thresholdPct = Number(alert.percentage) || 0;
+                    const direction = alert.direction || 'up';
+                    
+                    if (direction === 'up') {
+                        // For "up" alerts: threshold - currentChange = how much more it needs to rise
+                        // Positive = needs to rise more, negative = already above threshold
+                        return thresholdPct - currentChange;
+                    } else {
+                        // For "down" alerts: (-thresholdPct) - currentChange = how much more it needs to fall
+                        // We want to show: if threshold is -5% and current is -3%, distance is 2%
+                        return (-thresholdPct) - currentChange;
+                    }
+                }
+            }
             return null;
         },
 
@@ -4640,8 +4847,14 @@
             sorted.sort((a, b) => {
                 const aVal = this.getSortValue(a, sortKey);
                 const bVal = this.getSortValue(b, sortKey);
-                const aMissing = aVal === null || aVal === undefined || Number.isNaN(aVal);
-                const bMissing = bVal === null || bVal === undefined || Number.isNaN(bVal);
+                // =============================================================================
+                // HANDLE MISSING/INVALID SORT VALUES
+                // =============================================================================
+                // What: Determine if sort values are missing or non-numeric
+                // Why: Alerts with missing values (null, undefined, NaN, 'multi') should sort to the end
+                // How: Check for null, undefined, NaN, and string values (like 'multi' for multi-item alerts)
+                const aMissing = aVal === null || aVal === undefined || Number.isNaN(aVal) || typeof aVal === 'string';
+                const bMissing = bVal === null || bVal === undefined || Number.isNaN(bVal) || typeof bVal === 'string';
 
                 if (!aMissing || !bMissing) {
                     if (aMissing) return 1;
@@ -5035,6 +5248,154 @@
      */
     const FormManager = {
         /**
+         * Updates tabindex values based on alert type and scope (specific/all items).
+         * 
+         * What: Dynamically sets tabindex attributes to match visual layout
+         * Why: The visual order of fields changes when switching between "Specific Items" and "All Items"
+         *      modes because different fields are shown/hidden. Tab order must match visual order.
+         * How: Defines tabindex maps for each alert type and scope combination, then applies them
+         * 
+         * @param {string} alertType - The type of alert ('spread', 'spike', 'sustained', 'threshold')
+         * @param {boolean} isAllItems - Whether "All Items" mode is selected
+         */
+        updateTabIndices(alertType, isAllItems) {
+            // =============================================================================
+            // TABINDEX CONFIGURATION
+            // =============================================================================
+            // What: Defines the correct tab order for each alert type and scope combination
+            // Why: Visual field order differs between "Specific Items" (shows item selector) and
+            //      "All Items" (shows min/max price filters) modes
+            // How: Maps field IDs to tabindex values based on their visual position in each mode
+            // Note: Values start at 7 because common fields (Alert Type, Name, Group) use 1-6
+            // =============================================================================
+            
+            const tabConfigs = {
+                // SPREAD alert tabindex configuration
+                spread: {
+                    // Specific Items: Apply To → Items → Percentage → Notifications
+                    specific: {
+                        'spread-scope': 7,
+                        'spread-item-input': 8,
+                        'spread-multi-item-toggle': 9,
+                        'percentage': 10
+                    },
+                    // All Items: Apply To → Max Price → Min Price → Percentage → Notifications
+                    all: {
+                        'spread-scope': 7,
+                        'maximum-price': 8,
+                        'minimum-price': 9,
+                        'percentage': 10
+                    }
+                },
+                
+                // SPIKE alert tabindex configuration
+                spike: {
+                    // Specific Items: Apply To → Items → Direction → Percentage → Reference → Time Frame
+                    specific: {
+                        'spike-scope': 7,
+                        'spike-item-input': 8,
+                        'spike-multi-item-toggle': 9,
+                        'direction': 10,
+                        'percentage': 11,
+                        'reference': 12,
+                        'time-frame': 13
+                    },
+                    // All Items: Apply To → Direction → Max Price → Min Price → Percentage → Reference → Time Frame
+                    all: {
+                        'spike-scope': 7,
+                        'direction': 8,
+                        'maximum-price': 9,
+                        'minimum-price': 10,
+                        'percentage': 11,
+                        'reference': 12,
+                        'time-frame': 13
+                    }
+                },
+                
+                // SUSTAINED alert tabindex configuration
+                sustained: {
+                    // Specific Items: Apply To → Items → Direction → Market Pressure → Min Consecutive →
+                    //                 Min Move% → Min Spread% → Min Volume → Reference → Time Frame →
+                    //                 Vol Buffer → Vol Multiplier
+                    specific: {
+                        'sustained-scope': 7,
+                        'sustained-item-input': 8,
+                        'sustained-multi-item-toggle': 9,
+                        'direction': 10,
+                        'min-pressure-strength': 11,
+                        'min-consecutive-moves': 12,
+                        'min-move-percentage': 13,
+                        'min-pressure-spread': 14,
+                        'min-volume': 15,
+                        'reference': 16,
+                        'time-frame': 17,
+                        'volatility-buffer-size': 18,
+                        'volatility-multiplier': 19
+                    },
+                    // All Items: Apply To → Direction → Market Pressure → Max Price → Min Consecutive →
+                    //            Min Move% → Min Spread% → Min Volume → Min Price → Reference → Time Frame →
+                    //            Vol Buffer → Vol Multiplier
+                    all: {
+                        'sustained-scope': 7,
+                        'direction': 8,
+                        'min-pressure-strength': 9,
+                        'maximum-price': 10,
+                        'min-consecutive-moves': 11,
+                        'min-move-percentage': 12,
+                        'min-pressure-spread': 13,
+                        'min-volume': 14,
+                        'minimum-price': 15,
+                        'reference': 16,
+                        'time-frame': 17,
+                        'volatility-buffer-size': 18,
+                        'volatility-multiplier': 19
+                    }
+                },
+                
+                // THRESHOLD alert tabindex configuration
+                threshold: {
+                    // Specific Items: Apply To → Items → Above/Below → Threshold Type → Reference → Threshold
+                    specific: {
+                        'threshold-items-tracked': 7,
+                        'threshold-item-input': 8,
+                        'threshold-multi-item-toggle': 9,
+                        'threshold-direction': 10,
+                        'threshold-type': 11,
+                        'threshold-reference': 12,
+                        'threshold-value': 13
+                    },
+                    // All Items: Apply To → Above/Below → Threshold Type → Max Price → Min Price → Reference → Threshold
+                    all: {
+                        'threshold-items-tracked': 7,
+                        'threshold-direction': 8,
+                        'threshold-type': 9,
+                        'maximum-price': 10,
+                        'minimum-price': 11,
+                        'threshold-reference': 12,
+                        'threshold-value': 13
+                    }
+                }
+            };
+            
+            // Get the configuration for this alert type and scope
+            const config = tabConfigs[alertType];
+            if (!config) return;
+            
+            const tabMap = isAllItems ? config.all : config.specific;
+            
+            // Apply tabindex values to each field
+            // What: Set the tabindex attribute on each input/select element
+            // Why: Browser uses tabindex to determine tab navigation order
+            // How: Find each element by ID and set its tabindex attribute
+            for (const [fieldId, tabIndex] of Object.entries(tabMap)) {
+                const element = document.getElementById(fieldId);
+                if (element) {
+                    element.setAttribute('tabindex', tabIndex);
+                }
+            }
+        },
+
+        /**
          * Updates form field visibility based on selected alert type.
          * 
          * @param {string} formType - 'create' for create form
@@ -5171,12 +5532,15 @@
                 // Spike uses min/max only when all items selected; handleSpikeScopeChange manages visibility
                 this.handleSpikeScopeChange(formType);
             } else if (alertType === AlertsConfig.alertTypes.SUSTAINED) {
-                // Sustained Move alerts: scope selector + time frame + direction + sustained-specific fields
+                // Sustained Move alerts: scope selector + time frame + direction + reference + sustained-specific fields
+                // What: Configure form fields for sustained move alert creation
+                // Why: Sustained alerts need reference price selection (High/Low/Average) like spike and threshold
+                // How: Show all sustained-specific fields plus the reference dropdown
                 hideSpreadFields();  // Hide spread items to prevent duplicate item inputs
                 hideSpikeFields();
                 elements.itemName.style.display = 'none';
                 elements.price.style.display = 'none';
-                elements.reference.style.display = 'none';
+                elements.reference.style.display = 'block';  // Show reference selector for sustained alerts
                 elements.percentage.style.display = 'none';
                 elements.timeFrame.style.display = 'block';
                 elements.direction.style.display = 'block';
@@ -5308,8 +5672,17 @@
                     thresholdTypeSelect.disabled = true;
                 }
                 
+                // Show locked indicator since threshold type is forced to percentage
+                // What: Display 🚫 icon to indicate dropdown is locked
+                // Why: Users need visual feedback that they cannot change this setting
+                // How: Call helper function that manages indicator visibility
+                this.updateThresholdTypeLockIndicator(true);
+                
                 // Clear any selected items
                 ThresholdMultiItemSelector.clear();
+                
+                // Update tabindex values for All Items mode
+                this.updateTabIndices('threshold', true);
             } else {
                 // Specific Items mode: show item selector, hide price filters
                 if (thresholdItemsGroup) thresholdItemsGroup.style.display = 'block';
@@ -5322,8 +5695,17 @@
                 if (minPriceGroup) minPriceGroup.style.display = 'none';
                 if (maxPriceGroup) maxPriceGroup.style.display = 'none';
                 
+                // Hide locked indicator (updateThresholdTypeState will re-show if needed)
+                // What: Initially hide the locked indicator when switching to specific items
+                // Why: Indicator should only show if multiple items are selected
+                // How: Call helper function, then let updateThresholdTypeState decide
+                this.updateThresholdTypeLockIndicator(false);
+                
                 // Check if threshold type should be enabled or disabled based on item count
                 this.updateThresholdTypeState();
+                
+                // Update tabindex values for Specific Items mode
+                this.updateTabIndices('threshold', false);
             }
         },
 
@@ -5337,16 +5719,53 @@
         updateThresholdTypeState() {
             const thresholdTypeSelect = document.querySelector(AlertsConfig.selectors.create.thresholdType);
             const selectedCount = ThresholdMultiItemSelector.selectedItems.length;
+            // lockedIndicator: The 🚫 icon that appears when dropdown is locked
+            const lockedIndicator = document.getElementById('threshold-type-locked-indicator');
+            // lockedTooltip: The explanation popup that appears when indicator is clicked
+            const lockedTooltip = document.getElementById('threshold-type-locked-tooltip');
             
             if (!thresholdTypeSelect) return;
             
             if (selectedCount > 1) {
-                // Multiple items: force percentage type
+                // Multiple items: force percentage type and show locked indicator
+                // What: Lock the dropdown and display the locked indicator
+                // Why: Value-based thresholds don't work with multiple items (each has different price)
+                // How: Disable select, show 🚫 icon, hide any open tooltip
                 thresholdTypeSelect.value = 'percentage';
                 thresholdTypeSelect.disabled = true;
+                if (lockedIndicator) lockedIndicator.style.display = 'inline-block';
             } else {
-                // Single or no items: allow choice
+                // Single or no items: allow choice and hide locked indicator
+                // What: Unlock the dropdown and hide the locked indicator
+                // Why: Value-based thresholds are valid for single item monitoring
+                // How: Enable select, hide 🚫 icon and tooltip
                 thresholdTypeSelect.disabled = false;
+                if (lockedIndicator) lockedIndicator.style.display = 'none';
+                if (lockedTooltip) lockedTooltip.style.display = 'none';
+            }
+        },
+        
+        /**
+         * Shows/hides the locked indicator for threshold type based on "All Items" mode.
+         * 
+         * What: Manages the locked indicator visibility when switching to/from All Items
+         * Why: All Items mode forces percentage type, so users need visual feedback
+         * How: Shows indicator when isAllItems is true, hides when false (unless multiple items selected)
+         * 
+         * @param {boolean} isAllItems - Whether "All Items" mode is selected
+         */
+        updateThresholdTypeLockIndicator(isAllItems) {
+            const lockedIndicator = document.getElementById('threshold-type-locked-indicator');
+            const lockedTooltip = document.getElementById('threshold-type-locked-tooltip');
+            
+            if (isAllItems) {
+                // All Items mode: show locked indicator
+                if (lockedIndicator) lockedIndicator.style.display = 'inline-block';
+            } else {
+                // Specific Items mode: let updateThresholdTypeState handle visibility
+                // (it will show indicator if multiple items are selected)
+                if (lockedIndicator) lockedIndicator.style.display = 'none';
+                if (lockedTooltip) lockedTooltip.style.display = 'none';
             }
         },
 
@@ -5386,6 +5805,8 @@
                 isAllItemsInput.value = 'true';
                 // Clear the multi-item selector when switching away
                 SpreadMultiItemSelector.clear();
+                // Update tabindex values for All Items mode
+                this.updateTabIndices('spread', true);
             } else if (spreadScope === 'multiple') {
                 // Multiple Specific Items mode: show multi-item selector, hide single item and price filters
                 itemNameGroup.style.display = 'none';
@@ -5393,6 +5814,8 @@
                 minPriceGroup.style.display = 'none';
                 maxPriceGroup.style.display = 'none';
                 isAllItemsInput.value = 'false';
+                // Update tabindex values for Specific Items mode
+                this.updateTabIndices('spread', false);
             } else {
                 // Single Specific Item mode: show single item input, hide multi-item and price filters
                 itemNameGroup.style.display = 'block';
@@ -5402,6 +5825,8 @@
                 isAllItemsInput.value = 'false';
                 // Clear the multi-item selector when switching away
                 SpreadMultiItemSelector.clear();
+                // Update tabindex values for Specific Items mode
+                this.updateTabIndices('spread', false);
             }
         },
 
@@ -5449,6 +5874,8 @@
                 if (typeof SpikeMultiItemSelector !== 'undefined') {
                     SpikeMultiItemSelector.clear();
                 }
+                // Update tabindex values for All Items mode
+                this.updateTabIndices('spike', true);
             } else {
                 // Specific Item(s) mode: show multi-item selector, hide price filters
                 // What: Configure form for monitoring specific item(s)
@@ -5459,6 +5886,8 @@
                 if (minPriceGroup) minPriceGroup.style.display = 'none';
                 if (maxPriceGroup) maxPriceGroup.style.display = 'none';
                 if (isAllItemsInput) isAllItemsInput.value = 'false';
+                // Update tabindex values for Specific Items mode
+                this.updateTabIndices('spike', false);
             }
         },
 
@@ -5481,6 +5910,12 @@
             if (minPriceGroup) minPriceGroup.style.display = isAll ? 'block' : 'none';
             if (maxPriceGroup) maxPriceGroup.style.display = isAll ? 'block' : 'none';
             if (isAllItemsInput) isAllItemsInput.value = isAll ? 'true' : 'false';
+            
+            // Update tabindex values based on scope
+            // What: Adjust tab order to match visual layout
+            // Why: "All Items" mode shows different fields than "Specific Items" mode
+            // How: Call updateTabIndices with the appropriate scope flag
+            this.updateTabIndices('sustained', isAll);
         }
     };
 
@@ -8943,6 +9378,55 @@
         // How: Call handleAlertTypeChange which will read the current selected value and
         //       show/hide the appropriate form fields
         handleAlertTypeChange();
+        
+        // =============================================================================
+        // LOCKED INDICATOR EVENT LISTENERS
+        // =============================================================================
+        // What: Set up click handlers for the threshold type locked indicator and tooltip
+        // Why: Users need to click the 🚫 icon to see why the field is locked
+        // How: Add event listeners to toggle tooltip visibility on click
+        
+        // Locked indicator click handler - shows the tooltip
+        const lockedIndicator = document.getElementById('threshold-type-locked-indicator');
+        const lockedTooltip = document.getElementById('threshold-type-locked-tooltip');
+        
+        if (lockedIndicator && lockedTooltip) {
+            // Show tooltip when indicator is clicked
+            // What: Toggle tooltip visibility on indicator click
+            // Why: Users clicking the 🚫 want to know why the field is locked
+            // How: Toggle display between 'none' and 'block'
+            lockedIndicator.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const isVisible = lockedTooltip.style.display === 'block';
+                lockedTooltip.style.display = isVisible ? 'none' : 'block';
+            });
+            
+            // Close button click handler - hides the tooltip
+            // What: Close the tooltip when X button is clicked
+            // Why: Users need a way to dismiss the tooltip after reading
+            // How: Set tooltip display to 'none'
+            const closeBtn = lockedTooltip.querySelector('.locked-tooltip-close');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    lockedTooltip.style.display = 'none';
+                });
+            }
+            
+            // Click outside to close tooltip
+            // What: Close tooltip when user clicks anywhere else on the page
+            // Why: Standard UX pattern - clicking outside dismisses popups
+            // How: Listen for document clicks, close if click is outside tooltip and indicator
+            document.addEventListener('click', function(e) {
+                if (lockedTooltip.style.display === 'block' &&
+                    !lockedTooltip.contains(e.target) &&
+                    !lockedIndicator.contains(e.target)) {
+                    lockedTooltip.style.display = 'none';
+                }
+            });
+        }
     })();
 
     /**
@@ -9407,8 +9891,8 @@
                                 <li><strong>Threshold:</strong> The amount of change required to trigger the alert. Enter a number between 0.01 and 100 for percentages, or any GP value for Value mode. For percentage, enter "10" for 10%, not "0.10".</li>
                                 <li><strong>Reference Price:</strong> Which price to monitor:
                                     <ul style="margin-top: 4px; margin-left: 16px;">
-                                        <li><em>High (Instant Sell)</em> - The price buyers are paying. Good for tracking when to sell.</li>
-                                        <li><em>Low (Instant Buy)</em> - The price sellers are accepting. Good for tracking buying opportunities.</li>
+                                        <li><em>High (Instant Buy)</em> - The price you pay to buy instantly. Good for tracking buying opportunities.</li>
+                                        <li><em>Low (Instant Sell)</em> - The price you receive when selling instantly. Good for tracking when to sell.</li>
                                         <li><em>Average</em> - The midpoint between high and low. Good for general price tracking.</li>
                                     </ul>
                                 </li>

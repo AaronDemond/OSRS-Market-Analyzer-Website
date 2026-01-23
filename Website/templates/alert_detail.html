@@ -726,52 +726,90 @@
         width: 100%;
     }
     
-    /* Tooltip for threshold type restriction message */
-    /* What: Error tooltip shown when user tries to select 'value' with multiple items */
-    /* Why: Value-based threshold only works with single items */
-    /* How: Positioned below the dropdown, shown via JavaScript */
-    .threshold-type-tooltip {
+    /* =========================================================================
+       LOCKED FIELD INDICATOR STYLES
+       What: Styles for the locked indicator icon and tooltip
+       Why: Provides visual feedback when a dropdown is locked and explains why
+       How: Icon appears inline with label; tooltip appears on click
+       ========================================================================= */
+    
+    /* Locked indicator icon - appears next to label when field is locked */
+    /* What: A no-entry symbol (🚫) that indicates the field cannot be changed */
+    /* Why: Users need visual feedback that the field is intentionally locked */
+    /* How: Displayed inline with the label, with hover effect to indicate clickability */
+    .locked-indicator {
+        margin-left: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        opacity: 0.8;
+        transition: opacity 0.15s, transform 0.15s;
+        display: inline-block;
+        vertical-align: middle;
+    }
+    
+    /* Hover state for locked indicator - makes it clear it's clickable */
+    .locked-indicator:hover {
+        opacity: 1;
+        transform: scale(1.15);
+    }
+    
+    /* Tooltip container - explains why the field is locked */
+    /* What: A popup box with explanation text */
+    /* Why: Users need to understand why they can't change the threshold type */
+    /* How: Positioned 15px below the locked indicator icon, styled as an info box */
+    .locked-tooltip {
         position: absolute;
-        top: 100%;
+        top: 30px;  /* Position 15px below the label line (label ~15px + 15px gap) */
         left: 0;
         right: 0;
-        background: #dc3545;
-        color: white;
-        padding: 10px 14px;
-        border-radius: 6px;
-        font-size: 0.85rem;
-        line-height: 1.4;
-        margin-top: 6px;
+        padding: 12px 16px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         z-index: 100;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--text);
     }
     
-    .threshold-type-tooltip::before {
-        content: '';
+    /* Tooltip paragraph spacing */
+    .locked-tooltip p {
+        margin: 0 0 8px 0;
+    }
+    
+    /* Remove bottom margin from last paragraph */
+    .locked-tooltip p:last-of-type {
+        margin-bottom: 0;
+    }
+    
+    /* Close button for the tooltip */
+    /* What: X button in top-right corner to dismiss the tooltip */
+    /* Why: Users need a way to close the tooltip after reading */
+    /* How: Positioned absolutely, styled as a subtle close button */
+    .locked-tooltip-close {
         position: absolute;
-        top: -6px;
-        left: 20px;
-        border-left: 6px solid transparent;
-        border-right: 6px solid transparent;
-        border-bottom: 6px solid #dc3545;
-    }
-    
-    /* Restricted state for threshold type wrapper */
-    /* What: Visual indicator that the dropdown is restricted */
-    /* Why: Helps users understand they need to click to see why it's disabled */
-    /* How: Cursor change and subtle opacity on the disabled select */
-    .threshold-type-wrapper {
-        position: relative;
-    }
-    
-    .threshold-type-wrapper.restricted {
+        top: 8px;
+        right: 12px;
         cursor: pointer;
+        font-size: 18px;
+        color: var(--muted);
+        line-height: 1;
+        transition: color 0.15s;
     }
     
-    .threshold-type-wrapper.restricted select {
-        cursor: pointer;
-        opacity: 0.7;
-        background-color: #f5f5f5;
+    .locked-tooltip-close:hover {
+        color: var(--text);
+    }
+    
+    /* Disabled/locked select styling */
+    /* What: Red background for disabled dropdown to indicate it's locked */
+    /* Why: Provides strong visual feedback that the field cannot be changed */
+    /* How: Targets disabled select elements with a light red background */
+    select:disabled {
+        background-color: rgba(239, 68, 68, 0.15);  /* Light red background */
+        border-color: rgba(239, 68, 68, 0.4);       /* Red-tinted border */
+        cursor: not-allowed;
     }
     
     /* Reference prices display (non-editable) */
@@ -1643,18 +1681,87 @@
                         </span>
                     </div>
                     <div class="detail-item">
+                        <!-- What: Displays the reference price type for spike alerts
+                             Why: Users need to see which price point is being monitored
+                             How: Maps database values (high/low/average) to user-friendly labels -->
                         <span class="detail-label">Reference Price</span>
-                        <span class="detail-value">{% if alert.reference == 'high' %}High Price{% else %}Low Price{% endif %}</span>
+                        <span class="detail-value">
+                            {% if alert.reference == 'high' %}High (Instant Buy)
+                            {% elif alert.reference == 'low' %}Low (Instant Sell)
+                            {% elif alert.reference == 'average' %}Average
+                            {% else %}Average{% endif %}
+                        </span>
                     </div>
                     {% endif %}
                     
                     <!-- =============================================================================
-                         THRESHOLD ALERT DISPLAY FIELDS
-                         What: Shows threshold-specific configuration when viewing (not editing)
-                         Why: Users need to see direction, threshold type, percentage/target, reference prices
-                         How: Conditional display based on alert.type == 'threshold'
+                         SUSTAINED ALERT DISPLAY FIELDS
+                         What: Shows sustained-specific configuration when viewing (not editing)
+                         Why: Users need to see direction, time frame, reference, and sustained-specific settings
+                         How: Conditional display based on alert.type == 'sustained'
                     ============================================================================= -->
-                    {% if alert.type == 'threshold' %}
+                    {% if alert.type == 'sustained' %}
+                    <div class="detail-item">
+                        <!-- What: Displays the time frame setting for sustained alerts
+                             Why: Users need to see the monitoring window duration
+                             How: Shows time_frame field value -->
+                        <span class="detail-label">Time Frame</span>
+                        <span class="detail-value">{% if alert.time_frame %}{{ alert.time_frame }} minutes{% else %}Not Set{% endif %}</span>
+                    </div>
+                    <div class="detail-item">
+                        <!-- What: Displays the direction setting for sustained alerts
+                             Why: Users need to see whether the alert triggers on price increases, decreases, or both
+                             How: Maps database values (up/down/both) to user-friendly labels -->
+                        <span class="detail-label">Direction</span>
+                        <span class="detail-value">
+                            {% if alert.direction == 'up' %}Up
+                            {% elif alert.direction == 'down' %}Down
+                            {% else %}Both{% endif %}
+                        </span>
+                    </div>
+                    <div class="detail-item">
+                        <!-- What: Displays the reference price type for sustained alerts
+                             Why: Users need to see which price point is being monitored
+                             How: Maps database values (high/low/average) to user-friendly labels -->
+                        <span class="detail-label">Reference Price</span>
+                        <span class="detail-value">
+                            {% if alert.reference == 'high' %}High (Instant Buy)
+                            {% elif alert.reference == 'low' %}Low (Instant Sell)
+                            {% elif alert.reference == 'average' %}Average
+                            {% else %}Average{% endif %}
+                        </span>
+                    </div>
+                    {% if alert.min_consecutive_moves %}
+                    <div class="detail-item">
+                        <span class="detail-label">Min Consecutive Moves</span>
+                        <span class="detail-value">{{ alert.min_consecutive_moves }}</span>
+                    </div>
+                    {% endif %}
+                    {% if alert.min_move_percentage %}
+                    <div class="detail-item">
+                        <span class="detail-label">Min Move %</span>
+                        <span class="detail-value">{{ alert.min_move_percentage }}%</span>
+                    </div>
+                    {% endif %}
+                    {% if alert.min_volume %}
+                    <div class="detail-item">
+                        <span class="detail-label">Min Volume</span>
+                        <span class="detail-value">{{ alert.min_volume|intcomma }}</span>
+                    </div>
+                    {% endif %}
+                    {% if alert.volatility_buffer_size %}
+                    <div class="detail-item">
+                        <span class="detail-label">Volatility Buffer Size</span>
+                        <span class="detail-value">{{ alert.volatility_buffer_size }}</span>
+                    </div>
+                    {% endif %}
+                    {% if alert.volatility_multiplier %}
+                    <div class="detail-item">
+                        <span class="detail-label">Volatility Multiplier</span>
+                        <span class="detail-value">{{ alert.volatility_multiplier }}x</span>
+                    </div>
+                    {% endif %}
+                    {% endif %}
                     <div class="detail-item">
                         <!-- What: Displays the direction setting for threshold alerts
                              Why: Users need to see whether the alert triggers when price goes above or below threshold
@@ -1684,13 +1791,12 @@
                     <div class="detail-item">
                         <span class="detail-label">Reference Price Type</span>
                         <span class="detail-value">
-                            {% if alert.reference == 'high' %}High Price
-                            {% elif alert.reference == 'low' %}Low Price
-                            {% elif alert.reference == 'average' %}Average Price
-                            {% else %}High Price{% endif %}
+                            {% if alert.reference == 'high' %}High (Instant Buy)
+                            {% elif alert.reference == 'low' %}Low (Instant Sell)
+                            {% elif alert.reference == 'average' %}Average
+                            {% else %}Average{% endif %}
                         </span>
                     </div>
-                    {% endif %}
                     
                     {% if alert.is_all_items %}
                     <div class="detail-item">
@@ -1918,15 +2024,18 @@
                         <small class="form-hint">Price value that triggers the alert</small>
                     </div>
                     
-                    <!-- Reference Price (spike/threshold) -->
+                    <!-- Reference Price (spike/sustained/threshold) -->
+                    <!-- What: Dropdown to select which price type to monitor
+                         Why: Users can choose high (instant buy), low (instant sell), or average price
+                         How: Default to average if not set; show appropriate labels with context -->
                     <div class="form-group" id="reference-group">
                         <label for="edit-reference">Reference Price</label>
                         <select id="edit-reference">
-                            <option value="high" {% if alert.reference == 'high' %}selected{% endif %}>High Price</option>
-                            <option value="low" {% if alert.reference == 'low' or not alert.reference %}selected{% endif %}>Low Price</option>
-                            <option value="average" {% if alert.reference == 'average' %}selected{% endif %}>Average Price</option>
+                            <option value="high" {% if alert.reference == 'high' %}selected{% endif %}>High (Instant Buy)</option>
+                            <option value="low" {% if alert.reference == 'low' %}selected{% endif %}>Low (Instant Sell)</option>
+                            <option value="average" {% if alert.reference == 'average' or not alert.reference %}selected{% endif %}>Average</option>
                         </select>
-                        <small class="form-hint">Which price to compare against</small>
+                        <small class="form-hint">Which price to monitor for alert calculations</small>
                     </div>
                     
                     <!-- Target Price (value-based threshold only) -->
@@ -1938,15 +2047,28 @@
                     
                     <!-- Threshold Type (percentage/value) -->
                     <div class="form-group" id="threshold-type-group" style="display: none;">
-                        <label for="edit-threshold-type">Threshold Type</label>
+                        <label for="edit-threshold-type">
+                            Threshold Type
+                            <!-- Locked indicator: Shows when threshold type is forced to percentage -->
+                            <!-- What: Visual indicator (🚫) that the dropdown is locked -->
+                            <!-- Why: Users need to understand why they can't change the threshold type -->
+                            <!-- How: Icon appears when dropdown is disabled; clicking shows explanatory tooltip -->
+                            <span id="threshold-type-locked-indicator" class="locked-indicator" style="display: none;" title="Click for more info">🚫</span>
+                        </label>
                         <div class="threshold-type-wrapper">
                             <select id="edit-threshold-type" onchange="handleThresholdTypeChange()">
                                 <option value="percentage" {% if alert.threshold_type == 'percentage' or not alert.threshold_type %}selected{% endif %}>Percentage</option>
                                 <option value="value" {% if alert.threshold_type == 'value' %}selected{% endif %}>Value (GP)</option>
                             </select>
-                            <span id="threshold-type-tooltip" class="threshold-type-tooltip" style="display: none;">
-                                Percentage is the only available metric when tracking more than one item. To use a specific value threshold, please select only one item.
-                            </span>
+                        </div>
+                        <!-- Tooltip that appears when user clicks the locked indicator -->
+                        <!-- What: Explanation popup for why threshold type is locked -->
+                        <!-- Why: Provides context so users understand the restriction -->
+                        <!-- How: Shown/hidden via JavaScript when indicator is clicked -->
+                        <div id="threshold-type-locked-tooltip" class="locked-tooltip" style="display: none;">
+                            <span class="locked-tooltip-close">&times;</span>
+                            <p>Value-based thresholds can only be used when monitoring a <strong>single item</strong>.</p>
+                            <p>When monitoring multiple items or all items, percentage-based thresholds must be used because each item has a different price.</p>
                         </div>
                         <small class="form-hint">How to measure the threshold</small>
                     </div>
@@ -2967,6 +3089,54 @@ document.addEventListener('DOMContentLoaded', function() {
     EditMultiItemSelector.init();
     
     // =============================================================================
+    // LOCKED INDICATOR EVENT LISTENERS
+    // =============================================================================
+    // What: Set up click handlers for the threshold type locked indicator and tooltip
+    // Why: Users need to click the 🚫 icon to see why the field is locked
+    // How: Add event listeners to toggle tooltip visibility on click
+    
+    const lockedIndicator = document.getElementById('threshold-type-locked-indicator');
+    const lockedTooltip = document.getElementById('threshold-type-locked-tooltip');
+    
+    if (lockedIndicator && lockedTooltip) {
+        // Show tooltip when indicator is clicked
+        // What: Toggle tooltip visibility on indicator click
+        // Why: Users clicking the 🚫 want to know why the field is locked
+        // How: Toggle display between 'none' and 'block'
+        lockedIndicator.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const isVisible = lockedTooltip.style.display === 'block';
+            lockedTooltip.style.display = isVisible ? 'none' : 'block';
+        });
+        
+        // Close button click handler - hides the tooltip
+        // What: Close the tooltip when X button is clicked
+        // Why: Users need a way to dismiss the tooltip after reading
+        // How: Set tooltip display to 'none'
+        const closeBtn = lockedTooltip.querySelector('.locked-tooltip-close');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                lockedTooltip.style.display = 'none';
+            });
+        }
+        
+        // Click outside to close tooltip
+        // What: Close tooltip when user clicks anywhere else on the page
+        // Why: Standard UX pattern - clicking outside dismisses popups
+        // How: Listen for document clicks, close if click is outside tooltip and indicator
+        document.addEventListener('click', function(e) {
+            if (lockedTooltip.style.display === 'block' &&
+                !lockedTooltip.contains(e.target) &&
+                !lockedIndicator.contains(e.target)) {
+                lockedTooltip.style.display = 'none';
+            }
+        });
+    }
+    
+    // =============================================================================
     // THRESHOLD ALERT INITIALIZATION
     // What: Initialize threshold-specific fields when page loads
     // Why: Threshold alerts need reference prices display populated and type state updated
@@ -3331,10 +3501,13 @@ function handleTypeChange() {
         // Let scope change handler determine item/min/max visibility
         handleScopeChange();
     } else if (alertType === 'sustained') {
-        // Sustained Move: show all items toggle, time frame, direction, sustained-specific fields
+        // Sustained Move: show all items toggle, time frame, direction, reference, sustained-specific fields
+        // What: Configure edit form fields for sustained move alert editing
+        // Why: Sustained alerts now support reference price selection (High/Low/Average)
+        // How: Show all sustained-specific fields plus the reference dropdown
         groups.allItems.style.display = 'block';
         groups.price.style.display = 'none';
-        groups.reference.style.display = 'none';
+        groups.reference.style.display = 'block';  // Show reference selector for sustained alerts
         groups.percentage.style.display = 'none';
         groups.timeFrame.style.display = 'block';
         groups.direction.style.display = 'block';
@@ -3512,8 +3685,10 @@ function handleThresholdTypeChange() {
  */
 function updateThresholdTypeState() {
     const thresholdTypeSelect = document.getElementById('edit-threshold-type');
-    const thresholdTypeTooltip = document.getElementById('threshold-type-tooltip');
-    const thresholdTypeWrapper = thresholdTypeSelect ? thresholdTypeSelect.parentElement : null;
+    // lockedIndicator: The 🚫 icon that appears when dropdown is locked
+    const lockedIndicator = document.getElementById('threshold-type-locked-indicator');
+    // lockedTooltip: The explanation popup that appears when indicator is clicked
+    const lockedTooltip = document.getElementById('threshold-type-locked-tooltip');
     const isAllItems = document.getElementById('edit-all-items').checked;
     
     if (!thresholdTypeSelect) return;
@@ -3522,48 +3697,26 @@ function updateThresholdTypeState() {
     const hasMultipleItems = isAllItems || EditMultiItemSelector.selectedItems.length > 1;
     
     if (hasMultipleItems) {
-        // Multiple items: force percentage type, disable dropdown
+        // Multiple items: force percentage type, disable dropdown, show locked indicator
+        // What: Lock the dropdown and display the locked indicator
+        // Why: Value-based thresholds don't work with multiple items (each has different price)
+        // How: Disable select, show 🚫 icon
         thresholdTypeSelect.value = 'percentage';
         thresholdTypeSelect.disabled = true;
         handleThresholdTypeChange();  // Update display
         
-        // Add visual indicator that dropdown is restricted
-        if (thresholdTypeWrapper) {
-            thresholdTypeWrapper.classList.add('restricted');
-        }
+        // Show locked indicator
+        if (lockedIndicator) lockedIndicator.style.display = 'inline-block';
     } else {
-        // Single or no items: allow choice
+        // Single or no items: allow choice, hide locked indicator
+        // What: Unlock the dropdown and hide the locked indicator
+        // Why: Value-based thresholds are valid for single item monitoring
+        // How: Enable select, hide 🚫 icon and tooltip
         thresholdTypeSelect.disabled = false;
         
-        // Remove visual indicator
-        if (thresholdTypeWrapper) {
-            thresholdTypeWrapper.classList.remove('restricted');
-        }
-        
-        // Hide tooltip if it was showing
-        if (thresholdTypeTooltip) {
-            thresholdTypeTooltip.style.display = 'none';
-        }
-    }
-    
-    // Add click handler to wrapper to show tooltip when disabled
-    // What: Shows tooltip when user clicks on the disabled dropdown
-    // Why: Disabled elements don't reliably fire click events, so we use the wrapper
-    // How: Wrapper click checks if select is disabled, shows tooltip if so
-    if (thresholdTypeWrapper && !thresholdTypeWrapper._tooltipHandlerAdded) {
-        thresholdTypeWrapper._tooltipHandlerAdded = true;
-        
-        thresholdTypeWrapper.addEventListener('click', function(e) {
-            if (thresholdTypeSelect.disabled && thresholdTypeTooltip) {
-                // Show the tooltip
-                thresholdTypeTooltip.style.display = 'block';
-                
-                // Hide tooltip after 4 seconds
-                setTimeout(() => {
-                    thresholdTypeTooltip.style.display = 'none';
-                }, 4000);
-            }
-        });
+        // Hide locked indicator and tooltip
+        if (lockedIndicator) lockedIndicator.style.display = 'none';
+        if (lockedTooltip) lockedTooltip.style.display = 'none';
     }
 }
 
@@ -3901,7 +4054,8 @@ async function saveChanges() {
         data.percentage = document.getElementById('edit-percentage').value || null;
         data.time_frame = document.getElementById('edit-time-frame').value || null;
         data.direction = document.getElementById('edit-direction').value || 'both';
-        data.reference = document.getElementById('edit-reference').value || 'low';
+        // Reference defaults to 'average' for spike alerts
+        data.reference = document.getElementById('edit-reference').value || 'average';
         if (isAllItems) {
             data.minimum_price = document.getElementById('edit-minimum-price').value || null;
             data.maximum_price = document.getElementById('edit-maximum-price').value || null;
@@ -3909,6 +4063,11 @@ async function saveChanges() {
     } else if (alertType === 'sustained') {
         data.time_frame = document.getElementById('edit-time-frame').value || null;
         data.direction = document.getElementById('edit-direction').value || 'both';
+        // Reference defaults to 'average' for sustained alerts
+        // What: Include reference price type when saving sustained alerts
+        // Why: Sustained alerts now support reference selection (High/Low/Average)
+        // How: Get value from edit-reference dropdown, default to 'average'
+        data.reference = document.getElementById('edit-reference').value || 'average';
         data.min_consecutive_moves = document.getElementById('edit-min-consecutive-moves').value || null;
         data.min_move_percentage = document.getElementById('edit-min-move-percentage').value || null;
         data.min_volume = document.getElementById('edit-min-volume').value || null;
@@ -3953,7 +4112,10 @@ async function saveChanges() {
         data.direction = thresholdDirection ? thresholdDirection.value : 'up';
         
         // Get reference price type
-        data.reference = document.getElementById('edit-reference').value || 'high';
+        // What: Include reference price type when saving threshold alerts
+        // Why: Reference determines which price (high/low/average) to compare against
+        // How: Get value from dropdown, default to 'average' for consistency
+        data.reference = document.getElementById('edit-reference').value || 'average';
         
         // Get percentage or target_price based on threshold_type
         if (thresholdType === 'value') {

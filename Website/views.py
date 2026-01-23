@@ -9,6 +9,7 @@ from django.contrib.auth.models import User
 import requests
 import time
 import re
+import json
 from datetime import datetime
 from .models import Flip, FlipProfit, Alert, AlertGroup, FavoriteItem
 
@@ -964,11 +965,21 @@ def create_alert(request):
         elif item_id and not is_all_items:
             final_item_id = int(item_id)
         
-        # Reference is not used for sustained alerts, but IS used for threshold alerts
-        reference_value = reference if reference and alert_type != 'sustained' else None
-        # For threshold alerts, use the threshold_reference field
+        # =============================================================================
+        # DETERMINE REFERENCE VALUE
+        # =============================================================================
+        # What: Determine which price type (high/low/average) to use for the alert
+        # Why: Users can choose to monitor high price (instant buy), low price (instant sell), or average
+        # How: For threshold alerts, use the threshold_reference field; for all other alerts use reference
+        # Note: All alert types now support reference selection; default to 'average' if not specified
+        # =============================================================================
         if alert_type == 'threshold':
-            reference_value = threshold_reference
+            # Threshold alerts use their own reference field from the form
+            reference_value = threshold_reference if threshold_reference else 'average'
+        else:
+            # Spike and Sustained alerts use the generic reference field
+            # Default to 'average' if not specified (previously defaulted to 'high' for spike)
+            reference_value = reference if reference else 'average'
         
         # =============================================================================
         # DETERMINE PERCENTAGE VALUE
@@ -1338,7 +1349,12 @@ def alerts_api(request):
             # target_price: The target price for value-based threshold alerts
             'target_price': alert.target_price if alert.type == 'threshold' else None,
             # reference_prices: JSON dict of baseline prices for percentage-based threshold alerts
-            'reference_prices': alert.reference_prices if alert.type == 'threshold' else None
+            'reference_prices': alert.reference_prices if alert.type == 'threshold' else None,
+            # item_ids: JSON array of item IDs for multi-item alerts (spread, threshold, spike)
+            # What: Returns the item_ids field if present, used to determine if alert tracks multiple items
+            # Why: Frontend needs to know if this is a multi-item alert to show appropriate UI
+            #      (e.g., threshold distance is only calculable for single-item alerts)
+            'item_ids': alert.item_ids
         }
 
         for g in alert_dict['groups']:
@@ -1372,18 +1388,32 @@ def alerts_api(request):
         # What: Include current price for threshold alerts to show progress in UI
         # Why: Users want to see how close the price is to their threshold
         # How: Similar to spike alerts, get price based on reference type
-        if alert.type == 'threshold' and alert.item_id and all_prices and not alert.is_all_items and not alert.item_ids:
-            price_data = all_prices.get(str(alert.item_id))
-            if price_data:
-                if alert.reference == 'low':
-                    alert_dict['current_price'] = price_data.get('low')
-                elif alert.reference == 'average':
-                    high = price_data.get('high')
-                    low = price_data.get('low')
-                    if high and low:
-                        alert_dict['current_price'] = (high + low) // 2
-                else:
-                    alert_dict['current_price'] = price_data.get('high')
+        # Note: Only include for single-item alerts (item_id set, and either no item_ids or item_ids has exactly 1 item)
+        if alert.type == 'threshold' and alert.item_id and all_prices and not alert.is_all_items:
+            # Check if this is a multi-item alert by examining item_ids
+            # What: Determine if alert tracks multiple specific items
+            # Why: current_price only makes sense for single-item alerts
+            # How: Parse item_ids JSON and check if it has more than 1 item
+            is_multi_item = False
+            if alert.item_ids:
+                try:
+                    item_ids_list = json.loads(alert.item_ids)
+                    is_multi_item = isinstance(item_ids_list, list) and len(item_ids_list) > 1
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            
+            if not is_multi_item:
+                price_data = all_prices.get(str(alert.item_id))
+                if price_data:
+                    if alert.reference == 'low':
+                        alert_dict['current_price'] = price_data.get('low')
+                    elif alert.reference == 'average':
+                        high = price_data.get('high')
+                        low = price_data.get('low')
+                        if high and low:
+                            alert_dict['current_price'] = (high + low) // 2
+                    else:
+                        alert_dict['current_price'] = price_data.get('high')
         
         alerts_data.append(alert_dict)
     
@@ -1770,12 +1800,16 @@ def update_alert(request):
                     alert.price = int(price) if price else None
                     alert.time_frame = None
                 
-                # Handle reference (not used for sustained)
-                if alert.type == 'sustained':
-                    alert.reference = None
-                else:
-                    reference = data.get('reference')
-                    alert.reference = reference if reference else None
+                # =============================================================================
+                # HANDLE REFERENCE FOR ALL ALERT TYPES
+                # =============================================================================
+                # What: Update the reference price type (high/low/average) for the alert
+                # Why: All alert types (spike, sustained, threshold) now support reference selection
+                # How: Get reference from request data, default to 'average' if not specified
+                # Note: Previously sustained alerts were excluded - now they support reference too
+                # =============================================================================
+                reference = data.get('reference')
+                alert.reference = reference if reference else 'average'
 
                 # Handle direction for spike and sustained
                 direction = data.get('direction')

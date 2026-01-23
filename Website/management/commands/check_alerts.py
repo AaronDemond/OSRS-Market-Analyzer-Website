@@ -521,8 +521,15 @@ class Command(BaseCommand):
         threshold_type = alert.threshold_type or 'percentage'
         # direction: 'up' or 'down'
         direction = (alert.direction or 'up').lower()
-        # reference_type: 'high', 'low', or 'average' - which price to monitor
-        reference_type = alert.reference or 'high'
+        # =============================================================================
+        # REFERENCE TYPE FOR THRESHOLD ALERTS
+        # =============================================================================
+        # What: Determine which price type (high/low/average) to use for comparisons
+        # Why: Users can choose to monitor high (instant buy), low (instant sell), or average
+        # How: Get from alert.reference field, default to 'average' for new alerts
+        # Note: Changed default from 'high' to 'average' for consistency across all alert types
+        # =============================================================================
+        reference_type = alert.reference or 'average'
         # threshold_value: The percentage threshold (stored in alert.percentage)
         threshold_value = alert.percentage if alert.percentage is not None else 0
         
@@ -1068,6 +1075,10 @@ class Command(BaseCommand):
         """
         Check sustained move conditions for a single item.
         Returns trigger data dict if triggered, None otherwise.
+        
+        What: Evaluates whether a single item meets the sustained move conditions
+        Why: Sustained alerts can track multiple items; this checks one at a time
+        How: Compares current price against historical state, tracking consecutive moves
         """
         price_data = all_prices.get(str(item_id))
         if not price_data:
@@ -1078,7 +1089,22 @@ class Command(BaseCommand):
         if high is None or low is None:
             return None
         
-        current_price = (high + low) / 2
+        # =============================================================================
+        # DETERMINE CURRENT PRICE BASED ON REFERENCE TYPE
+        # =============================================================================
+        # What: Get the current price using the alert's reference type setting
+        # Why: Users can choose to monitor high (instant buy), low (instant sell), or average price
+        # How: Check alert.reference and use the appropriate price from the API data
+        # Note: Default to average for backwards compatibility with existing alerts
+        # =============================================================================
+        reference_type = alert.reference or 'average'
+        if reference_type == 'high':
+            current_price = high
+        elif reference_type == 'low':
+            current_price = low
+        else:
+            # 'average' or any other value defaults to average
+            current_price = (high + low) / 2
         
         # State key includes both alert ID and item ID for multi-item support
         state_key = f"{alert.id}:{item_id}"
@@ -1379,8 +1405,20 @@ class Command(BaseCommand):
         # - Re-trigger: For multi-item, re-triggers when triggered_data changes
         # - Deactivation: Multi-item alerts deactivate when ALL items are within threshold
         if alert.type == 'spike':
-            if alert.percentage is None or not alert.reference or not alert.price:
+            # =============================================================================
+            # SPIKE ALERT VALIDATION
+            # =============================================================================
+            # What: Validate that required spike alert fields are set
+            # Why: Cannot calculate spike without percentage threshold and time frame
+            # How: Check percentage and price (time_frame); reference defaults to 'average' if not set
+            # Note: Changed validation to not require reference - defaults to 'average'
+            # =============================================================================
+            if alert.percentage is None or not alert.price:
                 return False
+            
+            # Get reference type, defaulting to 'average' for spike alerts
+            # reference_type: Which price to monitor (high/low/average)
+            spike_reference = alert.reference or 'average'
 
             try:
                 time_frame_minutes = int(alert.price)
@@ -1420,23 +1458,26 @@ class Command(BaseCommand):
                     
                     # Get current price based on reference type (high, low, or average)
                     # current_price: The latest price for this item
-                    if alert.reference == 'high':
+                    if spike_reference == 'high':
                         current_price = price_data.get('high')
-                    elif alert.reference == 'low':
+                    elif spike_reference == 'low':
                         current_price = price_data.get('low')
-                    elif alert.reference == 'average':
+                    elif spike_reference == 'average':
                         high = price_data.get('high')
                         low = price_data.get('low')
                         current_price = (high + low) // 2 if high and low else (high or low)
                     else:
-                        current_price = price_data.get('high')
+                        # Default to average for unknown reference types
+                        high = price_data.get('high')
+                        low = price_data.get('low')
+                        current_price = (high + low) // 2 if high and low else (high or low)
                     
                     if current_price is None:
                         continue
 
                     # Update price history for this item
                     # key: Unique identifier for item+reference combination
-                    key = f"{item_id}:{alert.reference or 'low'}"
+                    key = f"{item_id}:{spike_reference}"
                     history = self.price_history[key]
                     history.append((now, current_price))
                     # Prune old entries outside the window
@@ -1483,7 +1524,7 @@ class Command(BaseCommand):
                             'baseline': baseline_price,
                             'current': current_price,
                             'percent_change': round(percent_change, 2),
-                            'reference': alert.reference,
+                            'reference': spike_reference,
                             'direction': direction
                         })
 
@@ -1520,16 +1561,19 @@ class Command(BaseCommand):
                         continue
                     
                     # Get current price based on reference type
-                    if alert.reference == 'high':
+                    if spike_reference == 'high':
                         current_price = price_data.get('high')
-                    elif alert.reference == 'low':
+                    elif spike_reference == 'low':
                         current_price = price_data.get('low')
-                    elif alert.reference == 'average':
+                    elif spike_reference == 'average':
                         high = price_data.get('high')
                         low = price_data.get('low')
                         current_price = (high + low) // 2 if high and low else (high or low)
                     else:
-                        current_price = price_data.get('high')
+                        # Default to average for unknown reference types
+                        high = price_data.get('high')
+                        low = price_data.get('low')
+                        current_price = (high + low) // 2 if high and low else (high or low)
                     
                     if current_price is None:
                         all_warmed_up = False
@@ -1537,7 +1581,7 @@ class Command(BaseCommand):
                         continue
                     
                     # Update price history for this item
-                    key = f"{item_id_str}:{alert.reference or 'low'}"
+                    key = f"{item_id_str}:{spike_reference}"
                     history = self.price_history[key]
                     history.append((now, current_price))
                     self.price_history[key] = [(ts, val) for ts, val in history if ts >= cutoff]
@@ -1597,7 +1641,7 @@ class Command(BaseCommand):
                             'baseline': baseline_price,
                             'current': current_price,
                             'percent_change': round(percent_change, 2),
-                            'reference': alert.reference,
+                            'reference': spike_reference,
                             'direction': direction
                         })
                 
@@ -1615,21 +1659,24 @@ class Command(BaseCommand):
                 return False
 
             # Get current price based on reference type
-            if alert.reference == 'high':
+            if spike_reference == 'high':
                 current_price = price_data.get('high')
-            elif alert.reference == 'low':
+            elif spike_reference == 'low':
                 current_price = price_data.get('low')
-            elif alert.reference == 'average':
+            elif spike_reference == 'average':
                 high = price_data.get('high')
                 low = price_data.get('low')
                 current_price = (high + low) // 2 if high and low else (high or low)
             else:
-                current_price = price_data.get('high')
+                # Default to average for unknown reference types
+                high = price_data.get('high')
+                low = price_data.get('low')
+                current_price = (high + low) // 2 if high and low else (high or low)
             
             if current_price is None:
                 return False
 
-            key = f"{alert.item_id}:{alert.reference or 'low'}"
+            key = f"{alert.item_id}:{spike_reference}"
 
             history = self.price_history[key]
             history.append((now, current_price))
@@ -1667,7 +1714,7 @@ class Command(BaseCommand):
                     'current': current_price,
                     'percent_change': round(percent_change, 2),
                     'time_frame_minutes': time_frame_minutes,
-                    'reference': alert.reference,
+                    'reference': spike_reference,
                     'direction': direction
                 })
                 return True
