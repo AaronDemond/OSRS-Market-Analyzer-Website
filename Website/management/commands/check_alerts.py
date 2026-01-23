@@ -373,6 +373,116 @@ class Command(BaseCommand):
         if alert.email_notification and data_changed and triggered_items:
             self.send_alert_notification(alert, alert.triggered_text())
 
+    def _handle_multi_item_spike_trigger(self, alert, triggered_items, all_within_threshold, all_warmed_up):
+        """
+        Handle trigger logic for multi-item spike alerts (using item_ids field).
+        
+        What: Processes triggered items for spike alerts monitoring multiple specific items
+        Why: Multi-item spike alerts should:
+             - Trigger when ANY item exceeds threshold
+             - Re-trigger when triggered_data CHANGES (different items or percentages)
+             - NOT re-trigger if triggered_data is identical
+             - Deactivate when ALL items are SIMULTANEOUSLY within threshold
+        How:
+            1. Compare new triggered_data to previous triggered_data
+            2. If different → trigger/re-trigger and notify
+            3. If same → don't notify (avoid spam)
+            4. If all items within threshold → deactivate
+        
+        Args:
+            alert: Alert model instance with item_ids set
+            triggered_items: List of item data dicts that currently exceed the spike threshold
+                           (may be empty if no items exceed threshold)
+            all_within_threshold: Boolean - True if ALL items are within threshold (none exceed)
+            all_warmed_up: Boolean - True if all items have sufficient historical data
+        
+        Returns:
+            - List of triggered_items if data changed (for notification handling)
+            - False if no change or deactivated
+            
+        Deactivation Logic:
+            - Alert deactivates when ALL items are SIMULTANEOUSLY within threshold
+            - If item A triggered then fell back, but item B is still triggered → stay active
+            - Must be a single check where every monitored item is within bounds
+            
+        Re-trigger Logic:
+            - Compare current triggered_data to previous
+            - If ANY difference (items added, removed, or percentages changed) → re-trigger
+            - Prevents notification spam when same items trigger with same values
+        """
+        try:
+            # total_item_ids: List of all item IDs the alert is meant to monitor
+            total_item_ids = json.loads(alert.item_ids)
+            if not isinstance(total_item_ids, list):
+                total_item_ids = []
+        except (json.JSONDecodeError, TypeError):
+            total_item_ids = []
+        
+        # old_triggered_data: Previous triggered_data for comparison
+        # Used to determine if we should re-trigger and send notification
+        old_triggered_data = alert.triggered_data
+        
+        # data_changed: Boolean indicating if triggered data has meaningfully changed
+        # If False, we skip notification to avoid spam
+        data_changed = self._has_triggered_data_changed(old_triggered_data, triggered_items)
+        
+        # Always update triggered_data with current snapshot
+        # What: Store current triggered items in triggered_data (even if empty)
+        # Why: The UI should always reflect the current state of which items exceed threshold
+        # How: Serialize triggered_items list to JSON (may be empty array "[]")
+        new_triggered_data = json.dumps(triggered_items) if triggered_items else json.dumps([])
+        alert.triggered_data = new_triggered_data
+        
+        # =============================================================================
+        # TRIGGER/RE-TRIGGER CHECK: Has triggered_data changed?
+        # =============================================================================
+        # Note: Multi-item spike alerts do NOT auto-deactivate. They stay active until
+        # manually turned off by the user. This allows continuous monitoring for spikes.
+        if triggered_items:
+            # We have items exceeding threshold
+            if data_changed:
+                # Data changed - this is a new trigger or re-trigger
+                alert.is_triggered = True
+                alert.triggered_at = timezone.now()
+                
+                # Only show notification if enabled
+                if alert.show_notification:
+                    alert.is_dismissed = False
+                
+                alert.is_active = True  # Keep monitoring for changes
+                alert.save()
+                
+                self.stdout.write(
+                    self.style.WARNING(
+                        f'TRIGGERED (multi-item spike): {len(triggered_items)}/{len(total_item_ids)} items exceed threshold'
+                    )
+                )
+                
+                # Send email notification if enabled
+                if alert.email_notification:
+                    self.send_alert_notification(alert, alert.triggered_text())
+                
+                return triggered_items
+            else:
+                # Data unchanged - don't re-notify
+                alert.is_active = True  # Keep monitoring
+                alert.save()
+                self.stdout.write(
+                    f'Multi-item spike alert {alert.id}: No data change ({len(triggered_items)}/{len(total_item_ids)} items still exceeding)'
+                )
+                return False
+        else:
+            # No items exceeding threshold, but not all warmed up or not all within threshold
+            # Keep the alert active and monitoring
+            alert.is_active = True
+            if data_changed and old_triggered_data:
+                # Items that were triggered have now dropped below threshold
+                self.stdout.write(
+                    f'Multi-item spike alert {alert.id}: Items returned within threshold, waiting for all items'
+                )
+            alert.save()
+            return False
+
     # =============================================================================
     # THRESHOLD ALERT METHODS
     # =============================================================================
@@ -1234,7 +1344,19 @@ class Command(BaseCommand):
                     return True
                 return False
         
-        # Handle spike alerts (rolling window percent change)
+        # =============================================================================
+        # SPIKE ALERTS (Rolling window percent change with multi-item support)
+        # =============================================================================
+        # What: Detects when price changes exceed a threshold within a time window
+        # Why: Allows users to be notified of sudden price movements (up or down)
+        # How: Uses a rolling window to compare current price vs price from [timeframe] ago
+        #      Supports all-items, single-item, and multi-item monitoring modes
+        #      
+        # Key behaviors:
+        # - Warmup period: Won't trigger until we have data from [timeframe] ago
+        # - Rolling baseline: Always compares to price at exactly [timeframe] ago
+        # - Re-trigger: For multi-item, re-triggers when triggered_data changes
+        # - Deactivation: Multi-item alerts deactivate when ALL items are within threshold
         if alert.type == 'spike':
             if alert.percentage is None or not alert.reference or not alert.price:
                 return False
@@ -1249,36 +1371,82 @@ class Command(BaseCommand):
 
             now = time.time()
             direction = (alert.direction or 'both').lower()
-            cutoff = now - (time_frame_minutes * 60)
+            
+            # warmup_threshold: Minimum age of oldest data point to consider window "warm"
+            # What: Timestamp that data must be older than for warmup to be complete
+            # Why: We don't want to trigger on partial data - wait until we have full window
+            # How: Data must be at least [timeframe] seconds old
+            warmup_threshold = now - (time_frame_minutes * 60)
+            
+            # cutoff: Timestamp marking the start of our rolling window for pruning
+            # What: Any price data older than this is pruned from history
+            # Why: We only need data within the timeframe to find the baseline
+            # IMPORTANT: Add 60-second buffer beyond warmup_threshold to ensure data survives
+            #            long enough for the warmup check to pass. Without this buffer, data
+            #            gets pruned right as it becomes old enough (race condition).
+            # How: Keep data for an extra 60 seconds beyond the required window
+            cutoff = now - (time_frame_minutes * 60) - 60  # Extra 60-second buffer
 
+            # =============================================================================
+            # ALL-ITEMS SPIKE ALERT
+            # =============================================================================
             if alert.is_all_items:
                 item_mapping = self.get_item_mapping()
                 matches = []
                 for item_id, price_data in all_prices.items():
                     if not price_data:
                         continue
-                    current_price = price_data.get('high') if alert.reference == 'high' else price_data.get('low')
+                    
+                    # Get current price based on reference type (high, low, or average)
+                    # current_price: The latest price for this item
+                    if alert.reference == 'high':
+                        current_price = price_data.get('high')
+                    elif alert.reference == 'low':
+                        current_price = price_data.get('low')
+                    elif alert.reference == 'average':
+                        high = price_data.get('high')
+                        low = price_data.get('low')
+                        current_price = (high + low) // 2 if high and low else (high or low)
+                    else:
+                        current_price = price_data.get('high')
+                    
                     if current_price is None:
                         continue
 
+                    # Update price history for this item
+                    # key: Unique identifier for item+reference combination
                     key = f"{item_id}:{alert.reference or 'low'}"
                     history = self.price_history[key]
                     history.append((now, current_price))
+                    # Prune old entries outside the window
                     self.price_history[key] = [(ts, val) for ts, val in history if ts >= cutoff]
                     window = self.price_history[key]
                     if not window:
                         continue
 
+                    # Warmup check: Ensure we have data old enough to compare
+                    # What: Check if the oldest price in our window is from [timeframe] ago
+                    # Why: Don't want to trigger on partial data (e.g., 3 min data for 10 min window)
+                    oldest_timestamp = window[0][0]
+                    if oldest_timestamp > warmup_threshold:
+                        # Still warming up for this item - not enough historical data
+                        continue
+
+                    # baseline_price: Price at exactly [timeframe] ago (oldest in window)
                     baseline_price = window[0][1]
                     if baseline_price in (None, 0):
                         continue
 
+                    # Apply min/max price filters
                     if alert.minimum_price is not None and baseline_price < alert.minimum_price:
                         continue
                     if alert.maximum_price is not None and baseline_price > alert.maximum_price:
                         continue
 
+                    # Calculate percent change from baseline
                     percent_change = ((current_price - baseline_price) / baseline_price) * 100
+                    
+                    # Determine if this item exceeds threshold based on direction
                     should_trigger = False
                     if direction == 'up':
                         should_trigger = percent_change >= alert.percentage
@@ -1299,11 +1467,125 @@ class Command(BaseCommand):
                         })
 
                 if matches:
-                    matches.sort(key=lambda x: x['percent_change'], reverse=True)
+                    matches.sort(key=lambda x: abs(x['percent_change']), reverse=True)
                     alert.triggered_data = json.dumps(matches)
                     return matches
                 return False
 
+            # =============================================================================
+            # MULTI-ITEM SPIKE ALERT (item_ids field is set)
+            # =============================================================================
+            # What: Monitor specific items for spike threshold
+            # Why: Users may want to watch a curated list instead of all items or just one
+            # How: Check each item in item_ids, track which exceed threshold
+            #      Re-trigger when triggered_data changes
+            #      Deactivate when ALL items are simultaneously within threshold
+            if alert.item_ids:
+                item_ids = json.loads(alert.item_ids)
+                item_mapping = self.get_item_mapping()
+                
+                matches = []  # Items currently exceeding threshold
+                all_warmed_up = True  # Track if all items have warmed up
+                all_within_threshold = True  # Track if all items are within threshold
+                
+                for item_id in item_ids:
+                    item_id_str = str(item_id)
+                    price_data = all_prices.get(item_id_str)
+                    
+                    if not price_data:
+                        # No price data for this item - can't evaluate
+                        all_warmed_up = False
+                        all_within_threshold = False
+                        continue
+                    
+                    # Get current price based on reference type
+                    if alert.reference == 'high':
+                        current_price = price_data.get('high')
+                    elif alert.reference == 'low':
+                        current_price = price_data.get('low')
+                    elif alert.reference == 'average':
+                        high = price_data.get('high')
+                        low = price_data.get('low')
+                        current_price = (high + low) // 2 if high and low else (high or low)
+                    else:
+                        current_price = price_data.get('high')
+                    
+                    if current_price is None:
+                        all_warmed_up = False
+                        all_within_threshold = False
+                        continue
+                    
+                    # Update price history for this item
+                    key = f"{item_id_str}:{alert.reference or 'low'}"
+                    history = self.price_history[key]
+                    history.append((now, current_price))
+                    self.price_history[key] = [(ts, val) for ts, val in history if ts >= cutoff]
+                    window = self.price_history[key]
+                    
+                    if not window:
+                        all_warmed_up = False
+                        all_within_threshold = False
+                        continue
+
+
+                    # Warmup check for this item
+                    # What: Check if we have accumulated enough historical data for valid comparison
+                    # Why: We need data from at least [time_frame_minutes] ago to calculate meaningful % change
+                    # How: Compare oldest timestamp in window against warmup_threshold
+                    #      If oldest data is newer than threshold, we don't have a full window yet
+                    oldest_timestamp = window[0][0]
+                    
+                    if oldest_timestamp > warmup_threshold:
+                        # Still warming up for this item - not enough historical data accumulated
+                        # What: Skip this item until we have price data from [time_frame_minutes] ago
+                        # Why: Can't calculate meaningful % change without baseline from the past
+                        # How: Continue to next item, marking all_warmed_up as False
+                        all_warmed_up = False
+                        all_within_threshold = False
+                        continue
+                    
+                    # Get baseline price (oldest in window)
+                    baseline_price = window[0][1]
+                    if baseline_price in (None, 0):
+                        all_within_threshold = False
+                        continue
+                    
+                    # Calculate percent change
+                    # What: Compute the percentage difference between current and baseline prices
+                    # Why: This is the core metric for determining if a spike has occurred
+                    # How: ((current - baseline) / baseline) * 100 gives percent change
+                    percent_change = ((current_price - baseline_price) / baseline_price) * 100
+                    
+                    # Check if this item exceeds threshold
+                    # What: Determine if the percent change meets the alert's spike threshold
+                    # Why: Different alerts may watch for upward, downward, or both directions
+                    # How: Compare percent_change against alert.percentage based on direction
+                    exceeds_threshold = False
+                    if direction == 'up':
+                        exceeds_threshold = percent_change >= alert.percentage
+                    elif direction == 'down':
+                        exceeds_threshold = percent_change <= -alert.percentage
+                    else:
+                        exceeds_threshold = abs(percent_change) >= alert.percentage
+                    
+                    if exceeds_threshold:
+                        all_within_threshold = False
+                        matches.append({
+                            'item_id': item_id_str,
+                            'item_name': item_mapping.get(item_id_str, f'Item {item_id_str}'),
+                            'baseline': baseline_price,
+                            'current': current_price,
+                            'percent_change': round(percent_change, 2),
+                            'reference': alert.reference,
+                            'direction': direction
+                        })
+                
+                # Handle multi-item spike triggering (no auto-deactivation)
+                return self._handle_multi_item_spike_trigger(alert, matches, all_within_threshold, all_warmed_up)
+
+            # =============================================================================
+            # SINGLE-ITEM SPIKE ALERT
+            # =============================================================================
             if not alert.item_id:
                 return False
 
@@ -1311,8 +1593,18 @@ class Command(BaseCommand):
             if not price_data:
                 return False
 
-            current_price = price_data.get('high') if alert.reference == 'high' else price_data.get('low')
-            print("Current observed price:", current_price)
+            # Get current price based on reference type
+            if alert.reference == 'high':
+                current_price = price_data.get('high')
+            elif alert.reference == 'low':
+                current_price = price_data.get('low')
+            elif alert.reference == 'average':
+                high = price_data.get('high')
+                low = price_data.get('low')
+                current_price = (high + low) // 2 if high and low else (high or low)
+            else:
+                current_price = price_data.get('high')
+            
             if current_price is None:
                 return False
 
@@ -1324,6 +1616,14 @@ class Command(BaseCommand):
 
             window = self.price_history[key]
             if not window:
+                return False
+
+            # Warmup check for single item
+            # What: Check if we have data old enough to compare
+            # Why: Don't trigger on partial data during initial warmup period
+            oldest_timestamp = window[0][0]
+            if oldest_timestamp > warmup_threshold:
+                print(f"Spike alert warming up - need {time_frame_minutes} min of data")
                 return False
 
             baseline_price = window[0][1]
@@ -1344,7 +1644,7 @@ class Command(BaseCommand):
                 alert.triggered_data = json.dumps({
                     'baseline': baseline_price,
                     'current': current_price,
-                    'percent_change': percent_change,
+                    'percent_change': round(percent_change, 2),
                     'time_frame_minutes': time_frame_minutes,
                     'reference': alert.reference,
                     'direction': direction
@@ -1393,6 +1693,7 @@ class Command(BaseCommand):
                    or (a.type == 'spread' and a.is_all_items)  # All items spread can re-trigger
                    or (a.type == 'spread' and a.item_ids)  # Multi-item spread can re-trigger
                    or (a.type == 'spike' and a.is_all_items)  # All items spike can re-trigger
+                   or (a.type == 'spike' and a.item_ids)  # Multi-item spike can re-trigger
                    or (a.type == 'sustained')  # Sustained always re-checks
                    or (a.type == 'threshold' and (a.is_all_items or a.item_ids))  # Multi-item/all-items threshold can re-trigger
             ]
@@ -1414,6 +1715,16 @@ class Command(BaseCommand):
                         if alert.type == 'spread' and alert.item_ids and isinstance(result, list):
                             self._handle_multi_item_spread_trigger(alert, result)
                             continue  # Skip to next alert, already handled
+                        
+                        # Handle multi-item spike alerts
+                        # What: Process spike alerts that monitor multiple specific items (via item_ids)
+                        # Why: Multi-item spike alerts are fully handled in _handle_multi_item_spike_trigger
+                        #      and should NOT fall through to the generic else block which deactivates
+                        # How: Check if this is a multi-item spike alert and skip further processing
+                        if alert.type == 'spike' and alert.item_ids:
+                            # Already handled by _handle_multi_item_spike_trigger in check_alert()
+                            # The handler saves the alert, so we just continue to next alert
+                            continue
                         
                         # Handle multi-item/all-items threshold alerts
                         # What: Process threshold alerts that monitor multiple items
@@ -1495,4 +1806,4 @@ class Command(BaseCommand):
                 self.stdout.write('No alerts to check.')
             
             # Wait 30 seconds before next check
-            time.sleep(3)
+            time.sleep(15)

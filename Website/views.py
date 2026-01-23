@@ -756,6 +756,18 @@ def create_alert(request):
         spread_scope = request.POST.get('spread_scope', 'all')
         
         # =============================================================================
+        # SPIKE ALERT SPECIFIC FIELDS
+        # =============================================================================
+        # What: Extract form data specific to spike alerts with multi-item support
+        # Why: Spike alerts can now monitor multiple specific items instead of just one or all
+        # How: Parse spike_scope dropdown and spike_item_ids from multi-item selector
+        
+        # spike_scope: 'all' for monitoring all items, 'specific' for single item, 'multiple' for multi-item
+        spike_scope = request.POST.get('spike_scope', 'specific')
+        # spike_item_ids_str: Comma-separated list of item IDs from the multi-item selector
+        spike_item_ids_str = request.POST.get('spike_item_ids', '')
+        
+        # =============================================================================
         # THRESHOLD ALERT SPECIFIC FIELDS
         # =============================================================================
         # What: Extract form data specific to threshold alerts
@@ -788,8 +800,12 @@ def create_alert(request):
         
         # Determine all-items flag based on selection
         is_all_items = is_all_items_flag
-        if alert_type == 'spike' and number_of_items:
-            is_all_items = number_of_items == 'all'
+        # For spike alerts, use spike_scope to determine all-items flag
+        # What: Spike alerts now use a 3-option dropdown (all, specific, multiple)
+        # Why: Users can monitor all items, one item, or a curated list of items
+        # How: Check spike_scope value to set is_all_items appropriately
+        if alert_type == 'spike':
+            is_all_items = (spike_scope == 'all')
         # For threshold alerts, use the threshold_items_tracked field to determine all-items flag
         elif alert_type == 'threshold':
             is_all_items = (threshold_items_tracked == 'all')
@@ -806,6 +822,26 @@ def create_alert(request):
                 for name, item in mapping.items():
                     if item['id'] == item_ids[0]:
                         sustained_item_name = item['name']
+                        break
+        
+        # =============================================================================
+        # HANDLE SPIKE MULTI-ITEM SELECTION
+        # =============================================================================
+        # What: Process spike_item_ids when user selects "Specific Item(s)" for spike alerts
+        # Why: Spike alerts can now monitor multiple specific items for price changes over time
+        # How: Parse comma-separated IDs, convert to JSON array, get first item name for display
+        spike_item_ids_json = None
+        spike_item_name = None
+        if alert_type == 'spike' and spike_scope == 'multiple' and spike_item_ids_str:
+            # Parse comma-separated item IDs from the multi-item selector
+            item_ids = [int(x) for x in spike_item_ids_str.split(',') if x.strip()]
+            if item_ids:
+                spike_item_ids_json = json_module.dumps(item_ids)
+                # Get first item name for display purposes in alert list
+                mapping = get_item_mapping()
+                for name, item in mapping.items():
+                    if item['id'] == item_ids[0]:
+                        spike_item_name = item['name']
                         break
         
         # Handle spread multi-item selection
@@ -879,6 +915,9 @@ def create_alert(request):
             final_item_name = sustained_item_name
         elif alert_type == 'spread' and spread_item_name:
             final_item_name = spread_item_name
+        elif alert_type == 'spike' and spike_item_name:
+            # For spike alerts with specific items, use first item name
+            final_item_name = spike_item_name
         elif alert_type == 'threshold' and threshold_item_name:
             # For threshold alerts with specific items, use first item name
             final_item_name = threshold_item_name
@@ -892,6 +931,10 @@ def create_alert(request):
         elif alert_type == 'spread' and spread_item_ids_json:
             # Store first item ID for backwards compatibility
             item_ids = json_module.loads(spread_item_ids_json)
+            final_item_id = item_ids[0] if item_ids else None
+        elif alert_type == 'spike' and spike_item_ids_json:
+            # Store first item ID for backwards compatibility
+            item_ids = json_module.loads(spike_item_ids_json)
             final_item_id = item_ids[0] if item_ids else None
         elif alert_type == 'threshold' and threshold_item_ids_json:
             # Store first item ID for backwards compatibility
@@ -922,13 +965,15 @@ def create_alert(request):
         # DETERMINE ITEM_IDS VALUE
         # =============================================================================
         # What: Determine which item_ids JSON to store based on alert type
-        # Why: Different alert types (spread, threshold) use the same item_ids field
-        # How: Priority order - threshold takes precedence if it's a threshold alert
+        # Why: Different alert types (spread, threshold, spike) use the same item_ids field
+        # How: Check alert type and use the appropriate item_ids variable
         item_ids_json = None
         if alert_type == 'threshold' and threshold_item_ids_json:
             item_ids_json = threshold_item_ids_json
         elif alert_type == 'spread' and spread_item_ids_json:
             item_ids_json = spread_item_ids_json
+        elif alert_type == 'spike' and spike_item_ids_json:
+            item_ids_json = spike_item_ids_json
         
         alert = Alert.objects.create(
             user=user,
@@ -962,11 +1007,89 @@ def create_alert(request):
             sustained_item_ids=sustained_item_ids_json,
             min_pressure_strength=min_pressure_strength,
             min_pressure_spread_pct=float(min_pressure_spread_pct) if min_pressure_spread_pct else None,
-            # item_ids: JSON array of item IDs for multi-item alerts (spread, threshold)
+            # item_ids: JSON array of item IDs for multi-item alerts (spread, threshold, spike)
             item_ids=item_ids_json,
             # threshold_type: 'percentage' or 'value' for threshold alerts only
-            threshold_type=threshold_type if alert_type == 'threshold' else None
+            threshold_type=threshold_type if alert_type == 'threshold' else None,
+            # baseline_method: How to calculate baseline for spike alerts
+            # What: Specifies comparison method for spike alerts (single_point, average, min_max)
+            # Why: Different comparison methods may be useful for different trading strategies
+            # How: Currently defaults to 'single_point' (compare to price at exactly [timeframe] ago)
+            baseline_method='single_point' if alert_type == 'spike' else None
         )
+        
+        # =============================================================================
+        # SPIKE ALERT: CAPTURE BASELINE PRICES
+        # =============================================================================
+        # What: For spike alerts with specific items, capture initial baseline prices at creation
+        # Why: The rolling window comparison needs a starting baseline for each monitored item
+        #      Until the full timeframe has passed, we'll use the creation-time price as baseline
+        # How: Fetch current prices for monitored items and store in baseline_prices JSON field
+        # Note: For all-items spike alerts, baselines are managed by check_alerts.py price_history
+        if alert_type == 'spike' and not is_all_items:
+            all_prices = get_all_current_prices()
+            
+            if all_prices:
+                import time as time_module
+                baseline_prices_dict = {}
+                current_timestamp = int(time_module.time())
+                
+                # Determine which items to capture baseline prices for
+                # items_to_capture: List of item IDs to get baseline prices for
+                items_to_capture = []
+                
+                if spike_item_ids_json:
+                    # Multi-item spike: capture prices for all selected items
+                    items_to_capture = [str(x) for x in json_module.loads(spike_item_ids_json)]
+                elif final_item_id:
+                    # Single-item spike: capture price for just that item
+                    items_to_capture = [str(final_item_id)]
+                
+                # Capture baseline prices for each item
+                # What: Get the initial baseline price using the user's chosen reference type
+                # Why: This is the starting point for the rolling window comparison
+                # How: For each item, get high/low/average price based on reference setting
+                for item_id in items_to_capture:
+                    item_id_str = str(item_id)
+                    price_data = all_prices.get(item_id_str)
+                    
+                    if not price_data:
+                        # Skip items where price data is unavailable
+                        continue
+                    
+                    # Get the appropriate reference price based on user's selection
+                    # baseline_price: The initial baseline price for this item
+                    high = price_data.get('high')
+                    low = price_data.get('low')
+                    
+                    if reference_value == 'high':
+                        baseline_price = high
+                    elif reference_value == 'low':
+                        baseline_price = low
+                    elif reference_value == 'average':
+                        # Average of high and low prices
+                        if high is not None and low is not None:
+                            baseline_price = (high + low) // 2
+                        else:
+                            baseline_price = high or low
+                    else:
+                        baseline_price = high  # Default to high
+                    
+                    if baseline_price is not None:
+                        # Store both the price and timestamp for the rolling window
+                        # What: Each baseline entry contains price and when it was recorded
+                        # Why: The check_alerts.py needs to know when this baseline was set
+                        #      to determine if it's old enough to be used as comparison point
+                        # How: JSON structure allows storing both values per item
+                        baseline_prices_dict[item_id_str] = {
+                            'price': baseline_price,
+                            'timestamp': current_timestamp
+                        }
+                
+                # Store the baseline prices if any were captured
+                if baseline_prices_dict:
+                    alert.baseline_prices = json_module.dumps(baseline_prices_dict)
+                    alert.save()
         
         # =============================================================================
         # THRESHOLD ALERT: CAPTURE REFERENCE PRICES AND TARGET PRICE

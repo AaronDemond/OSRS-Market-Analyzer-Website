@@ -222,6 +222,43 @@ class Alert(models.Model):
     min_pressure_strength = models.CharField(max_length=10, choices=PRESSURE_STRENGTH_CHOICES, blank=True, null=True, default=None)
     min_pressure_spread_pct = models.FloatField(blank=True, null=True, default=None)  # Minimum spread % for pressure check
     
+    # =============================================================================
+    # SPIKE ALERT BASELINE TRACKING FIELDS
+    # =============================================================================
+    # baseline_prices: JSON dictionary storing per-item baseline prices for spike alerts
+    # What: Stores the baseline price for each monitored item at the point in time [timeframe] ago
+    # Why: Spike alerts use a rolling window comparison - comparing current price to price from X minutes ago
+    #      This field stores the initial baseline captured at alert creation, which will be updated
+    #      by the check_alerts command as the rolling window moves forward
+    # How: JSON dict like {"6737": {"price": 1500000, "timestamp": 1706012400}, ...}
+    #      - price: The baseline price value
+    #      - timestamp: Unix timestamp when this baseline was recorded
+    # Note: For single-item spike alerts, this stores data for just that one item
+    #       For multi-item spike alerts, stores data for all monitored items
+    #       For all-items spike alerts, baselines are managed entirely in check_alerts.py price_history
+    baseline_prices = models.TextField(blank=True, null=True, default=None)
+    
+    # baseline_method: Determines how the baseline price is calculated for spike comparisons
+    # What: Specifies the method used to determine the baseline price within the rolling window
+    # Why: Provides extensibility for different comparison strategies users may prefer:
+    #      - 'single_point': Compare to price at exactly [timeframe] ago (default, implemented)
+    #      - 'average': Compare to average price around that time point (future enhancement)
+    #      - 'min_max': Compare to min or max price in the window (future enhancement)
+    # How: Used by check_alerts.py to determine which baseline calculation to apply
+    # Note: Currently only 'single_point' is implemented; other methods are placeholders for future
+    BASELINE_METHOD_CHOICES = [
+        ('single_point', 'Single Point'),   # Price at exactly [timeframe] ago
+        ('average', 'Window Average'),       # Future: Average of prices around baseline point
+        ('min_max', 'Min/Max'),              # Future: Min or max price in window
+    ]
+    baseline_method = models.CharField(
+        max_length=15, 
+        choices=BASELINE_METHOD_CHOICES, 
+        blank=True, 
+        null=True, 
+        default='single_point'
+    )
+    
     def _format_time_frame(self, minutes_value=None):
         try:
             minutes = int(minutes_value) if minutes_value is not None else (int(self.price) if self.price is not None else None)
@@ -266,10 +303,26 @@ class Alert(models.Model):
                 return f"{target} spread >= {self.percentage}%"
             return f"{self.item_name} spread >= {self.percentage}%"
         if self.type == 'spike':
+            # What: Returns a human-readable string representation for spike alerts
+            # Why: Needed for admin display, alert list, and debugging
+            # How: Checks is_all_items, then item_ids for multi-item, then falls back to single item
             frame = self._format_time_frame()
             perc = f"{self.percentage}%" if self.percentage is not None else "N/A"
             if self.is_all_items:
                 return f"All items spike {perc} within {frame}"
+            elif self.item_ids:
+                # Multi-item spike alert - show count of items being monitored
+                import json
+                try:
+                    ids = json.loads(self.item_ids)
+                    count = len(ids) if isinstance(ids, list) else 1
+                    if count == 1:
+                        target = self.item_name or "1 item"
+                    else:
+                        target = f"{count} items"
+                except:
+                    target = self.item_name or "Unknown"
+                return f"{target} spike {perc} within {frame}"
             target = self.item_name or "Unknown item"
             return f"{target} spike {perc} within {frame}"
         if self.type == 'sustained':
@@ -357,16 +410,44 @@ class Alert(models.Model):
         if self.type == "below":
             return f"{self.item_name} has fallen below {self.price:,} to {price_formatted}"
         if self.type == "spike":
+            # What: Returns a human-readable description of what triggered the spike alert
+            # Why: Users need to understand which items spiked and by how much
+            # How: Parses triggered_data JSON and formats based on scope (all/multi/single)
             frame = self._format_time_frame()
             perc = f"{self.percentage:.1f}" if self.percentage is not None else "N/A"
-            target = "All items" if self.is_all_items else self.item_name
-            base = f"{target} spike {perc} within {frame}"
-            if self.is_all_items and self.triggered_data:
+            
+            # Determine target description based on alert scope
+            if self.is_all_items:
+                target = "All items"
+            elif self.item_ids:
+                # Multi-item spike alert
+                import json
+                try:
+                    ids = json.loads(self.item_ids)
+                    count = len(ids) if isinstance(ids, list) else 1
+                    target = f"{count} items" if count > 1 else self.item_name
+                except:
+                    target = self.item_name
+            else:
+                target = self.item_name
+            
+            base = f"{target} spike {perc}% within {frame}"
+            
+            # For multi-item or all-items spike alerts, show triggered count
+            if (self.is_all_items or self.item_ids) and self.triggered_data:
                 import json
                 try:
                     data = json.loads(self.triggered_data)
-                    count = len(data) if isinstance(data, list) else 0
-                    return f"{base} ({count} item(s) matched)"
+                    if isinstance(data, list):
+                        triggered_count = len(data)
+                        if self.item_ids:
+                            # Multi-item: show triggered/total
+                            total_items = json.loads(self.item_ids)
+                            total_count = len(total_items) if isinstance(total_items, list) else 0
+                            return f"Spike >= {perc}% on {triggered_count}/{total_count} items. Click for details"
+                        else:
+                            # All items: just show count
+                            return f"{base} ({triggered_count} item(s) matched)"
                 except Exception:
                     pass
             return base

@@ -234,15 +234,55 @@
                 <small class="form-hint">Group your alerts. Click + to create a new group</small>
             </div>
 
-            <!-- Number of items (shown for spike only) -->
-            <div class="form-group" id="number-items-group" style="display: none;">
-                <label for="number-of-items">Number of Items</label>
-                <select name="number_of_items" id="number-of-items" onchange="handleSpikeScopeChange()">
-                    <option value="one" selected>One</option>
-                    <option value="all">All</option>
+            <!-- Spike-specific Apply To selector -->
+            <!-- What: Dropdown to choose scope for spike alerts (all items or specific items) -->
+            <!-- Why: Users may want to monitor spike on all items or a curated list of specific items -->
+            <!-- How: Changes form visibility and sets appropriate hidden fields -->
+            <!-- Note: "Specific Item(s)" handles both single and multiple items - no need for separate single item option -->
+            <div class="form-group" id="spike-scope-group" style="display: none;">
+                <label for="spike-scope">Apply To</label>
+                <select name="spike_scope" id="spike-scope" onchange="handleSpikeScopeChange()">
+                    <option value="multiple" selected>Specific Item(s)</option>
+                    <option value="all">All Items</option>
                 </select>
 
-                <small class="form-hint">Choose to track a single item or all items</small>
+                <small class="form-hint">Choose to track specific items or all items at once</small>
+            </div>
+
+            <!-- Multi-item selector for spike alerts (shown when "Specific Item(s)" selected) -->
+            <!-- What: Allows users to select multiple specific items to monitor for spike threshold -->
+            <!-- Why: Users may want to monitor spike on a curated list of items instead of all or just one -->
+            <!-- How: Uses box-style input with dropdown arrow - matching spread multi-item selector -->
+            <div class="form-group" id="spike-items-group" style="display: none;">
+                <div class="label-with-notification">
+                    <label for="spike-item-input">Items</label>
+                    <!-- Small notification shown when items are added or not found -->
+                    <span id="spike-item-notification" class="item-notification"></span>
+                </div>
+                <div class="multi-item-selector">
+                    <div class="multi-item-selector-box">
+                        <!-- Search input for adding new items -->
+                        <input type="text" id="spike-item-input" placeholder="Search for item to add..." autocomplete="off">
+                        <!-- Dropdown toggle button with chevron arrow -->
+                        <button type="button" class="multi-item-dropdown-toggle" id="spike-multi-item-toggle" title="Show selected items">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </button>
+                        <!-- Hidden input for form submission - stores comma-separated item IDs -->
+                        <input type="hidden" name="spike_item_ids" id="spike-item-ids" value="">
+                        <!-- Autocomplete suggestions dropdown (shown when typing) -->
+                        <div id="spike-item-suggestions" class="multi-item-suggestions-dropdown"></div>
+                        <!-- Selected items dropdown (shown when clicking arrow) -->
+                        <div id="spike-selected-items-dropdown" class="multi-item-selected-dropdown">
+                            <div class="selected-items-list" id="spike-selected-items-list">
+                                <!-- Items will be populated here dynamically -->
+                            </div>
+                            <div class="no-items-message" id="spike-no-items-message">No items selected</div>
+                        </div>
+                    </div>
+                </div>
+                <small class="form-hint">Add one or more items to monitor for spike threshold</small>
             </div>
 
             <!-- Spread-specific fields -->
@@ -316,8 +356,9 @@
                 <select name="reference" id="reference">
                     <option value="high">High Price</option>
                     <option value="low">Low Price</option>
+                    <option value="average">Average Price</option>
                 </select>
-                <small class="form-hint">Price your alert will youse to make calculations</small>
+                <small class="form-hint">Price your alert will use to make calculations</small>
             </div>
 
             <!-- Percentage field (shown for spread or spike) -->
@@ -3064,6 +3105,18 @@
                 spreadNoItemsMessage: '#spread-no-items-message',
                 spreadMultiItemToggle: '#spread-multi-item-toggle',
                 spreadItemNotification: '#spread-item-notification',
+                // Spike multi-item selector elements
+                // What: DOM selectors for spike alert's multi-item selection UI
+                // Why: Enables the multi-item picker functionality for spike alerts
+                spikeScope: '#spike-scope',
+                spikeItemInput: '#spike-item-input',
+                spikeItemIds: '#spike-item-ids',
+                spikeItemSuggestions: '#spike-item-suggestions',
+                spikeSelectedItemsDropdown: '#spike-selected-items-dropdown',
+                spikeSelectedItemsList: '#spike-selected-items-list',
+                spikeNoItemsMessage: '#spike-no-items-message',
+                spikeMultiItemToggle: '#spike-multi-item-toggle',
+                spikeItemNotification: '#spike-item-notification',
                 // Threshold alert multi-item selector elements
                 // What: DOM selectors for threshold alert's item selection UI
                 // Why: Enables the multi-item picker functionality for threshold alerts
@@ -3084,9 +3137,10 @@
                 groups: {
                     spreadScope: '#spread-scope-group',
                     spreadItems: '#spread-items-group',  // New group for spread multi-item selector
+                    spikeScope: '#spike-scope-group',    // Spike scope selector group
+                    spikeItems: '#spike-items-group',    // Spike multi-item selector group
                     sustainedScope: '#sustained-scope-group',
                     sustainedItems: '#sustained-items-group',
-                    numberItems: '#number-items-group',
                     itemName: '#item-name-group',
                     price: '#price-group',
                     reference: '#reference-group',
@@ -4857,7 +4911,8 @@
             // Get all form group elements
             const elements = {
                 spreadScope: document.querySelector(groups.spreadScope),
-                numberItems: document.querySelector(groups.numberItems),
+                spikeScope: document.querySelector(groups.spikeScope),
+                spikeItems: document.querySelector(groups.spikeItems),
                 itemName: document.querySelector(groups.itemName),
                 price: document.querySelector(groups.price),
                 reference: document.querySelector(groups.reference),
@@ -4914,10 +4969,24 @@
                 ThresholdMultiItemSelector.clear();
             };
 
+            /**
+             * Helper to hide all spike alert specific fields
+             * What: Hides the spike scope selector and multi-item selector
+             * Why: When switching away from spike alert type, these fields should be hidden
+             * How: Sets display to 'none' for spike-specific field groups and clears selected items
+             */
+            const hideSpikeFields = () => {
+                if (elements.spikeScope) elements.spikeScope.style.display = 'none';
+                if (elements.spikeItems) elements.spikeItems.style.display = 'none';
+                // Clear selected items when hiding
+                if (typeof SpikeMultiItemSelector !== 'undefined') {
+                    SpikeMultiItemSelector.clear();
+                }
+            };
+
             if (alertType === AlertsConfig.alertTypes.SPREAD) {
                 // Spread alerts: show spread-specific fields
                 elements.spreadScope.style.display = 'block';
-                if (elements.numberItems) elements.numberItems.style.display = 'none';
                 elements.itemName.style.display = 'block';
                 elements.price.style.display = 'none';
                 elements.reference.style.display = 'none';
@@ -4926,14 +4995,19 @@
                 elements.direction.style.display = 'none';
                 hideSustainedFields();
                 hideThresholdFields();
+                hideSpikeFields();
 
                 // Let scope change handler determine remaining visibility
                 this.handleSpreadScopeChange(formType);
             } else if (alertType === AlertsConfig.alertTypes.SPIKE) {
-                // Spike alerts: single item, show percentage + time frame, hide spread fields
+                // Spike alerts: show spike scope selector + percentage + time frame + direction
+                // What: Configure form fields for spike alert creation
+                // Why: Spike alerts can monitor all items or specific item(s) via the multi-item selector
+                // How: Show spike-specific fields and use handleSpikeScopeChange to manage item selector visibility
                 elements.spreadScope.style.display = 'none';
-                if (elements.numberItems) elements.numberItems.style.display = 'block';
-                elements.itemName.style.display = 'block';
+                if (elements.spikeScope) elements.spikeScope.style.display = 'block';
+                // Note: itemName is hidden for spike alerts - we use the multi-item selector instead
+                elements.itemName.style.display = 'none';
                 elements.price.style.display = 'none';
                 elements.reference.style.display = 'block';
                 elements.percentage.style.display = 'block';
@@ -4941,12 +5015,13 @@
                 elements.direction.style.display = 'block';
                 hideSustainedFields();
                 hideThresholdFields();
-                // Spike uses min/max only when all items selected; handled in handleSpikeScopeChange
+                // Spike uses min/max only when all items selected; handleSpikeScopeChange manages visibility
+                this.handleSpikeScopeChange(formType);
                 this.handleSpikeScopeChange(formType);
             } else if (alertType === AlertsConfig.alertTypes.SUSTAINED) {
                 // Sustained Move alerts: scope selector + time frame + direction + sustained-specific fields
                 elements.spreadScope.style.display = 'none';
-                if (elements.numberItems) elements.numberItems.style.display = 'none';
+                hideSpikeFields();
                 elements.itemName.style.display = 'none';
                 elements.price.style.display = 'none';
                 elements.reference.style.display = 'none';
@@ -5156,23 +5231,60 @@
         },
 
         /**
-         * Updates form fields based on spike number-of-items selection.
+         * Updates form fields based on spike scope selection.
+         * 
+         * What: Controls visibility of spike alert form fields based on scope dropdown
+         * Why: Spike alerts can monitor all items or specific item(s) - the multi-item selector handles both single and multiple items
+         * How: Shows/hides appropriate fields and updates hidden is_all_items flag
+         *
+         * @param {string} formType - 'create' for create form
          */
         handleSpikeScopeChange(formType) {
             const selectors = AlertsConfig.selectors[formType];
-            const numberItemsSelect = document.querySelector(selectors.numberItems);
+            const spikeScopeSelect = document.querySelector(selectors.spikeScope);
             const groups = selectors.groups;
+            
+            // itemNameGroup: Container for single item name input (no longer used for spike alerts)
             const itemNameGroup = document.querySelector(groups.itemName);
+            // spikeItemsGroup: Container for multi-item selector (handles both single and multiple items)
+            const spikeItemsGroup = document.querySelector(groups.spikeItems);
+            // minPriceGroup/maxPriceGroup: Price filter containers for "all items" mode
             const minPriceGroup = document.querySelector(groups.minPrice);
             const maxPriceGroup = document.querySelector(groups.maxPrice);
+            // isAllItemsInput: Hidden field that tells the backend if this is an all-items alert
             const isAllItemsInput = document.querySelector(selectors.isAllItems);
 
-            const selection = numberItemsSelect ? numberItemsSelect.value : 'one';
-            const isAll = selection === 'all';
-            if (itemNameGroup) itemNameGroup.style.display = isAll ? 'none' : 'block';
-            if (minPriceGroup) minPriceGroup.style.display = isAll ? 'block' : 'none';
-            if (maxPriceGroup) maxPriceGroup.style.display = isAll ? 'block' : 'none';
-            if (isAllItemsInput) isAllItemsInput.value = isAll ? 'true' : 'false';
+            // selection: Current value of the spike scope dropdown
+            // What: Get the selected scope option
+            // Why: Determines which form fields to show/hide
+            // How: Read value from dropdown, default to 'multiple' (specific items mode)
+            const selection = spikeScopeSelect ? spikeScopeSelect.value : 'multiple';
+
+            if (selection === 'all') {
+                // All Items mode: show price filters, hide item selectors
+                // What: Configure form for monitoring all items
+                // Why: When tracking all items, users need price range filters instead of item selectors
+                // How: Hide item inputs, show price filters, set is_all_items flag to true
+                if (itemNameGroup) itemNameGroup.style.display = 'none';
+                if (spikeItemsGroup) spikeItemsGroup.style.display = 'none';
+                if (minPriceGroup) minPriceGroup.style.display = 'block';
+                if (maxPriceGroup) maxPriceGroup.style.display = 'block';
+                if (isAllItemsInput) isAllItemsInput.value = 'true';
+                // Clear the multi-item selector when switching to all items mode
+                if (typeof SpikeMultiItemSelector !== 'undefined') {
+                    SpikeMultiItemSelector.clear();
+                }
+            } else {
+                // Specific Item(s) mode: show multi-item selector, hide price filters
+                // What: Configure form for monitoring specific item(s)
+                // Why: Multi-item selector handles both single and multiple item selection
+                // How: Show multi-item selector, hide legacy single item input and price filters
+                if (itemNameGroup) itemNameGroup.style.display = 'none';
+                if (spikeItemsGroup) spikeItemsGroup.style.display = 'block';
+                if (minPriceGroup) minPriceGroup.style.display = 'none';
+                if (maxPriceGroup) maxPriceGroup.style.display = 'none';
+                if (isAllItemsInput) isAllItemsInput.value = 'false';
+            }
         },
 
         /**
@@ -6729,6 +6841,374 @@
 
 
     // =============================================================================
+    // SPIKE MULTI-ITEM SELECTOR
+    // =============================================================================
+    /**
+     * SpikeMultiItemSelector
+     * ======================
+     * What: Manages multi-item selection for spike alerts with "Specific Item(s)" option.
+     * Why: Users may want to monitor spike on a curated list of items instead of all or just one.
+     * How: Uses box-style input with dropdown toggle showing selected items - same pattern as spread.
+     * 
+     * This implementation mirrors SpreadMultiItemSelector for visual and behavioral consistency.
+     * Multi-item spike alerts will:
+     * - Trigger when ANY item exceeds the threshold
+     * - Re-trigger when triggered_data changes (different items or percentages)
+     * - Deactivate when ALL items are simultaneously within threshold
+     */
+    const SpikeMultiItemSelector = {
+        // selectedItems: Array of {id, name} objects representing currently selected items
+        selectedItems: [],
+        // selectedIndex: Index of currently highlighted suggestion in dropdown (-1 = none)
+        selectedIndex: -1,
+        // notificationTimeout: Reference to timeout for auto-hiding notifications
+        notificationTimeout: null,
+        // dropdownOpen: Tracks if the selected items dropdown is currently open
+        dropdownOpen: false,
+
+        /**
+         * Initializes the spike multi-item selector.
+         * 
+         * What: Sets up event listeners for the spike item search input and dropdown toggle
+         * Why: Enables autocomplete functionality, dropdown management, and item removal
+         * How: Attaches input, keydown, click handlers to relevant DOM elements
+         */
+        init() {
+            // Get all DOM elements needed for the multi-item selector
+            const input = document.querySelector(AlertsConfig.selectors.create.spikeItemInput);
+            const dropdown = document.querySelector(AlertsConfig.selectors.create.spikeItemSuggestions);
+            const hiddenInput = document.querySelector(AlertsConfig.selectors.create.spikeItemIds);
+            const selectedDropdown = document.querySelector(AlertsConfig.selectors.create.spikeSelectedItemsDropdown);
+            const selectedList = document.querySelector(AlertsConfig.selectors.create.spikeSelectedItemsList);
+            const noItemsMsg = document.querySelector(AlertsConfig.selectors.create.spikeNoItemsMessage);
+            const toggleBtn = document.querySelector(AlertsConfig.selectors.create.spikeMultiItemToggle);
+            const selectorBox = input ? input.closest('.multi-item-selector-box') : null;
+
+            if (!input || !dropdown || !hiddenInput || !selectedDropdown) return;
+
+            const self = this;
+            this.selectedItems = [];
+            this.selectedIndex = -1;
+            this.dropdownOpen = false;
+
+            /**
+             * Updates the hidden input with current selected item IDs.
+             */
+            const updateHiddenInput = () => {
+                hiddenInput.value = this.selectedItems.map(item => item.id).join(',');
+            };
+
+            /**
+             * Updates visual selection state in autocomplete dropdown.
+             */
+            const updateSelection = () => {
+                const items = dropdown.querySelectorAll('.suggestion-item');
+                items.forEach((item, index) => {
+                    if (index === this.selectedIndex) {
+                        item.classList.add('selected');
+                        item.scrollIntoView({block: 'nearest'});
+                    } else {
+                        item.classList.remove('selected');
+                    }
+                });
+            };
+
+            /**
+             * Adds an item to the selected list.
+             */
+            const addItem = (id, name) => {
+                if (this.selectedItems.some(item => item.id === id)) {
+                    this.showNotification(`${name} is already selected`, 'error');
+                    return;
+                }
+
+                this.selectedItems.push({id, name});
+                updateHiddenInput();
+                this.renderSelectedItems();
+                input.value = '';
+                dropdown.style.display = 'none';
+                this.selectedIndex = -1;
+                this.showNotification(`${name} added`, 'success');
+            };
+
+            /**
+             * Removes an item from the selected list.
+             */
+            const removeItem = (id) => {
+                const itemToRemove = this.selectedItems.find(item => String(item.id) === String(id));
+                const itemName = itemToRemove ? itemToRemove.name : 'Item';
+                this.selectedItems = this.selectedItems.filter(item => String(item.id) !== String(id));
+                updateHiddenInput();
+                this.renderSelectedItems();
+                this.showNotification(`${itemName} removed`, 'success');
+            };
+
+            // Handle remove button clicks in selected items dropdown
+            if (selectedList) {
+                selectedList.addEventListener('click', function(e) {
+                    if (e.target.classList.contains('remove-item-btn')) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const itemId = e.target.dataset.id;
+                        removeItem(itemId);
+                    }
+                });
+            }
+
+            // Handle dropdown toggle button clicks
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    dropdown.style.display = 'none';
+                    this.selectedIndex = -1;
+                    
+                    this.dropdownOpen = !this.dropdownOpen;
+                    if (this.dropdownOpen) {
+                        selectedDropdown.classList.add('show');
+                        toggleBtn.classList.add('active');
+                    } else {
+                        selectedDropdown.classList.remove('show');
+                        toggleBtn.classList.remove('active');
+                    }
+                });
+            }
+
+            // Close dropdowns when clicking outside
+            document.addEventListener('click', (e) => {
+                if (selectorBox && !selectorBox.contains(e.target)) {
+                    if (this.dropdownOpen) {
+                        selectedDropdown.classList.remove('show');
+                        if (toggleBtn) toggleBtn.classList.remove('active');
+                        this.dropdownOpen = false;
+                    }
+                    dropdown.style.display = 'none';
+                    this.selectedIndex = -1;
+                }
+            });
+
+            // Handle input changes - fetch suggestions from API
+            input.addEventListener('input', async () => {
+                const query = input.value;
+
+                if (this.dropdownOpen) {
+                    selectedDropdown.classList.remove('show');
+                    if (toggleBtn) toggleBtn.classList.remove('active');
+                    this.dropdownOpen = false;
+                }
+
+                if (query.length < AlertsConfig.timing.minSearchLength) {
+                    dropdown.style.display = 'none';
+                    this.selectedIndex = -1;
+                    return;
+                }
+
+                const items = await AlertsAPI.searchItems(query);
+                if (items && items.length > 0) {
+                    dropdown.innerHTML = items.map(item =>
+                        `<div class="suggestion-item" data-id="${item.id}" data-name="${item.name}">${item.name}</div>`
+                    ).join('');
+                    dropdown.style.display = 'block';
+                    this.selectedIndex = -1;
+
+                    // Add click handlers to suggestions
+                    dropdown.querySelectorAll('.suggestion-item').forEach(item => {
+                        item.addEventListener('click', () => {
+                            addItem(item.dataset.id, item.dataset.name);
+                        });
+                    });
+                } else {
+                    dropdown.innerHTML = '<div class="no-suggestions">No items found</div>';
+                    dropdown.style.display = 'block';
+                    this.selectedIndex = -1;
+                }
+            });
+
+            // Handle keyboard navigation in dropdown
+            // What: Enables keyboard-based navigation and selection of autocomplete suggestions
+            // Why: Users expect Tab/Shift+Tab to navigate through suggestions like arrow keys
+            // How: ArrowDown/Tab move down, ArrowUp/Shift+Tab move up, Enter selects, Escape closes
+            input.addEventListener('keydown', (e) => {
+                const items = dropdown.querySelectorAll('.suggestion-item');
+                const itemCount = items.length;
+
+                // Only process navigation keys when dropdown is visible and has items
+                // What: Check if dropdown is visible before handling navigation
+                // Why: Allows normal Tab behavior when no suggestions are shown
+                // How: Check display style and item count before preventing default
+                if (dropdown.style.display === 'none' || itemCount === 0) {
+                    // Backspace with empty input removes last selected item
+                    if (e.key === 'Backspace' && input.value === '' && this.selectedItems.length > 0) {
+                        const lastItem = this.selectedItems[this.selectedItems.length - 1];
+                        removeItem(lastItem.id);
+                    }
+                    return;
+                }
+
+                switch (e.key) {
+                    case 'ArrowDown':
+                        // What: Move selection down through suggestions
+                        // Why: Standard keyboard navigation pattern
+                        // How: Increment index, wrap around at end using modulo
+                        e.preventDefault();
+                        this.selectedIndex = (this.selectedIndex + 1) % itemCount;
+                        updateSelection();
+                        break;
+
+                    case 'ArrowUp':
+                        // What: Move selection up through suggestions
+                        // Why: Standard keyboard navigation pattern
+                        // How: Decrement index, wrap to end if at beginning
+                        e.preventDefault();
+                        this.selectedIndex = this.selectedIndex <= 0
+                            ? itemCount - 1
+                            : this.selectedIndex - 1;
+                        updateSelection();
+                        break;
+
+                    case 'Tab':
+                        // What: Tab navigates through suggestions like arrow keys
+                        // Why: Users expect Tab to move through autocomplete options, not focus next element
+                        // How: Shift+Tab goes up, Tab goes down, same as arrow keys
+                        e.preventDefault();
+                        if (e.shiftKey) {
+                            // Shift+Tab: Move selection up (same as ArrowUp)
+                            this.selectedIndex = this.selectedIndex <= 0
+                                ? itemCount - 1
+                                : this.selectedIndex - 1;
+                        } else {
+                            // Tab: Move selection down (same as ArrowDown)
+                            this.selectedIndex = (this.selectedIndex + 1) % itemCount;
+                        }
+                        updateSelection();
+                        break;
+
+                    case 'Enter':
+                        // What: Select the currently highlighted suggestion
+                        // Why: Standard keyboard pattern for confirming selection
+                        // How: Add the highlighted item to selected list, clear input
+                        e.preventDefault();
+                        if (this.selectedIndex >= 0 && this.selectedIndex < itemCount) {
+                            const selected = items[this.selectedIndex];
+                            addItem(selected.dataset.id, selected.dataset.name);
+                        }
+                        break;
+
+                    case 'Escape':
+                        // What: Close the suggestions dropdown without selecting
+                        // Why: Standard keyboard pattern for canceling/dismissing
+                        // How: Hide dropdown, reset selection index
+                        e.preventDefault();
+                        dropdown.style.display = 'none';
+                        this.selectedIndex = -1;
+                        break;
+                }
+            });
+
+            // Handle focus
+            input.addEventListener('focus', async () => {
+                if (input.value.length >= AlertsConfig.timing.minSearchLength) {
+                    const items = await AlertsAPI.searchItems(input.value);
+                    if (items && items.length > 0) {
+                        dropdown.innerHTML = items.map(item =>
+                            `<div class="suggestion-item" data-id="${item.id}" data-name="${item.name}">${item.name}</div>`
+                        ).join('');
+                        dropdown.style.display = 'block';
+
+                        dropdown.querySelectorAll('.suggestion-item').forEach(item => {
+                            item.addEventListener('click', () => {
+                                addItem(item.dataset.id, item.dataset.name);
+                            });
+                        });
+                    }
+                    updateSelection();
+                }
+            });
+        },
+
+        /**
+         * Renders the selected items in the dropdown list.
+         */
+        renderSelectedItems() {
+            const selectedList = document.querySelector(AlertsConfig.selectors.create.spikeSelectedItemsList);
+            const noItemsMsg = document.querySelector(AlertsConfig.selectors.create.spikeNoItemsMessage);
+
+            if (!selectedList) return;
+
+            if (this.selectedItems.length === 0) {
+                selectedList.innerHTML = '';
+                if (noItemsMsg) noItemsMsg.classList.add('show');
+            } else {
+                if (noItemsMsg) noItemsMsg.classList.remove('show');
+                selectedList.innerHTML = this.selectedItems.map(item =>
+                    `<div class="selected-item-row">
+                        <span class="item-name">${item.name}</span>
+                        <button type="button" class="remove-item-btn" data-id="${item.id}" title="Remove ${item.name}">×</button>
+                    </div>`
+                ).join('');
+            }
+        },
+
+        /**
+         * Shows a small notification next to the "Items" label.
+         */
+        showNotification(message, type) {
+            const notification = document.querySelector(AlertsConfig.selectors.create.spikeItemNotification);
+            if (!notification) return;
+
+            if (this.notificationTimeout) {
+                clearTimeout(this.notificationTimeout);
+            }
+
+            notification.textContent = message;
+            notification.className = 'item-notification ' + type + ' show';
+
+            this.notificationTimeout = setTimeout(() => {
+                notification.classList.remove('show');
+            }, 2500);
+        },
+
+        /**
+         * Clears all selected items.
+         */
+        clear() {
+            this.selectedItems = [];
+            const selectedList = document.querySelector(AlertsConfig.selectors.create.spikeSelectedItemsList);
+            const noItemsMsg = document.querySelector(AlertsConfig.selectors.create.spikeNoItemsMessage);
+            const hiddenInput = document.querySelector(AlertsConfig.selectors.create.spikeItemIds);
+            
+            if (selectedList) selectedList.innerHTML = '';
+            if (noItemsMsg) noItemsMsg.classList.add('show');
+            if (hiddenInput) hiddenInput.value = '';
+        },
+
+        /**
+         * Gets the selected item IDs.
+         * 
+         * @returns {Array} Array of item ID strings
+         */
+        getSelectedIds() {
+            return this.selectedItems.map(item => item.id);
+        },
+
+        /**
+         * Sets items for editing an existing alert.
+         * 
+         * @param {Array} items - Array of {id, name} objects to set as selected
+         */
+        setItems(items) {
+            this.selectedItems = items || [];
+            this.renderSelectedItems();
+            const hiddenInput = document.querySelector(AlertsConfig.selectors.create.spikeItemIds);
+            if (hiddenInput) {
+                hiddenInput.value = this.selectedItems.map(item => item.id).join(',');
+            }
+        }
+    };
+
+
+    // =============================================================================
     // THRESHOLD MULTI-ITEM SELECTOR
     // =============================================================================
     /**
@@ -8101,6 +8581,7 @@
         AutocompleteManager.init();
         MultiItemSelector.init();
         SpreadMultiItemSelector.init();  // Initialize spread multi-item selector
+        SpikeMultiItemSelector.init();   // Initialize spike multi-item selector
         ThresholdMultiItemSelector.init();  // Initialize threshold multi-item selector
         EventManager.init();
         DropdownSizer.init();
@@ -8462,14 +8943,20 @@
                             </svg>
                             How It Works
                         </h4>
-                        <p>Spike alerts track price changes over a rolling time window. If the price moves by your
-                            specified percentage within that time, you'll be notified. This catches sudden jumps or
-                            crashes.</p>
+                        <p>Spike alerts use a <strong>rolling time window</strong> to compare the current price against
+                            the price from exactly <em>[time frame]</em> ago. If the price change exceeds your threshold,
+                            you'll be notified.</p>
                         <ul>
-                            <li><strong>Time Frame:</strong> How far back to compare (e.g., 30 minutes, 1 hour)</li>
+                            <li><strong>Time Frame:</strong> How far back to compare (e.g., 30 minutes, 1 hour). The alert compares current price to the price at exactly this many minutes ago.</li>
                             <li><strong>Percentage:</strong> The minimum change to trigger (e.g., 5% up or down)</li>
                             <li><strong>Direction:</strong> Up only, Down only, or Both directions</li>
+                            <li><strong>Reference:</strong> Which price to track - High (instant sell), Low (instant buy), or Average</li>
                         </ul>
+                        
+                        <div class="alert-help-note" style="margin-top: 12px; padding: 10px; background: rgba(255, 193, 7, 0.1); border-radius: 6px; border-left: 3px solid #ffc107;">
+                            <strong>⏳ Warmup Period:</strong> The alert won't trigger until enough time has passed to establish a baseline.
+                            For example, a 10-minute spike alert needs 10 minutes of price data before it can make valid comparisons.
+                        </div>
                     </div>
 
                     <div class="alert-help-card">
@@ -8487,6 +8974,25 @@
                             <li>Detecting crash opportunities to buy low</li>
                             <li>Monitoring volatile items for trading opportunities</li>
                             <li>Setting "All Items" to find any item spiking in the market</li>
+                            <li>Watching a curated list of items with "Specific Item(s)" mode</li>
+                        </ul>
+                    </div>
+
+                    <div class="alert-help-card">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+                                <path fill-rule="evenodd"
+                                    d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                            Multi-Item Behavior
+                        </h4>
+                        <p>When monitoring <strong>multiple specific items</strong>:</p>
+                        <ul>
+                            <li><strong>Triggers:</strong> When <em>any</em> item exceeds the threshold</li>
+                            <li><strong>Re-triggers:</strong> When the triggered items or their percentages change</li>
+                            <li><strong>No spam:</strong> Won't re-notify if the same items have the same values</li>
+                            <li><strong>Deactivates:</strong> Only when <em>all</em> items are simultaneously within the threshold</li>
                         </ul>
                     </div>
 
