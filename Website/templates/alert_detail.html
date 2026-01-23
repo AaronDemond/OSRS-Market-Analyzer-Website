@@ -451,6 +451,7 @@
     
     .form-group {
         margin-bottom: 0;
+        min-width: 0;  /* Prevent content from expanding grid cell */
     }
     
     .form-group label {
@@ -1034,6 +1035,8 @@
         border-radius: 6px;
         background: white;
         overflow: visible;
+        width: 100%;  /* Fill available space in form-group */
+        min-width: 0;  /* Allow shrinking within grid */
     }
     
     .multi-item-selector-box:focus-within {
@@ -1205,14 +1208,24 @@
        ========================================================================= */
     
     /* Container for label + notification */
+    /* =============================================================================
+       LABEL WITH NOTIFICATION
+       What: Container for label and inline notification
+       Why: Notification should not affect layout width
+       How: Position notification absolutely so it overlays without shifting elements
+    ============================================================================= */
     .label-with-notification {
         display: flex;
         align-items: center;
         gap: 12px;
         margin-bottom: 5px;  /* 5px margin between notification row and input box */
+        position: relative;  /* Needed for absolute positioning of notification */
     }
     
     /* Small inline notification shown next to "Items" label */
+    /* What: Notification badge for item add/remove feedback */
+    /* Why: Should not cause layout shift when appearing/disappearing */
+    /* How: Absolutely positioned, truncated with ellipsis if too long */
     .item-notification {
         font-size: 0.8rem;
         padding: 3px 8px;
@@ -1220,6 +1233,14 @@
         opacity: 0;
         transition: opacity 0.3s ease;
         white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: calc(100% - 60px);  /* Leave room for label */
+        position: absolute;
+        left: 50px;  /* Position after "Items" label */
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;  /* Don't interfere with clicks */
     }
     
     .item-notification.show {
