@@ -3340,12 +3340,26 @@ function handleScopeChange() {
         if (toggleLabel) toggleLabel.textContent = 'Yes';
     } else {
         // Specific item(s) mode
-        // For spread alerts with existing multi-item selection, show multi-item selector
-        // Otherwise show single item input
-        if (alertType === 'spread' && hasMultipleItems) {
+        // What: Show appropriate item selector based on alert type and item count
+        // Why: Spread and spike alerts with multiple items should use multi-item selector
+        //      Single item alerts or other types should use single item input
+        // How: Check alert type and hasMultipleItems flag to determine which UI to show
+        
+        // multiItemAlertTypes: Alert types that support multi-item selection
+        // What: List of alert types that can monitor multiple specific items
+        // Why: Both spread and spike alerts can monitor multiple items via item_ids field
+        const multiItemAlertTypes = ['spread', 'spike'];
+        
+        if (multiItemAlertTypes.includes(alertType) && hasMultipleItems) {
+            // Multi-item mode for spread/spike alerts with existing items
+            // What: Show multi-item selector and hide single item input
+            // Why: User is editing a multi-item alert, show the appropriate UI
             itemNameGroup.style.display = 'none';
             multiItemGroup.style.display = 'block';
         } else {
+            // Single item mode or no items yet
+            // What: Show single item input and hide multi-item selector
+            // Why: Either a single-item alert or user hasn't added items yet
             itemNameGroup.style.display = 'block';
             multiItemGroup.style.display = 'none';
         }

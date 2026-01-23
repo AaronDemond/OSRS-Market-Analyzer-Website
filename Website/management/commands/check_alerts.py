@@ -334,19 +334,20 @@ class Command(BaseCommand):
             alert.is_dismissed = False
         
         if all_triggered:
-            # All items have triggered - deactivate the alert
-            # What: Set is_active to False to stop checking this alert
-            # Why: User requested to be notified when ALL items meet the condition
-            alert.is_active = False
+            # All items have triggered
+            # What: Log that all items met the threshold
+            # Why: User may want to know when all items have triggered
+            # Note: Alert stays active - only user can deactivate manually
+            alert.is_active = True
             self.stdout.write(
                 self.style.WARNING(
-                    f'TRIGGERED (multi-item spread - ALL {len(total_item_ids)} items): Deactivating alert'
+                    f'TRIGGERED (multi-item spread - ALL {len(total_item_ids)} items): Alert stays active'
                 )
             )
         else:
             # Some items triggered but not all (or none) - keep alert active
             # What: Keep is_active True to continue monitoring remaining items
-            # Why: Alert should not deactivate until ALL items have triggered
+            # Why: Alert should stay active until manually deactivated by user
             alert.is_active = True
             if data_changed and triggered_items:
                 self.stdout.write(
@@ -372,6 +373,12 @@ class Command(BaseCommand):
         # This prevents email spam when the same items keep triggering with same values
         if alert.email_notification and data_changed and triggered_items:
             self.send_alert_notification(alert, alert.triggered_text())
+            # Disable email notification after first trigger to prevent spam
+            # What: Set email_notification to False after sending
+            # Why: User only wants to be notified once, but alert stays active for monitoring
+            # How: Alert can still re-trigger and update triggered_data, just won't send emails
+            alert.email_notification = False
+            alert.save()
 
     def _handle_multi_item_spike_trigger(self, alert, triggered_items, all_within_threshold, all_warmed_up):
         """
@@ -458,9 +465,13 @@ class Command(BaseCommand):
                     )
                 )
                 
-                # Send email notification if enabled
+                # Send email notification if enabled, then disable to prevent spam
+                # What: Send notification once, then disable email_notification
+                # Why: User only wants one notification per trigger, but alert stays active
                 if alert.email_notification:
                     self.send_alert_notification(alert, alert.triggered_text())
+                    alert.email_notification = False
+                    alert.save()
                 
                 return triggered_items
             else:
@@ -849,15 +860,20 @@ class Command(BaseCommand):
             alert.is_dismissed = False
         
         if all_triggered:
-            # All items have triggered - deactivate the alert
-            alert.is_active = False
+            # All items have triggered
+            # What: Log that all items met the threshold
+            # Why: User may want to know when all items have triggered
+            # Note: Alert stays active - only user can deactivate manually
+            alert.is_active = True
             self.stdout.write(
                 self.style.WARNING(
-                    f'TRIGGERED (threshold - ALL {len(total_item_ids)} items): Deactivating alert'
+                    f'TRIGGERED (threshold - ALL {len(total_item_ids)} items): Alert stays active'
                 )
             )
         else:
             # Some items triggered but not all (or none) - keep alert active
+            # What: Keep is_active True to continue monitoring
+            # Why: Alert stays active until manually deactivated by user
             alert.is_active = True
             if data_changed and triggered_items:
                 self.stdout.write(
@@ -882,6 +898,11 @@ class Command(BaseCommand):
         # AND there are actually triggered items to report
         if alert.email_notification and data_changed and triggered_items:
             self.send_alert_notification(alert, alert.triggered_text())
+            # Disable email notification after first trigger to prevent spam
+            # What: Set email_notification to False after sending
+            # Why: User only wants to be notified once, but alert stays active for monitoring
+            alert.email_notification = False
+            alert.save()
 
     def get_volume_from_timeseries(self, item_id, time_window_minutes):
         """
@@ -1739,7 +1760,8 @@ class Command(BaseCommand):
                             if alert.type == 'spread' and alert.is_all_items and isinstance(result, list):
                                 alert.triggered_data = json.dumps(result)
                                 alert.is_triggered = True
-                                # Keep is_active = True for all_items spread alerts
+                                # Keep is_active = True - alerts never auto-deactivate
+                                alert.is_active = True
                                 # Only show notification if show_notification is enabled
                                 # What: Controls whether notification banner appears
                                 # Why: Users may disable notifications but still want to track alerts
@@ -1749,30 +1771,34 @@ class Command(BaseCommand):
                                 self.stdout.write(
                                     self.style.WARNING(f'TRIGGERED (all items spread): {len(result)} items found')
                                 )
-                                # Send email notification if enabled
+                                # Send email notification if enabled, then disable to prevent spam
                                 if alert.email_notification:
                                     self.send_alert_notification(alert, alert.triggered_text())
+                                    alert.email_notification = False
+                                    alert.save()
                             
                             elif alert.type == 'spike' and alert.is_all_items and isinstance(result, list):
                                 alert.triggered_data = json.dumps(result)
                                 alert.is_triggered = True
                                 # Only show notification if show_notification is enabled
                                 alert.is_dismissed = not alert.show_notification
-                                alert.is_active = True  # keep monitoring
+                                alert.is_active = True  # Keep monitoring - never auto-deactivate
                                 alert.triggered_at = timezone.now()
-                                # Keep active for re-trigger
                                 alert.save()
                                 self.stdout.write(
                                     self.style.WARNING(f'TRIGGERED (all items spike): {len(result)} items found')
                                 )
+                                # Send email notification if enabled, then disable to prevent spam
                                 if alert.email_notification:
                                     self.send_alert_notification(alert, alert.triggered_text())
+                                    alert.email_notification = False
+                                    alert.save()
                             elif alert.type == 'sustained':
                                 # Sustained alerts stay active for re-triggering
                                 alert.is_triggered = True
                                 # Only show notification if show_notification is enabled
                                 alert.is_dismissed = not alert.show_notification
-                                alert.is_active = True  # Keep monitoring
+                                alert.is_active = True  # Keep monitoring - never auto-deactivate
                                 alert.triggered_at = timezone.now()
                                 alert.save()
                                 
@@ -1785,13 +1811,18 @@ class Command(BaseCommand):
                                     self.stdout.write(
                                         self.style.WARNING(f'TRIGGERED (sustained move): {alert.item_name or "multiple items"}')
                                     )
+                                # Send email notification if enabled, then disable to prevent spam
                                 if alert.email_notification:
                                     self.send_alert_notification(alert, alert.triggered_text())
+                                    alert.email_notification = False
+                                    alert.save()
                             else:
+                                # Generic alert handler (above/below, single-item alerts, etc.)
                                 alert.is_triggered = True
-                                # Deactivate alert if it's not for all items
-                                if alert.is_all_items is not True:
-                                    alert.is_active = False
+                                # Keep alert active - never auto-deactivate
+                                # What: All alerts stay active until manually deactivated by user
+                                # Why: User may want to continue monitoring even after trigger
+                                alert.is_active = True
                                 # Only show notification if show_notification is enabled
                                 alert.is_dismissed = not alert.show_notification
                                 alert.triggered_at = timezone.now()
@@ -1799,9 +1830,11 @@ class Command(BaseCommand):
                                 self.stdout.write(
                                     self.style.WARNING(f'TRIGGERED: {alert}')
                                 )
-                                # Send email notification if enabled
+                                # Send email notification if enabled, then disable to prevent spam
                                 if alert.email_notification:
                                     self.send_alert_notification(alert, alert.triggered_text())
+                                    alert.email_notification = False
+                                    alert.save()
             else:
                 self.stdout.write('No alerts to check.')
             

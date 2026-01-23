@@ -4021,14 +4021,16 @@
             const isSpreadAllItems = this.isSpreadAllItemsAlert(alert);
             const isSpikeAllItems = this.isSpikeAllItemsAlert(alert);
 
-            // typeIconSvgs: inline SVGs keyed by alert type; ensures we show meaningful icons (spread/spike/sustained) when no item art exists (e.g., all-items alerts) by rendering semantic shapes that match alert intent. Icons use color cues for quick recognition.
+            // typeIconSvgs: inline SVGs keyed by alert type; ensures we show meaningful icons (spread/spike/sustained/threshold) when no item art exists (e.g., all-items alerts) by rendering semantic shapes that match alert intent. Icons use color cues for quick recognition.
             const typeIconSvgs = {
                 // Spread: purple double-ended arrow between price ticks (margin/difference).
                 spread: '<svg fill="none" stroke="#7C3AED" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7v10M15 7v10M6 12h12M6 12l3-3M6 12l3 3M18 12l-3-3M18 12l-3 3"/></svg>',
                 // Spike: red warning triangle with exclamation.
                 spike: '<svg viewBox="0 0 24 24"><path d="M12 4l8 14H4L12 4z" fill="#DC2626" stroke="#B91C1C" stroke-width="1.5"/><path d="M12 9v5" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17.5" r="1.2" fill="#FFFFFF"/></svg>',
                 // Sustained: straight green line up/right on chart axes.
-                sustained: '<svg fill="none" stroke="#16A34A" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 18h16M4 18V6M4 18L18 6"/></svg>'
+                sustained: '<svg fill="none" stroke="#16A34A" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 18h16M4 18V6M4 18L18 6"/></svg>',
+                // Threshold: orange horizontal line with arrow pointing up/down representing price crossing a threshold level.
+                threshold: '<svg fill="none" stroke="#F97316" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 12h16"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8V4M12 4l-3 3M12 4l3 3"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v4M12 20l-3-3M12 20l3-3"/></svg>'
             };
 
             // Cache spread data if triggered (for detail page)
@@ -5125,14 +5127,28 @@
             const thresholdTypeSelect = document.querySelector(selectors.thresholdType);
             const isAllItemsInput = document.querySelector(selectors.isAllItems);
             
+            // minPriceGroup/maxPriceGroup: Price filter containers for "all items" mode
+            // What: DOM elements for minimum and maximum price filter inputs
+            // Why: When tracking all items, users need to filter by price range to avoid noise
+            // How: Show these fields only when "All Items" is selected
+            const minPriceGroup = document.querySelector(groups.minPrice);
+            const maxPriceGroup = document.querySelector(groups.maxPrice);
+            
             if (!itemsTrackedSelect) return;
             
             const selection = itemsTrackedSelect.value;
             
             if (selection === 'all') {
-                // All Items mode: hide item selector, lock threshold type to percentage
+                // All Items mode: hide item selector, show price filters, lock threshold type to percentage
                 if (thresholdItemsGroup) thresholdItemsGroup.style.display = 'none';
                 if (isAllItemsInput) isAllItemsInput.value = 'true';
+                
+                // Show min/max price filters for all items mode
+                // What: Display price range filters when tracking all items
+                // Why: Users need to filter which items to monitor based on price range
+                // How: Set display to 'block' for both min and max price groups
+                if (minPriceGroup) minPriceGroup.style.display = 'block';
+                if (maxPriceGroup) maxPriceGroup.style.display = 'block';
                 
                 // Force percentage type for all items (can't use value for all items)
                 if (thresholdTypeSelect) {
@@ -5143,9 +5159,16 @@
                 // Clear any selected items
                 ThresholdMultiItemSelector.clear();
             } else {
-                // Specific Items mode: show item selector
+                // Specific Items mode: show item selector, hide price filters
                 if (thresholdItemsGroup) thresholdItemsGroup.style.display = 'block';
                 if (isAllItemsInput) isAllItemsInput.value = 'false';
+                
+                // Hide min/max price filters for specific items mode
+                // What: Hide price range filters when tracking specific items
+                // Why: Price filters only apply to "all items" mode where we need to narrow down
+                // How: Set display to 'none' for both min and max price groups
+                if (minPriceGroup) minPriceGroup.style.display = 'none';
+                if (maxPriceGroup) maxPriceGroup.style.display = 'none';
                 
                 // Check if threshold type should be enabled or disabled based on item count
                 this.updateThresholdTypeState();
