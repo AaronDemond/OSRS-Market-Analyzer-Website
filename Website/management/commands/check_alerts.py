@@ -159,7 +159,7 @@ class Command(BaseCommand):
         Why: We should only send notifications when there's actual new information
         How: 
             1. Parse old data JSON
-            2. Compare item IDs and all data values (spread, high, low)
+            2. Compare item IDs and all data values
             3. Return True if any item is new, dropped out, or has different values
         
         Args:
@@ -217,29 +217,40 @@ class Command(BaseCommand):
                 return True
         
         # Check for data value changes on items that exist in both old and new
-        # What: Compare spread, high, and low values for items present in both
+        # What: Compare all numeric values for items present in both
         # Why: Even if same items are triggering, price/spread changes are meaningful
         # How: Compare rounded values to avoid float precision false positives
+        #
+        # Fields to compare by alert type:
+        # - Spread alerts: spread, high, low
+        # - Threshold alerts: current_price, change_percent
+        # - Spike alerts: percent_change, current
+        # - Sustained alerts: total_move_percent, current_price, streak_count
+        #
+        # Generic comparison: compare all numeric fields present in items
         for item_id, new_item in new_items_map.items():
             old_item = old_items_map.get(item_id)
             if old_item:
-                # Compare spread values
-                old_spread = round(old_item.get('spread', 0), 2)
-                new_spread = round(new_item.get('spread', 0), 2)
-                if old_spread != new_spread:
-                    return True
+                # Compare all common fields between old and new item
+                # fields_to_compare: List of field names that exist in both items
+                all_fields = set(old_item.keys()) | set(new_item.keys())
                 
-                # Compare high values
-                old_high = old_item.get('high')
-                new_high = new_item.get('high')
-                if old_high != new_high:
-                    return True
-                
-                # Compare low values
-                old_low = old_item.get('low')
-                new_low = new_item.get('low')
-                if old_low != new_low:
-                    return True
+                for field in all_fields:
+                    old_val = old_item.get(field)
+                    new_val = new_item.get(field)
+                    
+                    # Skip non-comparable fields (item_id, item_name, direction)
+                    if field in ('item_id', 'item_name', 'direction', 'threshold', 'reference', 'reference_price'):
+                        continue
+                    
+                    # Compare numeric values with rounding for floats
+                    if isinstance(old_val, (int, float)) and isinstance(new_val, (int, float)):
+                        # Round to 2 decimal places to avoid float precision issues
+                        if round(float(old_val), 2) != round(float(new_val), 2):
+                            return True
+                    elif old_val != new_val:
+                        # Non-numeric values: direct comparison
+                        return True
         
         # No meaningful changes detected
         return False
@@ -359,6 +370,406 @@ class Command(BaseCommand):
         # Only send email notification if data has changed AND notifications are enabled
         # AND there are actually triggered items to report
         # This prevents email spam when the same items keep triggering with same values
+        if alert.email_notification and data_changed and triggered_items:
+            self.send_alert_notification(alert, alert.triggered_text())
+
+    # =============================================================================
+    # THRESHOLD ALERT METHODS
+    # =============================================================================
+    
+    def check_threshold_alert(self, alert, all_prices):
+        """
+        Check if a threshold alert should trigger.
+        
+        What: Checks if item price(s) have crossed the threshold from their reference price
+        Why: Users want to be notified when prices change by a certain amount/percentage
+        How: 
+            - For value-based: Check if current price crosses target_price
+            - For percentage-based: Check if current price differs from reference_prices by threshold %
+        
+        Args:
+            alert: Alert model instance with threshold configuration
+            all_prices: Dictionary of all current prices keyed by item_id
+        
+        Returns:
+            - True/False for single-item alerts
+            - List of triggered items for multi-item/all-items alerts
+        """
+        # Get threshold configuration
+        # threshold_type: 'percentage' or 'value'
+        threshold_type = alert.threshold_type or 'percentage'
+        # direction: 'up' or 'down'
+        direction = (alert.direction or 'up').lower()
+        # reference_type: 'high', 'low', or 'average' - which price to monitor
+        reference_type = alert.reference or 'high'
+        # threshold_value: The percentage threshold (stored in alert.percentage)
+        threshold_value = alert.percentage if alert.percentage is not None else 0
+        
+        # Determine which items to check
+        # items_to_check: List of (item_id_str, reference_price) tuples
+        items_to_check = []
+        
+        if threshold_type == 'value':
+            # Value-based threshold: Single item only
+            # What: Check if current price crosses the target_price
+            # Why: User wants to be alerted when price reaches a specific value
+            if not alert.item_id or alert.target_price is None:
+                return False
+            
+            item_id_str = str(alert.item_id)
+            price_data = all_prices.get(item_id_str)
+            if not price_data:
+                return False
+            
+            # Get current price based on reference type
+            current_price = self._get_price_by_reference(price_data, reference_type)
+            if current_price is None:
+                return False
+            
+            target = alert.target_price
+            
+            # Check if threshold is crossed
+            # For 'up': trigger when current_price >= target
+            # For 'down': trigger when current_price <= target
+            if direction == 'up':
+                triggered = current_price >= target
+            else:  # direction == 'down'
+                triggered = current_price <= target
+            
+            return triggered
+        
+        # Percentage-based threshold
+        # What: Check if current price differs from baseline by threshold %
+        # Why: User wants to be alerted when price changes by a certain percentage
+        
+        # Load reference prices
+        reference_prices = {}
+        if alert.reference_prices:
+            try:
+                reference_prices = json.loads(alert.reference_prices)
+            except (json.JSONDecodeError, TypeError):
+                pass
+        
+        if not reference_prices:
+            # No reference prices stored - can't calculate percentage change
+            return False
+        
+        if alert.is_all_items:
+            # All items mode: Check all items in market (respecting min/max filters)
+            # triggered_items: List of items that meet the threshold
+            triggered_items = []
+            item_mapping = self.get_item_mapping()
+            
+            for item_id, price_data in all_prices.items():
+                item_id_str = str(item_id)
+                
+                # Apply min/max price filters if configured
+                high = price_data.get('high')
+                low = price_data.get('low')
+                
+                if alert.minimum_price is not None:
+                    if high is None or low is None or high < alert.minimum_price or low < alert.minimum_price:
+                        continue
+                if alert.maximum_price is not None:
+                    if high is None or low is None or high > alert.maximum_price or low > alert.maximum_price:
+                        continue
+                
+                # Get reference price for this item
+                ref_price = reference_prices.get(item_id_str)
+                if ref_price is None:
+                    # No baseline for this item - skip it
+                    continue
+                
+                # Get current price
+                current_price = self._get_price_by_reference(price_data, reference_type)
+                if current_price is None:
+                    continue
+                
+                # Calculate percentage change
+                change_percent = self._calculate_percent_change(ref_price, current_price)
+                
+                # Check if threshold is crossed
+                threshold_crossed = self._check_threshold_crossed(
+                    change_percent, threshold_value, direction
+                )
+                
+                if threshold_crossed:
+                    item_name = item_mapping.get(item_id_str, f'Item {item_id_str}')
+                    triggered_items.append({
+                        'item_id': item_id_str,
+                        'item_name': item_name,
+                        'reference_price': ref_price,
+                        'current_price': current_price,
+                        'change_percent': round(change_percent, 2),
+                        'threshold': threshold_value,
+                        'direction': direction
+                    })
+            
+            if triggered_items:
+                # Sort by absolute change percentage (highest first)
+                triggered_items.sort(key=lambda x: abs(x['change_percent']), reverse=True)
+            
+            return triggered_items
+        
+        elif alert.item_ids:
+            # Multi-item mode: Check specific list of items
+            triggered_items = []
+            item_mapping = self.get_item_mapping()
+            
+            try:
+                item_ids_list = json.loads(alert.item_ids)
+            except (json.JSONDecodeError, TypeError):
+                return []
+            
+            for item_id in item_ids_list:
+                item_id_str = str(item_id)
+                
+                # Get price data
+                price_data = all_prices.get(item_id_str)
+                if not price_data:
+                    continue
+                
+                # Get reference price for this item
+                ref_price = reference_prices.get(item_id_str)
+                if ref_price is None:
+                    continue
+                
+                # Get current price
+                current_price = self._get_price_by_reference(price_data, reference_type)
+                if current_price is None:
+                    continue
+                
+                # Calculate percentage change
+                change_percent = self._calculate_percent_change(ref_price, current_price)
+                
+                # Check if threshold is crossed
+                threshold_crossed = self._check_threshold_crossed(
+                    change_percent, threshold_value, direction
+                )
+                
+                if threshold_crossed:
+                    item_name = item_mapping.get(item_id_str, f'Item {item_id_str}')
+                    triggered_items.append({
+                        'item_id': item_id_str,
+                        'item_name': item_name,
+                        'reference_price': ref_price,
+                        'current_price': current_price,
+                        'change_percent': round(change_percent, 2),
+                        'threshold': threshold_value,
+                        'direction': direction
+                    })
+            
+            if triggered_items:
+                triggered_items.sort(key=lambda x: abs(x['change_percent']), reverse=True)
+            
+            return triggered_items
+        
+        else:
+            # Single item mode (percentage-based)
+            if not alert.item_id:
+                return False
+            
+            item_id_str = str(alert.item_id)
+            
+            # Get price data
+            price_data = all_prices.get(item_id_str)
+            if not price_data:
+                return False
+            
+            # Get reference price
+            ref_price = reference_prices.get(item_id_str)
+            if ref_price is None:
+                return False
+            
+            # Get current price
+            current_price = self._get_price_by_reference(price_data, reference_type)
+            if current_price is None:
+                return False
+            
+            # Calculate percentage change
+            change_percent = self._calculate_percent_change(ref_price, current_price)
+            
+            # Check if threshold is crossed
+            return self._check_threshold_crossed(change_percent, threshold_value, direction)
+    
+    def _get_price_by_reference(self, price_data, reference_type):
+        """
+        Get the appropriate price from price_data based on reference type.
+        
+        What: Extracts high, low, or average price from price_data dict
+        Why: Users can choose which price point to monitor for their alerts
+        How: Switch on reference_type and calculate/return appropriate value
+        
+        Args:
+            price_data: Dict containing 'high' and 'low' price keys
+            reference_type: 'high', 'low', or 'average'
+        
+        Returns:
+            int: The price value, or None if not available
+        """
+        high = price_data.get('high')
+        low = price_data.get('low')
+        
+        if reference_type == 'high':
+            return high
+        elif reference_type == 'low':
+            return low
+        elif reference_type == 'average':
+            if high is not None and low is not None:
+                return (high + low) // 2
+            return high or low
+        else:
+            return high  # Default to high
+    
+    def _calculate_percent_change(self, reference_price, current_price):
+        """
+        Calculate percentage change from reference price to current price.
+        
+        What: Computes ((current - reference) / reference) * 100
+        Why: Threshold alerts need to know how much the price has changed as a percentage
+        How: Standard percentage change formula, handles edge cases
+        
+        Args:
+            reference_price: The baseline price (captured at alert creation)
+            current_price: The current market price
+        
+        Returns:
+            float: Percentage change (positive for increase, negative for decrease)
+        """
+        if reference_price == 0 or reference_price is None:
+            return 0
+        return ((current_price - reference_price) / reference_price) * 100
+    
+    def _check_threshold_crossed(self, change_percent, threshold, direction):
+        """
+        Check if a price change crosses the threshold in the specified direction.
+        
+        What: Determines if change_percent exceeds threshold based on direction
+        Why: Different users want alerts for increases vs decreases vs either
+        How: 
+            - 'up': Change must be >= +threshold (price increased)
+            - 'down': Change must be <= -threshold (price decreased)
+            - 'both': Absolute change must be >= threshold
+        
+        Args:
+            change_percent: The calculated percentage change
+            threshold: The threshold percentage to compare against
+            direction: 'up', 'down', or 'both'
+        
+        Returns:
+            bool: True if threshold is crossed in the specified direction
+        """
+        if direction == 'up':
+            return change_percent >= threshold
+        elif direction == 'down':
+            return change_percent <= -threshold
+        else:  # 'both'
+            return abs(change_percent) >= threshold
+    
+    def _handle_multi_item_threshold_trigger(self, alert, triggered_items):
+        """
+        Handle trigger logic for multi-item/all-items threshold alerts.
+        
+        What: Processes triggered items for threshold alerts monitoring multiple items
+        Why: Multi-item threshold alerts should only fully deactivate when ALL monitored items trigger
+        How:
+            1. Get the total list of items being monitored
+            2. Check if triggered data has meaningfully changed
+            3. Compare against currently triggered items
+            4. If all items have triggered, deactivate the alert
+            5. Otherwise, keep the alert active and update triggered_data
+            6. Only send notification if data has changed
+        
+        Args:
+            alert: Alert model instance with threshold configuration
+            triggered_items: List of item data dicts that currently meet the threshold
+                            (may be empty if no items meet threshold)
+        
+        Deactivation Logic:
+            - Alert stays active until EVERY item has triggered at least once
+            - triggered_data shows current items meeting the threshold (updated each check)
+            - Only when triggered_items contains ALL monitored items does the alert deactivate
+        """
+        # Determine total items being monitored
+        # total_item_ids: List of all item IDs the alert is meant to monitor
+        if alert.is_all_items:
+            # For all-items mode, use the reference_prices keys as the monitored items
+            # (since reference_prices contains all items that were in range at creation)
+            try:
+                reference_prices = json.loads(alert.reference_prices) if alert.reference_prices else {}
+                total_item_ids = list(reference_prices.keys())
+            except (json.JSONDecodeError, TypeError):
+                total_item_ids = []
+        else:
+            try:
+                total_item_ids = json.loads(alert.item_ids)
+                if not isinstance(total_item_ids, list):
+                    total_item_ids = []
+                # Convert to strings for comparison
+                total_item_ids = [str(x) for x in total_item_ids]
+            except (json.JSONDecodeError, TypeError):
+                total_item_ids = []
+        
+        # old_triggered_data: Previous triggered_data for comparison
+        old_triggered_data = alert.triggered_data
+        
+        # Check if data has changed
+        data_changed = self._has_triggered_data_changed(old_triggered_data, triggered_items)
+        
+        # triggered_item_ids: Set of item IDs that triggered in this check cycle
+        triggered_item_ids = set(str(item['item_id']) for item in triggered_items)
+        
+        # total_item_ids_set: Set of all item IDs for comparison
+        total_item_ids_set = set(str(item_id) for item_id in total_item_ids)
+        
+        # Check if ALL items have triggered
+        # all_triggered: Boolean indicating if every monitored item has reached the threshold
+        all_triggered = len(triggered_items) > 0 and total_item_ids_set.issubset(triggered_item_ids)
+        
+        # ALWAYS update triggered_data with current snapshot
+        alert.triggered_data = json.dumps(triggered_items)
+        
+        # Only update is_triggered and triggered_at if we have actual triggered items
+        if triggered_items:
+            alert.is_triggered = True
+            alert.triggered_at = timezone.now()
+        
+        # Only reset is_dismissed if data has changed AND show_notification is enabled
+        if data_changed and alert.show_notification:
+            alert.is_dismissed = False
+        
+        if all_triggered:
+            # All items have triggered - deactivate the alert
+            alert.is_active = False
+            self.stdout.write(
+                self.style.WARNING(
+                    f'TRIGGERED (threshold - ALL {len(total_item_ids)} items): Deactivating alert'
+                )
+            )
+        else:
+            # Some items triggered but not all (or none) - keep alert active
+            alert.is_active = True
+            if data_changed and triggered_items:
+                self.stdout.write(
+                    self.style.WARNING(
+                        f'TRIGGERED (threshold): {len(triggered_items)}/{len(total_item_ids)} items triggered'
+                    )
+                )
+            elif data_changed and not triggered_items:
+                self.stdout.write(
+                    self.style.WARNING(
+                        f'Threshold alert {alert.id}: All items dropped below threshold (0/{len(total_item_ids)})'
+                    )
+                )
+            else:
+                self.stdout.write(
+                    f'Threshold alert {alert.id}: No changes ({len(triggered_items)}/{len(total_item_ids)} items)'
+                )
+        
+        alert.save()
+        
+        # Only send email notification if data has changed AND notifications are enabled
+        # AND there are actually triggered items to report
         if alert.email_notification and data_changed and triggered_items:
             self.send_alert_notification(alert, alert.triggered_text())
 
@@ -741,13 +1152,20 @@ class Command(BaseCommand):
         
         What: Evaluates alert conditions against current price data
         Why: Core function that determines when users should be notified
-        How: Dispatches to type-specific handlers (spread, spike, sustained, above/below)
+        How: Dispatches to type-specific handlers (spread, spike, sustained, threshold, above/below)
         
         Returns:
             - True/False for simple alerts
-            - List of matching items for all_items spread/spike
-            - List of triggered items for multi-item spread (via item_ids)
+            - List of matching items for all_items spread/spike/threshold
+            - List of triggered items for multi-item spread/threshold (via item_ids)
         """
+        
+        # Handle threshold alerts
+        # What: Checks if price has crossed a threshold (percentage or value) from reference price
+        # Why: Users want to know when prices change by a certain amount/percentage
+        # How: Compares current price to stored reference price using threshold_type calculation
+        if alert.type == 'threshold':
+            return self.check_threshold_alert(alert, all_prices)
         
         # Handle sustained move alerts
         if alert.type == 'sustained':
@@ -976,6 +1394,7 @@ class Command(BaseCommand):
                    or (a.type == 'spread' and a.item_ids)  # Multi-item spread can re-trigger
                    or (a.type == 'spike' and a.is_all_items)  # All items spike can re-trigger
                    or (a.type == 'sustained')  # Sustained always re-checks
+                   or (a.type == 'threshold' and (a.is_all_items or a.item_ids))  # Multi-item/all-items threshold can re-trigger
             ]
             
             if alerts_to_check:
@@ -994,6 +1413,14 @@ class Command(BaseCommand):
                         # How: Check if this is a multi-item spread alert and result is a list (even empty)
                         if alert.type == 'spread' and alert.item_ids and isinstance(result, list):
                             self._handle_multi_item_spread_trigger(alert, result)
+                            continue  # Skip to next alert, already handled
+                        
+                        # Handle multi-item/all-items threshold alerts
+                        # What: Process threshold alerts that monitor multiple items
+                        # Why: These alerts can re-trigger and need special handling for triggered_data
+                        # How: Update triggered_data with current triggered items, manage active state
+                        if alert.type == 'threshold' and (alert.is_all_items or alert.item_ids) and isinstance(result, list):
+                            self._handle_multi_item_threshold_trigger(alert, result)
                             continue  # Skip to next alert, already handled
                         
                         if result:
@@ -1068,4 +1495,4 @@ class Command(BaseCommand):
                 self.stdout.write('No alerts to check.')
             
             # Wait 30 seconds before next check
-            time.sleep(15)
+            time.sleep(3)

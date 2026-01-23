@@ -200,6 +200,52 @@
         gap: 6px;
     }
     
+    /* Full-width detail item for reference prices display */
+    /* What: Makes the detail item span full width of the grid */
+    /* Why: Reference prices list needs more horizontal space */
+    /* How: grid-column: 1 / -1 spans all columns */
+    .detail-item.detail-item-full {
+        grid-column: 1 / -1;
+    }
+    
+    /* Reference prices display in view mode (non-editing) */
+    /* What: Styles for the baseline reference prices list */
+    /* Why: Match the edit mode display styling for consistency */
+    .reference-prices-display-view {
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 12px;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+    
+    .reference-prices-display-view .reference-price-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 8px;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .reference-prices-display-view .reference-price-item:last-child {
+        border-bottom: none;
+    }
+    
+    .reference-prices-display-view .item-name {
+        font-weight: 500;
+        color: #333;
+    }
+    
+    .reference-prices-display-view .item-price {
+        font-weight: 600;
+        color: #667eea;
+    }
+    
+    .reference-prices-display-view .no-data {
+        color: #6c757d;
+        font-style: italic;
+    }
+    
     .detail-label {
         font-size: 0.8rem;
         font-weight: 600;
@@ -632,6 +678,93 @@
         font-size: 0.8rem;
         color: #6c757d;
         margin: -4px 0 8px 0;
+    }
+    
+    /* =============================================================================
+       THRESHOLD ALERT SPECIFIC STYLES
+       What: Styles for threshold alert editing UI elements
+       Why: Threshold alerts have unique UI components (type selector, reference prices display)
+       How: Custom styles for the threshold-specific form fields
+    ============================================================================= */
+    
+    /* Threshold type dropdown wrapper for tooltip positioning */
+    .threshold-type-wrapper {
+        position: relative;
+        display: inline-block;
+        width: 100%;
+    }
+    
+    .threshold-type-wrapper select {
+        width: 100%;
+    }
+    
+    /* Tooltip for threshold type restriction message */
+    /* What: Error tooltip shown when user tries to select 'value' with multiple items */
+    /* Why: Value-based threshold only works with single items */
+    /* How: Positioned below the dropdown, shown via JavaScript */
+    .threshold-type-tooltip {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: #dc3545;
+        color: white;
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        margin-top: 4px;
+        z-index: 100;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    
+    .threshold-type-tooltip::before {
+        content: '';
+        position: absolute;
+        top: -6px;
+        left: 20px;
+        border-left: 6px solid transparent;
+        border-right: 6px solid transparent;
+        border-bottom: 6px solid #dc3545;
+    }
+    
+    /* Reference prices display (non-editable) */
+    /* What: Container for displaying baseline reference prices */
+    /* Why: Users need to see what prices their threshold is compared against */
+    /* How: Styled as a read-only info box with item list */
+    .reference-prices-display {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        padding: 12px;
+        max-height: 200px;
+        overflow-y: auto;
+        font-size: 0.9rem;
+    }
+    
+    .reference-prices-display .no-data {
+        color: #6c757d;
+        font-style: italic;
+    }
+    
+    .reference-prices-display .reference-price-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 4px 0;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .reference-prices-display .reference-price-item:last-child {
+        border-bottom: none;
+    }
+    
+    .reference-prices-display .item-name {
+        color: #495057;
+        font-weight: 500;
+    }
+    
+    .reference-prices-display .item-price {
+        color: #28a745;
+        font-weight: 600;
     }
     
     /* Unlink button */
@@ -1177,22 +1310,37 @@
                             {% elif alert.type == 'below' %}Below Threshold
                             {% elif alert.type == 'spread' %}Spread
                             {% elif alert.type == 'spike' %}Spike
-                            {% else %}{{ alert.type }}{% endif %}
+                            {% elif alert.type == 'threshold' %}Threshold
+                            {% elif alert.type == 'sustained' %}Sustained Move
+                            {% else %}{{ alert.type|title }}{% endif %}
                         </span>
                     </div>
                     
-                    {% if alert.type == 'spread' or alert.type == 'spike' %}
+                    {% if alert.type == 'spread' or alert.type == 'spike' or alert.type == 'threshold' or alert.type == 'sustained' %}
                     <div class="detail-item">
                         <span class="detail-label">All Items</span>
                         <span class="detail-value">{% if alert.is_all_items %}Yes{% else %}No{% endif %}</span>
                     </div>
                     {% endif %}
                     
+                    <!-- Item display - handles single item, multi-item, and all-items modes -->
+                    <!-- What: Shows which item(s) the alert monitors -->
+                    <!-- Why: User needs to see what the alert is tracking -->
+                    <!-- How: Check is_all_items first, then item_ids for multi-item, then single item_name -->
                     {% if not alert.is_all_items %}
-                    <div class="detail-item">
-                        <span class="detail-label">Item</span>
-                        <span class="detail-value">{{ alert.item_name|default:"Not Set" }}</span>
-                    </div>
+                        {% if alert.item_ids %}
+                        <!-- Multi-item alert - display count and list -->
+                        <div class="detail-item">
+                            <span class="detail-label">Items</span>
+                            <span class="detail-value">{{ item_ids_data|length }} item{{ item_ids_data|length|pluralize }}</span>
+                        </div>
+                        {% else %}
+                        <!-- Single item alert -->
+                        <div class="detail-item">
+                            <span class="detail-label">Item</span>
+                            <span class="detail-value">{{ alert.item_name|default:"Not Set" }}</span>
+                        </div>
+                        {% endif %}
                     {% endif %}
                     
                     {% if alert.type == 'above' or alert.type == 'below' %}
@@ -1229,6 +1377,58 @@
                     <div class="detail-item">
                         <span class="detail-label">Reference Price</span>
                         <span class="detail-value">{% if alert.reference == 'high' %}High Price{% else %}Low Price{% endif %}</span>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- =============================================================================
+                         THRESHOLD ALERT DISPLAY FIELDS
+                         What: Shows threshold-specific configuration when viewing (not editing)
+                         Why: Users need to see direction, threshold type, percentage/target, reference prices
+                         How: Conditional display based on alert.type == 'threshold'
+                    ============================================================================= -->
+                    {% if alert.type == 'threshold' %}
+                    <div class="detail-item">
+                        <span class="detail-label">Direction</span>
+                        <span class="detail-value">
+                            {% if alert.direction == 'up' %}Up Only
+                            {% elif alert.direction == 'down' %}Down Only
+                            {% else %}Both{% endif %}
+                        </span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Threshold Type</span>
+                        <span class="detail-value">{% if alert.threshold_type == 'value' %}Value{% else %}Percentage{% endif %}</span>
+                    </div>
+                    {% if alert.threshold_type == 'value' %}
+                    <div class="detail-item">
+                        <span class="detail-label">Target Price</span>
+                        <span class="detail-value price">{% if alert.target_price %}{{ alert.target_price|intcomma }}{% else %}Not Set{% endif %}</span>
+                    </div>
+                    {% else %}
+                    <div class="detail-item">
+                        <span class="detail-label">Percentage Threshold</span>
+                        <span class="detail-value highlight">{% if alert.percentage %}{{ alert.percentage }}%{% else %}Not Set{% endif %}</span>
+                    </div>
+                    {% endif %}
+                    <div class="detail-item">
+                        <span class="detail-label">Reference Price Type</span>
+                        <span class="detail-value">
+                            {% if alert.reference == 'high' %}High Price
+                            {% elif alert.reference == 'low' %}Low Price
+                            {% elif alert.reference == 'average' %}Average Price
+                            {% else %}High Price{% endif %}
+                        </span>
+                    </div>
+                    <!-- Reference Prices Display (baseline prices at creation) -->
+                    <!-- What: Shows the stored reference prices for each monitored item -->
+                    <!-- Why: Users need to see what baseline their threshold is compared against -->
+                    <!-- How: Render from reference_prices_display_data passed from view context -->
+                    <div class="detail-item detail-item-full">
+                        <span class="detail-label">Reference Prices (Baseline)</span>
+                        <div class="reference-prices-display-view" id="reference-prices-display-view">
+                            <!-- Will be populated by JavaScript on page load -->
+                            <span class="no-data">Loading...</span>
+                        </div>
                     </div>
                     {% endif %}
                     
@@ -1286,6 +1486,7 @@
                             <option value="spread" {% if alert.type == 'spread' %}selected{% endif %}>Spread</option>
                             <option value="spike" {% if alert.type == 'spike' %}selected{% endif %}>Spike</option>
                             <option value="sustained" {% if alert.type == 'sustained' %}selected{% endif %}>Sustained Move</option>
+                            <option value="threshold" {% if alert.type == 'threshold' %}selected{% endif %}>Threshold</option>
                         </select>
                     </div>
                     
@@ -1350,12 +1551,16 @@
                         <input type="number" id="edit-price" value="{{ alert.price|default:'' }}" placeholder="Enter price...">
                     </div>
                     
-                    <!-- Reference Price (above/below/spike) -->
+                    <!-- Reference Price (above/below/spike/threshold) -->
+                    <!-- What: Dropdown to select which price point to monitor -->
+                    <!-- Why: Users can choose high, low, or average price depending on their strategy -->
+                    <!-- How: Three options - high, low, average (average is used for threshold alerts) -->
                     <div class="form-group" id="reference-group">
                         <label for="edit-reference">Reference Price</label>
                         <select id="edit-reference">
                             <option value="high" {% if alert.reference == 'high' %}selected{% endif %}>High Price</option>
                             <option value="low" {% if alert.reference == 'low' or not alert.reference %}selected{% endif %}>Low Price</option>
+                            <option value="average" {% if alert.reference == 'average' %}selected{% endif %}>Average Price</option>
                         </select>
                     </div>
                     
@@ -1379,6 +1584,68 @@
                             <option value="up" {% if alert.direction == 'up' %}selected{% endif %}>Up</option>
                             <option value="down" {% if alert.direction == 'down' %}selected{% endif %}>Down</option>
                         </select>
+                    </div>
+                    
+                    <!-- =============================================================================
+                         THRESHOLD ALERT SPECIFIC FIELDS
+                         What: Form fields specific to threshold alert type editing
+                         Why: Threshold alerts have unique configuration (threshold_type, target_price, etc.)
+                         How: These fields are shown/hidden by handleTypeChange() based on alert type
+                    ============================================================================= -->
+                    
+                    <!-- Threshold Direction (up/down only, no 'both') -->
+                    <!-- What: Direction selector for threshold alerts -->
+                    <!-- Why: Threshold alerts only support up or down direction, not both -->
+                    <!-- How: Separate dropdown from spike/sustained direction which includes 'both' -->
+                    <div class="form-group" id="threshold-direction-group" style="display: none;">
+                        <label for="edit-threshold-direction">Direction</label>
+                        <select id="edit-threshold-direction">
+                            <option value="up" {% if alert.direction == 'up' or not alert.direction %}selected{% endif %}>Up</option>
+                            <option value="down" {% if alert.direction == 'down' %}selected{% endif %}>Down</option>
+                        </select>
+                        <small class="form-hint">Direction of price movement to trigger alert</small>
+                    </div>
+                    
+                    <!-- Threshold Type (percentage/value) -->
+                    <!-- What: Dropdown to select how threshold is measured -->
+                    <!-- Why: Users can choose percentage change or absolute value threshold -->
+                    <!-- How: Disabled with tooltip when multiple items selected (only percentage allowed) -->
+                    <div class="form-group" id="threshold-type-group" style="display: none;">
+                        <label for="edit-threshold-type">Threshold Type</label>
+                        <div class="threshold-type-wrapper">
+                            <select id="edit-threshold-type" onchange="handleThresholdTypeChange()">
+                                <option value="percentage" {% if alert.threshold_type == 'percentage' or not alert.threshold_type %}selected{% endif %}>Percentage</option>
+                                <option value="value" {% if alert.threshold_type == 'value' %}selected{% endif %}>Value (GP)</option>
+                            </select>
+                            <!-- Tooltip shown when trying to select value with multiple items -->
+                            <span id="threshold-type-tooltip" class="threshold-type-tooltip" style="display: none;">
+                                Only percentage is allowed with multiple items
+                            </span>
+                        </div>
+                        <small class="form-hint">How to measure the threshold</small>
+                    </div>
+                    
+                    <!-- Target Price (value-based threshold only) -->
+                    <!-- What: Input field for target price when using value-based threshold -->
+                    <!-- Why: Value-based alerts trigger when price crosses this exact value -->
+                    <!-- How: Only shown when threshold_type is 'value' -->
+                    <div class="form-group" id="target-price-group" style="display: none;">
+                        <label for="edit-target-price">Target Price (GP)</label>
+                        <input type="number" id="edit-target-price" value="{{ alert.target_price|default:'' }}" min="1" step="1" placeholder="Enter target price...">
+                        <small class="form-hint">Alert triggers when price crosses this value</small>
+                    </div>
+                    
+                    <!-- Reference Prices Display (non-editable) -->
+                    <!-- What: Display field showing baseline prices captured at alert creation -->
+                    <!-- Why: Users need to see what baseline prices are being compared against -->
+                    <!-- How: Non-editable field populated from alert.reference_prices JSON -->
+                    <div class="form-group" id="reference-prices-group" style="display: none;">
+                        <label>Reference Prices (Baseline)</label>
+                        <div id="reference-prices-display" class="reference-prices-display">
+                            <!-- Populated by JavaScript from alert data -->
+                            <span class="no-data">No reference prices stored</span>
+                        </div>
+                        <small class="form-hint">Baseline prices captured when alert was created (not editable)</small>
                     </div>
                     
                     <!-- Min/Max Price (all items only) -->
@@ -1555,6 +1822,14 @@
                                 <div class="triggered-item-details">
                                     {{ item.streak_direction|default:""|title }} {{ item.streak_count }} moves | {{ item.start_price|floatformat:0|intcomma }} → {{ item.current_price|floatformat:0|intcomma }} | Pressure Strength : {{ item.pressure_strength }}
                                 </div>
+                                {% elif triggered_info.alert_type == 'threshold' %}
+                                <!-- Threshold alert triggered item details -->
+                                <!-- What: Shows reference price, current price for threshold alerts -->
+                                <!-- Why: Users need to see how the price has changed from baseline -->
+                                <!-- How: Display reference (baseline) price and current price with arrow -->
+                                <div class="triggered-item-details">
+                                    Ref: {{ item.reference_price|intcomma }} → Current: {{ item.current_price|intcomma }} | Threshold: {{ item.threshold }}%
+                                </div>
                                 {% endif %}
                             </div>
                             {% if triggered_info.alert_type == 'spread' %}
@@ -1563,6 +1838,12 @@
                             <span class="triggered-item-percentage {% if item.percent_change < 0 %}negative-change{% endif %}">{{ item.percent_change }}%</span>
                             {% elif triggered_info.alert_type == 'sustained' %}
                             <span class="triggered-item-percentage {% if item.streak_direction == 'down' %}negative-change{% endif %}">{{ item.total_move_percent }}%</span>
+                            {% elif triggered_info.alert_type == 'threshold' %}
+                            <!-- Threshold alert percentage change display -->
+                            <!-- What: Shows the percentage change from reference price -->
+                            <!-- Why: Indicates how much the price has moved from baseline -->
+                            <!-- How: Positive/negative styling based on change direction -->
+                            <span class="triggered-item-percentage {% if item.change_percent < 0 %}negative-change{% endif %}">{{ item.change_percent }}%</span>
                             {% endif %}
                         </li>
                     {% endfor %}
@@ -1644,6 +1925,30 @@
                             <span class="detail-value">{{ triggered_info.sustained_volume|intcomma }}</span>
                         </div>
                         {% endif %}
+                    
+                    {% elif triggered_info.alert_type == 'threshold' %}
+                        <!-- =============================================================================
+                             THRESHOLD ALERT SINGLE ITEM TRIGGERED DATA DISPLAY
+                             What: Displays triggered data for single-item threshold alerts
+                             Why: Users need to see reference price, threshold, and current price
+                             How: Grid layout showing all relevant threshold trigger information
+                        ============================================================================= -->
+                        <div class="triggered-info-item">
+                            <span class="detail-label">Reference Price (Baseline)</span>
+                            <span class="detail-value price">{% if triggered_info.threshold_reference_price %}{{ triggered_info.threshold_reference_price|intcomma }}{% else %}N/A{% endif %}</span>
+                        </div>
+                        <div class="triggered-info-item">
+                            <span class="detail-label">Threshold</span>
+                            <span class="detail-value">{% if triggered_info.threshold_value %}{{ triggered_info.threshold_value }}%{% else %}N/A{% endif %}</span>
+                        </div>
+                        <div class="triggered-info-item">
+                            <span class="detail-label">Current {{ triggered_info.reference|default:"High"|title }} Price</span>
+                            <span class="detail-value price {% if triggered_info.threshold_change_percent >= 0 %}positive{% else %}negative{% endif %}">{% if triggered_info.threshold_current_price %}{{ triggered_info.threshold_current_price|intcomma }}{% else %}N/A{% endif %}</span>
+                        </div>
+                        <div class="triggered-info-item">
+                            <span class="detail-label">Change</span>
+                            <span class="detail-value {% if triggered_info.threshold_change_percent >= 0 %}positive{% else %}negative{% endif %}">{% if triggered_info.threshold_change_percent %}{{ triggered_info.threshold_change_percent }}%{% else %}N/A{% endif %}</span>
+                        </div>
                     {% endif %}
                 </div>
             {% endif %}
@@ -1753,6 +2058,17 @@ let originalValues = {};
 // item_ids_data: Pre-populated list of {id, name} objects for multi-item spread alerts
 // Used to initialize the multi-item selector when editing an alert with item_ids
 const itemIdsData = {{ item_ids_data_json|safe }};
+
+// =============================================================================
+// THRESHOLD ALERT DATA FROM DJANGO
+// What: Data passed from Django for threshold alert initialization
+// Why: Threshold alerts need reference_prices and other threshold-specific data
+// How: Django template variables rendered as JavaScript constants
+// =============================================================================
+const referencePricesJson = {{ reference_prices_json|safe }};
+const itemIdToNameMapping = {{ item_id_to_name_mapping_json|safe }};
+const alertThresholdType = '{{ alert.threshold_type|default:"percentage" }}';
+const alertTargetPrice = {{ alert.target_price|default:"null" }};
 
 /**
  * EditMultiItemSelector: Module for managing the multi-item selector in the edit form.
@@ -2260,6 +2576,36 @@ const EditMultiItemSelector = {
 // Initialize the multi-item selector when page loads
 document.addEventListener('DOMContentLoaded', function() {
     EditMultiItemSelector.init();
+    
+    // =============================================================================
+    // THRESHOLD ALERT INITIALIZATION
+    // What: Initialize threshold-specific fields when page loads
+    // Why: Threshold alerts need reference prices display populated and type state updated
+    // How: Call initialization functions if this is a threshold alert
+    // =============================================================================
+    const alertType = '{{ alert.type }}';
+    if (alertType === 'threshold') {
+        // Populate reference prices display for EDIT mode
+        populateReferencePricesDisplay(referencePricesJson, itemIdToNameMapping);
+        
+        // Populate reference prices display for VIEW mode (non-editing display)
+        // What: Shows reference prices in the Alert Configuration card before clicking Edit
+        // Why: Users need to see baseline prices without entering edit mode
+        // How: Same logic as edit mode but targets the view-mode container
+        populateReferencePricesDisplayView(referencePricesJson, itemIdToNameMapping);
+        
+        // Set threshold type dropdown value
+        const thresholdTypeSelect = document.getElementById('edit-threshold-type');
+        if (thresholdTypeSelect && alertThresholdType) {
+            thresholdTypeSelect.value = alertThresholdType;
+        }
+        
+        // Set target price if value mode
+        const targetPriceInput = document.getElementById('edit-target-price');
+        if (targetPriceInput && alertTargetPrice) {
+            targetPriceInput.value = alertTargetPrice;
+        }
+    }
 });
 
 // Clean up URL parameter after page loads
@@ -2360,7 +2706,12 @@ function handleTypeChange() {
         volatilityBuffer: document.getElementById('volatility-buffer-group'),
         volatilityMultiplier: document.getElementById('volatility-multiplier-group'),
         pressureStrength: document.getElementById('pressure-strength-group'),
-        pressureSpread: document.getElementById('pressure-spread-group')
+        pressureSpread: document.getElementById('pressure-spread-group'),
+        // Threshold-specific groups
+        thresholdDirection: document.getElementById('threshold-direction-group'),
+        thresholdType: document.getElementById('threshold-type-group'),
+        targetPrice: document.getElementById('target-price-group'),
+        referencePrices: document.getElementById('reference-prices-group')
     };
     
     // Helper to hide all sustained-specific fields
@@ -2374,6 +2725,17 @@ function handleTypeChange() {
         if (groups.pressureSpread) groups.pressureSpread.style.display = 'none';
     };
     
+    // Helper to hide all threshold-specific fields
+    // What: Hides all form fields specific to threshold alerts
+    // Why: When switching away from threshold type, these fields should be hidden
+    // How: Sets display to 'none' for each threshold-specific field group
+    const hideThresholdFields = () => {
+        if (groups.thresholdDirection) groups.thresholdDirection.style.display = 'none';
+        if (groups.thresholdType) groups.thresholdType.style.display = 'none';
+        if (groups.targetPrice) groups.targetPrice.style.display = 'none';
+        if (groups.referencePrices) groups.referencePrices.style.display = 'none';
+    };
+    
     if (alertType === 'spread') {
         // Spread: show all items toggle, percentage
         groups.allItems.style.display = 'block';
@@ -2383,6 +2745,7 @@ function handleTypeChange() {
         groups.timeFrame.style.display = 'none';
         groups.direction.style.display = 'none';
         hideSustainedFields();
+        hideThresholdFields();
         
         // Let scope change handler determine item/min/max visibility
         handleScopeChange();
@@ -2395,6 +2758,7 @@ function handleTypeChange() {
         groups.timeFrame.style.display = 'block';
         groups.direction.style.display = 'block';
         hideSustainedFields();
+        hideThresholdFields();
         
         // Let scope change handler determine item/min/max visibility
         handleScopeChange();
@@ -2406,6 +2770,7 @@ function handleTypeChange() {
         groups.percentage.style.display = 'none';
         groups.timeFrame.style.display = 'block';
         groups.direction.style.display = 'block';
+        hideThresholdFields();
         
         // Show sustained-specific fields
         if (groups.minConsecutiveMoves) groups.minConsecutiveMoves.style.display = 'block';
@@ -2418,6 +2783,37 @@ function handleTypeChange() {
         
         // Let scope change handler determine item/min/max visibility
         handleScopeChange();
+    } else if (alertType === 'threshold') {
+        // =============================================================================
+        // THRESHOLD ALERT TYPE HANDLING
+        // What: Shows threshold-specific fields and hides other alert type fields
+        // Why: Threshold alerts have unique configuration (threshold_type, target_price, etc.)
+        // How: Show direction (up/down), threshold_type, percentage/target_price, reference, min/max
+        // =============================================================================
+        
+        // Show all items toggle for threshold
+        groups.allItems.style.display = 'block';
+        
+        // Hide standard fields used by other types
+        groups.price.style.display = 'none';  // Using target_price instead
+        groups.direction.style.display = 'none';  // Using threshold-specific direction
+        groups.timeFrame.style.display = 'none';
+        hideSustainedFields();
+        
+        // Show threshold-specific fields
+        if (groups.thresholdDirection) groups.thresholdDirection.style.display = 'block';
+        if (groups.thresholdType) groups.thresholdType.style.display = 'block';
+        if (groups.reference) groups.reference.style.display = 'block';
+        if (groups.referencePrices) groups.referencePrices.style.display = 'block';
+        
+        // Show percentage or target_price based on threshold_type
+        handleThresholdTypeChange();
+        
+        // Update threshold type dropdown state based on item count
+        updateThresholdTypeState();
+        
+        // Let scope change handler determine item/min/max visibility
+        handleThresholdScopeChange();
     } else {
         // Above/Below: show item, price, reference
         groups.allItems.style.display = 'none';
@@ -2430,6 +2826,7 @@ function handleTypeChange() {
         groups.minPrice.style.display = 'none';
         groups.maxPrice.style.display = 'none';
         hideSustainedFields();
+        hideThresholdFields();
         
         // Reset is_all_items for above/below
         document.getElementById('edit-is-all-items').value = 'false';
@@ -2473,6 +2870,227 @@ function handleScopeChange() {
         maxPriceGroup.style.display = 'none';
         isAllItemsInput.value = 'false';
         if (toggleLabel) toggleLabel.textContent = 'No';
+    }
+}
+
+// =============================================================================
+// THRESHOLD ALERT HELPER FUNCTIONS
+// What: Helper functions for threshold alert editing UI
+// Why: Threshold alerts have complex UI logic for type switching and item count restrictions
+// How: Separate functions for handling threshold type changes, scope changes, and state updates
+// =============================================================================
+
+/**
+ * Handles changes to the threshold type dropdown (percentage vs value).
+ * What: Shows/hides percentage or target_price input based on selection
+ * Why: Percentage mode uses percentage field, value mode uses target_price field
+ * How: Toggle display of the relevant input fields
+ */
+function handleThresholdTypeChange() {
+    const thresholdType = document.getElementById('edit-threshold-type');
+    const percentageGroup = document.getElementById('percentage-group');
+    const targetPriceGroup = document.getElementById('target-price-group');
+    
+    if (!thresholdType) return;
+    
+    if (thresholdType.value === 'value') {
+        // Value mode: show target price, hide percentage
+        if (percentageGroup) percentageGroup.style.display = 'none';
+        if (targetPriceGroup) targetPriceGroup.style.display = 'block';
+    } else {
+        // Percentage mode: show percentage, hide target price
+        if (percentageGroup) percentageGroup.style.display = 'block';
+        if (targetPriceGroup) targetPriceGroup.style.display = 'none';
+    }
+}
+
+/**
+ * Updates the threshold type dropdown state based on selected item count.
+ * What: Enables/disables threshold type dropdown and shows tooltip when restricted
+ * Why: Value-based threshold only allowed for single item; percentage required for multiple
+ * How: If more than 1 item selected (or all items mode), force percentage and disable dropdown
+ */
+function updateThresholdTypeState() {
+    const thresholdTypeSelect = document.getElementById('edit-threshold-type');
+    const thresholdTypeTooltip = document.getElementById('threshold-type-tooltip');
+    const isAllItems = document.getElementById('edit-all-items').checked;
+    
+    if (!thresholdTypeSelect) return;
+    
+    // Determine if multiple items are selected
+    const hasMultipleItems = isAllItems || EditMultiItemSelector.selectedItems.length > 1;
+    
+    if (hasMultipleItems) {
+        // Multiple items: force percentage type, disable dropdown
+        thresholdTypeSelect.value = 'percentage';
+        thresholdTypeSelect.disabled = true;
+        handleThresholdTypeChange();  // Update display
+    } else {
+        // Single or no items: allow choice
+        thresholdTypeSelect.disabled = false;
+    }
+    
+    // Add click handler to show tooltip when disabled
+    thresholdTypeSelect.onclick = function(e) {
+        if (this.disabled && thresholdTypeTooltip) {
+            thresholdTypeTooltip.style.display = 'block';
+            // Hide tooltip after 3 seconds
+            setTimeout(() => {
+                thresholdTypeTooltip.style.display = 'none';
+            }, 3000);
+        }
+    };
+}
+
+/**
+ * Handles scope changes specifically for threshold alerts.
+ * What: Shows/hides item selector and min/max price fields for threshold alerts
+ * Why: Threshold alerts support all-items, multi-item, and single-item modes
+ * How: Similar to handleScopeChange but also updates threshold type state
+ */
+function handleThresholdScopeChange() {
+    const isAllItems = document.getElementById('edit-all-items').checked;
+    const itemNameGroup = document.getElementById('item-name-group');
+    const multiItemGroup = document.getElementById('multi-item-group');
+    const minPriceGroup = document.getElementById('min-price-group');
+    const maxPriceGroup = document.getElementById('max-price-group');
+    const isAllItemsInput = document.getElementById('edit-is-all-items');
+    const toggleLabel = document.querySelector('#all-items-group .toggle-label');
+    
+    const hasMultipleItems = EditMultiItemSelector.hasMultipleItems();
+    
+    if (isAllItems) {
+        // All Items mode: hide item selectors, show price filters
+        if (itemNameGroup) itemNameGroup.style.display = 'none';
+        if (multiItemGroup) multiItemGroup.style.display = 'none';
+        if (minPriceGroup) minPriceGroup.style.display = 'block';
+        if (maxPriceGroup) maxPriceGroup.style.display = 'block';
+        isAllItemsInput.value = 'true';
+        if (toggleLabel) toggleLabel.textContent = 'Yes';
+    } else {
+        // Specific item(s) mode
+        if (hasMultipleItems) {
+            if (itemNameGroup) itemNameGroup.style.display = 'none';
+            if (multiItemGroup) multiItemGroup.style.display = 'block';
+        } else {
+            if (itemNameGroup) itemNameGroup.style.display = 'block';
+            if (multiItemGroup) multiItemGroup.style.display = 'none';
+        }
+        if (minPriceGroup) minPriceGroup.style.display = 'none';
+        if (maxPriceGroup) maxPriceGroup.style.display = 'none';
+        isAllItemsInput.value = 'false';
+        if (toggleLabel) toggleLabel.textContent = 'No';
+    }
+    
+    // Always update threshold type state when scope changes
+    updateThresholdTypeState();
+}
+
+/**
+ * Populates the reference prices display with baseline prices.
+ * What: Renders the reference_prices data in the non-editable display field
+ * Why: Users need to see what baseline prices their threshold is compared against
+ * How: Parse JSON data (if string), get item names, format as list of items with prices
+ * Note: referencePricesData can be either a string (if from storage) or an object (from Django template)
+ */
+function populateReferencePricesDisplay(referencePricesData, itemMapping) {
+    const display = document.getElementById('reference-prices-display');
+    if (!display) return;
+    
+    if (!referencePricesData) {
+        display.innerHTML = '<span class="no-data">No reference prices stored</span>';
+        return;
+    }
+    
+    try {
+        // Handle both string (needs parsing) and object (already parsed from template)
+        // What: Normalize input to always be an object
+        // Why: Django template outputs JSON directly as JS object literal when using |safe
+        // How: Check if string, parse it; if already object, use as-is
+        let referencePrices;
+        if (typeof referencePricesData === 'string') {
+            referencePrices = JSON.parse(referencePricesData);
+        } else {
+            referencePrices = referencePricesData;
+        }
+        
+        const entries = Object.entries(referencePrices);
+        
+        if (entries.length === 0) {
+            display.innerHTML = '<span class="no-data">No reference prices stored</span>';
+            return;
+        }
+        
+        // Build HTML for each item
+        let html = '';
+        entries.forEach(([itemId, price]) => {
+            // Get item name from mapping or use ID
+            const itemName = (itemMapping && itemMapping[itemId]) || `Item ${itemId}`;
+            const formattedPrice = Number(price).toLocaleString();
+            html += `
+                <div class="reference-price-item">
+                    <span class="item-name">${itemName}</span>
+                    <span class="item-price">${formattedPrice} gp</span>
+                </div>
+            `;
+        });
+        
+        display.innerHTML = html;
+    } catch (e) {
+        display.innerHTML = '<span class="no-data">Error parsing reference prices</span>';
+        console.error('Error parsing reference_prices:', e);
+    }
+}
+
+/**
+ * Populates the reference prices display in VIEW mode (non-editing).
+ * What: Renders reference_prices data in the Alert Configuration card's display view
+ * Why: Users need to see baseline prices before entering edit mode
+ * How: Same logic as edit mode display, but targets the view-mode container
+ */
+function populateReferencePricesDisplayView(referencePricesData, itemMapping) {
+    const display = document.getElementById('reference-prices-display-view');
+    if (!display) return;
+    
+    if (!referencePricesData) {
+        display.innerHTML = '<span class="no-data">No reference prices stored</span>';
+        return;
+    }
+    
+    try {
+        // Handle both string (needs parsing) and object (already parsed from template)
+        let referencePrices;
+        if (typeof referencePricesData === 'string') {
+            referencePrices = JSON.parse(referencePricesData);
+        } else {
+            referencePrices = referencePricesData;
+        }
+        
+        const entries = Object.entries(referencePrices);
+        
+        if (entries.length === 0) {
+            display.innerHTML = '<span class="no-data">No reference prices stored</span>';
+            return;
+        }
+        
+        // Build HTML for each item
+        let html = '';
+        entries.forEach(([itemId, price]) => {
+            // Get item name from mapping or use ID
+            const itemName = (itemMapping && itemMapping[itemId]) || `Item ${itemId}`;
+            const formattedPrice = Number(price).toLocaleString();
+            html += `
+                <div class="reference-price-item">
+                    <span class="item-name">${itemName}</span>
+                    <span class="item-price">${formattedPrice} gp</span>
+                </div>
+            `;
+        });
+        
+        display.innerHTML = html;
+    } catch (e) {
+        display.innerHTML = '<span class="no-data">Error parsing reference prices</span>';
+        console.error('Error parsing reference_prices:', e);
     }
 }
 
@@ -2552,6 +3170,39 @@ async function saveChanges() {
         data.volatility_multiplier = document.getElementById('edit-volatility-multiplier').value || null;
         data.min_pressure_strength = document.getElementById('edit-pressure-strength').value || null;
         data.min_pressure_spread_pct = document.getElementById('edit-pressure-spread').value || null;
+        if (isAllItems) {
+            data.minimum_price = document.getElementById('edit-minimum-price').value || null;
+            data.maximum_price = document.getElementById('edit-maximum-price').value || null;
+        }
+    } else if (alertType === 'threshold') {
+        // =============================================================================
+        // THRESHOLD ALERT SAVE DATA
+        // What: Collect threshold-specific field values for saving
+        // Why: Threshold alerts have unique fields (threshold_type, target_price, direction)
+        // How: Get values from threshold-specific form inputs
+        // =============================================================================
+        
+        // Get threshold type (percentage or value)
+        const thresholdType = document.getElementById('edit-threshold-type').value || 'percentage';
+        data.threshold_type = thresholdType;
+        
+        // Get direction from threshold-specific direction dropdown (up/down only)
+        const thresholdDirection = document.getElementById('edit-threshold-direction');
+        data.direction = thresholdDirection ? thresholdDirection.value : 'up';
+        
+        // Get reference price type
+        data.reference = document.getElementById('edit-reference').value || 'high';
+        
+        // Get percentage or target_price based on threshold_type
+        if (thresholdType === 'value') {
+            data.target_price = document.getElementById('edit-target-price').value || null;
+            data.percentage = null;  // Clear percentage for value mode
+        } else {
+            data.percentage = document.getElementById('edit-percentage').value || null;
+            data.target_price = null;  // Clear target_price for percentage mode
+        }
+        
+        // Min/max price for all-items mode
         if (isAllItems) {
             data.minimum_price = document.getElementById('edit-minimum-price').value || null;
             data.maximum_price = document.getElementById('edit-maximum-price').value || null;

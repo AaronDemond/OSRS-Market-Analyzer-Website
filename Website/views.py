@@ -755,16 +755,44 @@ def create_alert(request):
         # spread_scope: The scope selection from the dropdown (all, specific, multiple)
         spread_scope = request.POST.get('spread_scope', 'all')
         
+        # =============================================================================
+        # THRESHOLD ALERT SPECIFIC FIELDS
+        # =============================================================================
+        # What: Extract form data specific to threshold alerts
+        # Why: Threshold alerts have unique configuration options for monitoring price changes
+        # How: Parse each field from POST data and validate/convert as needed
+        
+        # threshold_items_tracked: 'all' for monitoring all items, 'specific' for selected items
+        threshold_items_tracked = request.POST.get('threshold_items_tracked', 'all')
+        # threshold_item_ids_str: Comma-separated list of item IDs from the multi-item selector
+        threshold_item_ids_str = request.POST.get('threshold_item_ids', '')
+        # threshold_type: 'percentage' for percentage-based threshold, 'value' for absolute gold value
+        threshold_type = request.POST.get('threshold_type', 'percentage')
+        # threshold_direction: 'up' for price increases, 'down' for price decreases
+        threshold_direction = request.POST.get('threshold_direction', 'up')
+        # threshold_value: The actual threshold amount (percentage or gold value)
+        threshold_value = request.POST.get('threshold_value')
+        # threshold_reference: Which price to monitor - 'high' (instant sell), 'low' (instant buy), 'average'
+        threshold_reference = request.POST.get('threshold_reference', 'high')
+        
         direction_value = None
         if alert_type in ['spike', 'sustained']:
             direction_value = (direction or '').lower()
             if direction_value not in ['up', 'down', 'both']:
                 direction_value = 'both'
+        # For threshold alerts, use the threshold_direction field
+        elif alert_type == 'threshold':
+            direction_value = (threshold_direction or '').lower()
+            if direction_value not in ['up', 'down']:
+                direction_value = 'up'
         
         # Determine all-items flag based on selection
         is_all_items = is_all_items_flag
         if alert_type == 'spike' and number_of_items:
             is_all_items = number_of_items == 'all'
+        # For threshold alerts, use the threshold_items_tracked field to determine all-items flag
+        elif alert_type == 'threshold':
+            is_all_items = (threshold_items_tracked == 'all')
         
         # Handle sustained move multi-item selection
         sustained_item_ids_json = None
@@ -798,6 +826,29 @@ def create_alert(request):
                         spread_item_name = item['name']
                         break
         
+        # =============================================================================
+        # HANDLE THRESHOLD MULTI-ITEM SELECTION
+        # =============================================================================
+        # What: Process threshold_item_ids when user selects "Specific Items" for threshold alerts
+        # Why: Threshold alerts can monitor multiple specific items for price changes
+        # How: Parse comma-separated IDs, convert to JSON array, get first item name for display
+        threshold_item_ids_json = None
+        threshold_item_name = None
+        threshold_is_all_items = (threshold_items_tracked == 'all')
+        
+        if alert_type == 'threshold':
+            if threshold_items_tracked == 'specific' and threshold_item_ids_str:
+                # Parse comma-separated item IDs from the multi-item selector
+                item_ids = [int(x) for x in threshold_item_ids_str.split(',') if x.strip()]
+                if item_ids:
+                    threshold_item_ids_json = json_module.dumps(item_ids)
+                    # Get first item name for display purposes in alert list
+                    mapping = get_item_mapping()
+                    for name, item in mapping.items():
+                        if item['id'] == item_ids[0]:
+                            threshold_item_name = item['name']
+                            break
+        
         # Look up item ID from name if not provided (for non-sustained alerts)
         if not item_id and item_name and alert_type != 'sustained':
             mapping = get_item_mapping()
@@ -828,6 +879,9 @@ def create_alert(request):
             final_item_name = sustained_item_name
         elif alert_type == 'spread' and spread_item_name:
             final_item_name = spread_item_name
+        elif alert_type == 'threshold' and threshold_item_name:
+            # For threshold alerts with specific items, use first item name
+            final_item_name = threshold_item_name
         elif not is_all_items:
             final_item_name = item_name
         
@@ -839,11 +893,42 @@ def create_alert(request):
             # Store first item ID for backwards compatibility
             item_ids = json_module.loads(spread_item_ids_json)
             final_item_id = item_ids[0] if item_ids else None
+        elif alert_type == 'threshold' and threshold_item_ids_json:
+            # Store first item ID for backwards compatibility
+            item_ids = json_module.loads(threshold_item_ids_json)
+            final_item_id = item_ids[0] if item_ids else None
         elif item_id and not is_all_items:
             final_item_id = int(item_id)
         
-        # Reference is not used for sustained alerts
+        # Reference is not used for sustained alerts, but IS used for threshold alerts
         reference_value = reference if reference and alert_type != 'sustained' else None
+        # For threshold alerts, use the threshold_reference field
+        if alert_type == 'threshold':
+            reference_value = threshold_reference
+        
+        # =============================================================================
+        # DETERMINE PERCENTAGE VALUE
+        # =============================================================================
+        # What: Calculate the percentage/threshold value to store
+        # Why: Different alert types use the percentage field for different purposes
+        # How: For threshold alerts, use threshold_value; for others use percentage
+        percentage_value = None
+        if alert_type == 'threshold' and threshold_value:
+            percentage_value = float(threshold_value)
+        elif percentage:
+            percentage_value = float(percentage)
+        
+        # =============================================================================
+        # DETERMINE ITEM_IDS VALUE
+        # =============================================================================
+        # What: Determine which item_ids JSON to store based on alert type
+        # Why: Different alert types (spread, threshold) use the same item_ids field
+        # How: Priority order - threshold takes precedence if it's a threshold alert
+        item_ids_json = None
+        if alert_type == 'threshold' and threshold_item_ids_json:
+            item_ids_json = threshold_item_ids_json
+        elif alert_type == 'spread' and spread_item_ids_json:
+            item_ids_json = spread_item_ids_json
         
         alert = Alert.objects.create(
             user=user,
@@ -853,7 +938,7 @@ def create_alert(request):
             item_id=final_item_id,
             price=price_value,
             reference=reference_value,
-            percentage=float(percentage) if percentage else None,
+            percentage=percentage_value,
             is_all_items=is_all_items,
             minimum_price=int(minimum_price) if minimum_price else None,
             maximum_price=int(maximum_price) if maximum_price else None,
@@ -877,9 +962,126 @@ def create_alert(request):
             sustained_item_ids=sustained_item_ids_json,
             min_pressure_strength=min_pressure_strength,
             min_pressure_spread_pct=float(min_pressure_spread_pct) if min_pressure_spread_pct else None,
-            # Spread multi-item field - stores JSON array of item IDs for "Specific Item(s)" mode
-            item_ids=spread_item_ids_json
+            # item_ids: JSON array of item IDs for multi-item alerts (spread, threshold)
+            item_ids=item_ids_json,
+            # threshold_type: 'percentage' or 'value' for threshold alerts only
+            threshold_type=threshold_type if alert_type == 'threshold' else None
         )
+        
+        # =============================================================================
+        # THRESHOLD ALERT: CAPTURE REFERENCE PRICES AND TARGET PRICE
+        # =============================================================================
+        # What: For threshold alerts, capture baseline prices or target price based on threshold_type
+        # Why: Percentage-based thresholds need a baseline to calculate % change from
+        #      Value-based thresholds need a target price to compare against
+        # How: 
+        #      - For percentage: Fetch current prices and store in reference_prices JSON dict
+        #      - For value: Store the threshold value in target_price field
+        if alert_type == 'threshold':
+            # Validate: Value-based thresholds only allowed for single items
+            # What: Block value-based threshold with multiple items
+            # Why: Value-based thresholds don't make sense for multiple items with different prices
+            # How: Check if threshold_type is 'value' and there are multiple items selected
+            has_multiple_items = (
+                threshold_is_all_items or 
+                (threshold_item_ids_json and len(json_module.loads(threshold_item_ids_json)) > 1)
+            )
+            
+            if threshold_type == 'value' and has_multiple_items:
+                # This shouldn't happen if the UI is working correctly, but handle it gracefully
+                # Force switch to percentage mode and recapture reference prices
+                alert.threshold_type = 'percentage'
+                threshold_type = 'percentage'
+                alert.save()
+            
+            if threshold_type == 'value':
+                # Value-based threshold: Store the target price
+                # What: For value-based alerts, the threshold value becomes the target price
+                # Why: Alert triggers when current price crosses this exact value
+                # How: Store the threshold_value in the target_price field
+                if threshold_value:
+                    alert.target_price = int(float(threshold_value))
+                    alert.reference_prices = None  # Clear any reference prices
+                    alert.save()
+            else:
+                # Percentage-based threshold: Capture reference prices for all monitored items
+                # What: Fetch current prices and store as baseline for % calculations
+                # Why: Need to know what prices were at creation to calculate % change later
+                # How: Get all prices from API, filter to monitored items, store as JSON dict
+                all_prices = get_all_current_prices()
+                
+                if all_prices:
+                    reference_prices_dict = {}
+                    
+                    # Determine which items to capture reference prices for
+                    # items_to_capture: List of item IDs to get reference prices for
+                    items_to_capture = []
+                    
+                    if threshold_is_all_items:
+                        # All items mode: capture prices for all items (respecting min/max filters)
+                        # What: Get baseline prices for entire market
+                        # Why: User wants to monitor ALL items for threshold changes
+                        # How: Iterate all prices, apply min/max filters if set
+                        for item_id, price_data in all_prices.items():
+                            # Apply min/max price filters if configured
+                            # What: Skip items outside the user's price range
+                            # Why: User may only want to monitor items in a specific price range
+                            high = price_data.get('high')
+                            low = price_data.get('low')
+                            
+                            if alert.minimum_price is not None:
+                                if high is None or low is None or high < alert.minimum_price or low < alert.minimum_price:
+                                    continue
+                            if alert.maximum_price is not None:
+                                if high is None or low is None or high > alert.maximum_price or low > alert.maximum_price:
+                                    continue
+                            
+                            items_to_capture.append(item_id)
+                    elif threshold_item_ids_json:
+                        # Specific items mode: capture prices for selected items only
+                        # What: Get baseline prices for user-selected items
+                        # Why: User wants to monitor specific items
+                        # How: Parse the item_ids JSON and use those
+                        items_to_capture = [str(x) for x in json_module.loads(threshold_item_ids_json)]
+                    
+                    # Capture reference prices for each item
+                    # What: Get the baseline price using the user's chosen reference type
+                    # Why: This is the price we'll compare against to calculate % change
+                    # How: For each item, get the high/low/average price based on reference setting
+                    for item_id in items_to_capture:
+                        item_id_str = str(item_id)
+                        price_data = all_prices.get(item_id_str)
+                        
+                        if not price_data:
+                            # Skip items where price data is unavailable
+                            continue
+                        
+                        # Get the appropriate reference price based on user's selection
+                        # reference_price: The baseline price for this item
+                        high = price_data.get('high')
+                        low = price_data.get('low')
+                        
+                        if threshold_reference == 'high':
+                            reference_price = high
+                        elif threshold_reference == 'low':
+                            reference_price = low
+                        elif threshold_reference == 'average':
+                            # Average of high and low prices
+                            if high is not None and low is not None:
+                                reference_price = (high + low) // 2
+                            else:
+                                reference_price = high or low
+                        else:
+                            reference_price = high  # Default to high
+                        
+                        if reference_price is not None:
+                            reference_prices_dict[item_id_str] = reference_price
+                    
+                    # Store the reference prices if any were captured
+                    if reference_prices_dict:
+                        alert.reference_prices = json_module.dumps(reference_prices_dict)
+                        alert.target_price = None  # Clear target price for percentage mode
+                        alert.save()
         
         # Assign to group if specified
         if group_id:
@@ -967,7 +1169,14 @@ def alerts_api(request):
             # email_notification: Whether SMS/email alerts are enabled
             'email_notification': alert.email_notification,
             # show_notification: Whether notification banner appears when alert triggers
-            'show_notification': alert.show_notification if alert.show_notification is not None else True
+            'show_notification': alert.show_notification if alert.show_notification is not None else True,
+            # Threshold-specific fields
+            # threshold_type: 'percentage' or 'value' - how threshold is measured
+            'threshold_type': alert.threshold_type if alert.type == 'threshold' else None,
+            # target_price: The target price for value-based threshold alerts
+            'target_price': alert.target_price if alert.type == 'threshold' else None,
+            # reference_prices: JSON dict of baseline prices for percentage-based threshold alerts
+            'reference_prices': alert.reference_prices if alert.type == 'threshold' else None
         }
 
         for g in alert_dict['groups']:
@@ -991,6 +1200,23 @@ def alerts_api(request):
             if price_data:
                 if alert.reference == 'low':
                     alert_dict['current_price'] = price_data.get('low')
+                else:
+                    alert_dict['current_price'] = price_data.get('high')
+        
+        # Add current price for single-item threshold alerts
+        # What: Include current price for threshold alerts to show progress in UI
+        # Why: Users want to see how close the price is to their threshold
+        # How: Similar to above/below alerts, get price based on reference type
+        if alert.type == 'threshold' and alert.item_id and all_prices and not alert.is_all_items and not alert.item_ids:
+            price_data = all_prices.get(str(alert.item_id))
+            if price_data:
+                if alert.reference == 'low':
+                    alert_dict['current_price'] = price_data.get('low')
+                elif alert.reference == 'average':
+                    high = price_data.get('high')
+                    low = price_data.get('low')
+                    if high and low:
+                        alert_dict['current_price'] = (high + low) // 2
                 else:
                     alert_dict['current_price'] = price_data.get('high')
         
@@ -1624,6 +1850,58 @@ def alert_detail(request, alert_id):
                             triggered_info['spike_data'] = spike_data[0] if isinstance(spike_data, list) else spike_data
                     except json.JSONDecodeError:
                         pass
+            elif alert.type == 'threshold':
+                # =============================================================================
+                # THRESHOLD ALERT TRIGGERED INFO
+                # What: Populate triggered_info with threshold-specific data for template display
+                # Why: Template needs reference price, current price, threshold value, and change %
+                # How: Parse triggered_data if multi-item, or get single item data from alert fields
+                # =============================================================================
+                triggered_info['reference'] = alert.reference
+                triggered_info['threshold_value'] = alert.percentage
+                triggered_info['threshold_type'] = alert.threshold_type
+                
+                # Check if multi-item or all-items threshold
+                if (alert.is_all_items or alert.item_ids) and alert.triggered_data:
+                    try:
+                        threshold_data = json.loads(alert.triggered_data)
+                        if isinstance(threshold_data, list):
+                            triggered_info['items'] = threshold_data
+                            # For backwards compatibility, populate single item fields from first item
+                            if threshold_data:
+                                first_item = threshold_data[0]
+                                triggered_info['threshold_reference_price'] = first_item.get('reference_price')
+                                triggered_info['threshold_current_price'] = first_item.get('current_price')
+                                triggered_info['threshold_change_percent'] = first_item.get('change_percent')
+                    except json.JSONDecodeError:
+                        pass
+                else:
+                    # Single item threshold alert
+                    # Get reference price from stored reference_prices
+                    if alert.reference_prices and alert.item_id:
+                        try:
+                            ref_prices = json.loads(alert.reference_prices)
+                            triggered_info['threshold_reference_price'] = ref_prices.get(str(alert.item_id))
+                        except json.JSONDecodeError:
+                            pass
+                    
+                    # Get current price
+                    if alert.reference == 'low':
+                        triggered_info['threshold_current_price'] = price_data.get('low')
+                    elif alert.reference == 'average':
+                        high = price_data.get('high')
+                        low = price_data.get('low')
+                        if high and low:
+                            triggered_info['threshold_current_price'] = (high + low) // 2
+                    else:
+                        triggered_info['threshold_current_price'] = price_data.get('high')
+                    
+                    # Calculate change percent
+                    ref_price = triggered_info.get('threshold_reference_price')
+                    curr_price = triggered_info.get('threshold_current_price')
+                    if ref_price and curr_price and ref_price > 0:
+                        change_pct = ((curr_price - ref_price) / ref_price) * 100
+                        triggered_info['threshold_change_percent'] = round(change_pct, 2)
 
     # Check if redirected after save
     edit_saved = request.GET.get('edit_saved') == '1'
@@ -1645,6 +1923,40 @@ def alert_detail(request, alert_id):
         except (json.JSONDecodeError, TypeError):
             pass
     
+    # =============================================================================
+    # THRESHOLD ALERT CONTEXT DATA
+    # What: Prepare threshold-specific data for the edit form JavaScript
+    # Why: Threshold alerts need reference_prices displayed and item name mapping
+    # How: Serialize reference_prices JSON and build item ID to name mapping
+    # =============================================================================
+    reference_prices_json = 'null'
+    item_id_to_name_mapping_json = '{}'
+    
+    if alert.type == 'threshold':
+        # Get reference_prices for display
+        if alert.reference_prices:
+            reference_prices_json = alert.reference_prices  # Already JSON string
+        else:
+            reference_prices_json = 'null'
+        
+        # Build item ID to name mapping for reference prices display
+        # What: Maps item IDs to names so we can show names instead of IDs
+        # Why: Users want to see "Berserker ring" not "6737"
+        # How: Get IDs from reference_prices keys, look up names from mapping
+        id_to_name_mapping = get_item_id_to_name_mapping()
+        item_id_to_name_dict = {}
+        
+        if alert.reference_prices:
+            try:
+                ref_prices = json.loads(alert.reference_prices)
+                for item_id in ref_prices.keys():
+                    item_name = id_to_name_mapping.get(str(item_id), f'Item {item_id}')
+                    item_id_to_name_dict[str(item_id)] = item_name
+            except json.JSONDecodeError:
+                pass
+        
+        item_id_to_name_mapping_json = json.dumps(item_id_to_name_dict)
+    
     context = {
         'alert': alert,
         'current_price': current_price_data,
@@ -1654,8 +1966,15 @@ def alert_detail(request, alert_id):
         'all_groups_json': json.dumps(all_groups),
         'triggered_info': triggered_info,
         'edit_saved': edit_saved,
-        # item_ids_data_json: JSON array of {id, name} objects for multi-item selector
+        # item_ids_data: List of {id, name} dicts for multi-item display (used in template)
+        'item_ids_data': item_ids_data,
+        # item_ids_data_json: JSON array of {id, name} objects for multi-item selector JavaScript
         'item_ids_data_json': json.dumps(item_ids_data),
+        # Threshold-specific context data
+        # reference_prices_json: JSON string of reference prices for display (or 'null')
+        'reference_prices_json': reference_prices_json,
+        # item_id_to_name_mapping_json: JSON object mapping item IDs to names for reference prices
+        'item_id_to_name_mapping_json': item_id_to_name_mapping_json,
     }
     
     return render(request, 'alert_detail.html', context)
@@ -1747,6 +2066,65 @@ def update_single_alert(request, alert_id):
                 #      passing the REMOVED item IDs (not the new ones)
                 if removed_item_ids:
                     alert.cleanup_triggered_data_for_removed_items(removed_item_ids)
+                    # Also clean up reference_prices for threshold alerts
+                    # What: Remove baseline prices for items that were removed from the alert
+                    # Why: Reference prices should only exist for items currently being monitored
+                    # How: Use the Alert model's cleanup_reference_prices_for_removed_items method
+                    if alert.type == 'threshold':
+                        alert.cleanup_reference_prices_for_removed_items(removed_item_ids)
+                
+                # For threshold alerts, capture reference prices for newly added items
+                # What: When items are added to an existing threshold alert, capture their baseline prices
+                # Why: New items need baseline prices for percentage calculations
+                # How: Find items in new_item_ids that aren't in old_item_ids, fetch their prices
+                if alert.type == 'threshold' and alert.threshold_type == 'percentage':
+                    added_item_ids = new_item_ids - old_item_ids
+                    if added_item_ids:
+                        # Fetch current prices to get baselines for new items
+                        all_prices = get_all_current_prices()
+                        if all_prices:
+                            # Load existing reference_prices or start fresh
+                            existing_reference_prices = {}
+                            if alert.reference_prices:
+                                try:
+                                    existing_reference_prices = json.loads(alert.reference_prices)
+                                except (json.JSONDecodeError, TypeError):
+                                    pass
+                            
+                            # Capture reference price for each newly added item
+                            # What: Get baseline price using the alert's reference type (high/low/average)
+                            # Why: New items need a baseline to calculate % change from
+                            reference_type = alert.reference or 'high'
+                            for item_id in added_item_ids:
+                                item_id_str = str(item_id)
+                                price_data = all_prices.get(item_id_str)
+                                
+                                if not price_data:
+                                    # Skip items where price data is unavailable
+                                    continue
+                                
+                                # Get the appropriate reference price
+                                high = price_data.get('high')
+                                low = price_data.get('low')
+                                
+                                if reference_type == 'high':
+                                    reference_price = high
+                                elif reference_type == 'low':
+                                    reference_price = low
+                                elif reference_type == 'average':
+                                    if high is not None and low is not None:
+                                        reference_price = (high + low) // 2
+                                    else:
+                                        reference_price = high or low
+                                else:
+                                    reference_price = high
+                                
+                                if reference_price is not None:
+                                    existing_reference_prices[item_id_str] = reference_price
+                            
+                            # Save updated reference_prices
+                            if existing_reference_prices:
+                                alert.reference_prices = json.dumps(existing_reference_prices)
                 
                 alert.item_ids = json.dumps(item_ids_list)
                 # Set first item as item_id for display/fallback purposes
@@ -1802,6 +2180,121 @@ def update_single_alert(request, alert_id):
     # Handle percentage
     percentage = data.get('percentage')
     alert.percentage = float(percentage) if percentage else None
+    
+    # =============================================================================
+    # THRESHOLD ALERT: HANDLE THRESHOLD_TYPE CHANGES AND TARGET_PRICE
+    # =============================================================================
+    # What: Handle threshold-specific field updates when editing a threshold alert
+    # Why: Users may change threshold_type from percentage to value (or vice versa)
+    #      which requires clearing/recapturing reference prices and target price
+    # How: Check for threshold_type changes and update related fields accordingly
+    if alert.type == 'threshold':
+        new_threshold_type = data.get('threshold_type')
+        old_threshold_type = alert.threshold_type
+        
+        # Handle direction for threshold alerts (they support up/down, not 'both')
+        threshold_direction = data.get('direction')
+        if threshold_direction:
+            direction_value = threshold_direction.lower() if isinstance(threshold_direction, str) else 'up'
+            if direction_value not in ['up', 'down']:
+                direction_value = 'up'
+            alert.direction = direction_value
+        
+        # Determine if this alert has multiple items
+        # What: Check if alert monitors more than one item
+        # Why: Value-based thresholds are not allowed for multi-item alerts
+        has_multiple_items = alert.is_all_items
+        if alert.item_ids:
+            try:
+                item_ids_list = json.loads(alert.item_ids)
+                has_multiple_items = has_multiple_items or (isinstance(item_ids_list, list) and len(item_ids_list) > 1)
+            except (json.JSONDecodeError, TypeError):
+                pass
+        
+        # Block value-based threshold for multi-item alerts
+        # What: Force percentage mode if user tries to set value mode with multiple items
+        # Why: Value-based thresholds don't make sense for items with different prices
+        if new_threshold_type == 'value' and has_multiple_items:
+            return JsonResponse({
+                'success': False, 
+                'error': 'Value-based threshold is only allowed for single-item alerts. Please select percentage mode or choose a single item.'
+            }, status=400)
+        
+        if new_threshold_type and new_threshold_type != old_threshold_type:
+            alert.threshold_type = new_threshold_type
+            
+            if new_threshold_type == 'value':
+                # Switching to value-based: clear reference_prices, set target_price
+                # What: When changing to value mode, baseline prices are no longer needed
+                # Why: Value mode compares against a fixed target price, not % from baseline
+                alert.reference_prices = None
+                target_price = data.get('target_price') or data.get('percentage')
+                if target_price:
+                    alert.target_price = int(float(target_price))
+            else:
+                # Switching to percentage-based: clear target_price, recapture reference_prices
+                # What: When changing to percentage mode, need to capture new baselines
+                # Why: Baselines are needed to calculate % change
+                alert.target_price = None
+                
+                # Recapture reference prices for all monitored items
+                all_prices = get_all_current_prices()
+                if all_prices:
+                    reference_prices_dict = {}
+                    items_to_capture = []
+                    
+                    if alert.is_all_items:
+                        # Capture for all items (respecting min/max filters)
+                        for item_id, price_data in all_prices.items():
+                            high = price_data.get('high')
+                            low = price_data.get('low')
+                            
+                            if alert.minimum_price is not None:
+                                if high is None or low is None or high < alert.minimum_price or low < alert.minimum_price:
+                                    continue
+                            if alert.maximum_price is not None:
+                                if high is None or low is None or high > alert.maximum_price or low > alert.maximum_price:
+                                    continue
+                            
+                            items_to_capture.append(item_id)
+                    elif alert.item_ids:
+                        items_to_capture = [str(x) for x in json.loads(alert.item_ids)]
+                    elif alert.item_id:
+                        items_to_capture = [str(alert.item_id)]
+                    
+                    reference_type = alert.reference or 'high'
+                    for item_id in items_to_capture:
+                        item_id_str = str(item_id)
+                        price_data = all_prices.get(item_id_str)
+                        if not price_data:
+                            continue
+                        
+                        high = price_data.get('high')
+                        low = price_data.get('low')
+                        
+                        if reference_type == 'high':
+                            reference_price = high
+                        elif reference_type == 'low':
+                            reference_price = low
+                        elif reference_type == 'average':
+                            if high is not None and low is not None:
+                                reference_price = (high + low) // 2
+                            else:
+                                reference_price = high or low
+                        else:
+                            reference_price = high
+                        
+                        if reference_price is not None:
+                            reference_prices_dict[item_id_str] = reference_price
+                    
+                    if reference_prices_dict:
+                        alert.reference_prices = json.dumps(reference_prices_dict)
+        
+        # If threshold_type is value and target_price is provided, update it
+        elif new_threshold_type == 'value' or (not new_threshold_type and alert.threshold_type == 'value'):
+            target_price = data.get('target_price')
+            if target_price is not None:
+                alert.target_price = int(float(target_price)) if target_price else None
     
     # Handle min/max price
     minimum_price = data.get('minimum_price')

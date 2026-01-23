@@ -181,6 +181,7 @@
                     <option value="spread">Spread</option>
                     <option value="spike">Spike</option>
                     <option value="sustained">Sustained Move</option>
+                    <option value="threshold">Threshold</option>
                 </select>
                 <button type="button" class="alert-help-btn" onclick="openAlertHelpModal()">
                     <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
@@ -432,6 +433,111 @@
                 <input type="number" name="min_pressure_spread_pct" id="min-pressure-spread" min="0.01" step="0.01"
                     placeholder="e.g. 0.2">
                 <small class="form-hint">Minimum high-low spread % to confirm pressure</small>
+            </div>
+
+            <!-- =========================================================================
+                 THRESHOLD ALERT SPECIFIC FIELDS
+                 What: Form fields for creating Threshold alerts
+                 Why: Threshold alerts need unique configuration options (items tracked, threshold type, etc.)
+                 How: These fields are shown/hidden via JavaScript when "Threshold" alert type is selected
+                 ========================================================================= -->
+            
+            <!-- Threshold: Items Tracked selector -->
+            <!-- What: Dropdown to choose between tracking all items or specific items -->
+            <!-- Why: Users may want to monitor threshold on all items or a curated list -->
+            <!-- How: Shows/hides the specific items selector based on selection -->
+            <div class="form-group" id="threshold-items-tracked-group" style="display: none;">
+                <label for="threshold-items-tracked">Items Tracked</label>
+                <select name="threshold_items_tracked" id="threshold-items-tracked" onchange="handleThresholdItemsTrackedChange()">
+                    <option value="all">All Items</option>
+                    <option value="specific">Specific Items</option>
+                </select>
+                <small class="form-hint">Choose to track all items or select specific items</small>
+            </div>
+
+            <!-- Threshold: Multi-item selector (shown when "Specific Items" is selected) -->
+            <!-- What: Allows users to select multiple specific items to monitor for threshold -->
+            <!-- Why: Users may want to monitor threshold on a curated list of items -->
+            <!-- How: Uses box-style input with dropdown arrow - matching spread alert styling -->
+            <div class="form-group" id="threshold-items-group" style="display: none;">
+                <div class="label-with-notification">
+                    <label for="threshold-item-input">Item(s)</label>
+                    <!-- Small notification shown when items are added or not found -->
+                    <span id="threshold-item-notification" class="item-notification"></span>
+                </div>
+                <div class="multi-item-selector">
+                    <div class="multi-item-selector-box">
+                        <!-- Search input for adding new items -->
+                        <input type="text" id="threshold-item-input" placeholder="Search for item to add..." autocomplete="off">
+                        <!-- Dropdown toggle button with chevron arrow -->
+                        <button type="button" class="multi-item-dropdown-toggle" id="threshold-multi-item-toggle" title="Show selected items">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </button>
+                        <!-- Hidden input for form submission - stores comma-separated item IDs -->
+                        <input type="hidden" name="threshold_item_ids" id="threshold-item-ids" value="">
+                        <!-- Autocomplete suggestions dropdown (shown when typing) -->
+                        <div id="threshold-item-suggestions" class="multi-item-suggestions-dropdown"></div>
+                        <!-- Selected items dropdown (shown when clicking arrow) -->
+                        <div id="threshold-selected-items-dropdown" class="multi-item-selected-dropdown">
+                            <div class="selected-items-list" id="threshold-selected-items-list">
+                                <!-- Items will be populated here dynamically -->
+                            </div>
+                            <div class="no-items-message" id="threshold-no-items-message">No items selected</div>
+                        </div>
+                    </div>
+                </div>
+                <small class="form-hint">Add one or more items to monitor for threshold</small>
+            </div>
+
+            <!-- Threshold: Threshold Type selector -->
+            <!-- What: Dropdown to choose between percentage-based or value-based threshold -->
+            <!-- Why: Users may want "10% increase" or "1000gp increase" depending on their strategy -->
+            <!-- How: Auto-selects percentage when All Items or multiple specific items selected -->
+            <div class="form-group" id="threshold-type-group" style="display: none;">
+                <label for="threshold-type">Threshold Type</label>
+                <select name="threshold_type" id="threshold-type">
+                    <option value="percentage" selected>Percentage</option>
+                    <option value="value">Value (GP)</option>
+                </select>
+                <small class="form-hint">How to measure the threshold (percentage locks when tracking multiple items)</small>
+            </div>
+
+            <!-- Threshold: Direction selector -->
+            <!-- What: Dropdown to choose whether to alert on price going up or down -->
+            <!-- Why: Users may only care about price increases (for selling) or decreases (for buying) -->
+            <div class="form-group" id="threshold-direction-group" style="display: none;">
+                <label for="threshold-direction">Direction</label>
+                <select name="threshold_direction" id="threshold-direction">
+                    <option value="up" selected>Up</option>
+                    <option value="down">Down</option>
+                </select>
+                <small class="form-hint">Alert when price moves up or down from reference</small>
+            </div>
+
+            <!-- Threshold: Threshold value input -->
+            <!-- What: Numeric input for the threshold amount -->
+            <!-- Why: Users need to specify how much change should trigger the alert -->
+            <!-- How: Value is interpreted as percentage or GP based on threshold_type selection -->
+            <div class="form-group" id="threshold-value-group" style="display: none;">
+                <label for="threshold-value">Threshold</label>
+                <input type="number" name="threshold_value" id="threshold-value" step="0.01" min="0.01" placeholder="e.g. 5">
+                <small class="form-hint" id="threshold-value-hint">The percentage or value change that triggers the alert</small>
+            </div>
+
+            <!-- Threshold: Reference Price selector -->
+            <!-- What: Dropdown to choose which price to monitor (high, low, or average) -->
+            <!-- Why: Different strategies use different reference prices -->
+            <!-- How: Determines which current price is compared against the threshold -->
+            <div class="form-group" id="threshold-reference-group" style="display: none;">
+                <label for="threshold-reference">Reference Price</label>
+                <select name="threshold_reference" id="threshold-reference">
+                    <option value="high">High (Instant Sell)</option>
+                    <option value="low">Low (Instant Buy)</option>
+                    <option value="average">Average</option>
+                </select>
+                <small class="form-hint">Which price to monitor for threshold changes</small>
             </div>
 
             <div class="form-group checkbox-group">
@@ -2912,6 +3018,22 @@
                 spreadNoItemsMessage: '#spread-no-items-message',
                 spreadMultiItemToggle: '#spread-multi-item-toggle',
                 spreadItemNotification: '#spread-item-notification',
+                // Threshold alert multi-item selector elements
+                // What: DOM selectors for threshold alert's item selection UI
+                // Why: Enables the multi-item picker functionality for threshold alerts
+                thresholdItemsTracked: '#threshold-items-tracked',
+                thresholdItemInput: '#threshold-item-input',
+                thresholdItemIds: '#threshold-item-ids',
+                thresholdItemSuggestions: '#threshold-item-suggestions',
+                thresholdSelectedItemsDropdown: '#threshold-selected-items-dropdown',
+                thresholdSelectedItemsList: '#threshold-selected-items-list',
+                thresholdNoItemsMessage: '#threshold-no-items-message',
+                thresholdMultiItemToggle: '#threshold-multi-item-toggle',
+                thresholdItemNotification: '#threshold-item-notification',
+                thresholdType: '#threshold-type',
+                thresholdDirection: '#threshold-direction',
+                thresholdValue: '#threshold-value',
+                thresholdReference: '#threshold-reference',
                 alertGroup: '#alert-group',
                 groups: {
                     spreadScope: '#spread-scope-group',
@@ -2933,7 +3055,16 @@
                     volatilityMultiplier: '#volatility-multiplier-group',
                     minVolume: '#min-volume-group',
                     pressureStrength: '#pressure-strength-group',
-                    pressureSpread: '#pressure-spread-group'
+                    pressureSpread: '#pressure-spread-group',
+                    // Threshold alert form groups
+                    // What: DOM selectors for threshold alert form field containers
+                    // Why: Controls visibility of threshold-specific form fields
+                    thresholdItemsTracked: '#threshold-items-tracked-group',
+                    thresholdItems: '#threshold-items-group',
+                    thresholdType: '#threshold-type-group',
+                    thresholdDirection: '#threshold-direction-group',
+                    thresholdValue: '#threshold-value-group',
+                    thresholdReference: '#threshold-reference-group'
                 }
             },
             // Other UI elements
@@ -2955,7 +3086,8 @@
             BELOW: 'below',
             SPREAD: 'spread',
             SPIKE: 'spike',
-            SUSTAINED: 'sustained'
+            SUSTAINED: 'sustained',
+            THRESHOLD: 'threshold'
         },
 
         // CSRF token for Django POST requests
@@ -4696,7 +4828,14 @@
                 sustainedScope: document.querySelector(groups.sustainedScope),
                 sustainedItems: document.querySelector(groups.sustainedItems),
                 pressureStrength: document.querySelector(groups.pressureStrength),
-                pressureSpread: document.querySelector(groups.pressureSpread)
+                pressureSpread: document.querySelector(groups.pressureSpread),
+                // Threshold alert elements
+                thresholdItemsTracked: document.querySelector(groups.thresholdItemsTracked),
+                thresholdItems: document.querySelector(groups.thresholdItems),
+                thresholdType: document.querySelector(groups.thresholdType),
+                thresholdDirection: document.querySelector(groups.thresholdDirection),
+                thresholdValue: document.querySelector(groups.thresholdValue),
+                thresholdReference: document.querySelector(groups.thresholdReference)
             };
 
             // Helper to hide all sustained move fields
@@ -4712,6 +4851,23 @@
                 if (elements.pressureSpread) elements.pressureSpread.style.display = 'none';
             };
 
+            /**
+             * Helper to hide all threshold alert specific fields
+             * What: Hides all form fields that are specific to threshold alerts
+             * Why: When switching away from threshold alert type, these fields should be hidden
+             * How: Sets display to 'none' for each threshold-specific field group
+             */
+            const hideThresholdFields = () => {
+                if (elements.thresholdItemsTracked) elements.thresholdItemsTracked.style.display = 'none';
+                if (elements.thresholdItems) elements.thresholdItems.style.display = 'none';
+                if (elements.thresholdType) elements.thresholdType.style.display = 'none';
+                if (elements.thresholdDirection) elements.thresholdDirection.style.display = 'none';
+                if (elements.thresholdValue) elements.thresholdValue.style.display = 'none';
+                if (elements.thresholdReference) elements.thresholdReference.style.display = 'none';
+                // Clear selected items when hiding
+                ThresholdMultiItemSelector.clear();
+            };
+
             if (alertType === AlertsConfig.alertTypes.SPREAD) {
                 // Spread alerts: show spread-specific fields
                 elements.spreadScope.style.display = 'block';
@@ -4723,6 +4879,7 @@
                 elements.timeFrame.style.display = 'none';
                 elements.direction.style.display = 'none';
                 hideSustainedFields();
+                hideThresholdFields();
 
                 // Let scope change handler determine remaining visibility
                 this.handleSpreadScopeChange(formType);
@@ -4737,6 +4894,7 @@
                 elements.timeFrame.style.display = 'block';
                 elements.direction.style.display = 'block';
                 hideSustainedFields();
+                hideThresholdFields();
                 // Spike uses min/max only when all items selected; handled in handleSpikeScopeChange
                 this.handleSpikeScopeChange(formType);
             } else if (alertType === AlertsConfig.alertTypes.SUSTAINED) {
@@ -4749,6 +4907,7 @@
                 elements.percentage.style.display = 'none';
                 elements.timeFrame.style.display = 'block';
                 elements.direction.style.display = 'block';
+                hideThresholdFields();
 
                 // Show sustained scope selector
                 if (elements.sustainedScope) elements.sustainedScope.style.display = 'block';
@@ -4766,6 +4925,40 @@
 
                 // Let scope change handler determine item selector vs min/max price
                 this.handleSustainedScopeChange(formType);
+            } else if (alertType === AlertsConfig.alertTypes.THRESHOLD) {
+                /**
+                 * Threshold alerts configuration
+                 * What: Shows threshold-specific fields and hides other alert type fields
+                 * Why: Threshold alerts have a unique set of configuration options
+                 * How: Hides spread/sustained/above/below specific fields, shows threshold fields
+                 */
+                elements.spreadScope.style.display = 'none';
+                if (elements.numberItems) elements.numberItems.style.display = 'none';
+                elements.itemName.style.display = 'none';  // Using threshold's own item selector
+                elements.price.style.display = 'none';  // Using threshold value instead
+                elements.reference.style.display = 'none';  // Using threshold reference instead
+                elements.percentage.style.display = 'none';  // Using threshold value instead
+                elements.timeFrame.style.display = 'none';
+                elements.direction.style.display = 'none';  // Using threshold direction instead
+                elements.minPrice.style.display = 'none';
+                elements.maxPrice.style.display = 'none';
+                hideSustainedFields();
+
+                // Show threshold-specific fields
+                if (elements.thresholdItemsTracked) elements.thresholdItemsTracked.style.display = 'block';
+                if (elements.thresholdType) elements.thresholdType.style.display = 'block';
+                if (elements.thresholdDirection) elements.thresholdDirection.style.display = 'block';
+                if (elements.thresholdValue) elements.thresholdValue.style.display = 'block';
+                if (elements.thresholdReference) elements.thresholdReference.style.display = 'block';
+
+                // Let items tracked change handler determine item selector visibility
+                this.handleThresholdItemsTrackedChange(formType);
+
+                // Set is_all_items based on items tracked selection
+                const itemsTrackedSelect = document.querySelector(selectors.thresholdItemsTracked);
+                if (itemsTrackedSelect) {
+                    document.querySelector(selectors.isAllItems).value = itemsTrackedSelect.value === 'all' ? 'true' : 'false';
+                }
             } else {
                 // Above/Below alerts: show threshold fields
                 elements.spreadScope.style.display = 'none';
@@ -4779,6 +4972,7 @@
                 elements.minPrice.style.display = 'none';
                 elements.maxPrice.style.display = 'none';
                 hideSustainedFields();
+                hideThresholdFields();
 
                 // Reset is_all_items
                 document.querySelector(selectors.isAllItems).value = 'false';
@@ -4787,6 +4981,76 @@
             const directionInput = document.querySelector(selectors.direction);
             if (directionInput && elements.direction.style.display === 'none') {
                 directionInput.value = 'both';
+            }
+        },
+
+        /**
+         * Handles changes to the threshold alert "Items Tracked" dropdown.
+         * 
+         * What: Shows/hides the item selector and manages threshold type based on selection
+         * Why: When "All Items" is selected, items selector is hidden and threshold type is locked to percentage
+         *      When "Specific Items" is selected, items selector is shown and threshold type can be changed
+         * How: Toggles visibility of items group and enforces percentage type for multi-item scenarios
+         * 
+         * @param {string} formType - 'create' for create form
+         */
+        handleThresholdItemsTrackedChange(formType) {
+            const selectors = AlertsConfig.selectors[formType];
+            const groups = selectors.groups;
+            
+            // Get the items tracked selection
+            const itemsTrackedSelect = document.querySelector(selectors.thresholdItemsTracked);
+            const thresholdItemsGroup = document.querySelector(groups.thresholdItems);
+            const thresholdTypeSelect = document.querySelector(selectors.thresholdType);
+            const isAllItemsInput = document.querySelector(selectors.isAllItems);
+            
+            if (!itemsTrackedSelect) return;
+            
+            const selection = itemsTrackedSelect.value;
+            
+            if (selection === 'all') {
+                // All Items mode: hide item selector, lock threshold type to percentage
+                if (thresholdItemsGroup) thresholdItemsGroup.style.display = 'none';
+                if (isAllItemsInput) isAllItemsInput.value = 'true';
+                
+                // Force percentage type for all items (can't use value for all items)
+                if (thresholdTypeSelect) {
+                    thresholdTypeSelect.value = 'percentage';
+                    thresholdTypeSelect.disabled = true;
+                }
+                
+                // Clear any selected items
+                ThresholdMultiItemSelector.clear();
+            } else {
+                // Specific Items mode: show item selector
+                if (thresholdItemsGroup) thresholdItemsGroup.style.display = 'block';
+                if (isAllItemsInput) isAllItemsInput.value = 'false';
+                
+                // Check if threshold type should be enabled or disabled based on item count
+                this.updateThresholdTypeState();
+            }
+        },
+
+        /**
+         * Updates the threshold type dropdown state based on selected item count.
+         * 
+         * What: Enables/disables threshold type dropdown based on number of selected items
+         * Why: Value-based threshold only makes sense for single item; percentage works for multiple
+         * How: If more than 1 item selected, force percentage and disable dropdown
+         */
+        updateThresholdTypeState() {
+            const thresholdTypeSelect = document.querySelector(AlertsConfig.selectors.create.thresholdType);
+            const selectedCount = ThresholdMultiItemSelector.selectedItems.length;
+            
+            if (!thresholdTypeSelect) return;
+            
+            if (selectedCount > 1) {
+                // Multiple items: force percentage type
+                thresholdTypeSelect.value = 'percentage';
+                thresholdTypeSelect.disabled = true;
+            } else {
+                // Single or no items: allow choice
+                thresholdTypeSelect.disabled = false;
             }
         },
 
@@ -6419,6 +6683,396 @@
 
 
     // =============================================================================
+    // THRESHOLD MULTI-ITEM SELECTOR
+    // =============================================================================
+    /**
+     * ThresholdMultiItemSelector
+     * ===========================
+     * What: Manages the multi-item selection interface for threshold alerts.
+     * Why: Threshold alerts can monitor multiple specific items, requiring a UI to add/remove items.
+     * How: Provides autocomplete search, selected items dropdown, and item management functionality.
+     *      Nearly identical to SpreadMultiItemSelector but operates on threshold-specific DOM elements.
+     * 
+     * This selector is used when:
+     * - User selects "Threshold" as alert type
+     * - User selects "Specific Items" in Items Tracked dropdown
+     * 
+     * Key behaviors:
+     * - When items are added/removed, updates FormManager.updateThresholdTypeState()
+     *   to enforce percentage mode when multiple items are selected
+     * - Clears selection when switching to "All Items" mode
+     */
+    const ThresholdMultiItemSelector = {
+        // selectedItems: Array of {id, name} objects representing currently selected items
+        selectedItems: [],
+        // selectedIndex: Index of currently highlighted suggestion in dropdown (-1 = none)
+        selectedIndex: -1,
+        // notificationTimeout: Reference to timeout for auto-hiding notifications
+        notificationTimeout: null,
+        // dropdownOpen: Tracks if the selected items dropdown is currently open
+        dropdownOpen: false,
+
+        /**
+         * Initializes the threshold multi-item selector.
+         * 
+         * What: Sets up event listeners for the threshold item search input and dropdown toggle
+         * Why: Enables autocomplete functionality, dropdown management, and item removal
+         * How: Attaches input, keydown, click handlers to relevant DOM elements
+         */
+        init() {
+            // Get all DOM elements needed for the multi-item selector
+            // input: Text input where user types to search for items to add
+            const input = document.querySelector(AlertsConfig.selectors.create.thresholdItemInput);
+            // dropdown: Container showing autocomplete suggestions when typing
+            const dropdown = document.querySelector(AlertsConfig.selectors.create.thresholdItemSuggestions);
+            // hiddenInput: Hidden field that stores comma-separated item IDs for form submission
+            const hiddenInput = document.querySelector(AlertsConfig.selectors.create.thresholdItemIds);
+            // selectedDropdown: Container showing list of already selected items
+            const selectedDropdown = document.querySelector(AlertsConfig.selectors.create.thresholdSelectedItemsDropdown);
+            // selectedList: Inner container where selected item rows are rendered
+            const selectedList = document.querySelector(AlertsConfig.selectors.create.thresholdSelectedItemsList);
+            // noItemsMsg: Message shown when no items are selected
+            const noItemsMsg = document.querySelector(AlertsConfig.selectors.create.thresholdNoItemsMessage);
+            // toggleBtn: Button with chevron arrow to show/hide selected items dropdown
+            const toggleBtn = document.querySelector(AlertsConfig.selectors.create.thresholdMultiItemToggle);
+            // selectorBox: The main container box for the selector (for click-outside handling)
+            const selectorBox = input ? input.closest('.multi-item-selector-box') : null;
+
+            if (!input || !dropdown || !hiddenInput || !selectedDropdown) return;
+
+            // Reference to 'this' for use inside closures
+            const self = this;
+            this.selectedItems = [];
+            this.selectedIndex = -1;
+            this.dropdownOpen = false;
+
+            /**
+             * Updates the hidden input with current selected item IDs.
+             * Called whenever items are added or removed to keep form data in sync.
+             */
+            const updateHiddenInput = () => {
+                hiddenInput.value = this.selectedItems.map(item => item.id).join(',');
+            };
+
+            /**
+             * Updates visual selection state in autocomplete dropdown.
+             * Highlights the currently selected suggestion item.
+             */
+            const updateSelection = () => {
+                const items = dropdown.querySelectorAll('.suggestion-item');
+                items.forEach((item, index) => {
+                    if (index === this.selectedIndex) {
+                        item.classList.add('selected');
+                        item.scrollIntoView({block: 'nearest'});
+                    } else {
+                        item.classList.remove('selected');
+                    }
+                });
+            };
+
+            /**
+             * Adds an item to the selected list.
+             * 
+             * What: Adds item to selectedItems array and updates UI
+             * Why: Central function for adding items from autocomplete or manual entry
+             * How: Checks for duplicates, adds to array, updates hidden input and renders list
+             * 
+             * @param {string} id - The item's unique identifier
+             * @param {string} name - The item's display name
+             */
+            const addItem = (id, name) => {
+                // Check if already selected - prevent duplicates
+                if (this.selectedItems.some(item => item.id === id)) {
+                    this.showNotification(`${name} is already selected`, 'error');
+                    return;
+                }
+
+                this.selectedItems.push({id, name});
+                updateHiddenInput();
+                this.renderSelectedItems();
+                input.value = '';
+                dropdown.style.display = 'none';
+                this.selectedIndex = -1;
+
+                // Show success notification
+                this.showNotification(`${name} added`, 'success');
+
+                // Update threshold type state (lock to percentage if multiple items)
+                FormManager.updateThresholdTypeState();
+            };
+
+            /**
+             * Removes an item from the selected list.
+             * 
+             * What: Removes item from selectedItems array and updates UI
+             * Why: Called when user clicks the red X button on an item
+             * 
+             * @param {string} id - The item's unique identifier to remove
+             */
+            const removeItem = (id) => {
+                const itemToRemove = this.selectedItems.find(item => String(item.id) === String(id));
+                const itemName = itemToRemove ? itemToRemove.name : 'Item';
+                this.selectedItems = this.selectedItems.filter(item => String(item.id) !== String(id));
+                updateHiddenInput();
+                this.renderSelectedItems();
+
+                // Show removal notification
+                this.showNotification(`${itemName} removed`, 'success');
+
+                // Update threshold type state (may unlock value option if only 1 item left)
+                FormManager.updateThresholdTypeState();
+            };
+
+            // Handle remove button clicks in selected items dropdown (event delegation)
+            if (selectedList) {
+                selectedList.addEventListener('click', function(e) {
+                    if (e.target.classList.contains('remove-item-btn')) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const itemId = e.target.dataset.id;
+                        removeItem(itemId);
+                    }
+                });
+            }
+
+            // Handle dropdown toggle button clicks
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Close autocomplete suggestions if open
+                    dropdown.style.display = 'none';
+                    this.selectedIndex = -1;
+                    
+                    // Toggle selected items dropdown
+                    this.dropdownOpen = !this.dropdownOpen;
+                    if (this.dropdownOpen) {
+                        selectedDropdown.classList.add('show');
+                        toggleBtn.classList.add('active');
+                    } else {
+                        selectedDropdown.classList.remove('show');
+                        toggleBtn.classList.remove('active');
+                    }
+                });
+            }
+
+            // Close dropdowns when clicking outside
+            document.addEventListener('click', (e) => {
+                if (selectorBox && !selectorBox.contains(e.target)) {
+                    // Close selected items dropdown
+                    if (this.dropdownOpen) {
+                        selectedDropdown.classList.remove('show');
+                        if (toggleBtn) toggleBtn.classList.remove('active');
+                        this.dropdownOpen = false;
+                    }
+                    // Close autocomplete suggestions
+                    dropdown.style.display = 'none';
+                    this.selectedIndex = -1;
+                }
+            });
+
+            // Handle input changes - fetch suggestions from API
+            input.addEventListener('input', async () => {
+                const query = input.value;
+
+                // Close selected items dropdown when user starts typing
+                if (this.dropdownOpen) {
+                    selectedDropdown.classList.remove('show');
+                    if (toggleBtn) toggleBtn.classList.remove('active');
+                    this.dropdownOpen = false;
+                }
+
+                // minSearchLength: Minimum characters before searching (prevents API spam)
+                if (query.length < AlertsConfig.timing.minSearchLength) {
+                    dropdown.style.display = 'none';
+                    this.selectedIndex = -1;
+                    return;
+                }
+
+                // Fetch matching items from API
+                const items = await AlertsAPI.searchItems(query);
+
+                // Filter out already selected items from suggestions
+                const filteredItems = items.filter(item =>
+                    !this.selectedItems.some(selected => selected.id === item.id)
+                );
+
+                if (filteredItems.length > 0) {
+                    dropdown.innerHTML = AlertsUI.renderSuggestions(filteredItems);
+                    dropdown.style.display = 'block';
+                    this.selectedIndex = -1;
+                } else {
+                    dropdown.style.display = 'none';
+                    this.selectedIndex = -1;
+                }
+            });
+
+            // Handle keyboard navigation in dropdown
+            input.addEventListener('keydown', (e) => {
+                if (dropdown.style.display === 'none') {
+                    // Backspace with empty input removes last item
+                    if (e.key === 'Backspace' && input.value === '' && this.selectedItems.length > 0) {
+                        const lastItem = this.selectedItems[this.selectedItems.length - 1];
+                        removeItem(lastItem.id);
+                    }
+                    return;
+                }
+
+                const items = dropdown.querySelectorAll('.suggestion-item');
+                if (items.length === 0) return;
+
+                switch (e.key) {
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        this.selectedIndex = (this.selectedIndex + 1) % items.length;
+                        updateSelection();
+                        break;
+
+                    case 'ArrowUp':
+                        e.preventDefault();
+                        this.selectedIndex = this.selectedIndex <= 0
+                            ? items.length - 1
+                            : this.selectedIndex - 1;
+                        updateSelection();
+                        break;
+
+                    case 'Tab':
+                        e.preventDefault();
+                        if (e.shiftKey) {
+                            this.selectedIndex = this.selectedIndex <= 0
+                                ? items.length - 1
+                                : this.selectedIndex - 1;
+                        } else {
+                            this.selectedIndex = (this.selectedIndex + 1) % items.length;
+                        }
+                        updateSelection();
+                        break;
+
+                    case 'Enter':
+                        if (this.selectedIndex >= 0) {
+                            e.preventDefault();
+                            const selectedItem = items[this.selectedIndex];
+                            addItem(selectedItem.dataset.id, selectedItem.dataset.name);
+                        }
+                        break;
+
+                    case 'Escape':
+                        e.preventDefault();
+                        dropdown.style.display = 'none';
+                        this.selectedIndex = -1;
+                        break;
+                }
+            });
+
+            // Handle mouse click on suggestion
+            dropdown.addEventListener('click', (e) => {
+                if (e.target.classList.contains('suggestion-item')) {
+                    addItem(e.target.dataset.id, e.target.dataset.name);
+                }
+            });
+
+            // Handle mouse hover to update selection
+            dropdown.addEventListener('mouseover', (e) => {
+                if (e.target.classList.contains('suggestion-item')) {
+                    const items = dropdown.querySelectorAll('.suggestion-item');
+                    items.forEach((item, index) => {
+                        if (item === e.target) {
+                            this.selectedIndex = index;
+                        }
+                    });
+                    updateSelection();
+                }
+            });
+        },
+
+        /**
+         * Renders the selected items in the dropdown list.
+         * Shows each item with its name and a red X remove button - matching spread selector styling.
+         * 
+         * What: Updates the DOM to display all currently selected items
+         * Why: Provides visual feedback of selected items with ability to remove
+         * How: Generates HTML rows for each item with remove button
+         */
+        renderSelectedItems() {
+            const selectedList = document.querySelector(AlertsConfig.selectors.create.thresholdSelectedItemsList);
+            const noItemsMsg = document.querySelector(AlertsConfig.selectors.create.thresholdNoItemsMessage);
+
+            if (!selectedList) return;
+
+            if (this.selectedItems.length === 0) {
+                selectedList.innerHTML = '';
+                if (noItemsMsg) noItemsMsg.classList.add('show');
+            } else {
+                if (noItemsMsg) noItemsMsg.classList.remove('show');
+                selectedList.innerHTML = this.selectedItems.map(item =>
+                    `<div class="selected-item-row">
+                        <span class="item-name">${item.name}</span>
+                        <button type="button" class="remove-item-btn" data-id="${item.id}" title="Remove ${item.name}">×</button>
+                    </div>`
+                ).join('');
+            }
+        },
+
+        /**
+         * Shows a small notification next to the "Items" label.
+         * 
+         * What: Displays success/error feedback for item add/remove operations
+         * Why: Provides immediate visual feedback without disruptive popups
+         * How: Updates the notification span with text and appropriate class, auto-hides after delay
+         * 
+         * @param {string} message - The notification message to display
+         * @param {string} type - 'success' for green (item added/removed) or 'error' for red (duplicate)
+         */
+        showNotification(message, type) {
+            const notification = document.querySelector(AlertsConfig.selectors.create.thresholdItemNotification);
+            if (!notification) return;
+
+            // Clear any existing timeout to prevent overlapping notifications
+            if (this.notificationTimeout) {
+                clearTimeout(this.notificationTimeout);
+            }
+
+            // Set the message and styling
+            notification.textContent = message;
+            notification.className = 'item-notification ' + type + ' show';
+
+            // Auto-hide after 2.5 seconds
+            this.notificationTimeout = setTimeout(() => {
+                notification.classList.remove('show');
+            }, 2500);
+        },
+
+        /**
+         * Clears all selected items.
+         * 
+         * What: Removes all items from the selection
+         * Why: Called when switching to "All Items" mode or after form submission
+         * How: Empties the array and clears DOM elements
+         */
+        clear() {
+            this.selectedItems = [];
+            const selectedList = document.querySelector(AlertsConfig.selectors.create.thresholdSelectedItemsList);
+            const noItemsMsg = document.querySelector(AlertsConfig.selectors.create.thresholdNoItemsMessage);
+            const hiddenInput = document.querySelector(AlertsConfig.selectors.create.thresholdItemIds);
+            
+            if (selectedList) selectedList.innerHTML = '';
+            if (noItemsMsg) noItemsMsg.classList.add('show');
+            if (hiddenInput) hiddenInput.value = '';
+        },
+
+        /**
+         * Gets the selected item IDs.
+         * 
+         * @returns {Array} Array of item ID strings
+         */
+        getSelectedIds() {
+            return this.selectedItems.map(item => item.id);
+        }
+    };
+
+
+    // =============================================================================
     // ALERTS REFRESH
     // =============================================================================
     /**
@@ -7047,6 +7701,17 @@
         FormManager.handleSustainedScopeChange('create');
     }
 
+    /**
+     * Global wrapper for handling threshold Items Tracked dropdown changes.
+     * 
+     * What: Calls FormManager.handleThresholdItemsTrackedChange when user changes "All Items" vs "Specific Items"
+     * Why: HTML onchange attributes can only call global functions, not module-scoped ones
+     * How: Delegates to FormManager which shows/hides the item selector and updates threshold type state
+     */
+    function handleThresholdItemsTrackedChange() {
+        FormManager.handleThresholdItemsTrackedChange('create');
+    }
+
     // Modal handlers
     function closeSpreadModal() {
         ModalManager.closeSpreadModal();
@@ -7390,6 +8055,7 @@
         AutocompleteManager.init();
         MultiItemSelector.init();
         SpreadMultiItemSelector.init();  // Initialize spread multi-item selector
+        ThresholdMultiItemSelector.init();  // Initialize threshold multi-item selector
         EventManager.init();
         DropdownSizer.init();
         AlertsRefresh.start();

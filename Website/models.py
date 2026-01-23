@@ -75,28 +75,67 @@ class AlertGroup(models.Model):
 
 
 class Alert(models.Model):
+    """
+    Alert Model
+    ===========
+    What: Represents a user-defined price alert for OSRS Grand Exchange items.
+    Why: Allows users to be notified when items meet specific price conditions.
+    How: Stores alert configuration including type, item(s) to track, thresholds, and trigger state.
+    
+    Alert Types:
+        - above: Triggers when price goes above a specific value
+        - below: Triggers when price falls below a specific value
+        - spread: Triggers when buy/sell spread exceeds a percentage
+        - spike: Triggers when price changes rapidly within a time frame
+        - sustained: Triggers when price moves consistently in one direction
+        - threshold: Triggers when price crosses a threshold (by percentage or value) from a reference price
+    """
+    
+    # DIRECTION_CHOICES: Options for which direction of price movement to track
+    # What: Defines whether to alert on upward, downward, or both directions of price movement
+    # Why: Users may only care about price increases (buying) or decreases (selling)
+    # How: Used by spike, sustained, and threshold alerts to filter which movements trigger
     DIRECTION_CHOICES = [
         ('up', 'Up'),
         ('down', 'Down'),
         ('both', 'Both'),
     ]
     
+    # ABOVE_BELOW_CHOICES: Legacy field choices (unused, kept for backwards compatibility)
     ABOVE_BELOW_CHOICES = [
         ('above', 'Above'),
         ('below', 'Below'),
     ]
     
+    # REFERENCE_CHOICES: Options for which price to use as reference for calculations
+    # What: Defines whether to use high (instant sell), low (instant buy), or average price
+    # Why: Different trading strategies require different price references
+    # How: Used by above/below/threshold alerts to determine which current price to compare against
     REFERENCE_CHOICES = [
         ('high', 'High Price'),
         ('low', 'Low Price'),
+        ('average', 'Average Price'),  # Average of high and low prices
     ]
 
+    # ALERT_CHOICES: All available alert types in the system
+    # What: Defines the different types of alerts users can create
+    # Why: Each type has different triggering logic and configuration options
     ALERT_CHOICES = [
-            ('above', 'Above Threshold'),
-            ('below', 'Below Threshold'),
-            ('spread', 'Spread'),
-            ('spike', 'Spike'),
-            ('sustained', 'Sustained Move')
+        ('above', 'Above Threshold'),
+        ('below', 'Below Threshold'),
+        ('spread', 'Spread'),
+        ('spike', 'Spike'),
+        ('sustained', 'Sustained Move'),
+        ('threshold', 'Threshold'),  # New: Percentage or value-based threshold from reference price
+    ]
+    
+    # THRESHOLD_TYPE_CHOICES: Options for how threshold alerts calculate their trigger condition
+    # What: Defines whether threshold is measured as a percentage change or absolute value change
+    # Why: Users may want to track "10% increase" or "1000gp increase" depending on the item
+    # How: Used by threshold alerts to determine calculation method
+    THRESHOLD_TYPE_CHOICES = [
+        ('percentage', 'Percentage'),  # Threshold as % change from reference price
+        ('value', 'Value'),  # Threshold as absolute gp change from reference price
     ]
     
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
@@ -110,7 +149,12 @@ class Alert(models.Model):
     price = models.IntegerField(blank=True, null=True, default=None)
     percentage = models.FloatField(blank=True, null=True, default=None)
     is_all_items = models.BooleanField(default=False, blank=True, null=True)
-    reference = models.CharField(max_length=4, choices=REFERENCE_CHOICES, blank=True, null=True, default=None)
+    # reference: The price type to use as the baseline for threshold/above/below comparisons
+    # What: Stores which price reference the alert should use ('high', 'low', or 'average')
+    # Why: Users may want to compare against different price points depending on their trading strategy
+    # How: When evaluating the alert, this field determines which current price to fetch for comparison
+    # Note: max_length=7 to accommodate 'average' (the longest choice value)
+    reference = models.CharField(max_length=7, choices=REFERENCE_CHOICES, blank=True, null=True, default=None)
     is_triggered = models.BooleanField(default=False, blank=True, null=True)
     is_active = models.BooleanField(default=True, blank=True, null=True)
     is_dismissed = models.BooleanField(default=False, blank=True, null=True)
@@ -138,11 +182,36 @@ class Alert(models.Model):
     min_volume = models.IntegerField(blank=True, null=True, default=None)  # Minimum volume requirement
     sustained_item_ids = models.TextField(blank=True, null=True, default=None)  # JSON array of item IDs for multi-item sustained alerts
     
-    # Generic item_ids field for multi-item alerts (e.g., spread alerts with specific items)
+    # Generic item_ids field for multi-item alerts (e.g., spread alerts with specific items, threshold alerts)
     # What: Stores a JSON array of item IDs that this alert should check against
-    # Why: Allows alerts like "spread" to target multiple specific items instead of just one or all
+    # Why: Allows alerts like "spread" and "threshold" to target multiple specific items instead of just one or all
     # How: JSON string like "[123, 456, 789]" parsed when checking the alert
     item_ids = models.TextField(blank=True, null=True, default=None)
+    
+    # Threshold alert specific field
+    # threshold_type: Determines how the threshold is calculated for threshold alerts
+    # What: Stores whether the threshold is measured as 'percentage' or 'value' (absolute gp)
+    # Why: Users may want different measurement types depending on the item price and their trading strategy
+    # How: When 'percentage', threshold is calculated as % change from reference; when 'value', as gp change
+    threshold_type = models.CharField(max_length=10, choices=[('percentage', 'Percentage'), ('value', 'Value')], blank=True, null=True, default=None)
+    
+    # target_price: The target price for value-based threshold alerts (single item only)
+    # What: Stores the target price that the current price is compared against
+    # Why: For value-based thresholds, users specify an exact price they want to be alerted at
+    # How: When threshold_type='value', alert triggers when current price crosses this value
+    #      Set to null when threshold_type is changed to 'percentage'
+    # Note: Only valid for single-item alerts; multi-item/all-items must use percentage-based thresholds
+    target_price = models.IntegerField(blank=True, null=True, default=None)
+    
+    # reference_prices: JSON dictionary storing baseline prices for percentage-based threshold alerts
+    # What: Stores per-item reference prices captured at alert creation or item addition time
+    # Why: Percentage-based thresholds need a baseline to calculate the % change from
+    #      Each item has its own baseline since items have different prices
+    # How: JSON dict like {"6737": 1500000, "11802": 25000000} mapping item_id -> baseline price
+    #      For all-items mode, stores baselines for all items that met min/max filters at creation
+    #      For specific items, stores baselines only for selected items
+    # Note: Prices are stored using the reference type (high/low/average) specified by the user
+    reference_prices = models.TextField(blank=True, null=True, default=None)
     
     # Pressure filter fields for sustained alerts
     PRESSURE_STRENGTH_CHOICES = [
@@ -224,6 +293,40 @@ class Alert(models.Model):
             else:
                 target = self.item_name or "Unknown item"
                 return f"{target} sustained {direction} ({moves} moves in {frame})"
+        # Threshold alert: displays target, direction, threshold value/percentage, and reference price
+        # What: Returns a human-readable string representation for threshold alerts
+        # Why: Users need to quickly understand what the alert is tracking
+        # How: Formats based on threshold_type (percentage vs value) and tracks items (all vs specific)
+        if self.type == 'threshold':
+            direction = (self.direction or 'up').capitalize()
+            threshold_val = self.percentage if self.percentage is not None else 0
+            threshold_type = self.threshold_type or 'percentage'
+            reference = (self.reference or 'high').capitalize()
+            
+            # Format threshold based on type
+            if threshold_type == 'percentage':
+                threshold_str = f"{threshold_val}%"
+            else:
+                threshold_str = f"{int(threshold_val):,} gp"
+            
+            # Determine target (all items, multiple specific, or single item)
+            if self.is_all_items:
+                target = "All items"
+            elif self.item_ids:
+                import json
+                try:
+                    ids = json.loads(self.item_ids)
+                    count = len(ids) if isinstance(ids, list) else 1
+                    if count == 1:
+                        target = self.item_name or "1 item"
+                    else:
+                        target = f"{count} items"
+                except:
+                    target = self.item_name or "Unknown"
+            else:
+                target = self.item_name or "Unknown item"
+            
+            return f"{target} threshold {direction} {threshold_str} ({reference})"
         if self.is_all_items:
             return f"All items {self.type} {self.price:,} ({self.reference})"
         return f"{self.item_name} {self.type} {self.price:,} ({self.reference})"
@@ -285,6 +388,44 @@ class Alert(models.Model):
             moves = self.min_consecutive_moves or 0
             direction = (self.direction or 'both').capitalize()
             return f"{self.item_name} sustained {direction} move triggered ({moves} moves in {frame})"
+        # Threshold alert triggered text
+        # What: Returns a description of what triggered the threshold alert
+        # Why: Users need to understand which items triggered and by how much
+        # How: Parses triggered_data JSON and formats based on items and threshold type
+        if self.type == "threshold":
+            direction = self.direction or 'up'
+            threshold_val = self.percentage if self.percentage is not None else 0
+            threshold_type = self.threshold_type or 'percentage'
+            reference = self.reference or 'high'
+            
+            # Format threshold based on type
+            if threshold_type == 'percentage':
+                threshold_str = f"{threshold_val}%"
+            else:
+                threshold_str = f"{int(threshold_val):,} gp"
+            
+            direction_word = "up" if direction == "up" else "down"
+            
+            # Check for multi-item triggered data
+            if (self.is_all_items or self.item_ids) and self.triggered_data:
+                import json
+                try:
+                    triggered_items = json.loads(self.triggered_data)
+                    if self.is_all_items:
+                        count = len(triggered_items) if isinstance(triggered_items, list) else 0
+                        return f"Threshold {direction_word} {threshold_str} triggered on {count} item(s). Click for details"
+                    else:
+                        total_items = json.loads(self.item_ids) if self.item_ids else []
+                        triggered_count = len(triggered_items) if isinstance(triggered_items, list) else 0
+                        total_count = len(total_items) if isinstance(total_items, list) else 0
+                        return f"Threshold {direction_word} {threshold_str} triggered on {triggered_count}/{total_count} items. Click for details"
+                except Exception:
+                    pass
+            
+            # Single item threshold
+            item_price = get_item_price(self.item_id, self.reference)
+            price_formatted = f"{item_price:,}" if item_price else str(item_price)
+            return f"{self.item_name} moved {direction_word} by {threshold_str} to {price_formatted}"
         return f"Item price is now {price_formatted}"
 
     def cleanup_triggered_data_for_removed_items(self, removed_item_ids):
@@ -354,6 +495,77 @@ class Alert(models.Model):
             
             # Save immediately to persist the changes
             # Why: Ensures triggered_data cleanup is saved before any other operations
+            self.save()
+            
+            return True  # Changes were made
+            
+        except (json.JSONDecodeError, TypeError, ValueError):
+            # Invalid JSON or unexpected data format - don't modify
+            return False
+    
+    def cleanup_reference_prices_for_removed_items(self, removed_item_ids):
+        """
+        Removes reference_prices entries for items that have been removed from the alert.
+        
+        What: Filters the reference_prices JSON dict to remove entries matching removed item IDs.
+        Why: When a user removes items from a multi-item threshold alert, the corresponding
+             reference prices should also be removed to keep the data consistent.
+        How: Parses reference_prices as JSON dict, filters out entries where key (item_id) is in the
+             removed_item_ids set, then saves the filtered data back (or clears if empty).
+        
+        Args:
+            removed_item_ids: A set or list of item IDs that were removed from the alert.
+                              These IDs will be matched against keys in the reference_prices dict.
+        
+        Returns:
+            bool: True if any changes were made to reference_prices, False otherwise.
+        
+        Side Effects:
+            - Updates self.reference_prices with filtered JSON (or None if all entries removed)
+            - Calls self.save() to persist the changes immediately
+        """
+        import json
+        
+        # Convert all removed IDs to strings for consistent comparison
+        # Why: reference_prices stores item_id as string keys (JSON standard for dict keys)
+        #      but removed_item_ids may contain integers
+        # How: Convert everything to strings so "123" == str(123)
+        removed_ids_as_str = set(str(x) for x in removed_item_ids)
+        
+        if not removed_ids_as_str or not self.reference_prices:
+            return False
+        
+        try:
+            # reference_prices_dict: The parsed JSON dictionary of item_id -> baseline price
+            reference_prices_dict = json.loads(self.reference_prices)
+            
+            if not isinstance(reference_prices_dict, dict):
+                # reference_prices is not a dict, don't modify
+                return False
+            
+            # original_count: Number of items in reference_prices before filtering
+            original_count = len(reference_prices_dict)
+            
+            # filtered_prices: Dict of reference prices after removing entries for deleted items
+            # We filter out any key (item_id as string) that matches a removed ID
+            filtered_prices = {
+                item_id: price for item_id, price in reference_prices_dict.items()
+                if str(item_id) not in removed_ids_as_str
+            }
+            
+            # Check if any items were actually removed
+            if len(filtered_prices) == original_count:
+                return False  # No changes made
+            
+            if filtered_prices:
+                # Some items remain - update with filtered dict
+                self.reference_prices = json.dumps(filtered_prices)
+            else:
+                # All items were removed - clear reference_prices
+                self.reference_prices = None
+            
+            # Save immediately to persist the changes
+            # Why: Ensures reference_prices cleanup is saved before any other operations
             self.save()
             
             return True  # Changes were made

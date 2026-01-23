@@ -119,6 +119,298 @@
         <div class="page-loading-spinner"></div>
     </div>
 
+    <!-- 
+        Login Required Modal
+        =====================
+        What: A modal overlay that blocks access to certain pages when the user is not authenticated.
+        Why: Pages like Dashboard, My Flips, Alerts, and Favorites require user data, so unauthenticated 
+             users should be prompted to sign in. This modal cannot be closed to enforce authentication.
+        How: The modal is rendered but hidden by default. JavaScript checks if the user is authenticated
+             and if the current page requires login. If both conditions are met (not authenticated + 
+             protected page), the modal is displayed. The modal has no close button and clicking outside
+             does nothing, ensuring users must sign in to access protected content.
+    -->
+    <div id="loginRequiredModal" class="login-required-modal" style="display: none;">
+        <!-- 
+            Modal Backdrop
+            What: A semi-transparent overlay that covers the entire page behind the modal.
+            Why: Provides visual feedback that the page content is inaccessible and focuses user attention on the modal.
+            How: Uses fixed positioning to cover the viewport with a dark semi-transparent background.
+        -->
+        <div class="login-required-backdrop"></div>
+        
+        <!-- 
+            Modal Content Container
+            What: The actual modal dialog box containing the login prompt.
+            Why: Presents a clear, focused message to the user explaining they need to sign in.
+            How: Centered on screen using flexbox, contains icon, title, description, and sign-in link.
+        -->
+        <div class="login-required-content">
+            <!-- 
+                Modal Icon
+                What: A visual lock/user icon to reinforce the authentication requirement.
+                Why: Provides immediate visual context that this is about account access.
+            -->
+            <div class="login-required-icon">
+                <svg fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
+                </svg>
+            </div>
+            
+            <!-- 
+                Modal Title
+                What: The main heading of the modal.
+                Why: Clearly communicates the purpose of the modal to the user.
+            -->
+            <h2 class="login-required-title">Sign In Required</h2>
+            
+            <!-- 
+                Modal Description
+                What: Explanatory text about why sign-in is needed.
+                Why: Provides context and encourages users to create an account or sign in.
+            -->
+            <p class="login-required-description">
+                You need to sign in to access this page. Create a free account to track your flips, set up alerts, and save your favorites.
+            </p>
+            
+            <!-- 
+                Sign In Button/Link
+                What: A prominent link/button that takes users to the authentication page.
+                Why: Provides a clear call-to-action for users to authenticate.
+                How: Links to the 'auth' URL which handles both login and signup.
+            -->
+            <a href="{% url 'auth' %}" class="login-required-btn">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+                </svg>
+                Sign In / Create Account
+            </a>
+            
+            <!-- 
+                Alternative Link
+                What: A secondary link for users who want to continue browsing without signing in.
+                Why: Provides an escape hatch to the item search page which doesn't require authentication.
+            -->
+            <p class="login-required-alt">
+                Or <a href="{% url 'item_search' %}">browse items</a> without an account
+            </p>
+        </div>
+    </div>
+
+    <!-- 
+        Login Required Modal Styles
+        ============================
+        What: CSS styles for the login required modal component.
+        Why: Provides visual styling for the modal to match the site's design language.
+        How: Uses CSS custom properties (variables) defined elsewhere for consistent theming.
+    -->
+    <style>
+        /* 
+            Modal Container
+            What: The outermost wrapper for the modal.
+            Why: Provides fixed positioning to overlay the entire viewport.
+            How: Uses fixed position with full width/height and high z-index to appear above all content.
+        */
+        .login-required-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 10000; /* High z-index to ensure modal appears above all other content including sidebar */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        /* 
+            Modal Backdrop
+            What: The semi-transparent background overlay.
+            Why: Dims the page content to focus attention on the modal and indicate inaccessibility.
+            How: Absolute positioning fills the modal container with a dark semi-transparent color.
+        */
+        .login-required-backdrop {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6); /* Dark overlay with 60% opacity */
+            backdrop-filter: blur(4px); /* Adds blur effect for modern browsers */
+            -webkit-backdrop-filter: blur(4px); /* Safari support */
+        }
+
+        /* 
+            Modal Content Box
+            What: The white card containing the modal's content.
+            Why: Provides a clean, focused area for the authentication prompt.
+            How: Positioned above backdrop with relative positioning, styled with padding, rounded corners, and shadow.
+        */
+        .login-required-content {
+            position: relative; /* Positions above the backdrop */
+            background: #FFFFFF;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 420px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); /* Strong shadow for depth */
+            animation: modalSlideIn 0.3s ease-out; /* Entrance animation */
+        }
+
+        /* 
+            Modal Entrance Animation
+            What: Keyframe animation for the modal appearing.
+            Why: Provides smooth visual feedback when modal appears.
+            How: Animates opacity and transform from below to final position.
+        */
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* 
+            Modal Icon Container
+            What: The circular container for the lock icon.
+            Why: Provides visual emphasis and branding for the authentication prompt.
+            How: Uses gradient background matching site's primary colors with centered SVG icon.
+        */
+        .login-required-icon {
+            width: 72px;
+            height: 72px;
+            background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%); /* Purple gradient matching site theme */
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4); /* Colored shadow for depth */
+        }
+
+        .login-required-icon svg {
+            width: 36px;
+            height: 36px;
+            color: white;
+        }
+
+        /* 
+            Modal Title
+            What: The main heading text.
+            Why: Clearly states the purpose of the modal.
+        */
+        .login-required-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #374151; /* --text color */
+            margin: 0 0 12px 0;
+            letter-spacing: -0.02em;
+        }
+
+        /* 
+            Modal Description
+            What: The explanatory text below the title.
+            Why: Provides context and value proposition for signing up.
+        */
+        .login-required-description {
+            font-size: 0.95rem;
+            color: #6B7280; /* --muted color */
+            margin: 0 0 28px 0;
+            line-height: 1.6;
+        }
+
+        /* 
+            Sign In Button
+            What: The primary call-to-action button/link.
+            Why: Prominently displays the action users should take.
+            How: Styled as a full-width button with gradient background and icon.
+        */
+        .login-required-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 14px 24px;
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); /* Green gradient matching site's primary action color */
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            text-decoration: none;
+            border-radius: 10px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 16px rgba(17, 153, 142, 0.4);
+        }
+
+        .login-required-btn:hover {
+            transform: translateY(-2px); /* Subtle lift effect on hover */
+            box-shadow: 0 6px 20px rgba(17, 153, 142, 0.5);
+            color: white;
+            text-decoration: none;
+        }
+
+        .login-required-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* 
+            Alternative Link Text
+            What: Secondary option text with link to browse without account.
+            Why: Provides an escape route for users who don't want to sign up.
+        */
+        .login-required-alt {
+            font-size: 0.85rem;
+            color: #6B7280;
+            margin: 20px 0 0 0;
+        }
+
+        .login-required-alt a {
+            color: #6366F1; /* --primary color */
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .login-required-alt a:hover {
+            text-decoration: underline;
+        }
+
+        /* 
+            Responsive Styles
+            What: Adjustments for smaller screens.
+            Why: Ensures modal looks good on mobile devices.
+        */
+        @media (max-width: 480px) {
+            .login-required-content {
+                padding: 32px 24px;
+            }
+
+            .login-required-icon {
+                width: 60px;
+                height: 60px;
+            }
+
+            .login-required-icon svg {
+                width: 30px;
+                height: 30px;
+            }
+
+            .login-required-title {
+                font-size: 1.25rem;
+            }
+
+            .login-required-description {
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+
     <script src="{% static 'js/bootstrap/bootstrap.bundle.min.js' %}"></script>
     <script>
         // Show loading overlay on navigation to slow pages
@@ -164,6 +456,65 @@
             if (savedState === 'false') {
                 sidebar.classList.remove('collapsed');
                 mainContent.classList.remove('expanded');
+            }
+
+            /*
+                Login Required Modal Logic
+                ===========================
+                What: JavaScript that controls when to display the login required modal.
+                Why: Certain pages (Dashboard, My Flips, Alerts, Favorites) require authentication.
+                     This script checks if the user is logged in and if the current page requires login,
+                     then shows the modal if the user is not authenticated on a protected page.
+                How: 
+                    1. Check if user is authenticated using a data attribute set by Django template
+                    2. Check if current page is in the list of protected pages
+                    3. If user is NOT authenticated AND on a protected page, show the modal
+                    4. The modal cannot be closed - users must sign in or navigate away
+            */
+            
+            // isUserAuthenticated: Boolean flag indicating if the current user is logged in.
+            // This value is set by Django's template engine using the user.is_authenticated property.
+            const isUserAuthenticated = {{ user.is_authenticated|yesno:"true,false" }};
+            
+            // protectedPaths: Array of URL paths that require authentication to access.
+            // These pages contain user-specific data (flips, alerts, favorites, dashboard).
+            // Note: We check if pathname starts with these values to handle trailing slashes.
+            // The root path '/' is included because it redirects to the flips page.
+            const protectedPaths = [
+                '/home/',    // Dashboard page - shows user's trading overview
+                '/flips/',   // My Flips page - shows user's flip transactions
+                '/alerts/',  // Alerts page - shows user's price alerts
+                '/favorites/' // Favorites page - shows user's favorited items
+            ];
+            
+            // currentPath: The current URL pathname (e.g., "/flips/", "/home/")
+            const currentPath = window.location.pathname;
+            
+            // isProtectedPage: Boolean indicating if the current page requires authentication.
+            // We check if the current path starts with any of the protected paths.
+            // This also handles sub-pages like /flips/item/123/ or /alerts/45/
+            // Additionally, we check for root path '/' or '' as they redirect to flips.
+            const isProtectedPage = protectedPaths.some(path => currentPath.startsWith(path)) 
+                                    || currentPath === '/' 
+                                    || currentPath === '';
+            
+            // loginModal: Reference to the login required modal DOM element.
+            const loginModal = document.getElementById('loginRequiredModal');
+            
+            // Only show the modal if:
+            // 1. User is NOT authenticated (isUserAuthenticated is false)
+            // 2. Current page is a protected page (isProtectedPage is true)
+            // 3. The modal element exists in the DOM (loginModal is not null)
+            if (!isUserAuthenticated && isProtectedPage && loginModal) {
+                // Display the modal by changing its CSS display property from 'none' to 'flex'
+                // The modal uses display: flex to center its content
+                loginModal.style.display = 'flex';
+                
+                // Prevent scrolling on the body while modal is open
+                // This ensures users focus on the modal and can't interact with page content
+                document.body.style.overflow = 'hidden';
+                
+                console.log('Login required modal shown - user not authenticated on protected page:', currentPath);
             }
         });
     </script>
