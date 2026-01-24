@@ -1,0 +1,23 @@
+    :root {
+        /* Neutrals */
+        --bg: #F8F9FA;
+        --surface: #FFFFFF;
+        --surface-2: #F5F6F8;
+        --border: #E5E7EB;
+        --text: #374151;
+        --text-muted: #6B7280;
+        --muted: #6B7280;
+        /* Brand - muted */
+        --primary: #6366F1;
+        --primary-hover: #5558E3;
+        /* Semantics - muted */
+        --success: #22C55E;
+        --success-muted: #4ADE80;
+        --danger: #EF4444;
+        --danger-muted: #F87171;
+        --warning: #F59E0B;
+        --info: #3B82F6;
+        /* Hover */
+        --hover-orange: #F97316;
+        --hover-orange-light: #FDBA74;
+    }
