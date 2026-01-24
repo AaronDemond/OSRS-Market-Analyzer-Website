@@ -1,9 +1,16 @@
 {% extends 'base.html' %}
 {% load humanize %}
+{% load static %}
 
 {% block title %}My Flips{% endblock %}
 
 {% block extra_css %}
+<!-- Buy Limit button styles (external CSS file for maintainability) -->
+<!-- What: Loads the CSS for the Buy Limit button feature in the New Flip modal -->
+<!-- Why: Keeping styles in a separate file makes them easier to maintain and reuse -->
+<!-- How: Django's static template tag resolves the path to the CSS file -->
+<link rel="stylesheet" href="{% static 'css/flips.css' %}">
+
 <style>
     :root {
         /* Neutrals */
@@ -1868,7 +1875,31 @@
                             <input type="number" class="form-control" id="price" name="price" placeholder="0" required>
                         </div>
                         <div class="form-group">
-                            <label for="quantity" class="form-label">Quantity</label>
+                            <!-- Quantity Header: Contains label and Buy Limit button -->
+                            <!-- What: Wrapper div that positions the label and button side by side -->
+                            <!-- Why: Buy Limit button needs to be above the input but aligned with the label -->
+                            <!-- How: Flexbox container with space-between alignment -->
+                            <div class="quantity-header">
+                                <label for="quantity" class="form-label">Quantity</label>
+                                <!-- Buy Limit Button -->
+                                <!-- What: Small button that auto-fills quantity with the item's GE buy limit -->
+                                <!-- Why: QOL feature - saves user from having to look up buy limits manually -->
+                                <!-- How: Fetches item data from API and populates the quantity input -->
+                                <button type="button" 
+                                        class="btn-buy-limit" 
+                                        id="btnBuyLimit"
+                                        disabled
+                                        data-tooltip="Select an item first">
+                                    <!-- Spinner SVG (hidden by default, shown during loading) -->
+                                    <!-- What: Animated loading indicator -->
+                                    <!-- Why: Shows user that API request is in progress -->
+                                    <!-- How: CSS animation rotates the SVG when .loading class is added -->
+                                    <svg class="spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                        <circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="12"></circle>
+                                    </svg>
+                                    <span class="btn-text">Buy Limit</span>
+                                </button>
+                            </div>
                             <input type="number" class="form-control" id="quantity" name="quantity" placeholder="0"
                                 required>
                         </div>
@@ -3491,9 +3522,55 @@
         const results = document.getElementById('autocompleteResults');
         let activeIndex = -1;
         let items = [];
+        
+        // =============================================================================
+        // SELECTED ITEM TRACKING FOR BUY LIMIT FEATURE
+        // =============================================================================
+        // What: Tracks the currently selected item's ID for the Buy Limit button
+        // Why: The Buy Limit button needs the item ID to fetch the GE buy limit from the API
+        // How: Set when user selects an item from autocomplete, cleared when input changes
+        // selectedItemId: The OSRS item ID of the currently selected item (null if none)
+        let selectedItemId = null;
+        
+        // btnBuyLimit: Reference to the Buy Limit button element
+        // Why: Needed to update button state (enabled/disabled) and handle clicks
+        const btnBuyLimit = document.getElementById('btnBuyLimit');
+        
+        // quantityInput: Reference to the quantity input field
+        // Why: Needed to populate with the buy limit value when button is clicked
+        const quantityInput = document.getElementById('quantity');
+        
+        /**
+         * Updates the Buy Limit button state based on whether an item is selected.
+         * 
+         * What: Enables/disables the Buy Limit button and updates its tooltip
+         * Why: Button should only be clickable when an item is selected
+         * How: Checks selectedItemId and updates disabled property and data-tooltip attribute
+         */
+        function updateBuyLimitButtonState() {
+            if (selectedItemId) {
+                // Item is selected - enable the button
+                btnBuyLimit.disabled = false;
+                btnBuyLimit.setAttribute('data-tooltip', 'Click to auto-fill quantity with the GE buy limit for this item');
+            } else {
+                // No item selected - disable the button
+                btnBuyLimit.disabled = true;
+                btnBuyLimit.setAttribute('data-tooltip', 'Select an item first');
+            }
+        }
 
         input.addEventListener('input', function () {
             const query = this.value;
+            
+            // =============================================================================
+            // CLEAR SELECTED ITEM WHEN USER TYPES
+            // =============================================================================
+            // What: Clears the selectedItemId when user modifies the input text
+            // Why: If user changes the text, the previous selection is no longer valid
+            // How: Set selectedItemId to null and update button state
+            selectedItemId = null;
+            updateBuyLimitButtonState();
+            
             if (query.length < 2) {
                 results.classList.remove('show');
                 return;
@@ -3508,8 +3585,14 @@
                         results.classList.remove('show');
                         return;
                     }
+                    // =============================================================================
+                    // STORE ITEM ID IN AUTOCOMPLETE RESULTS
+                    // =============================================================================
+                    // What: Adds data-id attribute to each autocomplete item
+                    // Why: Need the item ID when user selects an item for the Buy Limit feature
+                    // How: Include item.id in the data-id attribute of each autocomplete item div
                     results.innerHTML = data.map((item, i) =>
-                        `<div class="autocomplete-item" data-index="${i}" data-name="${item.name}">${item.name}</div>`
+                        `<div class="autocomplete-item" data-index="${i}" data-name="${item.name}" data-id="${item.id}">${item.name}</div>`
                     ).join('');
                     results.classList.add('show');
                 });
@@ -3529,13 +3612,16 @@
                 updateActive(itemElements);
             } else if (e.key === 'Enter' && activeIndex >= 0) {
                 e.preventDefault();
-                selectItem(itemElements[activeIndex].dataset.name);
+                // Pass both name and id to selectItem
+                const selectedElement = itemElements[activeIndex];
+                selectItem(selectedElement.dataset.name, selectedElement.dataset.id);
             }
         });
 
         results.addEventListener('click', function (e) {
             if (e.target.classList.contains('autocomplete-item')) {
-                selectItem(e.target.dataset.name);
+                // Pass both name and id to selectItem
+                selectItem(e.target.dataset.name, e.target.dataset.id);
             }
         });
 
@@ -3548,15 +3634,106 @@
             }
         }
 
-        function selectItem(name) {
+        /**
+         * Selects an item from the autocomplete dropdown.
+         * 
+         * What: Sets the input value and stores the selected item's ID
+         * Why: Need to track selected item for Buy Limit feature
+         * How: Updates input value, stores item ID, hides dropdown, updates button state
+         * 
+         * @param {string} name - The name of the selected item
+         * @param {string} id - The OSRS item ID of the selected item
+         */
+        function selectItem(name, id) {
             input.value = name;
+            // Store the selected item's ID for the Buy Limit button
+            selectedItemId = id;
             results.classList.remove('show');
             activeIndex = -1;
+            // Enable the Buy Limit button now that an item is selected
+            updateBuyLimitButtonState();
         }
 
         document.addEventListener('click', function (e) {
             if (!input.contains(e.target) && !results.contains(e.target)) {
                 results.classList.remove('show');
+            }
+        });
+        
+        // =============================================================================
+        // BUY LIMIT BUTTON CLICK HANDLER
+        // =============================================================================
+        // What: Fetches the GE buy limit for the selected item and fills the quantity input
+        // Why: QOL feature - saves user from manually looking up buy limits
+        // How: Makes API request to /api/item/data/, extracts limit, populates quantity field
+        btnBuyLimit.addEventListener('click', async function() {
+            // Safety check - shouldn't happen since button is disabled when no item selected
+            if (!selectedItemId) {
+                return;
+            }
+            
+            // =============================================================================
+            // SHOW LOADING STATE
+            // =============================================================================
+            // What: Adds loading class to show spinner and prevent double-clicks
+            // Why: API request may take a moment, user needs visual feedback
+            // How: Add 'loading' class and disable button during request
+            btnBuyLimit.classList.add('loading');
+            btnBuyLimit.disabled = true;
+            
+            try {
+                // =============================================================================
+                // FETCH ITEM DATA FROM API
+                // =============================================================================
+                // What: Makes request to the item data API to get the buy limit
+                // Why: The buy limit is stored in the OSRS Wiki mapping data
+                // How: GET request to /api/item/data/ with the item ID as a query parameter
+                const response = await fetch(`/api/item/data/?id=${encodeURIComponent(selectedItemId)}`);
+                
+                if (!response.ok) {
+                    throw new Error('Failed to fetch item data');
+                }
+                
+                const data = await response.json();
+                
+                // =============================================================================
+                // CHECK IF ITEM HAS A BUY LIMIT
+                // =============================================================================
+                // What: Validates that the item has a buy limit defined
+                // Why: Some items don't have buy limits (e.g., untradeable items, bonds)
+                // How: Check if data.limit exists and is not null/undefined
+                if (data.limit === null || data.limit === undefined) {
+                    alert('This item does not have a GE buy limit.');
+                    return;
+                }
+                
+                // =============================================================================
+                // POPULATE QUANTITY INPUT
+                // =============================================================================
+                // What: Sets the quantity input value to the item's buy limit
+                // Why: This is the main purpose of the Buy Limit button
+                // How: Set the input's value property to the limit from the API response
+                quantityInput.value = data.limit;
+                
+            } catch (error) {
+                // =============================================================================
+                // HANDLE ERRORS
+                // =============================================================================
+                // What: Shows error message if API request fails
+                // Why: User needs to know something went wrong
+                // How: Display alert with error information
+                console.error('Error fetching buy limit:', error);
+                alert('Failed to fetch buy limit. Please try again.');
+                
+            } finally {
+                // =============================================================================
+                // RESTORE BUTTON STATE
+                // =============================================================================
+                // What: Removes loading state and re-enables button
+                // Why: Need to allow user to try again or use button for different item
+                // How: Remove 'loading' class and re-enable button
+                btnBuyLimit.classList.remove('loading');
+                btnBuyLimit.disabled = false;
             }
         });
 
@@ -3593,6 +3770,15 @@
             dateInput.value = '';
             results.classList.remove('show');
             activeIndex = -1;
+            
+            // =============================================================================
+            // RESET BUY LIMIT BUTTON STATE ON MODAL CLOSE
+            // =============================================================================
+            // What: Clears the selected item ID and resets the Buy Limit button
+            // Why: When modal closes, form is cleared so button should return to disabled state
+            // How: Set selectedItemId to null and call updateBuyLimitButtonState
+            selectedItemId = null;
+            updateBuyLimitButtonState();
         });
 
         // Prevent Enter from submitting form unless Add Flip button is focused
