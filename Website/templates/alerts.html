@@ -1347,13 +1347,17 @@
     </div>
 </div>
 
-<script src="{% static 'js/alerts-config.js' %}"></script>
-<script src="{% static 'js/alerts-state.js' %}"></script>
-<script src="{% static 'js/alerts-api.js' %}"></script>
-<script src="{% static 'js/alerts-ui.js' %}"></script>
-<script src="{% static 'js/alerts-managers.js' %}"></script>
-<script src="{% static 'js/alerts-actions.js' %}"></script>
-<script src="{% static 'js/alerts-selectors.js' %}"></script>
-<script src="{% static 'js/alerts-init.js' %}"></script>
-<script src="{% static 'js/alerts-help.js' %}"></script>
+<!-- =============================================================================
+     PERFORMANCE: Scripts loaded with defer to not block initial render
+     ============================================================================= -->
+<!-- defer: Scripts execute after HTML parsing, in order, without blocking render -->
+<script defer src="{% static 'js/alerts-config.js' %}"></script>
+<script defer src="{% static 'js/alerts-state.js' %}"></script>
+<script defer src="{% static 'js/alerts-api.js' %}"></script>
+<script defer src="{% static 'js/alerts-ui.js' %}"></script>
+<script defer src="{% static 'js/alerts-managers.js' %}"></script>
+<script defer src="{% static 'js/alerts-actions.js' %}"></script>
+<script defer src="{% static 'js/alerts-selectors.js' %}"></script>
+<script defer src="{% static 'js/alerts-init.js' %}"></script>
+<script defer src="{% static 'js/alerts-help.js' %}"></script>
 {% endblock %}

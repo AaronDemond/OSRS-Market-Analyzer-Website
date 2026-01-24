@@ -374,13 +374,19 @@
             }
 
             // Build icon HTML - use item image if available, otherwise placeholder
+            // Icons are served locally from /static/icons/ for faster loading
+            // Local icons are named by item name (e.g., "Abyssal whip.png")
             let iconHtml;
             if (alert.icon) {
                 // Cache the icon for this item
                 if (alert.item_id) {
                     AlertsState.iconCache[alert.item_id] = alert.icon;
                 }
-                const iconUrl = 'https://oldschool.runescape.wiki/images/' + encodeURIComponent(alert.icon.replace(/ /g, '_'));
+                // iconFilename: Build local path using item_name (icons are named by item name, not API icon field)
+                // Example: item_name "Abyssal whip" -> "/static/icons/Abyssal whip.png"
+                // Falls back to alert.icon (replacing underscores with spaces) if item_name not available
+                const iconFilename = alert.item_name ? alert.item_name : alert.icon.replace(/_/g, ' ').replace(/\.png$/i, '');
+                const iconUrl = '/static/icons/' + encodeURIComponent(iconFilename) + '.png';
                 iconHtml = '<img class="alert-icon" src="' + iconUrl + '" alt="" loading="lazy">';
             } else if (typeIconSvgs[alert.type]) {
                 // Use semantic SVG icon when we lack item art (covers all-items and missing-icon cases) so the visual matches alert intent.
