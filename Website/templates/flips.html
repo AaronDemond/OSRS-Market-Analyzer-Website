@@ -4582,7 +4582,11 @@
 
         /**
          * Sets the date input max to yesterday (can't view future or today's historical data)
+         * What: Configures the historical date picker's allowed date range
          * Why: Historical data API only returns past data, today's data is "current"
+         *      Users should be able to select any past date for historical analysis
+         * How: Sets max date to yesterday (no future/today), no min date restriction
+         *      to allow selecting any historical date the user has data for
          */
         function initializeDatePicker() {
             const today = new Date();
@@ -4590,13 +4594,13 @@
             yesterday.setDate(yesterday.getDate() - 1);
             
             // Format as YYYY-MM-DD for the input max attribute
+            // What: Converts yesterday's date to the format required by HTML date input
+            // Why: Prevents users from selecting today or future dates (no historical data exists)
             const maxDate = yesterday.toISOString().split('T')[0];
             historicalDateInput.max = maxDate;
             
-            // Set min date to 1 year ago (API limitation)
-            const minDate = new Date(today);
-            minDate.setFullYear(minDate.getFullYear() - 1);
-            historicalDateInput.min = minDate.toISOString().split('T')[0];
+            // Note: No min date is set to allow users to select any past date
+            // The user's actual data availability will determine if results are shown
         }
 
         /**
