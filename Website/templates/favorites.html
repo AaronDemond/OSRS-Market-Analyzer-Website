@@ -262,39 +262,66 @@
         width: 14px;
         height: 14px;
     }
+    
+    .refresh-btn {
+        background: none;
+        border: none;
+        color: var(--muted);
+        cursor: pointer;
+        padding: 2px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        margin-left: 4px;
+        transition: all 0.2s;
+    }
+    
+    .refresh-btn:hover {
+        color: var(--primary);
+        background: var(--surface-2);
+    }
 
     /* Compact View Adjustments */
     .view-compact .favorites-grid {
-        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-        gap: 12px;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 6px;
     }
 
     .view-compact .favorite-item {
-        padding: 10px;
-        gap: 8px;
+        padding: 6px;
+        gap: 4px;
     }
 
     .view-compact .favorite-item-name {
-        font-size: 0.85rem;
+        font-size: 0.75rem;
     }
 
     .view-compact .favorite-prices {
-        font-size: 0.8rem;
+        font-size: 0.7rem;
     }
 
     .view-compact .favorite-price-value {
-        font-size: 0.85rem;
+        font-size: 0.75rem;
     }
 
     .view-compact .favorite-spread {
-        font-size: 0.75rem;
-        padding-top: 6px;
+        font-size: 0.65rem;
+        padding-top: 4px;
     }
 
     .view-compact .favorites-section,
     .view-compact .ungrouped-section {
-        padding: 16px;
-        margin-bottom: 16px;
+        padding: 10px;
+        margin-bottom: 10px;
+    }
+    
+    .view-compact .section-header {
+        padding: 0 0 6px 0;
+        margin-bottom: 6px;
+    }
+    
+    .view-compact .section-title {
+        font-size: 0.85rem;
     }
 
     /* List View */
@@ -511,17 +538,17 @@
     }
     
     .page-header-text h1 {
-        font-size: 1.75rem;
+        font-size: 1.5rem;
         font-weight: 700;
         color: var(--text);
         margin: 0 0 2px 0;
         letter-spacing: -0.02em;
     }
-    
+
     .page-header-text p {
         color: var(--muted);
         margin: 0;
-        font-size: 0.95rem;
+        font-size: 0.85rem;
     }
 
     .header-actions {
@@ -579,9 +606,9 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 0 0 12px 0;
+        padding: 0 0 8px 0;
         border-bottom: 1px solid var(--border);
-        margin-bottom: 16px;
+        margin-bottom: 10px;
         cursor: pointer;
         user-select: none;
     }
@@ -1184,6 +1211,46 @@
         background: rgba(239, 68, 68, 0.1);
         color: var(--danger);
     }
+    
+    .group-item-content {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 1;
+    }
+    
+    .group-name-input {
+        padding: 4px 8px;
+        border: 1px solid var(--primary);
+        border-radius: 4px;
+        font-size: 0.9rem;
+        width: 150px;
+        background: var(--surface);
+        color: var(--text);
+    }
+    
+    .group-item-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .group-edit-btn {
+        background: none;
+        border: none;
+        color: var(--muted);
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        transition: all 0.2s;
+    }
+    
+    .group-edit-btn:hover {
+        color: var(--primary);
+        background: var(--surface-2);
+    }
 
     .no-groups-message {
         text-align: center;
@@ -1304,6 +1371,25 @@
             padding-bottom: 4px;
         }
 
+        .sort-controls-row {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            flex-wrap: nowrap;
+            padding-bottom: 4px;
+            position: relative;
+        }
+        
+        .sort-controls-row::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 30px;
+            background: linear-gradient(to right, transparent, var(--bg));
+            pointer-events: none;
+        }
+
         .sort-control {
             flex-shrink: 0;
         }
@@ -1367,10 +1453,7 @@
         }
 
         .keyboard-shortcuts-badge {
-            bottom: 16px;
-            right: 16px;
-            width: 44px;
-            height: 44px;
+            display: none;
         }
     }
 
@@ -1447,6 +1530,12 @@
         border: 1px solid var(--border);
     }
     
+    .sort-controls-row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    
     .sort-label {
         font-size: 0.75rem;
         color: var(--muted);
@@ -1463,6 +1552,7 @@
         background: var(--surface);
         cursor: pointer;
         transition: all 0.2s;
+        min-width: 100px;
     }
     
     .toolbar-select-compact:hover {
@@ -1737,10 +1827,14 @@
         gap: 8px;
         font-size: 1rem;
         font-weight: 600;
-        color: var(--text);
+        color: var(--primary);
         margin-bottom: 10px;
         padding-bottom: 8px;
-        border-bottom: 2px solid var(--border);
+        border-bottom: 2px solid var(--primary);
+    }
+    
+    .help-section-title svg {
+        color: var(--warning);
     }
     
     .help-list {
@@ -1774,6 +1868,7 @@
         padding: 2px 6px;
         font-size: 0.75rem;
         font-family: monospace;
+        color: var(--text);
         background: var(--surface-2);
         border: 1px solid var(--border);
         border-radius: 3px;
@@ -1846,47 +1941,50 @@
             </button>
         </div>
         
-        <!-- Item Sort Control -->
-        <div class="sort-control">
-            <label class="sort-label">Item Sort:</label>
-            <select id="sortItems" class="toolbar-select-compact">
-                <option value="default">Default</option>
-                <option value="name">Name</option>
-                <option value="spread">Spread %</option>
-                <option value="high-price">High Price</option>
-                <option value="low-price">Low Price</option>
-            </select>
-            <button class="sort-direction-btn" id="itemSortDirection" data-direction="asc" title="Toggle sort direction">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
-                </svg>
-            </button>
-        </div>
-        
-        <!-- Group Sort Control -->
-        <div class="sort-control">
-            <label class="sort-label">Group Sort:</label>
-            <select id="sortGroups" class="toolbar-select-compact">
-                <option value="default">Default</option>
-                <option value="name">Name</option>
-                <option value="count">Item Count</option>
-                <option value="spread">Total Spread</option>
-            </select>
-            <button class="sort-direction-btn" id="groupSortDirection" data-direction="asc" title="Toggle sort direction">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
-                </svg>
-            </button>
+        <!-- Sort Controls Row -->
+        <div class="sort-controls-row">
+            <!-- Item Sort Control -->
+            <div class="sort-control">
+                <label class="sort-label">Item Sort:</label>
+                <select id="sortItems" class="toolbar-select-compact">
+                    <option value="default">Default</option>
+                    <option value="name">Name</option>
+                    <option value="spread">Spread %</option>
+                    <option value="high-price">High Price</option>
+                    <option value="low-price">Low Price</option>
+                </select>
+                <button class="sort-direction-btn" id="itemSortDirection" data-direction="asc" title="Toggle sort direction">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Group Sort Control -->
+            <div class="sort-control">
+                <label class="sort-label">Group Sort:</label>
+                <select id="sortGroups" class="toolbar-select-compact">
+                    <option value="default">Default</option>
+                    <option value="name">Name</option>
+                    <option value="count">Item Count</option>
+                    <option value="spread">Total Spread</option>
+                </select>
+                <button class="sort-direction-btn" id="groupSortDirection" data-direction="asc" title="Toggle sort direction">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
+                    </svg>
+                </button>
+            </div>
         </div>
     </div>
     
     <div class="toolbar-controls">
         <!-- Show All Toggle -->
-        <button class="toolbar-btn-compact" id="showAllToggle" title="Toggle Show All view">
+        <button class="toolbar-btn-compact" id="showAllToggle" title="Toggle grouped/ungrouped view">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
             </svg>
-            Show All
+            <span id="showAllToggleText">Un-Group</span>
         </button>
         
         <!-- Help Button -->
@@ -1919,6 +2017,11 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
             <span>Updated <span id="lastUpdatedTime">just now</span></span>
+            <button class="refresh-btn" onclick="location.reload()" title="Refresh page">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 14px; height: 14px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+            </button>
         </div>
     </div>
 </div>
@@ -2290,6 +2393,11 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+// Get CSRF token from cookies
+function getCsrfToken() {
+    return document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+}
+
 /**
  * Update item count summary
  */
@@ -2469,8 +2577,8 @@ function renderFavoriteItem(fav, allGroups = []) {
     
     // Generate group badges if item is in multiple groups
     let groupBadgesHtml = '';
-    if (Array.isArray(fav.groups) && fav.groups.length > 0 && allGroups.length > 0) {
-        const itemGroups = allGroups.filter(g => fav.groups.includes(g.id));
+    if (Array.isArray(fav.group_ids) && fav.group_ids.length > 0 && allGroups.length > 0) {
+        const itemGroups = allGroups.filter(g => fav.group_ids.includes(g.id));
         if (itemGroups.length > 0) {
             groupBadgesHtml = `
                 <div class="item-group-badges">
@@ -3032,6 +3140,7 @@ $(document).ready(function() {
     $('#showAllToggle').on('click', function() {
         showAllView = !showAllView;
         $(this).toggleClass('active', showAllView);
+        $('#showAllToggleText').text(showAllView ? 'Group' : 'Un-Group');
         localStorage.setItem('favorites_show_all', showAllView ? 'true' : 'false');
         if (favoritesData) {
             renderFavoritesContent(favoritesData);
@@ -3072,6 +3181,9 @@ $(document).ready(function() {
     if (savedShowAll === 'true') {
         showAllView = true;
         $('#showAllToggle').addClass('active');
+        $('#showAllToggleText').text('Group');
+    } else {
+        $('#showAllToggleText').text('Un-Group');
     }
     
     // Load hidden groups from localStorage
@@ -3145,7 +3257,7 @@ function submitFavorite() {
         payload.new_group_name = newGroupInput.value.trim();
     }
     
-    const csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+    const csrfToken = getCsrfToken();
     
     fetch('/api/favorites/add/', {
         method: 'POST',
@@ -3256,7 +3368,7 @@ function saveItemGroups() {
         payload.new_group_name = newGroupInput.value.trim();
     }
     
-    const csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+    const csrfToken = getCsrfToken();
     
     fetch('/api/favorites/update-group/', {
         method: 'POST',
@@ -3299,7 +3411,7 @@ function closeDeleteModal() {
 }
 
 function doRemoveFavorite(itemId) {
-    const csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+    const csrfToken = getCsrfToken();
     
     fetch('/api/favorites/remove/', {
         method: 'POST',
@@ -3365,16 +3477,24 @@ function openManageGroupsModal() {
         favoritesData.groups.forEach(group => {
             // Count items in this group (with Array.isArray check for safety)
             const itemCount = favoritesData.favorites.filter(fav => 
-                Array.isArray(fav.groups) && fav.groups.includes(group.id)
+                Array.isArray(fav.group_ids) && fav.group_ids.includes(group.id)
             ).length;
             
             html += `
                 <div class="group-item" data-group-id="${group.id}">
-                    <div>
-                        <span class="group-item-name">${escapeHtml(group.name)}</span>
+                    <div class="group-item-content">
+                        <span class="group-item-name" data-group-id="${group.id}">${escapeHtml(group.name)}</span>
+                        <input type="text" class="group-name-input" data-group-id="${group.id}" value="${escapeHtml(group.name)}" style="display: none;">
                         <span class="group-item-count">(${itemCount} item${itemCount !== 1 ? 's' : ''})</span>
                     </div>
-                    <button class="group-delete-btn" data-group-id="${group.id}" data-group-name="${escapeHtml(group.name)}">Delete</button>
+                    <div class="group-item-actions">
+                        <button class="group-edit-btn" data-group-id="${group.id}" title="Edit name">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 14px; height: 14px;">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                            </svg>
+                        </button>
+                        <button class="group-delete-btn" data-group-id="${group.id}" data-group-name="${escapeHtml(group.name)}">Delete</button>
+                    </div>
                 </div>
             `;
         });
@@ -3386,6 +3506,49 @@ function openManageGroupsModal() {
                 const groupId = parseInt(this.dataset.groupId);
                 const groupName = this.dataset.groupName;
                 deleteGroup(groupId, groupName);
+            });
+        });
+        
+        // Edit button listeners
+        groupsList.querySelectorAll('.group-edit-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const groupId = this.dataset.groupId;
+                const nameSpan = groupsList.querySelector(`.group-item-name[data-group-id="${groupId}"]`);
+                const nameInput = groupsList.querySelector(`.group-name-input[data-group-id="${groupId}"]`);
+                nameSpan.style.display = 'none';
+                nameInput.style.display = 'inline-block';
+                nameInput.focus();
+                nameInput.select();
+            });
+        });
+        
+        // Save on Enter or blur
+        groupsList.querySelectorAll('.group-name-input').forEach(input => {
+            const saveGroupName = function() {
+                const groupId = parseInt(this.dataset.groupId);
+                const newName = this.value.trim();
+                const nameSpan = groupsList.querySelector(`.group-item-name[data-group-id="${groupId}"]`);
+                
+                if (newName && newName !== nameSpan.textContent.trim()) {
+                    // Call API to update group name
+                    updateGroupName(groupId, newName);
+                }
+                nameSpan.style.display = 'inline';
+                this.style.display = 'none';
+            };
+            
+            input.addEventListener('blur', saveGroupName);
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.blur();
+                } else if (e.key === 'Escape') {
+                    const groupId = this.dataset.groupId;
+                    const nameSpan = groupsList.querySelector(`.group-item-name[data-group-id="${groupId}"]`);
+                    this.value = nameSpan.textContent;
+                    nameSpan.style.display = 'inline';
+                    this.style.display = 'none';
+                }
             });
         });
     }
@@ -3417,7 +3580,7 @@ function closeDeleteGroupModal() {
 }
 
 function doDeleteGroup(groupId) {
-    const csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+    const csrfToken = getCsrfToken();
     
     fetch('/api/favorites/groups/delete/', {
         method: 'POST',
@@ -3433,12 +3596,58 @@ function doDeleteGroup(groupId) {
             closeDeleteGroupModal();
             location.reload();
         } else {
-            alert('Failed to delete group: ' + (data.error || 'Unknown error'));
+            console.error('Failed to delete group:', data.error || 'Unknown error');
+            closeDeleteGroupModal();
         }
     })
     .catch(err => {
         console.error('Error deleting group:', err);
         closeDeleteGroupModal();
+    });
+}
+
+function updateGroupName(groupId, newName) {
+    const csrfToken = getCsrfToken();
+    
+    fetch('/api/favorites/groups/update/', {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({ group_id: groupId, name: newName })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            // Update the group name in favoritesData
+            const group = favoritesData.groups.find(g => g.id === groupId);
+            if (group) {
+                group.name = newName;
+                // Update all instances of this group name in the DOM
+                document.querySelectorAll('.section-title').forEach(title => {
+                    if (title.closest('.favorites-section')?.dataset.groupId === String(groupId)) {
+                        title.textContent = newName;
+                    }
+                });
+                // Update the name in the Manage Groups modal
+                const nameSpan = document.querySelector(`.group-item-name[data-group-id="${groupId}"]`);
+                if (nameSpan) {
+                    nameSpan.textContent = newName;
+                }
+            }
+        } else {
+            console.error('Failed to update group name:', data.error || 'Unknown error');
+            // Optionally revert the input to original value
+            const nameInput = document.querySelector(`.group-name-input[data-group-id="${groupId}"]`);
+            const nameSpan = document.querySelector(`.group-item-name[data-group-id="${groupId}"]`);
+            if (nameInput && nameSpan) {
+                nameInput.value = nameSpan.textContent;
+            }
+        }
+    })
+    .catch(err => {
+        console.error('Error updating group name:', err);
     });
 }
 
