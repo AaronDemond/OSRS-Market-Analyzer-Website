@@ -20,6 +20,462 @@
         --warning: #F59E0B;
     }
 
+    /* Quick Stats Bar */
+    .quick-stats-bar {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+
+    .stat-card {
+        flex: 1;
+        min-width: 180px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        transition: all 0.2s;
+    }
+
+    .stat-card:hover {
+        border-color: var(--primary);
+        box-shadow: 0 2px 8px rgba(99, 102, 241, 0.1);
+    }
+
+    .stat-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .stat-icon.primary {
+        background: rgba(99, 102, 241, 0.1);
+        color: var(--primary);
+    }
+
+    .stat-icon.success {
+        background: rgba(34, 197, 94, 0.1);
+        color: var(--success);
+    }
+
+    .stat-icon.warning {
+        background: rgba(245, 158, 11, 0.1);
+        color: var(--warning);
+    }
+
+    .stat-icon svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .stat-content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .stat-label {
+        font-size: 0.75rem;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+        margin-bottom: 2px;
+    }
+
+    .stat-value {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text);
+        line-height: 1;
+    }
+
+    .stat-sub {
+        font-size: 0.7rem;
+        color: var(--muted);
+        margin-top: 2px;
+    }
+
+    /* Toolbar Section */
+    .favorites-toolbar {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 20px;
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .toolbar-search {
+        flex: 1;
+        min-width: 200px;
+        position: relative;
+    }
+
+    .toolbar-search input {
+        width: 100%;
+        padding: 10px 36px 10px 40px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+    }
+
+    .toolbar-search input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    .toolbar-search-icon {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--muted);
+        pointer-events: none;
+    }
+
+    .toolbar-search-icon svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .toolbar-search-clear {
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: var(--muted);
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 4px;
+        display: none;
+        transition: all 0.15s;
+    }
+
+    .toolbar-search-clear:hover {
+        background: var(--surface-2);
+        color: var(--text);
+    }
+
+    .toolbar-search-clear svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .toolbar-search-clear.show {
+        display: block;
+    }
+
+    .toolbar-controls {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .toolbar-select {
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 0.9rem;
+        color: var(--text);
+        background: var(--surface);
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .toolbar-select:hover {
+        border-color: var(--primary);
+    }
+
+    .toolbar-select:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    .view-toggle {
+        display: flex;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .view-toggle-btn {
+        padding: 10px 16px;
+        background: var(--surface);
+        border: none;
+        color: var(--muted);
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+
+    .view-toggle-btn:not(:last-child) {
+        border-right: 1px solid var(--border);
+    }
+
+    .view-toggle-btn:hover {
+        background: var(--surface-2);
+        color: var(--text);
+    }
+
+    .view-toggle-btn.active {
+        background: var(--primary);
+        color: white;
+    }
+
+    .view-toggle-btn svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    /* Last Updated Indicator */
+    .last-updated {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.8rem;
+        color: var(--muted);
+        padding: 8px 12px;
+        background: var(--surface-2);
+        border-radius: 6px;
+    }
+
+    .last-updated svg {
+        width: 14px;
+        height: 14px;
+    }
+    
+    .refresh-btn {
+        background: none;
+        border: none;
+        color: var(--muted);
+        cursor: pointer;
+        padding: 2px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        margin-left: 4px;
+        transition: all 0.2s;
+    }
+    
+    .refresh-btn:hover {
+        color: var(--primary);
+        background: var(--surface-2);
+    }
+
+    /* Compact View Adjustments */
+    .view-compact .favorites-grid {
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 6px;
+    }
+
+    .view-compact .favorite-item {
+        padding: 6px;
+        gap: 4px;
+    }
+
+    .view-compact .favorite-item-name {
+        font-size: 0.75rem;
+    }
+
+    .view-compact .favorite-prices {
+        font-size: 0.7rem;
+    }
+
+    .view-compact .favorite-price-value {
+        font-size: 0.75rem;
+    }
+
+    .view-compact .favorite-spread {
+        font-size: 0.65rem;
+        padding-top: 4px;
+    }
+
+    .view-compact .favorites-section,
+    .view-compact .ungrouped-section {
+        padding: 10px;
+        margin-bottom: 10px;
+    }
+    
+    .view-compact .section-header {
+        padding: 0;
+        margin-bottom: 4px;
+    }
+    
+    .view-compact .section-title {
+        font-size: 0.8rem;
+    }
+
+    /* List View */
+    .view-list .favorites-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .view-list .favorite-item {
+        flex-direction: row;
+        align-items: center;
+        padding: 12px 16px;
+        gap: 16px;
+    }
+
+    .view-list .favorite-item-header {
+        flex: 1;
+        min-width: 150px;
+    }
+
+    .view-list .favorite-prices {
+        display: flex;
+        gap: 24px;
+        flex-shrink: 0;
+    }
+
+    .view-list .favorite-price {
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .view-list .favorite-price-label {
+        font-size: 0.75rem;
+        margin-bottom: 0;
+    }
+
+    .view-list .favorite-spread {
+        border-top: none;
+        border-left: 1px solid var(--border);
+        padding: 0 0 0 16px;
+        margin-left: 8px;
+        text-align: left;
+        min-width: 120px;
+        flex-shrink: 0;
+    }
+
+    /* Tooltip Styles */
+    .tooltip-trigger {
+        position: relative;
+    }
+
+    .tooltip-text {
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 6px 10px;
+        background: rgba(0, 0, 0, 0.9);
+        color: white;
+        font-size: 0.75rem;
+        border-radius: 6px;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s;
+        z-index: 100;
+        margin-bottom: 6px;
+    }
+
+    .tooltip-text::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border: 4px solid transparent;
+        border-top-color: rgba(0, 0, 0, 0.9);
+    }
+
+    .tooltip-trigger:hover .tooltip-text {
+        opacity: 1;
+    }
+
+    /* Keyboard Shortcuts Help */
+    .keyboard-shortcuts-badge {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 48px;
+        height: 48px;
+        background: var(--primary);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        transition: all 0.2s;
+        z-index: 50;
+    }
+
+    .keyboard-shortcuts-badge:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 16px rgba(99, 102, 241, 0.5);
+    }
+
+    .keyboard-shortcuts-badge svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    .shortcuts-modal .modal-content {
+        max-width: 500px;
+    }
+
+    .shortcuts-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .shortcut-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px;
+        background: var(--surface-2);
+        border-radius: 6px;
+    }
+
+    .shortcut-keys {
+        display: flex;
+        gap: 4px;
+    }
+
+    .shortcut-key {
+        padding: 4px 8px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-family: monospace;
+        font-weight: 600;
+        color: var(--text);
+    }
+
+    .shortcut-desc {
+        font-size: 0.9rem;
+        color: var(--text);
+    }
+
     /* Loading State */
     .loading-container {
         display: flex;
@@ -82,17 +538,17 @@
     }
     
     .page-header-text h1 {
-        font-size: 1.75rem;
+        font-size: 1.5rem;
         font-weight: 700;
         color: var(--text);
         margin: 0 0 2px 0;
         letter-spacing: -0.02em;
     }
-    
+
     .page-header-text p {
         color: var(--muted);
         margin: 0;
-        font-size: 0.95rem;
+        font-size: 0.85rem;
     }
 
     .header-actions {
@@ -150,9 +606,9 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 0 0 12px 0;
+        padding: 0;
         border-bottom: 1px solid var(--border);
-        margin-bottom: 16px;
+        margin-bottom: 6px;
         cursor: pointer;
         user-select: none;
     }
@@ -164,12 +620,12 @@
     .section-header-left {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 6px;
     }
 
     .collapse-toggle {
-        width: 24px;
-        height: 24px;
+        width: 18px;
+        height: 18px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -178,8 +634,8 @@
     }
 
     .collapse-toggle svg {
-        width: 18px;
-        height: 18px;
+        width: 14px;
+        height: 14px;
     }
 
     .section-header.collapsed .collapse-toggle {
@@ -187,22 +643,22 @@
     }
 
     .section-title {
-        font-size: 1rem;
+        font-size: 0.9rem;
         font-weight: 600;
         color: var(--text);
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
     }
 
     .section-title svg {
-        width: 18px;
-        height: 18px;
+        width: 14px;
+        height: 14px;
         color: var(--muted);
     }
 
     .section-count {
-        font-size: 0.85rem;
+        font-size: 0.75rem;
         color: var(--muted);
         font-weight: 400;
     }
@@ -755,6 +1211,46 @@
         background: rgba(239, 68, 68, 0.1);
         color: var(--danger);
     }
+    
+    .group-item-content {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 1;
+    }
+    
+    .group-name-input {
+        padding: 4px 8px;
+        border: 1px solid var(--primary);
+        border-radius: 4px;
+        font-size: 0.9rem;
+        width: 150px;
+        background: var(--surface);
+        color: var(--text);
+    }
+    
+    .group-item-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .group-edit-btn {
+        background: none;
+        border: none;
+        color: var(--muted);
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        transition: all 0.2s;
+    }
+    
+    .group-edit-btn:hover {
+        color: var(--primary);
+        background: var(--surface-2);
+    }
 
     .no-groups-message {
         text-align: center;
@@ -843,6 +1339,71 @@
             align-items: flex-start;
         }
 
+        .quick-stats-bar {
+            flex-direction: column;
+        }
+
+        .stat-card {
+            min-width: 100%;
+        }
+
+        .favorites-toolbar {
+            flex-direction: column;
+        }
+
+        .toolbar-search {
+            width: 100%;
+            min-width: 100%;
+        }
+
+        .toolbar-controls {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            flex-wrap: nowrap;
+            padding-bottom: 4px;
+        }
+
+        .toolbar-row {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            flex-wrap: nowrap;
+            padding-bottom: 4px;
+        }
+
+        .sort-controls-row {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            flex-wrap: nowrap;
+            padding-bottom: 4px;
+            position: relative;
+        }
+        
+        .sort-controls-row::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 30px;
+            background: linear-gradient(to right, transparent, var(--bg));
+            pointer-events: none;
+        }
+
+        .sort-control {
+            flex-shrink: 0;
+        }
+
+        .toolbar-select,
+        .view-toggle {
+            flex-shrink: 0;
+        }
+
+        .last-updated {
+            width: 100%;
+            justify-content: center;
+        }
+
         .favorites-grid {
             grid-template-columns: 1fr;
         }
@@ -872,6 +1433,459 @@
             flex: 1;
             justify-content: center;
         }
+
+        .view-list .favorite-item {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .view-list .favorite-prices {
+            width: 100%;
+            justify-content: space-between;
+        }
+
+        .view-list .favorite-spread {
+            border-left: none;
+            border-top: 1px solid var(--border);
+            padding: 8px 0 0 0;
+            margin: 8px 0 0 0;
+            width: 100%;
+        }
+
+        .keyboard-shortcuts-badge {
+            display: none;
+        }
+    }
+
+    /* ========================================
+       COMPACT SIZE REDUCTIONS
+       ======================================== */
+    
+    /* Reduce header button sizes */
+    .header-btn {
+        padding: 8px 14px !important;
+        font-size: 0.85rem !important;
+    }
+    
+    .header-btn svg {
+        width: 16px !important;
+        height: 16px !important;
+    }
+    
+    /* Reduce toolbar padding */
+    .favorites-toolbar {
+        padding: 10px !important;
+        margin-bottom: 14px !important;
+        gap: 10px !important;
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .toolbar-row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    
+    .toolbar-search {
+        flex: 1;
+        min-width: 180px;
+    }
+    
+    .toolbar-search input {
+        padding: 7px 32px 7px 34px !important;
+        font-size: 0.85rem !important;
+    }
+    
+    .toolbar-controls {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    
+    /* Item count summary */
+    .item-count-summary {
+        font-size: 0.8rem;
+        color: var(--muted);
+        font-weight: 500;
+        padding-bottom: 6px;
+        border-bottom: 1px solid var(--border);
+    }
+    
+    .item-count-summary span {
+        color: var(--primary);
+        font-weight: 600;
+    }
+    
+    /* Sort controls */
+    .sort-control {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--surface-2);
+        padding: 4px 8px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+    }
+    
+    .sort-controls-row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    
+    .sort-label {
+        font-size: 0.75rem;
+        color: var(--muted);
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    
+    .toolbar-select-compact {
+        padding: 5px 8px;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        font-size: 0.8rem;
+        color: var(--text);
+        background: var(--surface);
+        cursor: pointer;
+        transition: all 0.2s;
+        min-width: 100px;
+    }
+    
+    .toolbar-select-compact:hover {
+        border-color: var(--primary);
+    }
+    
+    .toolbar-select-compact:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+    }
+    
+    .sort-direction-btn {
+        padding: 4px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--muted);
+    }
+    
+    .sort-direction-btn:hover {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: white;
+    }
+    
+    .sort-direction-btn svg {
+        width: 14px;
+        height: 14px;
+        transition: transform 0.2s;
+    }
+    
+    .sort-direction-btn[data-direction="desc"] svg {
+        transform: rotate(180deg);
+    }
+    
+    .sort-direction-btn.active {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: white;
+    }
+    
+    /* Compact toolbar buttons */
+    .toolbar-btn-compact {
+        padding: 6px 10px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        font-size: 0.8rem;
+        color: var(--text);
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-weight: 500;
+    }
+    
+    .toolbar-btn-compact:hover {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: white;
+    }
+    
+    .toolbar-btn-compact svg {
+        width: 14px;
+        height: 14px;
+    }
+    
+    .toolbar-btn-compact.active {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: white;
+    }
+    
+    /* Reduce view toggle button sizes */
+    .view-toggle-btn {
+        padding: 6px 10px !important;
+        font-size: 0;
+    }
+    
+    .view-toggle-btn svg {
+        width: 14px !important;
+        height: 14px !important;
+    }
+    
+    /* Reduce card padding and gaps */
+    .favorites-grid {
+        gap: 12px !important;
+    }
+    
+    .favorites-section {
+        padding: 14px !important;
+        margin-bottom: 14px !important;
+    }
+    
+    .section-header {
+        padding: 0 !important;
+        margin-bottom: 6px !important;
+    }
+    
+    .section-title {
+        font-size: 0.85rem !important;
+    }
+    
+    .section-count {
+        font-size: 0.7rem !important;
+    }
+    
+    .favorite-item {
+        padding: 10px !important;
+    }
+    
+    .favorite-item-name {
+        font-size: 0.85rem !important;
+    }
+    
+    .favorite-prices {
+        font-size: 0.8rem !important;
+    }
+    
+    .favorite-spread {
+        padding: 8px 0 0 12px !important;
+    }
+    
+    .last-updated {
+        font-size: 0.75rem !important;
+        padding: 4px 8px !important;
+    }
+    
+    .last-updated svg {
+        width: 12px !important;
+        height: 12px !important;
+    }
+    
+    /* ========================================
+       NEW FEATURE STYLES
+       ======================================== */
+    
+    /* Group visibility toggle */
+    .group-visibility-toggle {
+        padding: 4px;
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--muted);
+        margin-left: auto;
+    }
+    
+    .group-visibility-toggle:hover {
+        background: var(--surface-2);
+        border-color: var(--border);
+        color: var(--text);
+    }
+    
+    .group-visibility-toggle svg {
+        width: 16px;
+        height: 16px;
+    }
+    
+    .group-visibility-toggle.hidden {
+        color: var(--danger);
+    }
+    
+    /* Hidden groups section */
+    .hidden-groups-section {
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px;
+        margin-bottom: 14px;
+    }
+    
+    .hidden-groups-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+        color: var(--muted);
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    
+    .hidden-groups-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    
+    .hidden-group-badge {
+        padding: 4px 8px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        font-size: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .hidden-group-badge:hover {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: white;
+    }
+    
+    .hidden-group-badge svg {
+        width: 12px;
+        height: 12px;
+    }
+    
+    /* Multi-group badges on items */
+    .item-group-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-top: 6px;
+    }
+    
+    .item-group-badge {
+        padding: 2px 6px;
+        background: rgba(99, 102, 241, 0.1);
+        color: var(--primary);
+        border-radius: 4px;
+        font-size: 0.7rem;
+        font-weight: 500;
+    }
+    
+    /* Show All view styles */
+    .show-all-view .favorites-section {
+        border: none;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    
+    .show-all-view .section-header {
+        display: none;
+    }
+    
+    .show-all-view .favorites-grid {
+        margin-top: 0 !important;
+    }
+    
+    /* Help modal styles */
+    .help-modal .modal-content {
+        max-width: 700px;
+    }
+    
+    .help-section {
+        margin-bottom: 20px;
+    }
+    
+    .help-section:last-child {
+        margin-bottom: 0;
+    }
+    
+    .help-section-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 1rem;
+        font-weight: 600;
+        color: #0d9488;
+        margin-bottom: 10px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #0d9488;
+    }
+    
+    .help-section-title svg {
+        color: var(--warning);
+    }
+    
+    .help-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .help-list li {
+        padding: 6px 0 6px 20px;
+        position: relative;
+        font-size: 0.9rem;
+        line-height: 1.5;
+        color: var(--text);
+    }
+    
+    .help-list li:before {
+        content: "→";
+        position: absolute;
+        left: 0;
+        color: #0d9488;
+        font-weight: bold;
+    }
+    
+    .help-list strong {
+        color: #0d9488;
+    }
+    
+    .help-list kbd {
+        display: inline-block;
+        padding: 2px 6px;
+        font-size: 0.75rem;
+        font-family: monospace;
+        color: var(--text);
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: 3px;
+        box-shadow: 0 1px 0 var(--border);
+    }
+    
+    /* Collapsed group styles */
+    .favorites-section.collapsed .favorites-grid {
+        display: none;
+    }
+    
+    .section-toggle-icon {
+        transition: transform 0.2s;
+    }
+    
+    .favorites-section.collapsed .section-toggle-icon {
+        transform: rotate(-90deg);
     }
 </style>
 {% endblock %}
@@ -905,11 +1919,125 @@
     </div>
 </div>
 
+<!-- Toolbar -->
+<div class="favorites-toolbar" id="favoritesToolbar" style="display: none;">
+    <!-- Item Count Summary -->
+    <div class="item-count-summary" id="itemCountSummary">
+        Showing <span id="visibleItemCount">0</span> of <span id="totalItemCount">0</span> items
+    </div>
+    
+    <div class="toolbar-row">
+        <div class="toolbar-search">
+            <div class="toolbar-search-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+            </div>
+            <input type="text" id="searchFavorites" placeholder="Search favorites..." autocomplete="off">
+            <button class="toolbar-search-clear" id="searchClear">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        
+        <!-- Sort Controls Row -->
+        <div class="sort-controls-row">
+            <!-- Item Sort Control -->
+            <div class="sort-control">
+                <label class="sort-label">Item Sort:</label>
+                <select id="sortItems" class="toolbar-select-compact">
+                    <option value="default">Default</option>
+                    <option value="name">Name</option>
+                    <option value="spread">Spread %</option>
+                    <option value="high-price">High Price</option>
+                    <option value="low-price">Low Price</option>
+                </select>
+                <button class="sort-direction-btn" id="itemSortDirection" data-direction="asc" title="Toggle sort direction">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Group Sort Control -->
+            <div class="sort-control">
+                <label class="sort-label">Group Sort:</label>
+                <select id="sortGroups" class="toolbar-select-compact">
+                    <option value="default">Default</option>
+                    <option value="name">Name</option>
+                    <option value="count">Item Count</option>
+                    <option value="spread">Total Spread</option>
+                </select>
+                <button class="sort-direction-btn" id="groupSortDirection" data-direction="asc" title="Toggle sort direction">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="toolbar-controls">
+        <!-- Show All Toggle -->
+        <button class="toolbar-btn-compact" id="showAllToggle" title="Toggle grouped/ungrouped view">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+            </svg>
+            <span id="showAllToggleText">Un-Group</span>
+        </button>
+        
+        <!-- Help Button -->
+        <button class="toolbar-btn-compact" id="helpBtn" title="Show help">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            Help
+        </button>
+        
+        <div class="view-toggle">
+            <button class="view-toggle-btn active" data-view="comfortable" title="Comfortable view">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                </svg>
+            </button>
+            <button class="view-toggle-btn" data-view="compact" title="Compact view">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                </svg>
+            </button>
+            <button class="view-toggle-btn" data-view="list" title="List view">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                </svg>
+            </button>
+        </div>
+        <div class="last-updated" id="lastUpdated">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span>Updated <span id="lastUpdatedTime">just now</span></span>
+            <button class="refresh-btn" onclick="location.reload()" title="Refresh page">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 14px; height: 14px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+</div>
+
 <div id="favorites-content">
     <div class="loading-container">
         <div class="spinner-border" role="status" style="width: 36px; height: 36px; color: var(--primary);"></div>
         <span class="loading-text">Loading</span>
     </div>
+</div>
+
+<!-- Keyboard Shortcuts Badge -->
+<div class="keyboard-shortcuts-badge" id="shortcutsBadge" title="Keyboard Shortcuts (Press ?)">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
+    </svg>
 </div>
 
 <!-- Add Favorite Modal -->
@@ -1011,23 +2139,7 @@
         </div>
         <div class="modal-body">
             <div class="groups-list" id="groupsList">
-                {% if groups %}
-                    {% for group in groups %}
-                    <div class="group-item" data-group-id="{{ group.id }}">
-                        <div>
-                            <span class="group-item-name">{{ group.name }}</span>
-                            <span class="group-item-count">
-                                {% with count=grouped_favorites|get_item:group.id|length|default:0 %}
-                                ({{ count }} item{{ count|pluralize }})
-                                {% endwith %}
-                            </span>
-                        </div>
-                        <button class="group-delete-btn" onclick="deleteGroup({{ group.id }}, '{{ group.name|escapejs }}')">Delete</button>
-                    </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="no-groups-message">No groups created yet</div>
-                {% endif %}
+                <!-- Populated dynamically by JavaScript -->
             </div>
         </div>
     </div>
@@ -1079,12 +2191,194 @@
         </div>
     </div>
 </div>
+
+<!-- Keyboard Shortcuts Modal -->
+<div class="modal-overlay shortcuts-modal" id="shortcutsModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Keyboard Shortcuts</h3>
+            <button class="modal-close" onclick="closeShortcutsModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="shortcuts-list">
+                <div class="shortcut-item">
+                    <div class="shortcut-desc">Show this help</div>
+                    <div class="shortcut-keys">
+                        <span class="shortcut-key">?</span>
+                    </div>
+                </div>
+                <div class="shortcut-item">
+                    <div class="shortcut-desc">Add new favorite</div>
+                    <div class="shortcut-keys">
+                        <span class="shortcut-key">N</span>
+                    </div>
+                </div>
+                <div class="shortcut-item">
+                    <div class="shortcut-desc">Focus search</div>
+                    <div class="shortcut-keys">
+                        <span class="shortcut-key">/</span>
+                    </div>
+                </div>
+                <div class="shortcut-item">
+                    <div class="shortcut-desc">Clear search</div>
+                    <div class="shortcut-keys">
+                        <span class="shortcut-key">Esc</span>
+                    </div>
+                </div>
+                <div class="shortcut-item">
+                    <div class="shortcut-desc">Manage groups</div>
+                    <div class="shortcut-keys">
+                        <span class="shortcut-key">G</span>
+                    </div>
+                </div>
+                <div class="shortcut-item">
+                    <div class="shortcut-desc">Toggle compact view</div>
+                    <div class="shortcut-keys">
+                        <span class="shortcut-key">C</span>
+                    </div>
+                </div>
+                <div class="shortcut-item">
+                    <div class="shortcut-desc">Toggle list view</div>
+                    <div class="shortcut-keys">
+                        <span class="shortcut-key">L</span>
+                    </div>
+                </div>
+                <div class="shortcut-item">
+                    <div class="shortcut-desc">Collapse all groups</div>
+                    <div class="shortcut-keys">
+                        <span class="shortcut-key">[</span>
+                    </div>
+                </div>
+                <div class="shortcut-item">
+                    <div class="shortcut-desc">Expand all groups</div>
+                    <div class="shortcut-keys">
+                        <span class="shortcut-key">]</span>
+                    </div>
+                </div>
+                <div class="shortcut-item">
+                    <div class="shortcut-desc">Refresh page</div>
+                    <div class="shortcut-keys">
+                        <span class="shortcut-key">R</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Help Modal -->
+<div class="modal-overlay help-modal" id="helpModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Help & Guide</h3>
+            <button class="modal-close" onclick="closeHelpModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="help-section">
+                <h4 class="help-section-title">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Adding & Removing Favorites
+                </h4>
+                <ul class="help-list">
+                    <li><strong>Add Item:</strong> Click "Add Item" button or press <kbd>N</kbd></li>
+                    <li><strong>Remove Item:</strong> Click the trash icon on any item card</li>
+                    <li><strong>Quick Search:</strong> Use the search bar or press <kbd>/</kbd> to focus</li>
+                </ul>
+            </div>
+            
+            <div class="help-section">
+                <h4 class="help-section-title">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                    </svg>
+                    Using Groups
+                </h4>
+                <ul class="help-list">
+                    <li><strong>Create Group:</strong> Add a new group when adding/editing an item</li>
+                    <li><strong>Edit Groups:</strong> Click "Edit Groups" on any item to manage its groups</li>
+                    <li><strong>Manage Groups:</strong> Use "Manage Groups" button to view and delete groups</li>
+                    <li><strong>Hide Groups:</strong> Click the eye icon on a group header to temporarily hide it</li>
+                    <li><strong>Multiple Groups:</strong> Items can belong to multiple groups (shown as badges)</li>
+                </ul>
+            </div>
+            
+            <div class="help-section">
+                <h4 class="help-section-title">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4"/>
+                    </svg>
+                    Sorting & Filtering
+                </h4>
+                <ul class="help-list">
+                    <li><strong>Item Sort:</strong> Sort items by name, spread %, high price, or low price</li>
+                    <li><strong>Group Sort:</strong> Sort groups by name, item count, or total spread value</li>
+                    <li><strong>Sort Direction:</strong> Click the arrow button to toggle ascending/descending</li>
+                    <li><strong>Show All:</strong> Toggle to see all favorites in a flat list without groups</li>
+                    <li><strong>Search:</strong> Filter items by name using the search box</li>
+                </ul>
+            </div>
+            
+            <div class="help-section">
+                <h4 class="help-section-title">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
+                    </svg>
+                    Keyboard Shortcuts
+                </h4>
+                <ul class="help-list">
+                    <li><kbd>?</kbd> - Show keyboard shortcuts</li>
+                    <li><kbd>N</kbd> - Add new favorite</li>
+                    <li><kbd>/</kbd> - Focus search box</li>
+                    <li><kbd>Esc</kbd> - Clear search</li>
+                    <li><kbd>[</kbd> - Collapse all groups</li>
+                    <li><kbd>]</kbd> - Expand all groups</li>
+                    <li><kbd>C</kbd> - Toggle comfortable view</li>
+                    <li><kbd>L</kbd> - Toggle list view</li>
+                    <li><kbd>R</kbd> - Refresh page</li>
+                </ul>
+            </div>
+            
+            <div class="help-section">
+                <h4 class="help-section-title">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                    Power User Tips
+                </h4>
+                <ul class="help-list">
+                    <li>Click item cards to view detailed information and history</li>
+                    <li>Use the menu (⋮) on each item for quick actions</li>
+                    <li>Switch between Comfortable, Compact, and List views for different layouts</li>
+                    <li>Hidden groups can be shown again from the "Hidden Groups" section</li>
+                    <li>The item count shows how many items match your current filters</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.7.1.min.js" 
+        integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" 
+        crossorigin="anonymous"></script>
 <script>
 // Store loaded data globally for use by other functions
 let favoritesData = null;
+let lastUpdatedTimestamp = null;
+let currentView = 'comfortable'; // comfortable, compact, list
+let currentSort = 'default';
+let searchQuery = '';
+
+// New state variables for enhanced functionality
+let currentItemSort = 'default';
+let currentItemSortDirection = 'asc';
+let currentGroupSort = 'default';
+let currentGroupSortDirection = 'asc';
+let showAllView = false;
+let hiddenGroups = new Set(); // Track hidden group IDs
 
 // Format number with commas
 function formatNumber(num) {
@@ -1099,8 +2393,181 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+// Get CSRF token from cookies
+function getCsrfToken() {
+    return document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+}
+
+/**
+ * Update item count summary
+ */
+function updateItemCountSummary(visibleCount, totalCount) {
+    $('#visibleItemCount').text(visibleCount);
+    $('#totalItemCount').text(totalCount);
+}
+
+/**
+ * Update last updated timestamp
+ */
+function updateLastUpdatedTime() {
+    if (!lastUpdatedTimestamp) return;
+    
+    const now = Date.now();
+    const diff = now - lastUpdatedTimestamp;
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    
+    let timeText;
+    if (seconds < 60) {
+        timeText = 'just now';
+    } else if (minutes < 60) {
+        timeText = minutes === 1 ? '1 min ago' : `${minutes} mins ago`;
+    } else {
+        timeText = hours === 1 ? '1 hour ago' : `${hours} hours ago`;
+    }
+    
+    $('#lastUpdatedTime').text(timeText);
+}
+
+/**
+ * Apply current view mode to the content
+ */
+function applyViewMode(view) {
+    currentView = view;
+    const $content = $('#favorites-content');
+    
+    // Remove all view classes
+    $content.removeClass('view-comfortable view-compact view-list');
+    
+    // Add current view class
+    $content.addClass('view-' + view);
+    
+    // Update button states
+    $('.view-toggle-btn').removeClass('active');
+    $(`.view-toggle-btn[data-view="${view}"]`).addClass('active');
+    
+    // Save preference
+    localStorage.setItem('favorites_view_mode', view);
+}
+
+/**
+ * Sort favorites array based on current sort option
+ */
+/**
+ * Sort favorites based on current item sort settings
+ */
+function sortFavorites(favorites) {
+    if (!favorites || favorites.length === 0) return favorites;
+    
+    const sorted = [...favorites];
+    
+    // Determine sort order multiplier (1 for asc, -1 for desc)
+    const orderMultiplier = currentItemSortDirection === 'asc' ? 1 : -1;
+    
+    switch(currentItemSort) {
+        case 'name':
+            sorted.sort((a, b) => {
+                const nameA = a.item_name || '';
+                const nameB = b.item_name || '';
+                return orderMultiplier * nameA.localeCompare(nameB);
+            });
+            break;
+        case 'spread':
+            sorted.sort((a, b) => {
+                return orderMultiplier * ((a.spread_pct || 0) - (b.spread_pct || 0));
+            });
+            break;
+        case 'high-price':
+            sorted.sort((a, b) => {
+                return orderMultiplier * ((a.high_price || 0) - (b.high_price || 0));
+            });
+            break;
+        case 'low-price':
+            sorted.sort((a, b) => {
+                return orderMultiplier * ((a.low_price || 0) - (b.low_price || 0));
+            });
+            break;
+        case 'default':
+        default:
+            // Keep original order
+            break;
+    }
+    
+    return sorted;
+}
+
+/**
+ * Sort groups based on current group sort settings
+ */
+function sortGroups(groups, groupedFavorites) {
+    if (!groups || groups.length === 0) return groups;
+    
+    const sorted = [...groups];
+    const orderMultiplier = currentGroupSortDirection === 'asc' ? 1 : -1;
+    
+    switch(currentGroupSort) {
+        case 'name':
+            sorted.sort((a, b) => {
+                const nameA = a.name || '';
+                const nameB = b.name || '';
+                return orderMultiplier * nameA.localeCompare(nameB);
+            });
+            break;
+        case 'count':
+            sorted.sort((a, b) => {
+                const countA = (groupedFavorites[a.id] || []).length;
+                const countB = (groupedFavorites[b.id] || []).length;
+                return orderMultiplier * (countA - countB);
+            });
+            break;
+        case 'spread':
+            sorted.sort((a, b) => {
+                const itemsA = groupedFavorites[a.id] || [];
+                const itemsB = groupedFavorites[b.id] || [];
+                
+                // Calculate total spread value for each group (using absolute spread, not percentage)
+                const totalSpreadA = itemsA.reduce((sum, item) => sum + (item.spread || 0), 0);
+                const totalSpreadB = itemsB.reduce((sum, item) => sum + (item.spread || 0), 0);
+                
+                return orderMultiplier * (totalSpreadA - totalSpreadB);
+            });
+            break;
+        case 'default':
+        default:
+            // Keep original order
+            break;
+    }
+    
+    return sorted;
+}
+
+/**
+ * Filter favorites by search query
+ */
+function filterFavorites(favorites) {
+    if (!searchQuery || searchQuery.trim() === '') {
+        return favorites;
+    }
+    
+    const query = searchQuery.toLowerCase();
+    return favorites.filter(fav => {
+        const itemName = fav.item_name || '';
+        return itemName.toLowerCase().includes(query);
+    });
+}
+
+/**
+ * Apply both sorting and filtering to favorites
+ */
+function processFavorites(favorites) {
+    let processed = filterFavorites(favorites);
+    processed = sortFavorites(processed);
+    return processed;
+}
+
 // Render a single favorite item card
-function renderFavoriteItem(fav) {
+function renderFavoriteItem(fav, allGroups = []) {
     const highPrice = fav.high_price ? formatNumber(fav.high_price) : '-';
     const lowPrice = fav.low_price ? formatNumber(fav.low_price) : '-';
     const spread = formatNumber(fav.spread);
@@ -1149,75 +2616,178 @@ function renderFavoriteItem(fav) {
 // Render the favorites content
 function renderFavoritesContent(data) {
     favoritesData = data;
+    lastUpdatedTimestamp = Date.now();
+    updateLastUpdatedTime();
+    
     const container = document.getElementById('favorites-content');
     const groups = data.groups || [];
     const groupedFavorites = data.grouped_favorites || {};
     const ungroupedFavorites = data.ungrouped_favorites || [];
     const allFavorites = data.favorites || [];
     
-    let html = '';
+    // Show toolbar if there are favorites
+    if (allFavorites.length > 0) {
+        $('#favoritesToolbar').fadeIn(200);
+    }
     
-    // Render grouped favorites
-    groups.forEach(group => {
-        const groupItems = groupedFavorites[group.id] || [];
-        if (groupItems.length > 0) {
-            const itemCount = groupItems.length;
-            const plural = itemCount !== 1 ? 's' : '';
-            html += `
-                <div class="favorites-section" data-group-id="${group.id}">
-                    <div class="section-header" onclick="toggleGroup(${group.id})">
-                        <div class="section-header-left">
-                            <div class="collapse-toggle">
-                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                                </svg>
-                            </div>
-                            <div class="section-title">
-                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
-                                </svg>
-                                ${escapeHtml(group.name)}
-                                <span class="section-count">(${itemCount} item${plural})</span>
-                            </div>
+    let html = '';
+    let totalVisibleItems = 0;
+    
+    // Show All View - display all items in a flat list
+    if (showAllView) {
+        let allItems = processFavorites([...allFavorites]);
+        totalVisibleItems = allItems.length;
+        
+        $('#favorites-content').addClass('show-all-view');
+        
+        if (allItems.length > 0) {
+            html = `
+                <div class="favorites-section">
+                    <div class="section-header" style="cursor: default;">
+                        <div class="section-title">
+                            <svg fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                            </svg>
+                            All Favorites
+                            <span class="section-count">(${allItems.length} item${allItems.length !== 1 ? 's' : ''})</span>
                         </div>
                     </div>
-                    <div class="section-content" id="group-content-${group.id}">
-                        <div class="favorites-grid">
-                            ${groupItems.map(renderFavoriteItem).join('')}
-                        </div>
+                    <div class="favorites-grid">
+                        ${allItems.map(item => renderFavoriteItem(item, data.groups)).join('')}
                     </div>
                 </div>`;
         }
-    });
-    
-    // Render ungrouped section only if there are ungrouped items
-    if (ungroupedFavorites.length > 0) {
-        const showUngroupedHeader = groups.length > 0;
-        html += `
-            <div class="ungrouped-section">
-                ${showUngroupedHeader ? `
-                    <div class="section-header">
-                        <div class="section-header-left">
-                            <div class="section-title">
+    } else {
+        // Normal grouped view
+        $('#favorites-content').removeClass('show-all-view');
+        
+        // Sort groups according to group sort settings
+        let sortedGroups = sortGroups([...groups], groupedFavorites);
+        
+        // Render hidden groups section if any
+        const hiddenGroupsList = sortedGroups.filter(g => hiddenGroups.has(g.id));
+        if (hiddenGroupsList.length > 0) {
+            html += `
+                <div class="hidden-groups-section">
+                    <div class="hidden-groups-header">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+                        </svg>
+                        Hidden Groups (${hiddenGroupsList.length})
+                    </div>
+                    <div class="hidden-groups-list">
+                        ${hiddenGroupsList.map(group => `
+                            <div class="hidden-group-badge" onclick="showHiddenGroup(${group.id})">
                                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                                 </svg>
-                                Ungrouped
-                                <span class="section-count">(${ungroupedFavorites.length} item${ungroupedFavorites.length !== 1 ? 's' : ''})</span>
+                                ${escapeHtml(group.name)}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>`;
+        }
+        
+        // Render visible groups
+        sortedGroups.forEach(group => {
+            // Skip hidden groups
+            if (hiddenGroups.has(group.id)) {
+                return;
+            }
+            
+            let groupItems = groupedFavorites[group.id] || [];
+            
+            // Apply processing (filter and sort)
+            groupItems = processFavorites(groupItems);
+            
+            if (groupItems.length > 0) {
+                totalVisibleItems += groupItems.length;
+                const itemCount = groupItems.length;
+                const plural = itemCount !== 1 ? 's' : '';
+                html += `
+                    <div class="favorites-section" data-group-id="${group.id}">
+                        <div class="section-header">
+                            <div class="section-header-left" onclick="toggleGroup(${group.id})">
+                                <div class="collapse-toggle section-toggle-icon">
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                </div>
+                                <div class="section-title">
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                                    </svg>
+                                    ${escapeHtml(group.name)}
+                                    <span class="section-count">(${itemCount} item${plural})</span>
+                                </div>
+                            </div>
+                            <button class="group-visibility-toggle" onclick="event.stopPropagation(); toggleGroupVisibility(${group.id})" title="Hide group">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="section-content" id="group-content-${group.id}">
+                            <div class="favorites-grid">
+                                ${groupItems.map(item => renderFavoriteItem(item, data.groups)).join('')}
                             </div>
                         </div>
+                    </div>`;
+            }
+        });
+        
+        // Render ungrouped section only if there are ungrouped items
+        let processedUngrouped = processFavorites(ungroupedFavorites);
+        if (processedUngrouped.length > 0) {
+            totalVisibleItems += processedUngrouped.length;
+            const showUngroupedHeader = groups.length > 0;
+            html += `
+                <div class="ungrouped-section">
+                    ${showUngroupedHeader ? `
+                        <div class="section-header">
+                            <div class="section-header-left">
+                                <div class="section-title">
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
+                                    </svg>
+                                    Ungrouped
+                                    <span class="section-count">(${processedUngrouped.length} item${processedUngrouped.length !== 1 ? 's' : ''})</span>
+                                </div>
+                            </div>
+                        </div>
+                    ` : ''}
+                    <div class="favorites-grid">
+                        ${processedUngrouped.map(item => renderFavoriteItem(item, data.groups)).join('')}
                     </div>
-                ` : ''}
-                <div class="favorites-grid">
-                    ${ungroupedFavorites.map(renderFavoriteItem).join('')}
-                </div>
+                </div>`;
+        }
+    }
+    
+    // Show message if no results after filtering
+    if (html === '' && searchQuery) {
+        html = `
+            <div class="empty-state" style="text-align: center; padding: 60px 20px;">
+                <svg style="width: 64px; height: 64px; color: var(--muted); margin-bottom: 16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <h3 style="color: var(--text); margin-bottom: 8px;">No items found</h3>
+                <p style="color: var(--muted);">No favorites match your search for "${escapeHtml(searchQuery)}"</p>
             </div>`;
+        totalVisibleItems = 0;
     }
     
     container.innerHTML = html;
     
+    // Update item count summary
+    updateItemCountSummary(totalVisibleItems, allFavorites.length);
+    
     // Initialize collapsed groups state
     initializeCollapsedGroups();
+    
+    // Apply current view mode
+    applyViewMode(currentView);
 }
 
 // Load favorites data
@@ -1394,6 +2964,228 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+/**
+ * jQuery-based initialization for new features
+ */
+$(document).ready(function() {
+    
+    // Load saved view preference
+    const savedView = localStorage.getItem('favorites_view_mode');
+    if (savedView) {
+        currentView = savedView;
+    }
+    
+    // Update timestamp every 30 seconds
+    setInterval(updateLastUpdatedTime, 30000);
+    
+    // Search functionality
+    let searchDebounce;
+    $('#searchFavorites').on('input', function() {
+        clearTimeout(searchDebounce);
+        const value = $(this).val().trim();
+        
+        // Show/hide clear button
+        if (value) {
+            $('#searchClear').addClass('show');
+        } else {
+            $('#searchClear').removeClass('show');
+        }
+        
+        searchDebounce = setTimeout(function() {
+            searchQuery = value;
+            if (favoritesData) {
+                renderFavoritesContent(favoritesData);
+            }
+        }, 300);
+    });
+    
+    // Clear search button
+    $('#searchClear').on('click', function() {
+        $('#searchFavorites').val('').trigger('input').focus();
+    });
+    
+    // View toggle buttons
+    $('.view-toggle-btn').on('click', function() {
+        const view = $(this).data('view');
+        applyViewMode(view);
+    });
+    
+    // Keyboard shortcuts badge
+    $('#shortcutsBadge').on('click', function() {
+        openShortcutsModal();
+    });
+    
+    // Global keyboard shortcuts
+    $(document).on('keydown', function(e) {
+        // Don't trigger shortcuts when typing in inputs or contenteditable elements
+        if ($(e.target).is('input, textarea, select, [contenteditable]')) {
+            // Exception: Escape key to clear search
+            if (e.key === 'Escape' && $(e.target).is('#searchFavorites')) {
+                $('#searchFavorites').val('').trigger('input').blur();
+                e.preventDefault();
+            }
+            return;
+        }
+        
+        // Don't trigger when modals are open (except for closing them)
+        if ($('.modal-overlay.show').length > 0 && e.key !== 'Escape') {
+            return;
+        }
+        
+        switch(e.key) {
+            case '?':
+                e.preventDefault();
+                openShortcutsModal();
+                break;
+            case 'n':
+            case 'N':
+                e.preventDefault();
+                openAddFavoriteModal();
+                break;
+            case '/':
+                e.preventDefault();
+                $('#searchFavorites').focus();
+                break;
+            case 'g':
+            case 'G':
+                e.preventDefault();
+                openManageGroupsModal();
+                break;
+            case 'c':
+            case 'C':
+                e.preventDefault();
+                applyViewMode('compact');
+                break;
+            case 'l':
+            case 'L':
+                e.preventDefault();
+                applyViewMode('list');
+                break;
+            case 'r':
+            case 'R':
+                e.preventDefault();
+                location.reload();
+                break;
+            case '[':
+                e.preventDefault();
+                collapseAllGroups();
+                break;
+            case ']':
+                e.preventDefault();
+                expandAllGroups();
+                break;
+        }
+    });
+    
+    // ========================================
+    // NEW FEATURE EVENT HANDLERS
+    // ========================================
+    
+    // Item Sort Control
+    $('#sortItems').on('change', function() {
+        currentItemSort = $(this).val();
+        localStorage.setItem('favorites_item_sort', currentItemSort);
+        if (favoritesData) {
+            renderFavoritesContent(favoritesData);
+        }
+    });
+    
+    $('#itemSortDirection').on('click', function() {
+        const btn = $(this);
+        const currentDirection = btn.attr('data-direction');
+        const newDirection = currentDirection === 'asc' ? 'desc' : 'asc';
+        btn.attr('data-direction', newDirection);
+        currentItemSortDirection = newDirection;
+        localStorage.setItem('favorites_item_sort_direction', newDirection);
+        if (favoritesData) {
+            renderFavoritesContent(favoritesData);
+        }
+    });
+    
+    // Group Sort Control
+    $('#sortGroups').on('change', function() {
+        currentGroupSort = $(this).val();
+        localStorage.setItem('favorites_group_sort', currentGroupSort);
+        if (favoritesData) {
+            renderFavoritesContent(favoritesData);
+        }
+    });
+    
+    $('#groupSortDirection').on('click', function() {
+        const btn = $(this);
+        const currentDirection = btn.attr('data-direction');
+        const newDirection = currentDirection === 'asc' ? 'desc' : 'asc';
+        btn.attr('data-direction', newDirection);
+        currentGroupSortDirection = newDirection;
+        localStorage.setItem('favorites_group_sort_direction', newDirection);
+        if (favoritesData) {
+            renderFavoritesContent(favoritesData);
+        }
+    });
+    
+    // Show All Toggle
+    $('#showAllToggle').on('click', function() {
+        showAllView = !showAllView;
+        $(this).toggleClass('active', showAllView);
+        $('#showAllToggleText').text(showAllView ? 'Group' : 'Un-Group');
+        localStorage.setItem('favorites_show_all', showAllView ? 'true' : 'false');
+        if (favoritesData) {
+            renderFavoritesContent(favoritesData);
+        }
+    });
+    
+    // Help Button
+    $('#helpBtn').on('click', function() {
+        openHelpModal();
+    });
+    
+    // Load saved preferences
+    const savedItemSort = localStorage.getItem('favorites_item_sort');
+    if (savedItemSort) {
+        currentItemSort = savedItemSort;
+        $('#sortItems').val(savedItemSort);
+    }
+    
+    const savedItemSortDirection = localStorage.getItem('favorites_item_sort_direction');
+    if (savedItemSortDirection) {
+        currentItemSortDirection = savedItemSortDirection;
+        $('#itemSortDirection').attr('data-direction', savedItemSortDirection);
+    }
+    
+    const savedGroupSort = localStorage.getItem('favorites_group_sort');
+    if (savedGroupSort) {
+        currentGroupSort = savedGroupSort;
+        $('#sortGroups').val(savedGroupSort);
+    }
+    
+    const savedGroupSortDirection = localStorage.getItem('favorites_group_sort_direction');
+    if (savedGroupSortDirection) {
+        currentGroupSortDirection = savedGroupSortDirection;
+        $('#groupSortDirection').attr('data-direction', savedGroupSortDirection);
+    }
+    
+    const savedShowAll = localStorage.getItem('favorites_show_all');
+    if (savedShowAll === 'true') {
+        showAllView = true;
+        $('#showAllToggle').addClass('active');
+        $('#showAllToggleText').text('Group');
+    } else {
+        $('#showAllToggleText').text('Un-Group');
+    }
+    
+    // Load hidden groups from localStorage
+    const savedHiddenGroups = localStorage.getItem('favorites_hidden_groups');
+    if (savedHiddenGroups) {
+        try {
+            const hiddenArray = JSON.parse(savedHiddenGroups);
+            hiddenGroups = new Set(hiddenArray);
+        } catch (e) {
+            console.error('Error loading hidden groups:', e);
+        }
+    }
+    
+});
+
 function selectItem(itemId, itemName) {
     const input = document.getElementById('addFavoriteInput');
     const suggestions = document.getElementById('addFavoriteSuggestions');
@@ -1452,7 +3244,7 @@ function submitFavorite() {
         payload.new_group_name = newGroupInput.value.trim();
     }
     
-    const csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+    const csrfToken = getCsrfToken();
     
     fetch('/api/favorites/add/', {
         method: 'POST',
@@ -1563,7 +3355,7 @@ function saveItemGroups() {
         payload.new_group_name = newGroupInput.value.trim();
     }
     
-    const csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+    const csrfToken = getCsrfToken();
     
     fetch('/api/favorites/update-group/', {
         method: 'POST',
@@ -1606,7 +3398,7 @@ function closeDeleteModal() {
 }
 
 function doRemoveFavorite(itemId) {
-    const csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+    const csrfToken = getCsrfToken();
     
     fetch('/api/favorites/remove/', {
         method: 'POST',
@@ -1662,6 +3454,92 @@ function checkEmptySections() {
 }
 
 function openManageGroupsModal() {
+    // Populate the groups list dynamically from favoritesData
+    const groupsList = document.getElementById('groupsList');
+    
+    if (!favoritesData || !favoritesData.groups || favoritesData.groups.length === 0) {
+        groupsList.innerHTML = '<div class="no-groups-message">No groups created yet</div>';
+    } else {
+        let html = '';
+        favoritesData.groups.forEach(group => {
+            // Count items in this group (with Array.isArray check for safety)
+            const itemCount = favoritesData.favorites.filter(fav => 
+                Array.isArray(fav.group_ids) && fav.group_ids.includes(group.id)
+            ).length;
+            
+            html += `
+                <div class="group-item" data-group-id="${group.id}">
+                    <div class="group-item-content">
+                        <span class="group-item-name" data-group-id="${group.id}">${escapeHtml(group.name)}</span>
+                        <input type="text" class="group-name-input" data-group-id="${group.id}" value="${escapeHtml(group.name)}" style="display: none;">
+                        <span class="group-item-count">(${itemCount} item${itemCount !== 1 ? 's' : ''})</span>
+                    </div>
+                    <div class="group-item-actions">
+                        <button class="group-edit-btn" data-group-id="${group.id}" title="Edit name">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 14px; height: 14px;">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                            </svg>
+                        </button>
+                        <button class="group-delete-btn" data-group-id="${group.id}" data-group-name="${escapeHtml(group.name)}">Delete</button>
+                    </div>
+                </div>
+            `;
+        });
+        groupsList.innerHTML = html;
+        
+        // Add event listeners for delete buttons (safer than inline onclick)
+        groupsList.querySelectorAll('.group-delete-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const groupId = parseInt(this.dataset.groupId);
+                const groupName = this.dataset.groupName;
+                deleteGroup(groupId, groupName);
+            });
+        });
+        
+        // Edit button listeners
+        groupsList.querySelectorAll('.group-edit-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const groupId = this.dataset.groupId;
+                const nameSpan = groupsList.querySelector(`.group-item-name[data-group-id="${groupId}"]`);
+                const nameInput = groupsList.querySelector(`.group-name-input[data-group-id="${groupId}"]`);
+                nameSpan.style.display = 'none';
+                nameInput.style.display = 'inline-block';
+                nameInput.focus();
+                nameInput.select();
+            });
+        });
+        
+        // Save on Enter or blur
+        groupsList.querySelectorAll('.group-name-input').forEach(input => {
+            const saveGroupName = function() {
+                const groupId = parseInt(this.dataset.groupId);
+                const newName = this.value.trim();
+                const nameSpan = groupsList.querySelector(`.group-item-name[data-group-id="${groupId}"]`);
+                
+                if (newName && newName !== nameSpan.textContent.trim()) {
+                    // Call API to update group name
+                    updateGroupName(groupId, newName);
+                }
+                nameSpan.style.display = 'inline';
+                this.style.display = 'none';
+            };
+            
+            input.addEventListener('blur', saveGroupName);
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.blur();
+                } else if (e.key === 'Escape') {
+                    const groupId = this.dataset.groupId;
+                    const nameSpan = groupsList.querySelector(`.group-item-name[data-group-id="${groupId}"]`);
+                    this.value = nameSpan.textContent;
+                    nameSpan.style.display = 'inline';
+                    this.style.display = 'none';
+                }
+            });
+        });
+    }
+    
     document.getElementById('manageGroupsModal').classList.add('show');
 }
 
@@ -1689,7 +3567,7 @@ function closeDeleteGroupModal() {
 }
 
 function doDeleteGroup(groupId) {
-    const csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+    const csrfToken = getCsrfToken();
     
     fetch('/api/favorites/groups/delete/', {
         method: 'POST',
@@ -1705,13 +3583,127 @@ function doDeleteGroup(groupId) {
             closeDeleteGroupModal();
             location.reload();
         } else {
-            alert('Failed to delete group: ' + (data.error || 'Unknown error'));
+            console.error('Failed to delete group:', data.error || 'Unknown error');
+            closeDeleteGroupModal();
         }
     })
     .catch(err => {
         console.error('Error deleting group:', err);
         closeDeleteGroupModal();
     });
+}
+
+function updateGroupName(groupId, newName) {
+    const csrfToken = getCsrfToken();
+    
+    fetch('/api/favorites/groups/update/', {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({ group_id: groupId, name: newName })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            // Update the group name in favoritesData
+            const group = favoritesData.groups.find(g => g.id === groupId);
+            if (group) {
+                group.name = newName;
+                // Update all instances of this group name in the DOM
+                document.querySelectorAll('.section-title').forEach(title => {
+                    if (title.closest('.favorites-section')?.dataset.groupId === String(groupId)) {
+                        title.textContent = newName;
+                    }
+                });
+                // Update the name in the Manage Groups modal
+                const nameSpan = document.querySelector(`.group-item-name[data-group-id="${groupId}"]`);
+                if (nameSpan) {
+                    nameSpan.textContent = newName;
+                }
+            }
+        } else {
+            console.error('Failed to update group name:', data.error || 'Unknown error');
+            // Optionally revert the input to original value
+            const nameInput = document.querySelector(`.group-name-input[data-group-id="${groupId}"]`);
+            const nameSpan = document.querySelector(`.group-item-name[data-group-id="${groupId}"]`);
+            if (nameInput && nameSpan) {
+                nameInput.value = nameSpan.textContent;
+            }
+        }
+    })
+    .catch(err => {
+        console.error('Error updating group name:', err);
+    });
+}
+
+/**
+ * Shortcuts modal functions
+ */
+function openShortcutsModal() {
+    $('#shortcutsModal').addClass('show');
+}
+
+function closeShortcutsModal() {
+    $('#shortcutsModal').removeClass('show');
+}
+
+/**
+ * Help modal functions
+ */
+function openHelpModal() {
+    $('#helpModal').addClass('show');
+}
+
+function closeHelpModal() {
+    $('#helpModal').removeClass('show');
+}
+
+/**
+ * Collapse all groups
+ */
+function collapseAllGroups() {
+    $('.favorites-section').addClass('collapsed');
+    localStorage.setItem('favorites_all_collapsed', 'true');
+}
+
+/**
+ * Expand all groups
+ */
+function expandAllGroups() {
+    $('.favorites-section').removeClass('collapsed');
+    localStorage.removeItem('favorites_all_collapsed');
+}
+
+/**
+ * Toggle group visibility (hide/show)
+ */
+function toggleGroupVisibility(groupId) {
+    if (hiddenGroups.has(groupId)) {
+        hiddenGroups.delete(groupId);
+    } else {
+        hiddenGroups.add(groupId);
+    }
+    
+    // Save to localStorage
+    localStorage.setItem('favorites_hidden_groups', JSON.stringify(Array.from(hiddenGroups)));
+    
+    // Re-render
+    if (favoritesData) {
+        renderFavoritesContent(favoritesData);
+    }
+}
+
+/**
+ * Show a hidden group
+ */
+function showHiddenGroup(groupId) {
+    hiddenGroups.delete(groupId);
+    localStorage.setItem('favorites_hidden_groups', JSON.stringify(Array.from(hiddenGroups)));
+    if (favoritesData) {
+        renderFavoritesContent(favoritesData);
+    }
 }
 
 // Chart Modal Functions
