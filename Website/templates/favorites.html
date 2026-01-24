@@ -316,12 +316,12 @@
     }
     
     .view-compact .section-header {
-        padding: 0 0 6px 0;
-        margin-bottom: 6px;
+        padding: 0;
+        margin-bottom: 4px;
     }
     
     .view-compact .section-title {
-        font-size: 0.85rem;
+        font-size: 0.8rem;
     }
 
     /* List View */
@@ -606,9 +606,9 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 0 0 8px 0;
+        padding: 0;
         border-bottom: 1px solid var(--border);
-        margin-bottom: 10px;
+        margin-bottom: 6px;
         cursor: pointer;
         user-select: none;
     }
@@ -620,12 +620,12 @@
     .section-header-left {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 6px;
     }
 
     .collapse-toggle {
-        width: 24px;
-        height: 24px;
+        width: 18px;
+        height: 18px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -634,8 +634,8 @@
     }
 
     .collapse-toggle svg {
-        width: 18px;
-        height: 18px;
+        width: 14px;
+        height: 14px;
     }
 
     .section-header.collapsed .collapse-toggle {
@@ -643,22 +643,22 @@
     }
 
     .section-title {
-        font-size: 1rem;
+        font-size: 0.9rem;
         font-weight: 600;
         color: var(--text);
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
     }
 
     .section-title svg {
-        width: 18px;
-        height: 18px;
+        width: 14px;
+        height: 14px;
         color: var(--muted);
     }
 
     .section-count {
-        font-size: 0.85rem;
+        font-size: 0.75rem;
         color: var(--muted);
         font-weight: 400;
     }
@@ -1528,12 +1528,17 @@
         padding: 4px 8px;
         border-radius: 6px;
         border: 1px solid var(--border);
+        min-width: 200px;
+        flex-shrink: 0;
     }
     
     .sort-controls-row {
         display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
+        gap: 8px;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 2px;
     }
     
     .sort-label {
@@ -1655,16 +1660,16 @@
     }
     
     .section-header {
-        padding: 10px !important;
-        font-size: 0.9rem !important;
+        padding: 0 !important;
+        margin-bottom: 6px !important;
     }
     
     .section-title {
-        font-size: 0.95rem !important;
+        font-size: 0.85rem !important;
     }
     
     .section-count {
-        font-size: 0.75rem !important;
+        font-size: 0.7rem !important;
     }
     
     .favorite-item {
@@ -1827,10 +1832,10 @@
         gap: 8px;
         font-size: 1rem;
         font-weight: 600;
-        color: var(--primary);
+        color: #0d9488;
         margin-bottom: 10px;
         padding-bottom: 8px;
-        border-bottom: 2px solid var(--primary);
+        border-bottom: 2px solid #0d9488;
     }
     
     .help-section-title svg {
@@ -1855,12 +1860,12 @@
         content: "→";
         position: absolute;
         left: 0;
-        color: var(--primary);
+        color: #0d9488;
         font-weight: bold;
     }
     
     .help-list strong {
-        color: var(--primary);
+        color: #0d9488;
     }
     
     .help-list kbd {
