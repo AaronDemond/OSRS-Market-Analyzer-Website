@@ -827,6 +827,10 @@
     </div>
 </div>
 
+<script>
+    // Set CSRF token for use in external JavaScript files
+    window.CSRF_TOKEN = '{{ csrf_token }}';
+</script>
 <script src="{% static 'js/alerts-config.js' %}"></script>
 <script src="{% static 'js/alerts-state.js' %}"></script>
 <script src="{% static 'js/alerts-api.js' %}"></script>

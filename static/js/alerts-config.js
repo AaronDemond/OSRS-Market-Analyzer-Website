@@ -252,6 +252,6 @@
         },
 
         // CSRF token for Django POST requests
-        csrfToken: '{{ csrf_token }}'
+        csrfToken: window.CSRF_TOKEN || ''
     };
 
