@@ -2575,18 +2575,6 @@ function renderFavoriteItem(fav, allGroups = []) {
     const groupIds = JSON.stringify(fav.group_ids || []);
     const itemName = escapeHtml(fav.item_name);
     
-    // Generate group badges if item is in multiple groups
-    let groupBadgesHtml = '';
-    if (Array.isArray(fav.group_ids) && fav.group_ids.length > 0 && allGroups.length > 0) {
-        const itemGroups = allGroups.filter(g => fav.group_ids.includes(g.id));
-        if (itemGroups.length > 0) {
-            groupBadgesHtml = `
-                <div class="item-group-badges">
-                    ${itemGroups.map(g => `<span class="item-group-badge">${escapeHtml(g.name)}</span>`).join('')}
-                </div>`;
-        }
-    }
-    
     return `
         <div class="favorite-item" data-item-id="${fav.item_id}">
             <div class="favorite-item-header">
@@ -2609,7 +2597,6 @@ function renderFavoriteItem(fav, allGroups = []) {
                     </button>
                 </div>
             </div>
-            ${groupBadgesHtml}
             <div class="favorite-prices">
                 <div class="favorite-price">
                     <span class="favorite-price-label">High</span>
