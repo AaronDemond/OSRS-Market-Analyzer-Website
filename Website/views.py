@@ -3414,6 +3414,53 @@ def delete_favorite_group(request):
 
 
 @csrf_exempt
+def update_favorite_group_name(request):
+    """API endpoint to update a favorite group's name"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST required'}, status=405)
+    
+    import json
+    from .models import FavoriteGroup
+    
+    user = request.user if request.user.is_authenticated else None
+    if not user:
+        return JsonResponse({'success': False, 'error': 'Authentication required'}, status=401)
+    
+    try:
+        data = json.loads(request.body)
+        group_id = data.get('group_id')
+        name = data.get('name')
+        
+        if not group_id:
+            return JsonResponse({'success': False, 'error': 'group_id required'}, status=400)
+        
+        if not name or not name.strip():
+            return JsonResponse({'success': False, 'error': 'name required'}, status=400)
+        
+        name = name.strip()
+        
+        # Check if group exists for this user
+        group = FavoriteGroup.objects.filter(user=user, id=group_id).first()
+        if not group:
+            return JsonResponse({'success': False, 'error': 'Group not found'}, status=404)
+        
+        # Check if another group with same name already exists for this user
+        existing = FavoriteGroup.objects.filter(user=user, name=name).exclude(id=group_id).first()
+        if existing:
+            return JsonResponse({'success': False, 'error': 'A group with this name already exists'}, status=400)
+        
+        # Update the group name
+        group.name = name
+        group.save()
+        
+        return JsonResponse({'success': True})
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
 def update_favorite_group(request):
     """API endpoint to update a favorite's groups"""
     if request.method != 'POST':
