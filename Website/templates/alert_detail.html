@@ -2258,11 +2258,15 @@
                                 </div>
                                 {% elif triggered_info.alert_type == 'threshold' %}
                                 <!-- Threshold alert triggered item details -->
-                                <!-- What: Shows reference price, current price for threshold alerts -->
-                                <!-- Why: Users need to see how the price has changed from baseline -->
-                                <!-- How: Display reference (baseline) price and current price with arrow -->
+                                <!-- What: Shows reference/target price and current price for threshold alerts -->
+                                <!-- Why: Users need to see how the price has changed from baseline (%) or target (value) -->
+                                <!-- How: Display appropriate info based on threshold_type (percentage vs value) -->
                                 <div class="triggered-item-details">
-                                    Ref: {{ item.reference_price|intcomma }} → Current: {{ item.current_price|intcomma }} | Threshold: {{ item.threshold }}%
+                                    {% if triggered_info.threshold_type == 'value' %}
+                                        Target: {{ item.target_price|intcomma }} | Current: {{ item.current_price|intcomma }} | Direction: {{ item.direction|default:"up"|title }}
+                                    {% else %}
+                                        Ref: {{ item.reference_price|intcomma }} → Current: {{ item.current_price|intcomma }} | Threshold: {{ item.threshold }}%
+                                    {% endif %}
                                 </div>
                                 {% endif %}
                             </div>
@@ -2273,11 +2277,15 @@
                             {% elif triggered_info.alert_type == 'sustained' %}
                             <span class="triggered-item-percentage {% if item.streak_direction == 'down' %}negative-change{% endif %}">{{ item.total_move_percent }}%</span>
                             {% elif triggered_info.alert_type == 'threshold' %}
-                            <!-- Threshold alert percentage change display -->
-                            <!-- What: Shows the percentage change from reference price -->
-                            <!-- Why: Indicates how much the price has moved from baseline -->
-                            <!-- How: Positive/negative styling based on change direction -->
+                            <!-- Threshold alert percentage change or status display -->
+                            <!-- What: Shows the percentage change (for % type) or crossed status (for value type) -->
+                            <!-- Why: Indicates how much the price has moved from baseline or if it crossed target -->
+                            <!-- How: For percentage: show change%. For value: show checkmark/crossed indicator -->
+                            {% if triggered_info.threshold_type == 'value' %}
+                            <span class="triggered-item-percentage">✓</span>
+                            {% else %}
                             <span class="triggered-item-percentage {% if item.change_percent < 0 %}negative-change{% endif %}">{{ item.change_percent }}%</span>
+                            {% endif %}
                             {% endif %}
                         </li>
                     {% endfor %}
@@ -2355,25 +2363,45 @@
                         <!-- =============================================================================
                              THRESHOLD ALERT SINGLE ITEM TRIGGERED DATA DISPLAY
                              What: Displays triggered data for single-item threshold alerts
-                             Why: Users need to see reference price, threshold, and current price
+                             Why: Users need to see reference/target price, threshold, and current price
                              How: Grid layout showing all relevant threshold trigger information
+                             Note: Value-based thresholds show Target Price instead of Reference Price
+                                   and don't show Change % (price just crossed the target)
                         ============================================================================= -->
-                        <div class="triggered-info-item">
-                            <span class="detail-label">Reference Price (Baseline)</span>
-                            <span class="detail-value price">{% if triggered_info.threshold_reference_price %}{{ triggered_info.threshold_reference_price|intcomma }}{% else %}N/A{% endif %}</span>
-                        </div>
-                        <div class="triggered-info-item">
-                            <span class="detail-label">Threshold</span>
-                            <span class="detail-value">{% if triggered_info.threshold_value %}{{ triggered_info.threshold_value }}%{% else %}N/A{% endif %}</span>
-                        </div>
-                        <div class="triggered-info-item">
-                            <span class="detail-label">Current {{ triggered_info.reference|default:"High"|title }} Price</span>
-                            <span class="detail-value price {% if triggered_info.threshold_change_percent >= 0 %}positive{% else %}negative{% endif %}">{% if triggered_info.threshold_current_price %}{{ triggered_info.threshold_current_price|intcomma }}{% else %}N/A{% endif %}</span>
-                        </div>
-                        <div class="triggered-info-item">
-                            <span class="detail-label">Change</span>
-                            <span class="detail-value {% if triggered_info.threshold_change_percent >= 0 %}positive{% else %}negative{% endif %}">{% if triggered_info.threshold_change_percent %}{{ triggered_info.threshold_change_percent }}%{% else %}N/A{% endif %}</span>
-                        </div>
+                        
+                        {% if triggered_info.threshold_type == 'value' %}
+                            <!-- VALUE-BASED THRESHOLD: Show Target Price instead of Reference -->
+                            <div class="triggered-info-item">
+                                <span class="detail-label">Target Price</span>
+                                <span class="detail-value price">{% if triggered_info.threshold_target_price %}{{ triggered_info.threshold_target_price|intcomma }}{% elif alert.target_price %}{{ alert.target_price|intcomma }}{% else %}N/A{% endif %}</span>
+                            </div>
+                            <div class="triggered-info-item">
+                                <span class="detail-label">Direction</span>
+                                <span class="detail-value">{% if triggered_info.threshold_direction %}{{ triggered_info.threshold_direction|title }}{% elif alert.direction %}{{ alert.direction|title }}{% else %}N/A{% endif %}</span>
+                            </div>
+                            <div class="triggered-info-item">
+                                <span class="detail-label">Current {{ triggered_info.reference|default:"High"|title }} Price</span>
+                                <span class="detail-value price highlight">{% if triggered_info.threshold_current_price %}{{ triggered_info.threshold_current_price|intcomma }}{% else %}N/A{% endif %}</span>
+                            </div>
+                        {% else %}
+                            <!-- PERCENTAGE-BASED THRESHOLD: Show Reference Price and Change % -->
+                            <div class="triggered-info-item">
+                                <span class="detail-label">Reference Price (Baseline)</span>
+                                <span class="detail-value price">{% if triggered_info.threshold_reference_price %}{{ triggered_info.threshold_reference_price|intcomma }}{% else %}N/A{% endif %}</span>
+                            </div>
+                            <div class="triggered-info-item">
+                                <span class="detail-label">Threshold</span>
+                                <span class="detail-value">{% if triggered_info.threshold_value %}{{ triggered_info.threshold_value }}%{% else %}N/A{% endif %}</span>
+                            </div>
+                            <div class="triggered-info-item">
+                                <span class="detail-label">Current {{ triggered_info.reference|default:"High"|title }} Price</span>
+                                <span class="detail-value price {% if triggered_info.threshold_change_percent >= 0 %}positive{% else %}negative{% endif %}">{% if triggered_info.threshold_current_price %}{{ triggered_info.threshold_current_price|intcomma }}{% else %}N/A{% endif %}</span>
+                            </div>
+                            <div class="triggered-info-item">
+                                <span class="detail-label">Change</span>
+                                <span class="detail-value {% if triggered_info.threshold_change_percent >= 0 %}positive{% else %}negative{% endif %}">{% if triggered_info.threshold_change_percent %}{{ triggered_info.threshold_change_percent }}%{% else %}N/A{% endif %}</span>
+                            </div>
+                        {% endif %}
                     {% endif %}
                 </div>
             {% endif %}
@@ -3603,14 +3631,14 @@ function handleScopeChange() {
     } else {
         // Specific item(s) mode
         // What: Show appropriate item selector based on alert type and item count
-        // Why: Spread and spike alerts with multiple items should use multi-item selector
+        // Why: Spread, spike, and sustained alerts with multiple items should use multi-item selector
         //      Single item alerts or other types should use single item input
         // How: Check alert type and hasMultipleItems flag to determine which UI to show
         
         // multiItemAlertTypes: Alert types that support multi-item selection
         // What: List of alert types that can monitor multiple specific items
-        // Why: Both spread and spike alerts can monitor multiple items via item_ids field
-        const multiItemAlertTypes = ['spread', 'spike'];
+        // Why: Spread, spike, and sustained alerts can monitor multiple items
+        const multiItemAlertTypes = ['spread', 'spike', 'sustained'];
         
         if (multiItemAlertTypes.includes(alertType) && hasMultipleItems) {
             // Multi-item mode for spread/spike alerts with existing items

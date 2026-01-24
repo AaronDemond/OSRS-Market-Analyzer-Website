@@ -1,0 +1,204 @@
+    /* Spread items list */
+    #spread-items-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    #spread-items-list li {
+        padding: 12px 15px;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    #spread-items-list li:last-child {
+        border-bottom: none;
+    }
+
+    #spike-items-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    #spike-items-list li {
+        padding: 12px 15px;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    #spike-items-list li:last-child {
+        border-bottom: none;
+    }
+
+    .spread-item-name {
+        font-weight: 600;
+        color: #333;
+    }
+
+    .spread-item-details {
+        color: #666;
+        font-size: 0.9rem;
+    }
+
+    .spread-item-percentage {
+        font-weight: 700;
+        color: #28a745;
+        font-size: 1.1rem;
+    }
+
+    .spread-item-percentage.negative-change {
+        color: #dc3545;
+    }
+
+    /* Medium screen - sort indicator on separate row */
+    @media (max-width: 1250px) {
+        .alert-actions-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .sort-indicator {
+            margin-top: 7px;
+        }
+
+        .alert-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: nowrap;
+            width: 100%;
+        }
+
+        /* Hide sort indicator from its normal position */
+        .sort-controls .sort-indicator-wrapper {
+            display: none;
+        }
+
+        /* Show sort indicator in mobile row, aligned right */
+        .sort-indicator-mobile-row {
+            display: block;
+            text-align: right;
+            margin-bottom: -2px;
+        }
+
+        /* When sort indicator is not active, collapse the row */
+        .sort-indicator-mobile-row:not(:has(.sort-indicator.active)) {
+            display: none;
+        }
+
+        .sort-indicator-mobile-row .sort-indicator.active {
+            display: inline-flex;
+        }
+    }
+
+    /* Tablet/Mobile Responsive Styles */
+    @media (max-width: 950px) {
+
+        .alert-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: auto auto;
+            gap: 10px;
+            width: 100%;
+        }
+
+        /* Row 1: Search takes full width (spans all 3 columns) */
+        .alert-actions-left {
+            grid-column: 1 / -1;
+            grid-row: 1;
+            display: contents;
+        }
+
+        .alert-actions-left .alert-search-wrapper {
+            grid-column: 1 / -1;
+            grid-row: 1;
+            width: 100%;
+        }
+
+        /* Actions dropdown - first item in row 2 */
+        .alert-actions-left .custom-dropdown-wrapper {
+            grid-column: 1;
+            grid-row: 2;
+            min-width: 0;
+        }
+
+        /* Row 2: Sort and Filters */
+        .alert-actions-right {
+            display: contents;
+        }
+
+        .alert-actions-controls {
+            display: contents;
+        }
+
+        .sort-controls {
+            display: contents;
+        }
+
+        /* Sort dropdown - second item in row 2 */
+        .sort-controls .custom-dropdown-wrapper {
+            grid-column: 2;
+            grid-row: 2;
+            min-width: 0;
+        }
+
+        /* Filter dropdown - third item in row 2 */
+        .alert-actions-controls>.custom-dropdown-wrapper {
+            grid-column: 3;
+            grid-row: 2;
+            min-width: 0;
+        }
+
+        .btn-dropdown {
+            width: 100%;
+            justify-content: center;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        /* Hide button icons on mobile, show only text */
+        .btn-dropdown svg {
+            display: none;
+        }
+
+        .alert-search-input {
+            width: 100%;
+        }
+
+        /* Reset dropdown alignment */
+        .custom-dropdown-menu,
+        #sortDropdownMenu {
+            width: 100%;
+            left: 0;
+            right: 0;
+        }
+
+        /* Filter dropdown right-aligned */
+        #filterDropdownMenu {
+            width: auto;
+            min-width: 180px;
+            left: auto;
+            right: 0;
+        }
+
+        .sort-indicator-wrapper {
+            display: none;
+        }
+
+        /* Hide item icon on small screens */
+        .alert-icon,
+        .alert-icon-placeholder {
+            display: none;
+        }
+
+        .alert-threshold-label {
+            display: none;
+        }
+    }

@@ -1,0 +1,882 @@
+================================================================================
+ALERTS PAGE PERFORMANCE ANALYSIS
+Date: 2026-01-24
+================================================================================
+
+PERFORMANCE ISSUE
+=================
+The main alerts page loads slowly, causing poor user experience.
+
+OBSERVED SYMPTOMS
+================
+- Page takes significant time to display alerts
+- Initial page load feels sluggish
+- API endpoint /api/alerts/ is a bottleneck
+
+ROOT CAUSE ANALYSIS
+==================
+
+After analyzing the codebase, I identified the following performance bottlenecks:
+
+1. BLOCKING EXTERNAL API CALL IN alerts_api() (CRITICAL - views.py:1560-1572)
+   -----------------------------------------------------------------------------
+   The alerts_api endpoint makes a SYNCHRONOUS HTTP request to an external API
+   (prices.runescape.wiki) on EVERY single request:
+   
+   ```python
+   response = requests.get(
+       'https://prices.runescape.wiki/api/v1/osrs/latest',
+       headers={'User-Agent': '...'}
+   )
+   ```
+   
+   This external API call blocks the entire request until it completes. If the
+   external API is slow (even 200-500ms), it adds that latency to EVERY page load.
+   
+   Impact: Each page load incurs ~200-1000ms latency from this call alone.
+
+2. ITEM MAPPING CACHE HIT ON EVERY REQUEST (MEDIUM - views.py:1574-1575)
+   -----------------------------------------------------------------------
+   The get_item_mapping() function is called on every alerts_api request:
+   
+   ```python
+   mapping = get_item_mapping()
+   ```
+   
+   While this function has a module-level cache (_item_mapping_cache), the cache
+   only persists for the lifetime of the Python process. In development or with
+   certain WSGI configurations, this cache can be invalidated frequently.
+   
+   Additionally, if the cache is empty, it makes ANOTHER external API call to
+   fetch the item mapping (~4000 items), which can take 500ms+.
+
+3. N+1 QUERY PATTERN ON ALERT GROUPS (HIGH - views.py:1609)
+   ----------------------------------------------------------
+   For each alert, the code accesses alert.groups:
+   
+   ```python
+   'groups': list(alert.groups.values_list('name', flat=True)),
+   ```
+   
+   This triggers a separate database query for EACH alert to fetch its groups.
+   If a user has 50 alerts, this results in 50 additional database queries.
+   
+   The alerts query does NOT use prefetch_related:
+   ```python
+   alerts_qs = Alert.objects.filter(user=user)
+   ```
+   
+   Should be:
+   ```python
+   alerts_qs = Alert.objects.filter(user=user).prefetch_related('groups')
+   ```
+
+4. DUPLICATE DATABASE QUERY FOR TRIGGERED ALERTS (MEDIUM - views.py:1699)
+   -----------------------------------------------------------------------
+   The code queries for triggered alerts AGAIN after already fetching all alerts:
+   
+   ```python
+   triggered_alerts = alerts_qs.filter(is_triggered=True, is_dismissed=False)
+   ```
+   
+   This triggers ANOTHER database query with N+1 for groups access.
+   This data could be filtered from the already-fetched all_alerts queryset.
+
+5. AGGRESSIVE 5-SECOND POLLING INTERVAL (FRONTEND - alerts-config.js:52)
+   ----------------------------------------------------------------------
+   The frontend polls the alerts API every 5 seconds:
+   
+   ```javascript
+   refreshInterval: 5000,
+   ```
+   
+   Each poll triggers ALL the backend bottlenecks above. This is unnecessarily
+   aggressive for alert data that changes infrequently (alerts are checked by
+   a background job, not real-time).
+
+6. NO CACHING OF EXTERNAL API DATA (BACKEND)
+   ------------------------------------------
+   The external price data fetched from runescape.wiki is NOT cached at all.
+   The same data is fetched on every single request, even though prices typically
+   update every 5 minutes on the external API.
+
+EVIDENCE
+========
+- views.py:1560-1572: Synchronous requests.get() call to external API
+- views.py:1574: get_item_mapping() called on every request  
+- views.py:1577-1579: Alert.objects.filter() without prefetch_related
+- views.py:1609: alert.groups access inside loop (N+1 pattern)
+- views.py:1699: Second query for triggered_alerts
+- alerts-config.js:52: refreshInterval: 5000 (5 second polling)
+
+RECOMMENDED CHANGES
+==================
+
+1. ADD CACHING FOR EXTERNAL PRICE DATA (HIGH PRIORITY)
+   ----------------------------------------------------
+   Use Django's cache framework to cache the price data for 1-5 minutes:
+   
+   ```python
+   from django.core.cache import cache
+   
+   def get_cached_prices():
+       prices = cache.get('osrs_prices')
+       if prices is None:
+           response = requests.get(...)
+           prices = response.json().get('data', {})
+           cache.set('osrs_prices', prices, 60)  # Cache for 60 seconds
+       return prices
+   ```
+
+2. ADD prefetch_related FOR ALERT GROUPS (HIGH PRIORITY)
+   ------------------------------------------------------
+   Change:
+   ```python
+   alerts_qs = Alert.objects.filter(user=user)
+   ```
+   To:
+   ```python
+   alerts_qs = Alert.objects.filter(user=user).prefetch_related('groups')
+   ```
+   
+   This will reduce N+1 queries to a single JOIN query.
+
+3. ELIMINATE DUPLICATE TRIGGERED ALERTS QUERY (MEDIUM PRIORITY)
+   -------------------------------------------------------------
+   Instead of:
+   ```python
+   triggered_alerts = alerts_qs.filter(is_triggered=True, is_dismissed=False)
+   ```
+   
+   Use:
+   ```python
+   triggered_alerts = [a for a in all_alerts if a.is_triggered and not a.is_dismissed]
+   ```
+
+4. INCREASE POLLING INTERVAL (MEDIUM PRIORITY)
+   -------------------------------------------
+   Change refreshInterval from 5000 to 30000 (30 seconds) or higher.
+   Alert triggers are infrequent; aggressive polling wastes resources.
+
+5. CONSIDER ASYNC/BACKGROUND FETCHING OF PRICES (LOWER PRIORITY)
+   --------------------------------------------------------------
+   For even better performance, fetch prices in a background task and
+   serve cached data to the API. This eliminates blocking entirely.
+
+EXPECTED IMPACT
+==============
+- Adding price caching: ~200-500ms reduction per request
+- Adding prefetch_related: ~50-200ms reduction (depends on alert count)
+- Eliminating duplicate query: ~10-50ms reduction
+- Increasing polling interval: Reduces server load by 83% (5s -> 30s)
+
+Combined: Page load should improve from ~1-2 seconds to ~200-400ms
+
+RISKS / TRADEOFFS
+================
+1. Caching prices: Data may be up to 60 seconds stale (acceptable for alerts)
+2. Longer polling: Triggered alerts may take up to 30s to show (acceptable)
+3. prefetch_related: Slightly larger initial query, but much better overall
+
+VALIDATION STEPS
+===============
+1. Use Django Debug Toolbar to measure query count before/after
+2. Use browser DevTools Network tab to measure API response time
+3. Test with a user that has 50+ alerts to see N+1 impact
+4. Monitor server CPU/memory after increasing polling interval
+
+================================================================================
+IMPLEMENTATION SUMMARY (2026-01-24)
+================================================================================
+
+All four recommended fixes have been implemented:
+
+FIX #1: Added get_cached_prices() function (views.py)
+---------------------------------------------------------
+- Added module-level cache variables: _price_cache, _price_cache_timestamp
+- Added PRICE_CACHE_TTL constant (60 seconds)
+- Created get_cached_prices() function that:
+  * Returns cached data if available and not expired
+  * Fetches from external API only when cache is stale/empty
+  * Falls back to stale cache if API fails (graceful degradation)
+- Updated alerts_api() to use get_cached_prices() instead of direct API call
+
+FIX #2: Added prefetch_related for alert groups (views.py)
+---------------------------------------------------------
+- Changed: Alert.objects.filter(user=user)
+- To:      Alert.objects.filter(user=user).prefetch_related('groups')
+- This eliminates N+1 queries when accessing alert.groups in the loop
+
+FIX #3: Eliminated duplicate triggered alerts query (views.py)
+---------------------------------------------------------
+- Removed: triggered_alerts = alerts_qs.filter(is_triggered=True, is_dismissed=False)
+- Instead: Collect triggered alerts during the main iteration loop
+- Added: triggered_alerts_list = [] and populate it while iterating
+- Result: One fewer database query, reuses prefetched data
+
+FIX #4: Increased frontend polling interval (alerts-config.js)
+---------------------------------------------------------
+- Changed: refreshInterval: 5000 (5 seconds)
+- To:      refreshInterval: 30000 (30 seconds)
+- Reduces server load by 83% while maintaining acceptable responsiveness
+
+FILES MODIFIED
+==============
+1. Website/views.py
+   - Added cache variables and constants at top of file
+   - Added get_cached_prices() function
+   - Updated alerts_api() with all three backend optimizations
+   
+2. Website/static/js/alerts-config.js
+   - Changed refreshInterval from 5000 to 30000
+
+EXPECTED RESULTS
+===============
+Before: Page load ~1-2 seconds, high server load from polling
+After:  Page load ~200-400ms, 83% reduction in polling requests
+
+================================================================================
+
+FOLLOW-UP ANALYSIS: ALERTS VS FLIPS PAGE COMPARISON (2026-01-24)
+================================================================================
+
+PERFORMANCE ISSUE
+=================
+User reports alerts page still loads slowly despite previous optimizations.
+Comparison requested with "My Flips" page which loads at least 2x faster.
+
+OBSERVED SYMPTOMS
+=================
+- Alerts page noticeably slower than flips page
+- Both pages load similar number of items
+- Flips page perceived as "at least half the speed or quicker"
+
+ROOT CAUSE ANALYSIS
+==================
+
+After comparing alerts_api() (views.py:1607-1888) vs flips_data_api() (views.py:323-516):
+
+1. DATA COMPLEXITY DISPARITY (CRITICAL)
+   ------------------------------------
+   ALERTS API returns ~50+ fields per alert with complex nested structures:
+   - 41 direct alert fields
+   - Groups array (prefetched but still processed)
+   - Conditional fields for spread/spike/sustained/threshold types
+   - JSON parsing of triggered_data
+   - Price lookups for multiple alert types
+   
+   FLIPS API returns ~10 fields per item:
+   - Simple flat structure (name, prices, quantities, P&L)
+   - Minimal conditional logic
+   
+   Impact: Alerts API does ~5x more processing per item
+
+2. EXCESSIVE CONDITIONAL PROCESSING (HIGH)
+   ----------------------------------------
+   alerts_api has multiple conditional blocks executed per alert:
+   - Line 1747-1756: Spread data calculation
+   - Line 1762-1768: Spike current price lookup
+   - Line 1775-1799: Threshold current price lookup (with JSON parsing)
+   - Line 1809-1810: Triggered alerts collection
+   - Lines 1839-1883: DUPLICATE spread/spike/sustained processing for triggered list
+   
+   Total: ~200+ lines of per-alert processing
+
+3. TRIGGERED ALERTS DOUBLE PROCESSING (MEDIUM)
+   -------------------------------------------
+   For each triggered alert, the code builds TWO dictionaries:
+   - One in the main alerts loop (alerts_data)
+   - One in triggered_data loop (triggered_data)
+   
+   Both loops have similar conditional blocks for spread/spike/sustained data.
+
+4. FRONTEND RENDERING DIFFERENCES (HIGH)
+   --------------------------------------
+   FLIPS RENDERING (flips.html:2857-2916):
+   - Simple table rows with template literals
+   - Single pass HTML string building
+   - No complex conditionals
+   - One innerHTML assignment at end
+   
+   ALERTS RENDERING (alerts-ui.js:296-417):
+   - Complex renderAlertItem() with 120+ lines of logic
+   - Multiple conditional icon/badge/status builds
+   - Sorting applied to grouped alerts (SortManager.applySort)
+   - Filtering logic on every render
+   - Group-based organization with nested loops
+   - DOM structure more complex (list items vs table rows)
+
+5. ICON LOADING (FIXED - Local icons now configured)
+   -------------------------------------------------
+   Both pages now use local icons from /static/icons/
+   alerts-ui.js line 389: /static/icons/{item_name}.png
+   flips.html still uses external: https://oldschool.runescape.wiki/images/
+   (Should update flips to use local too for consistency)
+
+EVIDENCE
+========
+- alerts_api(): ~280 lines (1607-1888), 50+ fields, complex conditionals
+- flips_data_api(): ~193 lines (323-516), 10 fields, simple structure
+- renderAlertItem(): 120+ lines with nested conditionals
+- renderTableRows(): 50 lines with simple template literal
+
+RECOMMENDED CHANGES
+==================
+
+1. REDUCE ALERTS API PAYLOAD SIZE (HIGH PRIORITY)
+   -----------------------------------------------
+   Split alerts_api into two endpoints:
+   a) /api/alerts/list/ - Minimal data for list view (id, name, type, status, icon)
+   b) /api/alerts/{id}/ - Full data when viewing detail page
+   
+   This follows REST best practices and reduces initial payload by ~80%
+
+2. LAZY-LOAD TRIGGERED DATA (MEDIUM PRIORITY)
+   -------------------------------------------
+   Don't include triggered_data JSON in list response.
+   Fetch it only when user clicks to view triggered alerts.
+
+3. SIMPLIFY FRONTEND RENDERING (MEDIUM PRIORITY)
+   ----------------------------------------------
+   a) Use document fragment for batch DOM insertion
+   b) Move complex calculations out of render loop
+   c) Consider virtual scrolling if list > 100 items
+
+4. UPDATE FLIPS PAGE TO USE LOCAL ICONS (LOW PRIORITY)
+   ----------------------------------------------------
+   For consistency, update flips.html:2875 to use local icons:
+   /static/icons/{item_name}.png
+
+EXPECTED IMPACT
+==============
+- Reducing payload: ~60-70% reduction in JSON size
+- Lazy-loading triggered data: ~20% faster initial render
+- Virtual scrolling: Near-instant for large lists (100+ alerts)
+
+RISKS / TRADEOFFS
+================
+1. API split: Requires frontend changes to fetch detail data
+2. Lazy-load: Brief delay when viewing triggered alerts
+3. Virtual scrolling: Additional complexity, may affect accessibility
+
+VALIDATION STEPS
+===============
+1. Measure JSON response size (Network tab)
+2. Profile JS execution time (Performance tab)
+3. Compare Time to Interactive (Lighthouse)
+4. Test with 100+ alerts to measure scaling
+
+================================================================================
+
+IMPLEMENTATION: MINIMAL ALERTS API (2026-01-24)
+================================================================================
+
+CHANGES MADE
+============
+
+1. Created new endpoint: /api/alerts/minimal/ (views.py)
+   ----------------------------------------------------
+   New function alerts_api_minimal() that returns ONLY fields needed for list view:
+   
+   INCLUDED FIELDS (20 total):
+   - Core: id, text, alert_name, type
+   - Status: is_triggered, is_active, is_all_items
+   - Item: item_id, item_name, icon
+   - Organization: groups
+   - Timestamps: created_at, last_triggered_at
+   - Sorting: price, percentage, threshold_type, target_price, item_ids
+   - Computed: current_price, spread_percentage (only when needed)
+   
+   EXCLUDED FIELDS (26 total):
+   - direction, reference, time_frame, minimum_price, maximum_price
+   - triggered_text (computed only for triggered alerts)
+   - triggered_data (only for all-items alerts in minimal)
+   - All 7 sustained-specific fields (min_consecutive_moves, min_move_percentage, etc.)
+   - email_notification, show_notification
+   - reference_prices (large JSON blob)
+   - All the conditional spread/spike data for non-triggered single-item alerts
+   
+   TRIGGERED SECTION also simplified:
+   - Only returns: id, triggered_text, type, is_all_items, triggered_data (for all-items only)
+   - Excludes: All sustained_* fields, spread_* fields, current_price for triggered
+
+2. Added URL route (urls.py)
+   -------------------------
+   path('api/alerts/minimal/', views.alerts_api_minimal, name='alerts_api_minimal')
+
+3. Updated frontend config (alerts-config.js)
+   ------------------------------------------
+   Changed endpoints.alerts from '/api/alerts/' to '/api/alerts/minimal/'
+   Added endpoints.alertsFull: '/api/alerts/' for any code that needs full data
+
+EXPECTED IMPACT
+==============
+- JSON payload: ~70% smaller (20 fields vs 46 fields per alert)
+- Backend processing: ~50% faster (no type-specific conditional blocks)
+- Network transfer: Faster due to smaller payload
+- Browser JSON parsing: Faster due to simpler structure
+- Triggered data: Significantly smaller (no sustained/spread detail parsing)
+
+BACKWARD COMPATIBILITY
+=====================
+- Original /api/alerts/ endpoint unchanged (available at /api/alerts/full/ conceptually)
+- Detail page can still call original endpoint if it needs full data
+- The endpoint at /api/alerts/ still works and returns full data
+
+FILES MODIFIED
+=============
+1. Website/views.py - Added alerts_api_minimal() function (~150 lines)
+2. Website/urls.py - Added route for /api/alerts/minimal/
+3. Website/static/js/alerts-config.js - Changed endpoints.alerts to minimal
+
+VALIDATION
+=========
+To test the change:
+1. Open browser DevTools > Network tab
+2. Navigate to /alerts/ page
+3. Compare response size of /api/alerts/minimal/ vs /api/alerts/
+4. Check that all list features still work (sorting, filtering, grouping)
+5. Verify detail page still loads correctly
+
+================================================================================
+
+JAVASCRIPT OPTIMIZATION (2026-01-24)
+================================================================================
+
+PERFORMANCE ISSUE
+=================
+Alerts page loads 9 JavaScript files totaling ~5,864 lines of code, compared to
+flips page which has inline JS in a single file.
+
+OBSERVED SYMPTOMS
+=================
+- 9 synchronous script loads blocking initial render
+- 4 nearly-identical MultiItemSelector classes (~300 lines each) all initialize on load
+- Hundreds of querySelector and addEventListener calls during page init
+- Full DOM rebuild (innerHTML) on every 30-second refresh
+
+ROOT CAUSE ANALYSIS
+==================
+
+JavaScript File Sizes:
+- alerts-selectors.js: 1,516 lines (4 MultiItemSelector classes)
+- alerts-init.js: 965 lines
+- alerts-managers.js: 957 lines  
+- alerts-ui.js: 929 lines
+- alerts-actions.js: 607 lines
+- alerts-state.js: 332 lines
+- alerts-config.js: 263 lines
+- alerts-help.js: 153 lines
+- alerts-api.js: 142 lines
+TOTAL: 5,864 lines
+
+Key Bottlenecks:
+1. Scripts loaded synchronously - blocks HTML parsing/rendering
+2. MultiItemSelector.init() x4 on page load - each does ~50 DOM queries
+3. All selectors initialized even though only "My Alerts" tab is visible
+
+RECOMMENDED CHANGES IMPLEMENTED
+==============================
+
+1. DEFER SCRIPT LOADING (alerts.html)
+   -----------------------------------
+   Changed all 9 script tags from:
+     <script src="..."></script>
+   To:
+     <script defer src="..."></script>
+   
+   Why: defer allows HTML to parse/render while scripts download in background
+   Impact: Page content appears faster, scripts still execute in correct order
+
+2. LAZY-LOAD MULTIITEMSELECTORS (alerts-init.js)
+   ----------------------------------------------
+   Moved initialization of 4 MultiItemSelectors from page load to first click
+   on "Create Alert" tab:
+   
+   Before:
+     MultiItemSelector.init();
+     SpreadMultiItemSelector.init();
+     SpikeMultiItemSelector.init();
+     ThresholdMultiItemSelector.init();
+   
+   After:
+     let selectorsInitialized = false;
+     TabManager.switchTo = function(tabId) {
+       if (tabId === 'create-alert' && !selectorsInitialized) {
+         selectorsInitialized = true;
+         // Initialize selectors only when needed
+       }
+     };
+   
+   Why: Most users view alerts first, don't immediately create new ones
+   Impact: Defers ~800 querySelector calls until actually needed
+
+FILES MODIFIED
+=============
+1. Website/templates/alerts.html
+   - Added 'defer' attribute to all 9 script tags
+   
+2. Website/static/js/alerts-init.js  
+   - Wrapped MultiItemSelector inits in lazy-load pattern
+   - Added selectorsInitialized flag
+   - Hooked into TabManager.switchTo
+
+EXPECTED IMPACT
+==============
+- Script blocking: Reduced from ~9 blocking requests to 0
+- Initial DOM queries: Reduced by ~800 calls (deferred to tab click)
+- Time to First Paint: Should improve by 100-300ms
+- Time to Interactive: Should improve for "My Alerts" view
+
+VALIDATION
+=========
+1. Check Network waterfall - scripts should not block initial render
+2. Check Performance timeline - no long tasks during initial load
+3. Verify "Create Alert" tab still works (selectors initialize on click)
+4. Test all 4 alert types can be created (each selector must init properly)
+
+================================================================================
+
+TWO-PHASE LOADING: DEFERRED PRICE FETCHING (2026-01-24)
+================================================================================
+
+PERFORMANCE ISSUE
+=================
+Alerts page load time varies wildly (100ms to 1000ms+) due to external price API
+latency. The Wiki prices API response time is unpredictable and outside our control.
+
+OBSERVED SYMPTOMS
+=================
+- Sometimes page loads instantly (~200ms)
+- Other times same page takes 600-1100ms
+- Inconsistency confuses users - "why is it fast sometimes?"
+
+ROOT CAUSE
+==========
+The alerts_api_minimal endpoint called get_all_current_prices() which makes an
+HTTP request to https://prices.runescape.wiki/api/v1/osrs/latest
+
+This external API has variable latency:
+- Best case: ~100ms
+- Typical: ~300-500ms  
+- Worst case: ~1000ms+
+
+Since price data blocks the entire response, slow API = slow page.
+
+SOLUTION: TWO-PHASE LOADING
+===========================
+Split the data fetching into two phases:
+
+PHASE 1: Instant Render (no external API)
+- /api/alerts/minimal/ now returns alerts WITHOUT price data
+- Only reads from database and local JSON file
+- Response time: ~50-100ms (consistent)
+- User sees full alerts list immediately
+
+PHASE 2: Background Price Fetch
+- /api/alerts/prices/ fetches price data from external API
+- Called AFTER Phase 1 completes and list is rendered
+- Updates cached alerts with current_price and spread_percentage
+- If user is sorting by "threshold distance", triggers re-render
+
+USER EXPERIENCE
+==============
+Before: Page blank for 100-1000ms, then everything appears
+After:  Page shows alerts in ~100ms, price-dependent features fill in ~500ms later
+
+CHANGES MADE
+============
+
+1. views.py - alerts_api_minimal()
+   - REMOVED: get_all_current_prices() call
+   - ADDED: 'reference' field to alerts (needed to calculate price later)
+   - Response is now instant (database + local JSON only)
+
+2. views.py - alerts_api_prices() [NEW]
+   - New endpoint that ONLY fetches prices
+   - Returns: {prices: {item_id: {high, low}, ...}}
+   - Called in background after list renders
+
+3. urls.py
+   - Added: path('api/alerts/prices/', views.alerts_api_prices)
+
+4. alerts-config.js
+   - Added: endpoints.prices: '/api/alerts/prices/'
+
+5. alerts-api.js
+   - Added: fetchPrices() method for background price loading
+
+6. alerts-selectors.js - AlertsRefresh.refresh()
+   - Phase 1: Call fetchAlerts(), render immediately
+   - Phase 2: Call fetchAndApplyPrices() in background
+   - If prices update and user sorts by threshold distance, re-render
+
+7. alerts-ui.js
+   - Added: renderFromCache() method for re-rendering after price update
+
+EXPECTED IMPACT
+==============
+- Consistent ~100ms initial render (no more 1000ms variance)
+- Price-dependent features (threshold distance) work ~500ms after render
+- User perceives page as "instant" since content is visible immediately
+
+RISKS / TRADEOFFS
+================
+1. Sorting by "threshold distance" may re-sort after prices load
+2. Spread percentage shows "N/A" briefly until prices arrive
+3. Slightly more complexity in frontend code
+
+VALIDATION
+=========
+1. Time initial page load - should be consistent ~100ms
+2. Watch Network tab - see two requests (alerts instant, prices slower)
+3. Test threshold distance sorting - should update after prices load
+4. Verify spread alerts show percentage after price data arrives
+
+================================================================================
+
+NAVIGATION SLOWDOWN FIX: SHORT-TERM PRICE CACHING (2026-01-24)
+================================================================================
+
+PERFORMANCE ISSUE
+=================
+Alerts page loads instantly on REFRESH but slowly when NAVIGATING from other pages.
+
+OBSERVED SYMPTOMS
+=================
+- F5 refresh: Page loads in ~100ms (fast!)
+- Click from Flips/Dashboard to Alerts: Page loads in ~600-1000ms (slow)
+- Inconsistent behavior depending on navigation method
+
+ROOT CAUSE
+==========
+Django's development server is **single-threaded**. When you navigate:
+
+1. You're on Flips page → it calls `/api/flips/data/` → `get_all_current_prices()`
+2. External API call starts (takes 500-1000ms)
+3. You click "Alerts" before that completes
+4. Django receives new request BUT can't process it until previous finishes
+5. New page waits for old page's slow API call to complete
+
+This doesn't happen on refresh because:
+- Browser cancels previous page's pending requests
+- New page's requests start fresh with no queue
+
+MULTIPLE PAGES CALLING PRICES
+============================
+- `/api/dashboard/content/` (home.html) → `get_all_current_prices()`
+- `/api/flips/data/` (flips.html) → `get_all_current_prices()`
+- `/api/alerts/prices/` (alerts) → `get_all_current_prices()`
+
+Every page transition triggers a new external API call that blocks the server.
+
+SOLUTION: 5-SECOND PRICE CACHE
+==============================
+Added a very short cache (5 seconds) to `get_all_current_prices()`:
+
+```python
+PRICE_CACHE_TTL = 5  # seconds
+
+def get_all_current_prices():
+    global _price_cache, _price_cache_time
+    
+    # Return cached data if fresh enough
+    if _price_cache and (time.time() - _price_cache_time) < PRICE_CACHE_TTL:
+        return _price_cache
+    
+    # Fetch fresh data
+    response = requests.get(...)
+    _price_cache = response.json()['data']
+    _price_cache_time = time.time()
+    return _price_cache
+```
+
+WHY 5 SECONDS?
+- Short enough: Prices are always "fresh" for display purposes
+- Long enough: Covers typical page navigation time (click → page load)
+- Alert triggering: Happens in background job, not affected by this
+
+CHANGES MADE
+============
+1. views.py (top of file)
+   - Added: _price_cache, _price_cache_time, PRICE_CACHE_TTL variables
+
+2. views.py - get_all_current_prices()
+   - Added: Cache check before API call
+   - Added: Cache update after successful fetch
+   - Added: Fallback to stale cache if fetch fails
+
+EXPECTED IMPACT
+==============
+- Navigation between pages: Instant (cache hit)
+- Price data staleness: Maximum 5 seconds (acceptable for display)
+- Server blocking: Eliminated during typical navigation
+
+VALIDATION
+=========
+1. Click from Flips → Alerts quickly - should be fast
+2. Click from Dashboard → Alerts quickly - should be fast
+3. Wait 10 seconds, then navigate - still fast (fresh cache)
+4. Verify prices display correctly on all pages
+
+================================================================================
+
+TRIGGERED NOTIFICATION SLOWDOWN FIX (2026-01-24)
+================================================================================
+
+PERFORMANCE ISSUE
+=================
+Alerts page loads instantly ONLY when no triggered notifications are present.
+When a green notification banner exists, the page is slow (~500-1000ms).
+
+OBSERVED SYMPTOMS
+=================
+- Page refresh with NO triggered alerts: Instant load
+- Page refresh WITH triggered alert notification: Slow load
+- Navigation from other pages: Inconsistent (depends on triggered status)
+- User confirmed this pattern through extensive testing
+
+ROOT CAUSE
+==========
+`triggered_text()` in models.py calls `get_item_price()` which makes a FULL
+external API call to `prices.runescape.wiki` for EACH triggered alert.
+
+Call chain when notification exists:
+1. alerts_api_minimal() iterates triggered alerts
+2. For each triggered alert: call `alert.triggered_text()`
+3. `triggered_text()` calls `get_item_price()` for display formatting
+4. `get_item_price()` makes FULL external API call (500-1000ms)
+5. Total delay = N × API_latency (where N = number of triggered alerts)
+
+When NO notification: `triggered_text()` never called → instant load.
+
+EVIDENCE
+========
+models.py line 433 (inside triggered_text()):
+```python
+item_price = get_item_price(self.item_id, self.reference)
+```
+
+models.py get_item_price() function:
+```python
+response = requests.get('https://prices.runescape.wiki/api/v1/osrs/latest', ...)
+```
+
+This was making a BRAND NEW external API request, ignoring the cached price data
+that views.py already maintains.
+
+SOLUTION
+========
+Modified `get_item_price()` in models.py to use the cached `get_all_current_prices()`
+from views.py instead of making its own API call.
+
+CHANGES MADE
+============
+1. models.py - get_item_price()
+   - Removed: Direct requests.get() call to external API
+   - Added: Import of get_all_current_prices from views
+   - Added: Use cached price data instead of new API call
+   - Added: Detailed documentation explaining the fix
+
+CODE CHANGE
+===========
+Before:
+```python
+def get_item_price(item_id, reference):
+    response = requests.get('https://prices.runescape.wiki/api/v1/osrs/latest', ...)
+    # ... parse response
+```
+
+After:
+```python
+def get_item_price(item_id, reference):
+    from Website.views import get_all_current_prices
+    all_prices = get_all_current_prices()  # Uses 5-second cache
+    price_data = all_prices.get(str(item_id))
+    # ... return appropriate price
+```
+
+EXPECTED IMPACT
+==============
+- Triggered notifications: No longer cause slow page loads
+- Multiple triggered alerts: All use same cached price data
+- Consistent behavior: Page loads same speed regardless of notification count
+
+RISKS / TRADEOFFS
+================
+1. Circular import potential - mitigated by importing inside function
+2. Price data up to 5 seconds stale - acceptable for display purposes
+
+VALIDATION
+=========
+1. Create an alert, trigger it (get green notification)
+2. Navigate away from alerts page
+3. Navigate back - should be instant
+4. Refresh page - should be instant
+5. Both scenarios should be equally fast now
+
+================================================================================
+
+================================================================================
+SUSTAINED ALERT FORM ORDER FIX
+Date: 2026-01-24
+================================================================================
+
+PERFORMANCE ISSUE
+================
+Not a performance issue, but a UX/form ordering issue.
+
+OBSERVED SYMPTOMS
+================
+- When creating a sustained move alert with "All Items" selected, the minimum 
+  price input field appears in the wrong position
+- User expects minimum price to appear immediately after maximum price
+- Tab order was inconsistent with visual order
+
+ROOT CAUSE
+==========
+Two issues were identified:
+
+1. HTML DOM Order: In alerts.html, the min-price-group div appeared BEFORE the 
+   max-price-group div in the markup (lines 451-460), causing minimum price to 
+   render visually above maximum price.
+
+2. Tab Index Misconfiguration: In alerts-managers.js, the sustained alert "all" 
+   tab configuration had:
+   - maximum-price: 10
+   - minimum-price: 15 (with other fields in between)
+   This meant pressing Tab would jump from max price to other fields, only reaching
+   min price much later.
+
+CHANGES MADE
+============
+
+File: Website/templates/alerts.html
+-----------------------------------
+Swapped the order of min-price-group and max-price-group divs:
+- max-price-group now appears first (with tabindex="10")
+- min-price-group now appears second (with tabindex="11")
+
+File: Website/static/js/alerts-managers.js
+------------------------------------------
+Updated sustained alert "all" tab configuration:
+- maximum-price: 10
+- minimum-price: 11 (immediately after max price)
+- All other fields shifted accordingly
+
+EXPECTED IMPACT
+==============
+- Visual order now matches logical order (max price -> min price)
+- Tab navigation flows correctly through the form
+- Consistent with spread, spike, and threshold alerts which already had this order
+
+VALIDATION STEPS
+===============
+1. Navigate to Create Alert tab
+2. Select "Sustained Move" alert type
+3. Select "All Items" scope
+4. Verify maximum price field appears before minimum price field
+5. Press Tab from maximum price - should move to minimum price
+6. Complete tab navigation through entire form - all fields should be reachable
+
+================================================================================
