@@ -377,7 +377,27 @@
             // Icons are served locally from /static/icons/ for faster loading
             // Local icons are named by item name (e.g., "Abyssal whip.png")
             let iconHtml;
-            if (alert.icon) {
+            
+            // hasMultipleItems: Check if this alert monitors multiple specific items (2 or more)
+            // item_ids is a JSON array string when multiple items are selected
+            // We need to parse it and check length > 1 to distinguish single vs multi-item
+            let hasMultipleItems = false;
+            if (alert.item_ids && alert.item_ids !== '[]' && alert.item_ids !== 'null') {
+                try {
+                    const itemIdsArray = JSON.parse(alert.item_ids);
+                    hasMultipleItems = Array.isArray(itemIdsArray) && itemIdsArray.length > 1;
+                } catch (e) {
+                    // Invalid JSON - treat as no multiple items
+                    hasMultipleItems = false;
+                }
+            }
+            
+            // isMultiOrAllItemsAlert: True when alert monitors multiple (2+) or all items
+            // These alerts should use the type-specific SVG icon since they don't represent a single item
+            const isMultiOrAllItemsAlert = alert.is_all_items || hasMultipleItems;
+            
+            if (alert.icon && !isMultiOrAllItemsAlert) {
+                // Single-item alert with icon - show the item's image
                 // Cache the icon for this item
                 if (alert.item_id) {
                     AlertsState.iconCache[alert.item_id] = alert.icon;
@@ -388,14 +408,17 @@
                 const iconFilename = alert.item_name ? alert.item_name : alert.icon.replace(/_/g, ' ').replace(/\.png$/i, '');
                 const iconUrl = '/static/icons/' + encodeURIComponent(iconFilename) + '.png';
                 iconHtml = '<img class="alert-icon" src="' + iconUrl + '" alt="" loading="lazy">';
-            } else if (typeIconSvgs[alert.type]) {
-                // Use semantic SVG icon when we lack item art (covers all-items and missing-icon cases) so the visual matches alert intent.
+            } else if (isMultiOrAllItemsAlert && typeIconSvgs[alert.type]) {
+                // Multi-item or all-items alert - use semantic SVG icon matching alert type
+                // These alerts don't represent a single item, so we show the alert type icon instead
                 iconHtml = '<span class="alert-icon-placeholder alert-type-icon" aria-hidden="true">' + typeIconSvgs[alert.type] + '</span>';
-            } else if (alert.is_all_items) {
-                // "All items" alerts fallback to neutral stack icon when no type-specific SVG exists.
-                iconHtml = '<span class="alert-icon-placeholder">📊</span>';
+            } else if (alert.item_name) {
+                // Single-item alert without icon in data - try to build icon URL from item_name
+                // This handles cases where the backend didn't include the icon but we have the item name
+                const iconUrl = '/static/icons/' + encodeURIComponent(alert.item_name) + '.png';
+                iconHtml = '<img class="alert-icon" src="' + iconUrl + '" alt="" loading="lazy" onerror="this.parentElement.innerHTML=\'<span class=alert-icon-placeholder>🔔</span>\'">';
             } else {
-                // Fallback bell for items without icons and no type-specific SVG.
+                // Fallback bell for items without icons and no item name
                 iconHtml = '<span class="alert-icon-placeholder">🔔</span>';
             }
 
@@ -707,6 +730,38 @@
             } else if (noAlertsMsg) {
                 noAlertsMsg.outerHTML = newHtml;
             }
+        },
+        
+        /**
+         * Re-renders the alerts list from cached data.
+         * 
+         * PERFORMANCE: Used after price data is fetched to update threshold distance
+         * without making another API call for alerts.
+         * 
+         * What: Renders alerts from AlertsState.cachedAlerts
+         * Why: After prices are fetched, we need to re-render to show updated sort
+         * How: Uses same logic as updateMyAlertsPaneSelective but with cached data
+         */
+        renderFromCache() {
+            const cachedAlerts = AlertsState.getCachedAlerts();
+            if (!cachedAlerts || cachedAlerts.length === 0) return;
+            
+            const pane = document.querySelector(AlertsConfig.selectors.myAlertsPane);
+            if (!pane) return;
+            
+            // Don't re-render if user has checkboxes selected
+            const hasCheckedAlerts = pane.querySelectorAll('.alert-checkbox:checked').length > 0;
+            if (hasCheckedAlerts) return;
+            
+            // Build data object from cache
+            const data = {
+                alerts: cachedAlerts,
+                groups: AlertsState.alertGroups,
+                triggered: []  // Triggered data doesn't change with price updates
+            };
+            
+            // Use selective update to only replace the alerts list
+            this.updateMyAlertsPaneSelective(data);
         }
     };
 

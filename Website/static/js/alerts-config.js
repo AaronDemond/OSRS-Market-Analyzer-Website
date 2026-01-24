@@ -38,12 +38,14 @@
     const AlertsConfig = {
         // API endpoints for server communication
         // =============================================================================
-        // PERFORMANCE: Use minimal endpoint for list view, full endpoint for detail
+        // PERFORMANCE: Two-phase loading for instant page render
         // =============================================================================
-        // alerts: Minimal endpoint (~70% smaller payload) for list page
+        // alerts: Minimal endpoint - returns alerts instantly (no external API wait)
+        // prices: Separate endpoint for price data - fetched in background after render
         // alertsFull: Full endpoint with all fields - use for detail page if needed
         endpoints: {
             alerts: '/api/alerts/minimal/',
+            prices: '/api/alerts/prices/',
             alertsFull: '/api/alerts/',
             dismiss: '/api/alerts/dismiss/',
             delete: '/api/alerts/delete/',
@@ -55,18 +57,13 @@
 
         // Timing settings (in milliseconds)
         // =============================================================================
-        // PERFORMANCE FIX #4: Increased polling interval from 5s to 30s
-        // =============================================================================
         // What: refreshInterval controls how often the frontend polls /api/alerts/
-        // Why: The previous 5-second interval was unnecessarily aggressive:
-        //      - Alerts are triggered by a background job, not real-time events
-        //      - Each poll triggers backend processing (even with caching)
-        //      - 30 seconds still provides timely updates without excessive load
-        // How: Changed from 5000ms (5s) to 30000ms (30s)
-        // Impact: Reduces server requests by 83% (6 per minute vs 12 per minute)
-        // Note: Users will still see triggered alerts within 30s of them occurring
+        // Why: User needs to see triggered alerts within 5 seconds of price changes
+        // How: Poll every 5 seconds to check for alert status updates
+        // Note: Performance optimizations were applied elsewhere (two-phase loading,
+        //       price caching) so 5s polling is acceptable
         timing: {
-            refreshInterval: 30000,     // How often to poll for alert updates (30 seconds)
+            refreshInterval: 5000,      // How often to poll for alert updates (5 seconds)
             minSearchLength: 2          // Minimum characters before searching
         },
 

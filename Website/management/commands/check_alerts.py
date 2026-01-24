@@ -1042,46 +1042,6 @@ class Command(BaseCommand):
         except requests.RequestException:
             return None
 
-    def print_sustained_debug(self, alert, state, trigger_data):
-        """Print formatted debug info for a triggered sustained move alert."""
-        print("\n" + "=" * 70)
-        print("SUSTAINED MOVE ALERT TRIGGERED")
-        print("=" * 70)
-        print(f"\n{'ALERT CONFIGURATION':^70}")
-        print("-" * 70)
-        print(f"  Alert ID:              {alert.id}")
-        print(f"  Item:                  {alert.item_name} (ID: {alert.item_id})")
-        print(f"  Direction:             {alert.direction or 'both'}")
-        print(f"  Time Window:           {alert.time_frame} minutes")
-        print(f"  Min Consecutive Moves: {alert.min_consecutive_moves}")
-        print(f"  Min Move Percentage:   {alert.min_move_percentage}%")
-        print(f"  Volatility Buffer (N): {alert.volatility_buffer_size}")
-        print(f"  Volatility Mult (K):   {alert.volatility_multiplier}")
-        print(f"  Min Volume:            {alert.min_volume or 'None'}")
-        
-        print(f"\n{'TRIGGER DATA':^70}")
-        print("-" * 70)
-        print(f"  Streak Direction:      {trigger_data['streak_direction']}")
-        print(f"  Streak Count:          {trigger_data['streak_count']} moves")
-        print(f"  Total Move:            {trigger_data['total_move_percent']:.4f}%")
-        print(f"  Start Price:           {trigger_data['start_price']:,.2f}")
-        print(f"  Current Price:         {trigger_data['current_price']:,.2f}")
-        print(f"  Volume:                {trigger_data['volume']:,}")
-        print(f"  Avg Volatility:        {trigger_data['avg_volatility']:.4f}%")
-        print(f"  Required Move (K×avg): {trigger_data['required_move']:.4f}%")
-        print(f"  Volatility Check:      PASSED")
-        
-        buffer = state.get('volatility_buffer', [])
-        buffer_header = f"VOLATILITY BUFFER (last {len(buffer)} moves)"
-        print(f"\n{buffer_header:^70}")
-        print("-" * 70)
-        if buffer:
-            for i, move in enumerate(buffer[-10:], 1):  # Show last 10 moves
-                print(f"    Move {i}: {move:.4f}%")
-            if len(buffer) > 10:
-                print(f"    ... ({len(buffer) - 10} more moves)")
-        
-        print("=" * 70 + "\n")
 
     def check_sustained_alert(self, alert, all_prices):
         print(alert)

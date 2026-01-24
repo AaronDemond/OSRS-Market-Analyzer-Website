@@ -28,6 +28,19 @@ from .models import Flip, FlipProfit, Alert, AlertGroup, FavoriteItem
 _item_mapping_cache = None
 
 # _item_id_to_name_cache: Dictionary mapping item ID (string) to item name
+
+# =============================================================================
+# PRICE CACHE - Short-term to prevent duplicate API calls during navigation
+# =============================================================================
+# What: Short-term cache for price data from external API
+# Why: When user navigates between pages quickly, prevents duplicate external API calls
+#      that block Django's single-threaded dev server
+# How: Cache prices for 5 seconds - enough to prevent duplicate calls during navigation
+#      but short enough that prices are always "fresh enough" for display
+# Note: This does NOT affect alert triggering (that happens in background job)
+_price_cache = None
+_price_cache_time = 0
+PRICE_CACHE_TTL = 5  # seconds - very short, just to prevent navigation blocking
 # Contains: {'item_id_str': 'Item Name'}
 _item_id_to_name_cache = None
 
@@ -112,17 +125,33 @@ def get_item_id_to_name_mapping():
 
 def get_all_current_prices():
     """
-    Fetch all current prices in one API call.
+    Fetch all current prices in one API call with short-term caching.
     
     What: Returns a dictionary of all OSRS item prices (high/low) from the Wiki API.
     Why: Needed for spread calculations, spike alerts, and threshold distance display.
-    How: Makes a single HTTP request to the Wiki prices API.
+    How: Makes a single HTTP request to the Wiki prices API, caches for 5 seconds.
+    
+    PERFORMANCE: 5-second cache prevents duplicate API calls during page navigation.
+    When user clicks from flips → alerts quickly, both pages need prices.
+    Without cache: Two slow external API calls (each 100-1000ms) that block Django.
+    With cache: Second call returns instantly from cache.
+    
+    Note: 5 seconds is short enough that displayed prices are always current.
+          Alert triggering happens in a separate background job, not affected by this.
     
     Returns:
         dict: Dictionary mapping item_id (string) to price data
               Format: {'item_id': {'high': int, 'low': int, 'highTime': int, 'lowTime': int}}
               Returns empty dict {} if API call fails
     """
+    global _price_cache, _price_cache_time
+    
+    # Check if cache is still valid (within TTL)
+    current_time = time.time()
+    if _price_cache is not None and (current_time - _price_cache_time) < PRICE_CACHE_TTL:
+        return _price_cache
+    
+    # Cache expired or empty - fetch fresh data
     try:
         response = requests.get(
             'https://prices.runescape.wiki/api/v1/osrs/latest',
@@ -131,9 +160,16 @@ def get_all_current_prices():
         if response.status_code == 200:
             data = response.json()
             if 'data' in data:
-                return data['data']
+                _price_cache = data['data']
+                _price_cache_time = current_time
+                return _price_cache
     except requests.RequestException:
         pass
+    
+    # If fetch failed but we have stale cache, return it
+    if _price_cache is not None:
+        return _price_cache
+    
     return {}
 
 
@@ -1890,34 +1926,28 @@ def alerts_api(request):
 
 def alerts_api_minimal(request):
     """
-    MINIMAL API endpoint for alerts list view - optimized for fast page loads.
+    MINIMAL API endpoint for alerts list view - optimized for INSTANT page loads.
     
-    What: Returns a lightweight JSON response with only the fields needed for list rendering.
+    What: Returns alerts data WITHOUT waiting for external price API.
     
-    Why: The full alerts_api returns 40+ fields per alert including type-specific data
-         (sustained params, threshold params, reference_prices JSON, etc.) that are only
-         needed on the detail page. This endpoint reduces payload by ~70% for faster
-         initial page load.
+    Why: The external price API (prices.runescape.wiki) has variable latency (100-1000ms).
+         By not waiting for prices, the alerts list renders instantly.
+         Price-dependent data (current_price, spread_percentage) is fetched separately
+         by the frontend via /api/alerts/prices/ endpoint.
     
     How: 
-        - Returns only essential fields: id, text, alert_name, type, is_triggered, 
-          is_active, icon, item_name, item_id, groups, is_all_items
-        - Includes timestamps for sorting: created_at, last_triggered_at
-        - For threshold distance sorting, includes: current_price, price, percentage,
-          threshold_type, target_price, item_ids, spread_percentage
-        - Excludes all sustained-specific fields (7 fields)
-        - Excludes reference_prices JSON blob
-        - Excludes triggered_data parsing for list view
+        - Returns core alert fields needed for list rendering
+        - Does NOT call get_all_current_prices() - that's deferred to separate endpoint
+        - Includes reference field so frontend can fetch correct price later
         
     Performance Impact:
-        - Payload reduction: ~70% smaller JSON response
-        - Processing reduction: No conditional type-specific field building
-        - Network: Faster transfer, faster JSON parsing in browser
+        - Eliminates 100-1000ms external API latency from initial load
+        - List renders instantly, price data fills in ~1 second later
     
     Returns:
         JsonResponse with structure:
         {
-            'alerts': [...],      # Minimal alert objects
+            'alerts': [...],      # Minimal alert objects (no price data)
             'triggered': [...],   # Triggered alert IDs and basic info
             'groups': [...]       # Unique group names
         }
@@ -1928,14 +1958,10 @@ def alerts_api_minimal(request):
     user = request.user if request.user.is_authenticated else None
     
     # =============================================================================
-    # FETCH EXTERNAL DATA (prices and item mapping)
+    # LOAD ITEM MAPPING (LOCAL FILE - INSTANT)
     # =============================================================================
-    # all_prices: Dict mapping item_id -> {high, low} from external API
-    # Why: Need current prices for threshold distance sorting
-    all_prices = get_all_current_prices()
-    
     # mapping: Dict mapping item_name_lower -> item data including 'icon' field
-    # Loaded from local JSON file for performance (see get_item_mapping)
+    # Loaded from local JSON file - no external API call
     mapping = get_item_mapping()
     
     # =============================================================================
@@ -1948,7 +1974,7 @@ def alerts_api_minimal(request):
     all_alerts = list(alerts_qs.order_by(Coalesce('item_name', Value('All items')).asc()))
     
     # =============================================================================
-    # BUILD MINIMAL RESPONSE
+    # BUILD MINIMAL RESPONSE (NO PRICE DATA)
     # =============================================================================
     # alerts_data: List of minimal alert dictionaries
     alerts_data = []
@@ -1971,9 +1997,8 @@ def alerts_api_minimal(request):
                 icon = item_data.get('icon')
         
         # ---------------------------------------------------------------------
-        # BUILD MINIMAL ALERT DICT
+        # BUILD MINIMAL ALERT DICT (NO PRICE DATA)
         # ---------------------------------------------------------------------
-        # Only include fields actually used by renderAlertItem() and SortManager
         alert_dict = {
             # Core identity fields
             'id': alert.id,
@@ -1998,43 +2023,18 @@ def alerts_api_minimal(request):
             'created_at': alert.created_at.isoformat(),
             'last_triggered_at': alert.triggered_at.isoformat() if alert.triggered_at else None,
             
-            # Fields needed for threshold distance sorting
-            # These are smaller than the full type-specific field sets
+            # Fields needed for threshold distance sorting (price data added later)
             'price': alert.price,
             'percentage': alert.percentage,
             'threshold_type': alert.threshold_type if alert.type == 'threshold' else None,
             'target_price': alert.target_price if alert.type == 'threshold' else None,
             'item_ids': alert.item_ids,  # For multi-item detection
+            'reference': alert.reference,  # Needed to know which price to fetch later
         }
         
         # Collect group names
         for g in alert_dict['groups']:
             all_groups_set.add(g)
-        
-        # ---------------------------------------------------------------------
-        # ADD CURRENT PRICE FOR THRESHOLD DISTANCE SORTING
-        # ---------------------------------------------------------------------
-        # Only include current_price if needed for sorting calculations
-        if alert.item_id and all_prices and not alert.is_all_items:
-            price_data = all_prices.get(str(alert.item_id))
-            if price_data:
-                # current_price: For threshold/spike distance calculations
-                if alert.reference == 'low':
-                    alert_dict['current_price'] = price_data.get('low')
-                elif alert.reference == 'average':
-                    high = price_data.get('high')
-                    low = price_data.get('low')
-                    if high and low:
-                        alert_dict['current_price'] = (high + low) // 2
-                else:
-                    alert_dict['current_price'] = price_data.get('high')
-                
-                # spread_percentage: For spread alerts, calculate current spread
-                if alert.type == 'spread':
-                    high = price_data.get('high')
-                    low = price_data.get('low')
-                    if high and low and low > 0:
-                        alert_dict['spread_percentage'] = round(((high - low) / low) * 100, 2)
         
         alerts_data.append(alert_dict)
         
@@ -2045,7 +2045,6 @@ def alerts_api_minimal(request):
     # =============================================================================
     # BUILD MINIMAL TRIGGERED DATA
     # =============================================================================
-    # triggered_data: Minimal info for triggered notification banners
     triggered_data = []
     for alert in triggered_alerts_list:
         triggered_dict = {
@@ -2053,13 +2052,39 @@ def alerts_api_minimal(request):
             'triggered_text': alert.triggered_text(),
             'type': alert.type,
             'is_all_items': alert.is_all_items,
-            # triggered_data: Only include for all-items alerts that need to show matched items
             'triggered_data': alert.triggered_data if alert.is_all_items else None,
         }
         triggered_data.append(triggered_dict)
     
     all_groups = sorted(all_groups_set)
     return JsonResponse({'alerts': alerts_data, 'triggered': triggered_data, 'groups': all_groups})
+
+
+def alerts_api_prices(request):
+    """
+    Fetch current prices for alerts - called AFTER initial render.
+    
+    What: Returns price data for all user's alert items.
+    
+    Why: Separating price fetching from alert list allows instant initial render.
+         This endpoint is called in the background after the list is displayed.
+    
+    How: Fetches prices from external API, returns dict of item_id -> price data
+    
+    Returns:
+        JsonResponse with structure:
+        {
+            'prices': {
+                'item_id': {'high': int, 'low': int},
+                ...
+            }
+        }
+    """
+    # Fetch all current prices from external API
+    all_prices = get_all_current_prices()
+    
+    # Return the prices dict - frontend will match to alerts by item_id
+    return JsonResponse({'prices': all_prices})
 
 
 @csrf_exempt
@@ -2794,13 +2819,21 @@ def alert_detail(request, alert_id):
     edit_saved = request.GET.get('edit_saved') == '1'
     
     # Build item_ids_data for the edit form multi-item selector
-    # What: Creates a list of {id, name} objects for items in item_ids field
+    # What: Creates a list of {id, name} objects for items in item_ids or sustained_item_ids field
     # Why: The edit form needs this data to pre-populate the multi-item selector chips
-    # How: Parse item_ids JSON, look up item names from ID-to-name mapping, return as JSON for JavaScript
+    # How: Parse item_ids JSON (or sustained_item_ids for sustained alerts), look up item names
+    #      from ID-to-name mapping, return as JSON for JavaScript
     item_ids_data = []
-    if alert.item_ids:
+    
+    # Determine which field to use for multi-item data
+    # What: Sustained alerts use sustained_item_ids, other alerts use item_ids
+    # Why: Historical design decision - sustained alerts have their own item_ids field
+    # How: Check alert type and use appropriate field
+    item_ids_field = alert.sustained_item_ids if alert.type == 'sustained' else alert.item_ids
+    
+    if item_ids_field:
         try:
-            item_ids_list = json.loads(alert.item_ids)
+            item_ids_list = json.loads(item_ids_field)
             if isinstance(item_ids_list, list):
                 # Get item ID-to-name mapping to convert IDs to names
                 id_to_name_mapping = get_item_id_to_name_mapping()
@@ -2896,13 +2929,20 @@ def update_single_alert(request, alert_id):
     is_all_items = data.get('is_all_items', False)
     alert.is_all_items = is_all_items
     
-    # Handle item_ids for multi-item spread alerts
-    # What: Stores multiple item IDs as JSON array for multi-item spread alerts
-    # Why: Allows spread alerts to monitor multiple specific items instead of all or one
-    # How: Parse comma-separated string, convert to JSON array, store in item_ids field
+    # Handle item_ids for multi-item alerts (spread, spike, sustained, threshold)
+    # What: Stores multiple item IDs as JSON array for multi-item alerts
+    # Why: Allows alerts to monitor multiple specific items instead of all or one
+    # How: Parse comma-separated string, convert to JSON array, store in appropriate field
+    #      NOTE: Sustained alerts use sustained_item_ids field, all others use item_ids field
     item_ids_str = data.get('item_ids')
     print("DEBUG")
     print(item_ids_str)
+    
+    # is_sustained: Flag to determine which field to use for storing item IDs
+    # What: Sustained alerts historically use a different field (sustained_item_ids)
+    # Why: Historical design decision - sustained alerts were created before unified item_ids
+    # How: Check alert type and use appropriate field for reading/writing
+    is_sustained = alert.type == 'sustained'
     
     if item_ids_str is not None:
         if item_ids_str == '':
@@ -2929,11 +2969,14 @@ def update_single_alert(request, alert_id):
                 # old_item_ids: Set of item IDs currently stored in the alert before this update
                 # Why: We need to compare old vs new to determine which items were removed
                 # How: Parse the existing item_ids JSON array and convert to a set of integers
+                #      NOTE: Sustained alerts store IDs in sustained_item_ids, others in item_ids
                 old_item_ids = set()
-                if alert.item_ids:
+                # old_item_ids_field: The appropriate field to read old IDs from based on alert type
+                old_item_ids_field = alert.sustained_item_ids if is_sustained else alert.item_ids
+                if old_item_ids_field:
                     try:
                         # old_item_ids_list: The raw parsed list from JSON (may contain strings or ints)
-                        old_item_ids_list = json.loads(alert.item_ids)
+                        old_item_ids_list = json.loads(old_item_ids_field)
                         # Convert each ID to int and add to the set for comparison
                         for i in old_item_ids_list:
                             old_item_ids.add(int(i))
@@ -3013,7 +3056,14 @@ def update_single_alert(request, alert_id):
                             if existing_reference_prices:
                                 alert.reference_prices = json.dumps(existing_reference_prices)
                 
-                alert.item_ids = json.dumps(item_ids_list)
+                # Store item IDs to the appropriate field based on alert type
+                # What: Sustained alerts use sustained_item_ids, all other types use item_ids
+                # Why: Historical design - sustained alerts have their own dedicated field
+                # How: Check is_sustained flag and write to correct field
+                if is_sustained:
+                    alert.sustained_item_ids = json.dumps(item_ids_list)
+                else:
+                    alert.item_ids = json.dumps(item_ids_list)
                 # Set first item as item_id for display/fallback purposes
                 if len(item_ids_list) == 1:
                     alert.item_id = item_ids_list[0]
@@ -3024,12 +3074,20 @@ def update_single_alert(request, alert_id):
                 item_name = id_to_name_mapping.get(str(item_ids_list[0]), f'Item {item_ids_list[0]}')
                 alert.item_name = item_name
             else:
-                alert.item_ids = None
+                # Clear the appropriate field when no items remain
+                if is_sustained:
+                    alert.sustained_item_ids = None
+                else:
+                    alert.item_ids = None
     
     if is_all_items:
         alert.item_name = None
         alert.item_id = None
-        alert.item_ids = None  # Clear multi-item selection when switching to all items
+        # Clear the appropriate multi-item field when switching to all items
+        if is_sustained:
+            alert.sustained_item_ids = None
+        else:
+            alert.item_ids = None
     elif item_ids_str is None or item_ids_str == '':
         # Single item mode (no item_ids provided or all were removed)
         if data.get('item_name') is not None:

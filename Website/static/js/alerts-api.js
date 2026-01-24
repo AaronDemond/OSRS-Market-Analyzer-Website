@@ -12,6 +12,9 @@
         /**
          * Fetches current alerts data from the server.
          * Returns both active alerts and triggered notifications.
+         * 
+         * PERFORMANCE: This endpoint returns instantly (no external API wait).
+         * Price data is fetched separately via fetchPrices().
          */
         async fetchAlerts() {
             try {
@@ -19,6 +22,25 @@
                 return await response.json();
             } catch (error) {
                 console.error('Error fetching alerts:', error);
+                return null;
+            }
+        },
+
+        /**
+         * Fetches current prices from external API.
+         * 
+         * PERFORMANCE: Called AFTER fetchAlerts() so list renders instantly.
+         * Price data is used for threshold distance sorting and spread calculations.
+         * 
+         * Returns:
+         *   {prices: {item_id: {high: int, low: int}, ...}}
+         */
+        async fetchPrices() {
+            try {
+                const response = await fetch(AlertsConfig.endpoints.prices);
+                return await response.json();
+            } catch (error) {
+                console.error('Error fetching prices:', error);
                 return null;
             }
         },

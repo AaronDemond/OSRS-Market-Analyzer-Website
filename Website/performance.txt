@@ -536,3 +536,347 @@ VALIDATION
 4. Test all 4 alert types can be created (each selector must init properly)
 
 ================================================================================
+
+TWO-PHASE LOADING: DEFERRED PRICE FETCHING (2026-01-24)
+================================================================================
+
+PERFORMANCE ISSUE
+=================
+Alerts page load time varies wildly (100ms to 1000ms+) due to external price API
+latency. The Wiki prices API response time is unpredictable and outside our control.
+
+OBSERVED SYMPTOMS
+=================
+- Sometimes page loads instantly (~200ms)
+- Other times same page takes 600-1100ms
+- Inconsistency confuses users - "why is it fast sometimes?"
+
+ROOT CAUSE
+==========
+The alerts_api_minimal endpoint called get_all_current_prices() which makes an
+HTTP request to https://prices.runescape.wiki/api/v1/osrs/latest
+
+This external API has variable latency:
+- Best case: ~100ms
+- Typical: ~300-500ms  
+- Worst case: ~1000ms+
+
+Since price data blocks the entire response, slow API = slow page.
+
+SOLUTION: TWO-PHASE LOADING
+===========================
+Split the data fetching into two phases:
+
+PHASE 1: Instant Render (no external API)
+- /api/alerts/minimal/ now returns alerts WITHOUT price data
+- Only reads from database and local JSON file
+- Response time: ~50-100ms (consistent)
+- User sees full alerts list immediately
+
+PHASE 2: Background Price Fetch
+- /api/alerts/prices/ fetches price data from external API
+- Called AFTER Phase 1 completes and list is rendered
+- Updates cached alerts with current_price and spread_percentage
+- If user is sorting by "threshold distance", triggers re-render
+
+USER EXPERIENCE
+==============
+Before: Page blank for 100-1000ms, then everything appears
+After:  Page shows alerts in ~100ms, price-dependent features fill in ~500ms later
+
+CHANGES MADE
+============
+
+1. views.py - alerts_api_minimal()
+   - REMOVED: get_all_current_prices() call
+   - ADDED: 'reference' field to alerts (needed to calculate price later)
+   - Response is now instant (database + local JSON only)
+
+2. views.py - alerts_api_prices() [NEW]
+   - New endpoint that ONLY fetches prices
+   - Returns: {prices: {item_id: {high, low}, ...}}
+   - Called in background after list renders
+
+3. urls.py
+   - Added: path('api/alerts/prices/', views.alerts_api_prices)
+
+4. alerts-config.js
+   - Added: endpoints.prices: '/api/alerts/prices/'
+
+5. alerts-api.js
+   - Added: fetchPrices() method for background price loading
+
+6. alerts-selectors.js - AlertsRefresh.refresh()
+   - Phase 1: Call fetchAlerts(), render immediately
+   - Phase 2: Call fetchAndApplyPrices() in background
+   - If prices update and user sorts by threshold distance, re-render
+
+7. alerts-ui.js
+   - Added: renderFromCache() method for re-rendering after price update
+
+EXPECTED IMPACT
+==============
+- Consistent ~100ms initial render (no more 1000ms variance)
+- Price-dependent features (threshold distance) work ~500ms after render
+- User perceives page as "instant" since content is visible immediately
+
+RISKS / TRADEOFFS
+================
+1. Sorting by "threshold distance" may re-sort after prices load
+2. Spread percentage shows "N/A" briefly until prices arrive
+3. Slightly more complexity in frontend code
+
+VALIDATION
+=========
+1. Time initial page load - should be consistent ~100ms
+2. Watch Network tab - see two requests (alerts instant, prices slower)
+3. Test threshold distance sorting - should update after prices load
+4. Verify spread alerts show percentage after price data arrives
+
+================================================================================
+
+NAVIGATION SLOWDOWN FIX: SHORT-TERM PRICE CACHING (2026-01-24)
+================================================================================
+
+PERFORMANCE ISSUE
+=================
+Alerts page loads instantly on REFRESH but slowly when NAVIGATING from other pages.
+
+OBSERVED SYMPTOMS
+=================
+- F5 refresh: Page loads in ~100ms (fast!)
+- Click from Flips/Dashboard to Alerts: Page loads in ~600-1000ms (slow)
+- Inconsistent behavior depending on navigation method
+
+ROOT CAUSE
+==========
+Django's development server is **single-threaded**. When you navigate:
+
+1. You're on Flips page → it calls `/api/flips/data/` → `get_all_current_prices()`
+2. External API call starts (takes 500-1000ms)
+3. You click "Alerts" before that completes
+4. Django receives new request BUT can't process it until previous finishes
+5. New page waits for old page's slow API call to complete
+
+This doesn't happen on refresh because:
+- Browser cancels previous page's pending requests
+- New page's requests start fresh with no queue
+
+MULTIPLE PAGES CALLING PRICES
+============================
+- `/api/dashboard/content/` (home.html) → `get_all_current_prices()`
+- `/api/flips/data/` (flips.html) → `get_all_current_prices()`
+- `/api/alerts/prices/` (alerts) → `get_all_current_prices()`
+
+Every page transition triggers a new external API call that blocks the server.
+
+SOLUTION: 5-SECOND PRICE CACHE
+==============================
+Added a very short cache (5 seconds) to `get_all_current_prices()`:
+
+```python
+PRICE_CACHE_TTL = 5  # seconds
+
+def get_all_current_prices():
+    global _price_cache, _price_cache_time
+    
+    # Return cached data if fresh enough
+    if _price_cache and (time.time() - _price_cache_time) < PRICE_CACHE_TTL:
+        return _price_cache
+    
+    # Fetch fresh data
+    response = requests.get(...)
+    _price_cache = response.json()['data']
+    _price_cache_time = time.time()
+    return _price_cache
+```
+
+WHY 5 SECONDS?
+- Short enough: Prices are always "fresh" for display purposes
+- Long enough: Covers typical page navigation time (click → page load)
+- Alert triggering: Happens in background job, not affected by this
+
+CHANGES MADE
+============
+1. views.py (top of file)
+   - Added: _price_cache, _price_cache_time, PRICE_CACHE_TTL variables
+
+2. views.py - get_all_current_prices()
+   - Added: Cache check before API call
+   - Added: Cache update after successful fetch
+   - Added: Fallback to stale cache if fetch fails
+
+EXPECTED IMPACT
+==============
+- Navigation between pages: Instant (cache hit)
+- Price data staleness: Maximum 5 seconds (acceptable for display)
+- Server blocking: Eliminated during typical navigation
+
+VALIDATION
+=========
+1. Click from Flips → Alerts quickly - should be fast
+2. Click from Dashboard → Alerts quickly - should be fast
+3. Wait 10 seconds, then navigate - still fast (fresh cache)
+4. Verify prices display correctly on all pages
+
+================================================================================
+
+TRIGGERED NOTIFICATION SLOWDOWN FIX (2026-01-24)
+================================================================================
+
+PERFORMANCE ISSUE
+=================
+Alerts page loads instantly ONLY when no triggered notifications are present.
+When a green notification banner exists, the page is slow (~500-1000ms).
+
+OBSERVED SYMPTOMS
+=================
+- Page refresh with NO triggered alerts: Instant load
+- Page refresh WITH triggered alert notification: Slow load
+- Navigation from other pages: Inconsistent (depends on triggered status)
+- User confirmed this pattern through extensive testing
+
+ROOT CAUSE
+==========
+`triggered_text()` in models.py calls `get_item_price()` which makes a FULL
+external API call to `prices.runescape.wiki` for EACH triggered alert.
+
+Call chain when notification exists:
+1. alerts_api_minimal() iterates triggered alerts
+2. For each triggered alert: call `alert.triggered_text()`
+3. `triggered_text()` calls `get_item_price()` for display formatting
+4. `get_item_price()` makes FULL external API call (500-1000ms)
+5. Total delay = N × API_latency (where N = number of triggered alerts)
+
+When NO notification: `triggered_text()` never called → instant load.
+
+EVIDENCE
+========
+models.py line 433 (inside triggered_text()):
+```python
+item_price = get_item_price(self.item_id, self.reference)
+```
+
+models.py get_item_price() function:
+```python
+response = requests.get('https://prices.runescape.wiki/api/v1/osrs/latest', ...)
+```
+
+This was making a BRAND NEW external API request, ignoring the cached price data
+that views.py already maintains.
+
+SOLUTION
+========
+Modified `get_item_price()` in models.py to use the cached `get_all_current_prices()`
+from views.py instead of making its own API call.
+
+CHANGES MADE
+============
+1. models.py - get_item_price()
+   - Removed: Direct requests.get() call to external API
+   - Added: Import of get_all_current_prices from views
+   - Added: Use cached price data instead of new API call
+   - Added: Detailed documentation explaining the fix
+
+CODE CHANGE
+===========
+Before:
+```python
+def get_item_price(item_id, reference):
+    response = requests.get('https://prices.runescape.wiki/api/v1/osrs/latest', ...)
+    # ... parse response
+```
+
+After:
+```python
+def get_item_price(item_id, reference):
+    from Website.views import get_all_current_prices
+    all_prices = get_all_current_prices()  # Uses 5-second cache
+    price_data = all_prices.get(str(item_id))
+    # ... return appropriate price
+```
+
+EXPECTED IMPACT
+==============
+- Triggered notifications: No longer cause slow page loads
+- Multiple triggered alerts: All use same cached price data
+- Consistent behavior: Page loads same speed regardless of notification count
+
+RISKS / TRADEOFFS
+================
+1. Circular import potential - mitigated by importing inside function
+2. Price data up to 5 seconds stale - acceptable for display purposes
+
+VALIDATION
+=========
+1. Create an alert, trigger it (get green notification)
+2. Navigate away from alerts page
+3. Navigate back - should be instant
+4. Refresh page - should be instant
+5. Both scenarios should be equally fast now
+
+================================================================================
+
+================================================================================
+SUSTAINED ALERT FORM ORDER FIX
+Date: 2026-01-24
+================================================================================
+
+PERFORMANCE ISSUE
+================
+Not a performance issue, but a UX/form ordering issue.
+
+OBSERVED SYMPTOMS
+================
+- When creating a sustained move alert with "All Items" selected, the minimum 
+  price input field appears in the wrong position
+- User expects minimum price to appear immediately after maximum price
+- Tab order was inconsistent with visual order
+
+ROOT CAUSE
+==========
+Two issues were identified:
+
+1. HTML DOM Order: In alerts.html, the min-price-group div appeared BEFORE the 
+   max-price-group div in the markup (lines 451-460), causing minimum price to 
+   render visually above maximum price.
+
+2. Tab Index Misconfiguration: In alerts-managers.js, the sustained alert "all" 
+   tab configuration had:
+   - maximum-price: 10
+   - minimum-price: 15 (with other fields in between)
+   This meant pressing Tab would jump from max price to other fields, only reaching
+   min price much later.
+
+CHANGES MADE
+============
+
+File: Website/templates/alerts.html
+-----------------------------------
+Swapped the order of min-price-group and max-price-group divs:
+- max-price-group now appears first (with tabindex="10")
+- min-price-group now appears second (with tabindex="11")
+
+File: Website/static/js/alerts-managers.js
+------------------------------------------
+Updated sustained alert "all" tab configuration:
+- maximum-price: 10
+- minimum-price: 11 (immediately after max price)
+- All other fields shifted accordingly
+
+EXPECTED IMPACT
+==============
+- Visual order now matches logical order (max price -> min price)
+- Tab navigation flows correctly through the form
+- Consistent with spread, spike, and threshold alerts which already had this order
+
+VALIDATION STEPS
+===============
+1. Navigate to Create Alert tab
+2. Select "Sustained Move" alert type
+3. Select "All Items" scope
+4. Verify maximum price field appears before minimum price field
+5. Press Tab from maximum price - should move to minimum price
+6. Complete tab navigation through entire form - all fields should be reachable
+
+================================================================================

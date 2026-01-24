@@ -373,19 +373,22 @@
                         'volatility-buffer-size': 18,
                         'volatility-multiplier': 19
                     },
-                    // All Items: Apply To → Direction → Market Pressure → Max Price → Min Consecutive →
-                    //            Min Move% → Min Spread% → Min Volume → Min Price → Reference → Time Frame →
+                    // All Items: Apply To → Direction → Market Pressure → Max Price → Min Price → Min Consecutive →
+                    //            Min Move% → Min Spread% → Min Volume → Reference → Time Frame →
                     //            Vol Buffer → Vol Multiplier
+                    // What: Tab order for sustained alerts when "All Items" is selected
+                    // Why: Users expect Min/Max price fields to be adjacent for easier form completion
+                    // How: Place minimum-price immediately after maximum-price (tabindex 11)
                     all: {
                         'sustained-scope': 7,
                         'direction': 8,
                         'min-pressure-strength': 9,
                         'maximum-price': 10,
-                        'min-consecutive-moves': 11,
-                        'min-move-percentage': 12,
-                        'min-pressure-spread': 13,
-                        'min-volume': 14,
-                        'minimum-price': 15,
+                        'minimum-price': 11,
+                        'min-consecutive-moves': 12,
+                        'min-move-percentage': 13,
+                        'min-pressure-spread': 14,
+                        'min-volume': 15,
                         'reference': 16,
                         'time-frame': 17,
                         'volatility-buffer-size': 18,

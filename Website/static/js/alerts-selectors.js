@@ -1627,6 +1627,10 @@
         /**
          * Fetches fresh data and updates the UI.
          * Skips refresh if a dropdown is open to prevent UI disruption.
+         * 
+         * PERFORMANCE: Two-phase loading for instant render
+         * Phase 1: Fetch alerts (instant - no external API)
+         * Phase 2: Fetch prices in background, update cached alerts
          */
         async refresh() {
             // Don't refresh if any dropdown is open
@@ -1634,9 +1638,78 @@
                 return;
             }
 
+            // =================================================================
+            // PHASE 1: Fetch and render alerts INSTANTLY (no price API wait)
+            // =================================================================
             const data = await AlertsAPI.fetchAlerts();
             if (data) {
                 AlertsUI.updateMyAlertsPane(data);
+                
+                // =============================================================
+                // PHASE 2: Fetch prices in background, then update cached data
+                // =============================================================
+                // This runs AFTER the list is visible, so user sees content fast
+                this.fetchAndApplyPrices(data.alerts);
+            }
+        },
+        
+        /**
+         * Fetches prices and updates cached alerts with price data.
+         * Called after initial render so price latency doesn't block UI.
+         * 
+         * What: Fetches prices from external API, updates alert cache with current_price
+         * Why: Allows threshold distance sorting to work after initial render
+         * How: Gets prices, maps to alerts by item_id, updates AlertsState cache
+         */
+        async fetchAndApplyPrices(alerts) {
+            if (!alerts || alerts.length === 0) return;
+            
+            const priceData = await AlertsAPI.fetchPrices();
+            if (!priceData || !priceData.prices) return;
+            
+            const prices = priceData.prices;
+            
+            // Update each cached alert with its price data
+            const cachedAlerts = AlertsState.getCachedAlerts();
+            if (!cachedAlerts) return;
+            
+            let updated = false;
+            cachedAlerts.forEach(alert => {
+                if (alert.item_id && !alert.is_all_items) {
+                    const itemPrices = prices[String(alert.item_id)];
+                    if (itemPrices) {
+                        // Calculate current_price based on reference type
+                        const ref = alert.reference || 'high';
+                        if (ref === 'low') {
+                            alert.current_price = itemPrices.low;
+                        } else if (ref === 'average') {
+                            const high = itemPrices.high;
+                            const low = itemPrices.low;
+                            if (high && low) {
+                                alert.current_price = Math.floor((high + low) / 2);
+                            }
+                        } else {
+                            alert.current_price = itemPrices.high;
+                        }
+                        
+                        // Calculate spread_percentage for spread alerts
+                        if (alert.type === 'spread') {
+                            const high = itemPrices.high;
+                            const low = itemPrices.low;
+                            if (high && low && low > 0) {
+                                alert.spread_percentage = Math.round(((high - low) / low) * 10000) / 100;
+                            }
+                        }
+                        updated = true;
+                    }
+                }
+            });
+            
+            // If we updated any alerts and user is sorting by threshold distance,
+            // trigger a re-render to show the updated sort order
+            if (updated && AlertsState.sorting.sortKey === 'thresholdDistance') {
+                // Re-render with updated price data
+                AlertsUI.renderFromCache();
             }
         },
 
