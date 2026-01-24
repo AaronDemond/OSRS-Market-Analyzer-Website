@@ -83,13 +83,12 @@
     .create-alert-form > #pressure-strength-group { order: 80; }  /* Market Pressure */
 
     .create-alert-form > #max-price-group { order: 81; }          /* Maximum Price */
+    .create-alert-form > #min-price-group { order: 82; }          /* Minimum Price - immediately after Maximum */
 
-    .create-alert-form > #min-consecutive-moves-group { order: 82; }
-    .create-alert-form > #min-move-percentage-group { order: 83; }
-    .create-alert-form > #pressure-spread-group { order: 84; }
-    .create-alert-form > #min-volume-group { order: 85; }
-
-    .create-alert-form > #min-price-group { order: 86; }          /* Minimum Price */
+    .create-alert-form > #min-consecutive-moves-group { order: 83; }
+    .create-alert-form > #min-move-percentage-group { order: 84; }
+    .create-alert-form > #pressure-spread-group { order: 85; }
+    .create-alert-form > #min-volume-group { order: 86; }
 
     .create-alert-form > #percentage-group { order: 90; }
     .create-alert-form > #price-group { order: 91; }

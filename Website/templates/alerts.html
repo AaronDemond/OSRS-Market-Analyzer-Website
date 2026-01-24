@@ -9,6 +9,10 @@
 {% endblock %}
 
 {% block content %}
+
+
+
+
 <div class="page-header">
     <div class="page-header-icon">
         <svg fill="currentColor" viewBox="0 0 20 20">
@@ -448,16 +452,16 @@
             <!-- What: Input fields for filtering which items to monitor based on their price -->
             <!-- Why: Users may only want to track items within a certain price range (e.g., high-value items only) -->
             <!-- How: These filters apply when "All Items" is selected, narrowing down the monitored items -->
-            <!-- Note: Maximum price appears first in visual order (user expectation), followed by minimum price -->
-            <div class="form-group" id="max-price-group" style="display: none;">
-                <label for="maximum-price">Maximum Price</label>
-                <input type="number" name="maximum_price" id="maximum-price" min="0" tabindex="10">
-                <small class="form-hint">The maximum price of an item to track</small>
-            </div>
+            <!-- Note: Visual order is controlled by CSS flexbox order property in alerts-form.css -->
             <div class="form-group" id="min-price-group" style="display: none;">
                 <label for="minimum-price">Minimum Price</label>
                 <input type="number" name="minimum_price" id="minimum-price" min="0" tabindex="11">
                 <small class="form-hint">The minimum price of an item to track</small>
+            </div>
+            <div class="form-group" id="max-price-group" style="display: none;">
+                <label for="maximum-price">Maximum Price</label>
+                <input type="number" name="maximum_price" id="maximum-price" min="0" tabindex="10">
+                <small class="form-hint">The maximum price of an item to track</small>
             </div>
 
             <!-- Sustained Move specific fields -->
