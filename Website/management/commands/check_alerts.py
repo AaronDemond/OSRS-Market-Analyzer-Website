@@ -1324,8 +1324,6 @@ class Command(BaseCommand):
             'pressure_strength': pressure_strength
         }
         
-        # Print debug info
-        self.print_sustained_debug(alert, state, trigger_data)
         
         # Reset streak after trigger
         state['streak_count'] = 0

@@ -605,3 +605,108 @@ class PasswordResetToken(models.Model):
 
     def __str__(self):
         return f"Reset token for {self.user.email}"
+
+
+# =============================================================================
+# ITEM PRICE DATA - Historical Price Storage
+# =============================================================================
+# What: Stores daily price snapshots for all OSRS items
+# Why: Enables historical analysis, trending calculations, and future features
+#      without needing to re-fetch data from external API
+# How: Background script (update_trending.py) populates this table hourly
+# Note: One row per item per day - stores raw API data for maximum flexibility
+
+class ItemPriceSnapshot(models.Model):
+    """
+    Stores price data snapshots for OSRS items (every 4 hours).
+    
+    What: A price snapshot for one item at a specific time
+    Why: Persistent storage of price history for analytics and future features
+    How: Populated by scripts/update_trending.py background task every 4 hours
+    
+    Data Sources:
+        - prices.runescape.wiki API with timestep=24h
+        - Stores both high and low prices plus volumes
+        - New snapshot created every 4 hours (6 per day)
+    
+    Usage Examples:
+        - Calculate daily/weekly/monthly price trends
+        - Generate price charts
+        - Identify market patterns
+        - Power trending items feature (gainers/losers)
+    """
+    
+    # item_id: OSRS item ID from the Wiki API
+    item_id = models.IntegerField(db_index=True)
+    
+    # item_name: Human-readable item name (denormalized for convenience)
+    item_name = models.CharField(max_length=255)
+    
+    # timestamp: When this snapshot was taken (every 4 hours)
+    timestamp = models.DateTimeField(db_index=True)
+    
+    # avg_high_price: Average instant-buy price (in GP)
+    avg_high_price = models.IntegerField(null=True, blank=True)
+    
+    # avg_low_price: Average instant-sell price (in GP)
+    avg_low_price = models.IntegerField(null=True, blank=True)
+    
+    # high_price_volume: Number of items instant-bought
+    high_price_volume = models.BigIntegerField(default=0)
+    
+    # low_price_volume: Number of items instant-sold
+    low_price_volume = models.BigIntegerField(default=0)
+    
+    # created_at: When this record was inserted (for debugging/auditing)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        # Ensure one snapshot per item per timestamp
+        unique_together = ['item_id', 'timestamp']
+        # Default ordering: most recent first
+        ordering = ['-timestamp', 'item_name']
+        # Index for common queries
+        indexes = [
+            models.Index(fields=['item_id', '-timestamp']),
+            models.Index(fields=['-timestamp']),
+        ]
+    
+    def __str__(self):
+        return f"{self.item_name} - {self.timestamp.strftime('%Y-%m-%d %H:%M')}"
+    
+    @property
+    def avg_price(self):
+        """
+        Calculate average price (midpoint of high and low).
+        
+        What: Returns the midpoint price for this snapshot
+        Why: Commonly used metric for price comparisons
+        How: (high + low) / 2, handling None values
+        """
+        if self.avg_high_price and self.avg_low_price:
+            return (self.avg_high_price + self.avg_low_price) // 2
+        return self.avg_high_price or self.avg_low_price
+    
+    @property
+    def total_volume(self):
+        """
+        Calculate total items traded.
+        
+        What: Returns sum of buy and sell volumes
+        Why: Useful for filtering by activity level
+        How: high_volume + low_volume
+        """
+        return self.high_price_volume + self.low_price_volume
+    
+    @property
+    def volume_gp(self):
+        """
+        Calculate total GP traded.
+        
+        What: Returns approximate GP value of all trades
+        Why: Better measure of market activity than item count
+        How: (high_vol * high_price) + (low_vol * low_price)
+        """
+        high_gp = (self.high_price_volume or 0) * (self.avg_high_price or 0)
+        low_gp = (self.low_price_volume or 0) * (self.avg_low_price or 0)
+        return high_gp + low_gp
