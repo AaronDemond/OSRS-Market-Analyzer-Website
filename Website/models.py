@@ -1,30 +1,55 @@
 from django.db import models
 from django.contrib.auth.models import User
-import requests
 
 
 def get_item_price(item_id, reference):
     """
     Fetch the high or low price for an item based on reference.
-    reference: 'high' or 'low'
+    
+    What: Returns the current price for a single item.
+    Why: Used by triggered_text() to display current prices in notification messages.
+    How: Uses the cached get_all_current_prices() from views to avoid redundant API calls.
+    
+    PERFORMANCE FIX: Previously made a FULL external API call for EACH triggered alert.
+    This was causing ~500-1000ms delay PER notification when loading the alerts page.
+    Now uses the cached price data which is shared across all price lookups.
+    
+    Args:
+        item_id: The OSRS item ID to look up
+        reference: 'high' or 'low' - which price to return
+    
+    Returns:
+        int: The price value, or None if not found
     """
-    try:
-        response = requests.get(
-            'https://prices.runescape.wiki/api/v1/osrs/latest',
-            headers={'User-Agent': 'GE-Tools (not yet live) - demondsoftware@gmail.com'}
-        )
-        if response.status_code == 200:
-            data = response.json()
-            if 'data' in data:
-                price_data = data['data'].get(str(item_id))
-                if price_data:
-                    if reference == 'high':
-                        return price_data.get('high')
-                    elif reference == 'low':
-                        return price_data.get('low')
-    except requests.RequestException:
-        pass
+    # Import here to avoid circular imports (views imports models)
+    from Website.views import get_all_current_prices
+    
+    # Use the cached price data - this has a 5-second cache so won't hit API repeatedly
+    all_prices = get_all_current_prices()
+    
+    price_data = all_prices.get(str(item_id))
+    if price_data:
+        if reference == 'high':
+            return price_data.get('high')
+        elif reference == 'low':
+            return price_data.get('low')
     return None
+
+
+def get_all_current_prices():
+    """
+    Wrapper function to get all current prices from views.
+    
+    What: Returns the full price dictionary from the cached API response.
+    Why: Used by triggered_text() to display spread percentages with buy/sell prices.
+    How: Imports and calls the cached get_all_current_prices() from views.
+    
+    Returns:
+        dict: Dictionary mapping item_id (str) to {'high': int, 'low': int, ...}
+    """
+    # Import here to avoid circular imports (views imports models)
+    from Website.views import get_all_current_prices as _get_all_prices
+    return _get_all_prices()
 
 
 
@@ -291,256 +316,103 @@ class Alert(models.Model):
         return self._format_time_frame()
     
     def __str__(self):
-        if self.type == 'spread':
-            # What: Returns a human-readable string representation for spread alerts
-            # Why: Needed for admin display and debugging
-            # How: Checks is_all_items, then item_ids for multi-item, then falls back to single item
+        """
+        Returns a concise, human-readable string representation of the alert.
+        
+        What: Generates display text for alert notifications, list items, and admin views.
+        Why: Users need to quickly understand what the alert is monitoring at a glance.
+        How: Format is "[target] [type] [threshold/value] ([timeframe/reference])"
+        
+        Examples:
+            Single item:  "Abyssal whip spread ≥5%"
+            Multi-item:   "3 items spread ≥5%"
+            All items:    "All items spread ≥5%"
+            Threshold:    "Abyssal whip above 2,500,000 gp (High)"
+            Spike:        "Abyssal whip spike ≥10% (1hr)"
+            Sustained:    "Abyssal whip sustained Up (5 moves)"
+        """
+        import json
+        
+        # Helper to get target description (item name, count, or "All items")
+        def get_target(item_ids_field=None):
             if self.is_all_items:
-                return f"All items with a spread >= {self.percentage}%"
-            elif self.item_ids:
-                # Multi-item spread alert - show count of items being monitored
-                import json
+                return "All items"
+            
+            ids_to_check = item_ids_field or self.item_ids
+            if ids_to_check:
                 try:
-                    ids = json.loads(self.item_ids)
+                    ids = json.loads(ids_to_check)
                     count = len(ids) if isinstance(ids, list) else 1
                     if count == 1:
-                        target = self.item_name or "1 item"
+                        return self.item_name or "1 item"
                     else:
-                        target = f"{count} items"
+                        return f"{count} items"
                 except:
-                    target = self.item_name or "Unknown"
-                return f"{target} spread >= {self.percentage}%"
-            return f"{self.item_name} spread >= {self.percentage}%"
+                    pass
+            return self.item_name or "Unknown item"
+        
+        # =========================================================================
+        # SPREAD ALERTS: "[target] spread ≥[percentage]%"
+        # =========================================================================
+        if self.type == 'spread':
+            target = get_target()
+            return f"{target} spread ≥{self.percentage}%"
+        
+        # =========================================================================
+        # SPIKE ALERTS: "[target] spike ≥[percentage]% ([timeframe])"
+        # =========================================================================
         if self.type == 'spike':
-            # What: Returns a human-readable string representation for spike alerts
-            # Why: Needed for admin display, alert list, and debugging
-            # How: Checks is_all_items, then item_ids for multi-item, then falls back to single item
+            target = get_target()
             frame = self._format_time_frame()
             perc = f"{self.percentage}%" if self.percentage is not None else "N/A"
-            if self.is_all_items:
-                return f"All items spike {perc} within {frame}"
-            elif self.item_ids:
-                # Multi-item spike alert - show count of items being monitored
-                import json
-                try:
-                    ids = json.loads(self.item_ids)
-                    count = len(ids) if isinstance(ids, list) else 1
-                    if count == 1:
-                        target = self.item_name or "1 item"
-                    else:
-                        target = f"{count} items"
-                except:
-                    target = self.item_name or "Unknown"
-                return f"{target} spike {perc} within {frame}"
-            target = self.item_name or "Unknown item"
-            return f"{target} spike {perc} within {frame}"
+            return f"{target} spike ≥{perc} ({frame})"
+        
+        # =========================================================================
+        # SUSTAINED ALERTS: "[target] sustained [direction] ([moves] moves)"
+        # =========================================================================
         if self.type == 'sustained':
-            frame = self._format_time_frame(self.time_frame)
+            target = get_target(self.sustained_item_ids)
             moves = self.min_consecutive_moves or 0
             direction = (self.direction or 'both').capitalize()
-            if self.is_all_items:
-                return f"All items sustained {direction} ({moves} moves in {frame})"
-            elif self.sustained_item_ids:
-                import json
-                try:
-                    ids = json.loads(self.sustained_item_ids)
-                    count = len(ids) if isinstance(ids, list) else 1
-                    if count == 1:
-                        target = self.item_name or "1 item"
-                    else:
-                        target = f"{count} items"
-                except:
-                    target = self.item_name or "Unknown"
-                return f"{target} sustained {direction} ({moves} moves in {frame})"
+            if direction == 'Both':
+                return f"{target} sustained in both directions ({moves} moves)"
             else:
-                target = self.item_name or "Unknown item"
-                return f"{target} sustained {direction} ({moves} moves in {frame})"
-        # Threshold alert: displays target, direction, threshold value/percentage, and reference price
-        # What: Returns a human-readable string representation for threshold alerts
-        # Why: Users need to quickly understand what the alert is tracking
-        # How: Formats based on threshold_type (percentage vs value) and tracks items (all vs specific)
+                return f"{target} sustained {direction} ({moves} moves)"
+        
+        # =========================================================================
+        # THRESHOLD ALERTS: "[target] [above/below] [value] ([reference])"
+        # =========================================================================
         if self.type == 'threshold':
-            direction = (self.direction or 'up').capitalize()
+            target = get_target()
+            direction = "above" if (self.direction or 'up') == 'up' else "below"
             threshold_type = self.threshold_type or 'percentage'
             reference = (self.reference or 'high').capitalize()
             
-            # =============================================================================
-            # DETERMINE THRESHOLD VALUE BASED ON TYPE
-            # =============================================================================
-            # What: Gets the correct threshold value depending on whether this is a percentage or value alert
-            # Why: Percentage alerts store their value in self.percentage, but value-based alerts store
-            #      their target price in self.target_price - using the wrong field causes display bugs
-            # How: Check threshold_type and use the appropriate field:
-            #      - 'percentage': Use self.percentage (e.g., 5 for "5% change")
-            #      - 'value': Use self.target_price (e.g., 1500000 for "above 1,500,000 gp")
+            # Format threshold value based on type (percentage vs gp value)
             if threshold_type == 'percentage':
                 threshold_val = self.percentage if self.percentage is not None else 0
-                threshold_str = f"{threshold_val}%"
+                threshold_str = f"≥{threshold_val}%"
             else:
-                # Value-based threshold uses target_price, not percentage
                 threshold_val = self.target_price if self.target_price is not None else 0
                 threshold_str = f"{int(threshold_val):,} gp"
             
-            # Determine target (all items, multiple specific, or single item)
-            if self.is_all_items:
-                target = "All items"
-            elif self.item_ids:
-                import json
-                try:
-                    ids = json.loads(self.item_ids)
-                    count = len(ids) if isinstance(ids, list) else 1
-                    if count == 1:
-                        target = self.item_name or "1 item"
-                    else:
-                        target = f"{count} items"
-                except:
-                    target = self.item_name or "Unknown"
-            else:
-                target = self.item_name or "Unknown item"
-            
-            if direction == "Up":
-                return f"{target}  above {threshold_str} ({reference})"
-            else:
-                return f"{target}  below {threshold_str} ({reference})"
-        if self.is_all_items:
-            return f"All items {self.type} {self.price:,} ({self.reference})"
-        return f"{self.item_name} {self.type} {self.price:,} ({self.reference})"
+            return f"{target} {direction} {threshold_str} ({reference})"
+        
+        # =========================================================================
+        # FALLBACK: Generic format for unknown types
+        # =========================================================================
+        target = get_target()
+        return f"{target} {self.type} alert"
 
     def triggered_text(self):
-        # What: Returns a human-readable description of what triggered the alert
-        # Why: Displayed to users when viewing triggered alerts
-        # How: Parses triggered_data JSON and formats based on alert type
-        if self.type == "spread":
-            if self.is_all_items:
-                return f"Price spread above {self.percentage}% Triggered. Click for details"
-            elif self.item_ids and self.triggered_data:
-                # Multi-item spread alert - show how many items have triggered
-                import json
-                try:
-                    triggered_items = json.loads(self.triggered_data)
-                    total_items = json.loads(self.item_ids)
-                    triggered_count = len(triggered_items) if isinstance(triggered_items, list) else 0
-                    total_count = len(total_items) if isinstance(total_items, list) else 0
-                    return f"Spread >= {self.percentage}% on {triggered_count}/{total_count} items. Click for details"
-                except Exception:
-                    pass
-            return f"{self.item_name} spread has reached {self.percentage}% or higher"
-        # item_price: Current price fetched for display for alert types that need a spot-price in messaging
-        # What: Fetches a current price using the alert's reference type (high/low/average)
-        # Why: Some alert types (like spike) may include a reference price in messaging; we keep the helper
-        #      call here because it is shared and inexpensive, but we removed the legacy above/below branches.
-        # How: get_item_price() handles the reference type selection.
-        item_price = get_item_price(self.item_id, self.reference)
-        price_formatted = f"{item_price:,}" if item_price else str(item_price)
-        if self.type == "spike":
-            # What: Returns a human-readable description of what triggered the spike alert
-            # Why: Users need to understand which items spiked and by how much
-            # How: Parses triggered_data JSON and formats based on scope (all/multi/single)
-            frame = self._format_time_frame()
-            perc = f"{self.percentage:.1f}" if self.percentage is not None else "N/A"
-            
-            # Determine target description based on alert scope
-            if self.is_all_items:
-                target = "All items"
-            elif self.item_ids:
-                # Multi-item spike alert
-                import json
-                try:
-                    ids = json.loads(self.item_ids)
-                    count = len(ids) if isinstance(ids, list) else 1
-                    target = f"{count} items" if count > 1 else self.item_name
-                except:
-                    target = self.item_name
-            else:
-                target = self.item_name
-            
-            base = f"{target} spike {perc}% within {frame}"
-            
-            # For multi-item or all-items spike alerts, show triggered count
-            if (self.is_all_items or self.item_ids) and self.triggered_data:
-                import json
-                try:
-                    data = json.loads(self.triggered_data)
-                    if isinstance(data, list):
-                        triggered_count = len(data)
-                        if self.item_ids:
-                            # Multi-item: show triggered/total
-                            total_items = json.loads(self.item_ids)
-                            total_count = len(total_items) if isinstance(total_items, list) else 0
-                            return f"Spike >= {perc}% on {triggered_count}/{total_count} items. Click for details"
-                        else:
-                            # All items: just show count
-                            return f"{base} ({triggered_count} item(s) matched)"
-                except Exception:
-                    pass
-            return base
-        if self.type == "sustained":
-            if self.triggered_data:
-                import json
-                try:
-                    data = json.loads(self.triggered_data)
-                    item_name = data.get('item_name', self.item_name or 'Unknown')
-                    streak_dir = data.get('streak_direction', 'up')
-                    total_move = data.get('total_move_percent', 0)
-                    streak_count = data.get('streak_count', 0)
-                    direction_word = "up" if streak_dir == "up" else "down"
-                    return f"{item_name} moved {direction_word} {total_move:.2f}% over {streak_count} consecutive moves"
-                except Exception:
-                    pass
-            # Fallback if no triggered_data
-            frame = self._format_time_frame(self.time_frame)
-            moves = self.min_consecutive_moves or 0
-            direction = (self.direction or 'both').capitalize()
-            return f"{self.item_name} sustained {direction} move triggered ({moves} moves in {frame})"
-        # Threshold alert triggered text
-        # What: Returns a description of what triggered the threshold alert
-        # Why: Users need to understand which items triggered and by how much
-        # How: Parses triggered_data JSON and formats based on items and threshold type
-        if self.type == "threshold":
-            direction = self.direction or 'up'
-            threshold_type = self.threshold_type or 'percentage'
-            reference = self.reference or 'high'
-            
-            # =============================================================================
-            # DETERMINE THRESHOLD VALUE BASED ON TYPE
-            # =============================================================================
-            # What: Gets the correct threshold value depending on whether this is a percentage or value alert
-            # Why: Percentage alerts store their value in self.percentage, but value-based alerts store
-            #      their target price in self.target_price - using the wrong field causes display bugs
-            # How: Check threshold_type and use the appropriate field:
-            #      - 'percentage': Use self.percentage (e.g., 5 for "5% change")
-            #      - 'value': Use self.target_price (e.g., 1500000 for "above 1,500,000 gp")
-            if threshold_type == 'percentage':
-                threshold_val = self.percentage if self.percentage is not None else 0
-                threshold_str = f"{threshold_val}%"
-            else:
-                # Value-based threshold uses target_price, not percentage
-                threshold_val = self.target_price if self.target_price is not None else 0
-                threshold_str = f"{int(threshold_val):,} gp"
-            
-            direction_word = "up" if direction == "up" else "down"
-            
-            # Check for multi-item triggered data
-            if (self.is_all_items or self.item_ids) and self.triggered_data:
-                import json
-                try:
-                    triggered_items = json.loads(self.triggered_data)
-                    if self.is_all_items:
-                        count = len(triggered_items) if isinstance(triggered_items, list) else 0
-                        return f"Threshold {direction_word} {threshold_str} triggered on {count} item(s). Click for details"
-                    else:
-                        total_items = json.loads(self.item_ids) if self.item_ids else []
-                        triggered_count = len(triggered_items) if isinstance(triggered_items, list) else 0
-                        total_count = len(total_items) if isinstance(total_items, list) else 0
-                        return f"Threshold {direction_word} {threshold_str} triggered on {triggered_count}/{total_count} items. Click for details"
-                except Exception:
-                    pass
-            
-            # Single item threshold
-            item_price = get_item_price(self.item_id, self.reference)
-            price_formatted = f"{item_price:,}" if item_price else str(item_price)
-            return f"{self.item_name} moved {direction_word} by {threshold_str} to {price_formatted}"
-        return f"Item price is now {price_formatted}"
+        """
+        Returns the notification text shown when an alert triggers.
+        
+        What: Returns the alert's string representation for notification display.
+        Why: Simple, consistent notification text that matches how the alert is displayed elsewhere.
+        How: Uses the model's __str__() method which already formats alerts nicely.
+        """
+        return str(self)
 
     def cleanup_triggered_data_for_removed_items(self, removed_item_ids):
         """

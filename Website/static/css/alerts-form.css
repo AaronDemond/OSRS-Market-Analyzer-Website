@@ -1,0 +1,593 @@
+    /* Create alert form */
+    .create-alert-form {
+        max-width: 100%;
+        background: var(--surface);
+        padding: 24px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        align-items: flex-start;
+    }
+
+    .create-alert-form>.form-group {
+        width: 250px;
+        flex-shrink: 0;
+        margin-bottom: 0;
+    }
+
+    /* =====================================================================================
+       CREATE ALERT FORM: NOTIFICATION OPTIONS LAYOUT
+
+       What: Controls how the two notification checkbox rows are laid out.
+       Why: Previously these two checkboxes were forced to stack because they were set to 100% width.
+            You requested they render on one line (side-by-side) and still live at the bottom.
+       How:
+         - Remove the forced full-width sizing so each checkbox group behaves like a normal 250px form-group.
+         - The “always last” behavior is enforced separately via the flexbox `order` rules below.
+       ===================================================================================== */
+    .create-alert-form>.checkbox-group {
+        width: 250px;
+        flex-basis: 250px;
+    }
+
+    .create-alert-form>button {
+        width: 100%;
+        flex-basis: 100%;
+        margin-top: 8px;
+        order: 1000; /* Keep the submit button AFTER the checkbox options. */
+    }
+
+    /* =====================================================================================
+       CREATE ALERT FORM: FIELD ORDER STANDARDIZATION (Threshold / Sustained / Spike / Spread)
+
+       What: Standardizes the visible field order for the alert types you called out.
+       Why: The create form is a single shared template where JS shows/hides many different fields.
+            Moving large HTML blocks around is fragile and hard to maintain; flexbox ordering lets us
+            enforce a consistent UX while keeping backend field names/IDs and JS selectors unchanged.
+       How:
+         - The form container is `display: flex`.
+         - Each direct child `.form-group` is a flex item.
+         - We assign explicit `order` values to the *field containers* (divs with IDs like
+           `#spike-scope-group`, `#min-price-group`, etc.).
+         - Hidden fields (display:none) naturally disappear from the layout, so the “visible order”
+           becomes the standardized order automatically.
+
+       Requested UX sequence for Threshold/Sustained/Spike/Spread:
+         1) Alert Name (and Custom Name if enabled)  [these already appear before Group in the template]
+         2) Group
+         3) Apply To
+         4) If “Specific Items”, the item selector immediately after
+         5) Remaining visible inputs alphabetical by label (Direction, Maximum Price, Minimum Price, ...)
+         6) Notification options last (Show Alert Notification? + Receive SMS Notification)
+       ===================================================================================== */
+
+    /* --- Apply To (scope) selectors --- */
+    .create-alert-form > #spike-scope-group { order: 50; }
+    .create-alert-form > #spread-scope-group { order: 51; }
+    .create-alert-form > #sustained-scope-group { order: 52; }
+    .create-alert-form > #threshold-items-tracked-group { order: 53; }
+
+    /* --- Item selectors (must appear immediately after Apply To when relevant) --- */
+    .create-alert-form > #spike-items-group { order: 60; }
+    .create-alert-form > #spread-items-group { order: 61; }
+    .create-alert-form > #sustained-items-group { order: 62; }
+    .create-alert-form > #threshold-items-group { order: 63; }
+    .create-alert-form > #item-name-group { order: 64; }
+
+    /* --- Alphabetical remainder (by visible label text) --- */
+    .create-alert-form > #direction-group { order: 70; }
+    .create-alert-form > #threshold-direction-group { order: 71; }
+
+    .create-alert-form > #pressure-strength-group { order: 80; }  /* Market Pressure */
+
+    .create-alert-form > #max-price-group { order: 81; }          /* Maximum Price */
+    .create-alert-form > #min-price-group { order: 82; }          /* Minimum Price - immediately after Maximum */
+
+    .create-alert-form > #min-consecutive-moves-group { order: 83; }
+    .create-alert-form > #min-move-percentage-group { order: 84; }
+    .create-alert-form > #pressure-spread-group { order: 85; }
+    .create-alert-form > #min-volume-group { order: 86; }
+
+    .create-alert-form > #percentage-group { order: 90; }
+    .create-alert-form > #price-group { order: 91; }
+
+    .create-alert-form > #reference-group { order: 95; }
+    .create-alert-form > #threshold-reference-group { order: 96; }
+
+    .create-alert-form > #threshold-value-group { order: 100; }
+    .create-alert-form > #threshold-type-group { order: 72; }  /* Immediately after Direction (71) */
+
+    .create-alert-form > #time-frame-group { order: 110; }
+
+    .create-alert-form > #volatility-buffer-group { order: 120; }
+    .create-alert-form > #volatility-multiplier-group { order: 121; }
+
+    /* --- Notification options (must be last, but still before the submit button) --- */
+    .create-alert-form > #show-notification-group { order: 900; }
+    .create-alert-form > #sms-notification-group { order: 901; }
+
+    @media (max-width: 600px) {
+        .create-alert-form>.form-group {
+            width: 100%;
+        }
+
+        /* =====================================================================================
+           MOBILE: KEEP NOTIFICATION CHECKBOXES SIDE-BY-SIDE
+
+           What: Overrides the mobile "full width" rule specifically for the two checkbox rows.
+           Why: The requirement is to render "Show Alert Notification" + "Receive SMS Notification" on
+                ONE line rather than stacked.
+           How: Use 50% width (minus half the flex gap) so two items fit in a single row.
+           ===================================================================================== */
+        .create-alert-form>.checkbox-group {
+            width: calc(50% - 8px);
+            flex-basis: calc(50% - 8px);
+        }
+    }
+
+    .form-error-container {
+        margin-bottom: 16px;
+    }
+
+    .actions-error-container {
+        margin-bottom: 12px;
+    }
+
+    .form-group {
+        margin-bottom: 18px;
+        position: relative;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 600;
+        color: var(--text);
+        font-size: 14px;
+    }
+
+    .form-group input,
+    .form-group select {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 15px;
+        color: var(--text);
+        background: var(--surface);
+        transition: all 0.15s;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    }
+
+    .form-group input::placeholder {
+        color: var(--muted);
+    }
+
+    .form-hint {
+        display: block;
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 4px;
+        line-height: 1.4;
+    }
+
+    /* =========================================================================
+       LOCKED FIELD INDICATOR STYLES
+       What: Styles for the locked indicator icon and tooltip
+       Why: Provides visual feedback when a dropdown is locked and explains why
+       How: Icon appears inline with label; tooltip appears on click
+       ========================================================================= */
+    
+    /* Locked indicator icon - appears next to label when field is locked */
+    /* What: A no-entry symbol (🚫) that indicates the field cannot be changed */
+    /* Why: Users need visual feedback that the field is intentionally locked */
+    /* How: Displayed inline with the label, with hover effect to indicate clickability */
+    .locked-indicator {
+        margin-left: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        opacity: 0.8;
+        transition: opacity 0.15s, transform 0.15s;
+        display: inline-block;
+        vertical-align: middle;
+    }
+    
+    /* Hover state for locked indicator - makes it clear it's clickable */
+    .locked-indicator:hover {
+        opacity: 1;
+        transform: scale(1.15);
+    }
+    
+    /* Tooltip container - explains why the field is locked */
+    /* What: A popup box with explanation text */
+    /* Why: Users need to understand why they can't change the threshold type */
+    /* How: Positioned 15px below the locked indicator icon, styled as an info box */
+    .locked-tooltip {
+        position: absolute;
+        top: 30px;  /* Position 15px below the label line (label ~15px + 15px gap) */
+        left: 0;
+        right: 0;
+        padding: 12px 16px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        z-index: 100;
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--text);
+    }
+    
+    /* Tooltip paragraph spacing */
+    .locked-tooltip p {
+        margin: 0 0 8px 0;
+    }
+    
+    /* Remove bottom margin from last paragraph */
+    .locked-tooltip p:last-of-type {
+        margin-bottom: 0;
+    }
+    
+    /* Close button for the tooltip */
+    /* What: X button in top-right corner to dismiss the tooltip */
+    /* Why: Users need a way to close the tooltip after reading */
+    /* How: Positioned absolutely, styled as a subtle close button */
+    .locked-tooltip-close {
+        position: absolute;
+        top: 8px;
+        right: 12px;
+        cursor: pointer;
+        font-size: 18px;
+        color: var(--muted);
+        line-height: 1;
+        transition: color 0.15s;
+    }
+    
+    .locked-tooltip-close:hover {
+        color: var(--text);
+    }
+    
+    /* Disabled/locked select styling */
+    /* What: Red background for disabled dropdown to indicate it's locked */
+    /* Why: Provides strong visual feedback that the field cannot be changed */
+    /* How: Targets disabled select elements with a light red background */
+    select:disabled {
+        background-color: rgba(239, 68, 68, 0.15);  /* Light red background */
+        border-color: rgba(239, 68, 68, 0.4);       /* Red-tinted border */
+        cursor: not-allowed;
+    }
+
+    /* =========================================================================
+       MULTI-ITEM SELECTOR STYLES
+       What: Styles for the multi-item selector box with dropdown arrow and selected items
+       Why: Matches the styling used in alert_detail.html for visual consistency
+       How: Uses a box-style input with dropdown toggle, showing selected items in a dropdown list
+       ========================================================================= */
+    
+    /* Main multi-item selector container - holds the input box and dropdown */
+    .multi-item-selector {
+        position: relative;
+    }
+    
+    /* The selector box containing search input and dropdown toggle arrow */
+    /* What: Container that looks like a single input field with a dropdown arrow */
+    /* Why: Provides a consistent look with native select elements and alert_detail.html */
+    .multi-item-selector-box {
+        position: relative;
+        display: flex;
+        align-items: stretch;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--surface);
+        overflow: visible;
+        transition: all 0.15s;
+    }
+    
+    /* Focus state for the selector box - highlights when user is interacting */
+    .multi-item-selector-box:focus-within {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    }
+    
+    /* Search input inside the box - takes up most of the width */
+    /* What: Text input where users type to search for items to add */
+    /* Why: Allows free-text search with autocomplete suggestions */
+    .multi-item-selector-box input[type="text"] {
+        flex: 1;
+        border: none;
+        outline: none;
+        padding: 10px 14px;
+        font-size: 15px;
+        color: var(--text);
+        background: transparent;
+        border-radius: 8px 0 0 8px;
+        min-width: 0;
+    }
+    
+    .multi-item-selector-box input[type="text"]::placeholder {
+        color: #9ca3af;
+    }
+    
+    /* Dropdown toggle button with chevron arrow */
+    /* What: Button on the right side of the input that reveals selected items */
+    /* Why: Shows users there's a dropdown and provides access to view/manage selected items */
+    .multi-item-dropdown-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        border: none;
+        border-left: 1px solid var(--border);
+        background: #f9fafb;
+        cursor: pointer;
+        transition: background-color 0.15s ease;
+        border-radius: 0 8px 8px 0;
+    }
+    
+    .multi-item-dropdown-toggle:hover {
+        background: #f3f4f6;
+    }
+    
+    /* Active state when dropdown is open - green background to indicate active */
+    .multi-item-dropdown-toggle.active {
+        background: #a7f3d0;
+    }
+    
+    .multi-item-dropdown-toggle svg {
+        width: 20px;
+        height: 20px;
+        color: #6b7280;
+        transition: transform 0.2s ease;
+    }
+    
+    /* Rotate arrow and change color when dropdown is open */
+    .multi-item-dropdown-toggle.active svg {
+        transform: rotate(180deg);
+        color: #047857;
+    }
+    
+    /* Autocomplete suggestions dropdown - appears below input when typing */
+    /* What: Shows matching items as user types in the search input */
+    /* Why: Enables quick item selection via autocomplete */
+    .multi-item-suggestions-dropdown {
+        display: none;
+        position: absolute;
+        top: calc(100% + 5px);  /* 5px gap between dropdown and input box */
+        left: 0;
+        right: 0;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;  /* Full border radius since there's a gap */
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1001;  /* Above selected items dropdown */
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .multi-item-suggestions-dropdown .suggestion-item {
+        padding: 10px 14px;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+        display: flex;
+        align-items: center;
+        font-size: 14px;
+        transition: background 0.15s;
+    }
+    
+    /* What: Highlight styling for autocomplete suggestion items */
+    /* Why: User needs visual feedback when hovering/selecting items */
+    /* How: Light green background with explicit black text for readability */
+    .multi-item-suggestions-dropdown .suggestion-item:hover,
+    .multi-item-suggestions-dropdown .suggestion-item.selected {
+        background: #f0fdf4;
+        color: #000000;  /* Ensure text stays black and readable on green background */
+    }
+    
+    .multi-item-suggestions-dropdown .suggestion-item:last-child {
+        border-bottom: none;
+    }
+    
+    /* Selected items dropdown - shows when clicking the dropdown arrow */
+    /* What: Displays all currently selected items in a list format */
+    /* Why: Allows users to see and manage (remove) selected items */
+    .multi-item-selected-dropdown {
+        display: none;
+        position: absolute;
+        top: calc(100% + 5px);  /* 5px gap between dropdown and search box */
+        left: 0;
+        right: 0;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;  /* Full border radius since there's a gap */
+        max-height: 150px;  /* Restricted height to prevent overflow */
+        overflow-y: auto;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .multi-item-selected-dropdown.show {
+        display: block;
+    }
+    
+    /* Individual selected item row - displays item name with remove button */
+    /* What: A row containing the item name and a red X button to remove it */
+    /* Why: Provides clear visual feedback of selected items and easy removal */
+    .selected-item-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 14px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .selected-item-row:last-child {
+        border-bottom: none;
+    }
+    
+    .selected-item-row .item-name {
+        flex: 1;
+        font-size: 0.95rem;
+        color: var(--text);
+    }
+    
+    /* Red X remove button - styled to match alert_detail.html */
+    /* What: A prominent red X button to remove an item from the selection */
+    /* Why: Provides clear, accessible way to remove items with visual feedback */
+    .selected-item-row .remove-item-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        color: #ef4444;  /* Red color for visibility */
+        font-size: 1.4rem;
+        font-weight: bold;
+        line-height: 1;
+        padding: 0;
+        transition: color 0.15s ease, transform 0.15s ease;
+    }
+    
+    .selected-item-row .remove-item-btn:hover {
+        color: #dc2626;  /* Darker red on hover */
+        transform: scale(1.1);  /* Slight scale up on hover */
+    }
+    
+    /* No items message - shown when no items are selected */
+    /* What: Placeholder text displayed in the dropdown when empty */
+    /* Why: Provides feedback that no items have been selected yet */
+    .no-items-message {
+        display: none;
+        padding: 16px 14px;
+        text-align: center;
+        color: #9ca3af;
+        font-style: italic;
+    }
+    
+    .no-items-message.show {
+        display: block;
+    }
+    
+    /* =========================================================================
+       ITEM NOTIFICATION STYLES
+       What: Small inline notifications for item add/remove feedback
+       Why: Provides immediate visual feedback without disruptive popups
+       ========================================================================= */
+    
+    /* Container for label + notification - displays label and notification inline */
+    .label-with-notification {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 5px;  /* 5px margin between notification row and input box */
+    }
+    
+    /* Small inline notification shown next to "Items" label */
+    .item-notification {
+        font-size: 0.8rem;
+        padding: 3px 8px;
+        border-radius: 4px;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        white-space: nowrap;
+    }
+    
+    .item-notification.show {
+        opacity: 1;
+    }
+    
+    /* Success notification (green) - item added successfully */
+    .item-notification.success {
+        background: #d1fae5;
+        color: #065f46;
+        border: 1px solid #a7f3d0;
+    }
+    
+    /* Error notification (red) - item not found */
+    .item-notification.error {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
+    }
+
+    .checkbox-group {
+        display: flex;
+        align-items: center;
+    }
+
+    .checkbox-label {
+        padding-top: 35px !important;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        font-weight: 500;
+        color: var(--text);
+    }
+
+    .checkbox-label input[type="checkbox"] {
+
+        padding-top: 35px !important;
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: var(--primary);
+    }
+
+    .btn-create-alert {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        color: white;
+        border: none;
+        padding: 12px 28px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 15px;
+        font-weight: 600;
+        transition: all 0.15s;
+    }
+
+    .btn-create-alert:hover {
+        background: linear-gradient(135deg, #0e8377 0%, #2dd36f 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(17, 153, 142, 0.3);
+    }
+
+    /* Suggestions dropdown */
+    .suggestions-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 100;
+        display: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .suggestion-item {
+        padding: 10px 14px;
+        cursor: pointer;
+        transition: background 0.15s;
+        font-size: 14px;
+    }
+
+    .suggestion-item:hover,
+    .suggestion-item.selected {
+        background: var(--primary);
+        color: white;
+    }
