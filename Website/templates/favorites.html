@@ -20,6 +20,435 @@
         --warning: #F59E0B;
     }
 
+    /* Quick Stats Bar */
+    .quick-stats-bar {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+
+    .stat-card {
+        flex: 1;
+        min-width: 180px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        transition: all 0.2s;
+    }
+
+    .stat-card:hover {
+        border-color: var(--primary);
+        box-shadow: 0 2px 8px rgba(99, 102, 241, 0.1);
+    }
+
+    .stat-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .stat-icon.primary {
+        background: rgba(99, 102, 241, 0.1);
+        color: var(--primary);
+    }
+
+    .stat-icon.success {
+        background: rgba(34, 197, 94, 0.1);
+        color: var(--success);
+    }
+
+    .stat-icon.warning {
+        background: rgba(245, 158, 11, 0.1);
+        color: var(--warning);
+    }
+
+    .stat-icon svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .stat-content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .stat-label {
+        font-size: 0.75rem;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+        margin-bottom: 2px;
+    }
+
+    .stat-value {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text);
+        line-height: 1;
+    }
+
+    .stat-sub {
+        font-size: 0.7rem;
+        color: var(--muted);
+        margin-top: 2px;
+    }
+
+    /* Toolbar Section */
+    .favorites-toolbar {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 20px;
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .toolbar-search {
+        flex: 1;
+        min-width: 200px;
+        position: relative;
+    }
+
+    .toolbar-search input {
+        width: 100%;
+        padding: 10px 36px 10px 40px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+    }
+
+    .toolbar-search input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    .toolbar-search-icon {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--muted);
+        pointer-events: none;
+    }
+
+    .toolbar-search-icon svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .toolbar-search-clear {
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: var(--muted);
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 4px;
+        display: none;
+        transition: all 0.15s;
+    }
+
+    .toolbar-search-clear:hover {
+        background: var(--surface-2);
+        color: var(--text);
+    }
+
+    .toolbar-search-clear svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .toolbar-search-clear.show {
+        display: block;
+    }
+
+    .toolbar-controls {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .toolbar-select {
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 0.9rem;
+        color: var(--text);
+        background: var(--surface);
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .toolbar-select:hover {
+        border-color: var(--primary);
+    }
+
+    .toolbar-select:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    .view-toggle {
+        display: flex;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .view-toggle-btn {
+        padding: 10px 16px;
+        background: var(--surface);
+        border: none;
+        color: var(--muted);
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+
+    .view-toggle-btn:not(:last-child) {
+        border-right: 1px solid var(--border);
+    }
+
+    .view-toggle-btn:hover {
+        background: var(--surface-2);
+        color: var(--text);
+    }
+
+    .view-toggle-btn.active {
+        background: var(--primary);
+        color: white;
+    }
+
+    .view-toggle-btn svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    /* Last Updated Indicator */
+    .last-updated {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.8rem;
+        color: var(--muted);
+        padding: 8px 12px;
+        background: var(--surface-2);
+        border-radius: 6px;
+    }
+
+    .last-updated svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    /* Compact View Adjustments */
+    .view-compact .favorites-grid {
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 12px;
+    }
+
+    .view-compact .favorite-item {
+        padding: 10px;
+        gap: 8px;
+    }
+
+    .view-compact .favorite-item-name {
+        font-size: 0.85rem;
+    }
+
+    .view-compact .favorite-prices {
+        font-size: 0.8rem;
+    }
+
+    .view-compact .favorite-price-value {
+        font-size: 0.85rem;
+    }
+
+    .view-compact .favorite-spread {
+        font-size: 0.75rem;
+        padding-top: 6px;
+    }
+
+    .view-compact .favorites-section,
+    .view-compact .ungrouped-section {
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    /* List View */
+    .view-list .favorites-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .view-list .favorite-item {
+        flex-direction: row;
+        align-items: center;
+        padding: 12px 16px;
+        gap: 16px;
+    }
+
+    .view-list .favorite-item-header {
+        flex: 1;
+        min-width: 150px;
+    }
+
+    .view-list .favorite-prices {
+        display: flex;
+        gap: 24px;
+        flex-shrink: 0;
+    }
+
+    .view-list .favorite-price {
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .view-list .favorite-price-label {
+        font-size: 0.75rem;
+        margin-bottom: 0;
+    }
+
+    .view-list .favorite-spread {
+        border-top: none;
+        border-left: 1px solid var(--border);
+        padding: 0 0 0 16px;
+        margin-left: 8px;
+        text-align: left;
+        min-width: 120px;
+        flex-shrink: 0;
+    }
+
+    /* Tooltip Styles */
+    .tooltip-trigger {
+        position: relative;
+    }
+
+    .tooltip-text {
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 6px 10px;
+        background: rgba(0, 0, 0, 0.9);
+        color: white;
+        font-size: 0.75rem;
+        border-radius: 6px;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s;
+        z-index: 100;
+        margin-bottom: 6px;
+    }
+
+    .tooltip-text::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border: 4px solid transparent;
+        border-top-color: rgba(0, 0, 0, 0.9);
+    }
+
+    .tooltip-trigger:hover .tooltip-text {
+        opacity: 1;
+    }
+
+    /* Keyboard Shortcuts Help */
+    .keyboard-shortcuts-badge {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 48px;
+        height: 48px;
+        background: var(--primary);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        transition: all 0.2s;
+        z-index: 50;
+    }
+
+    .keyboard-shortcuts-badge:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 16px rgba(99, 102, 241, 0.5);
+    }
+
+    .keyboard-shortcuts-badge svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    .shortcuts-modal .modal-content {
+        max-width: 500px;
+    }
+
+    .shortcuts-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .shortcut-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px;
+        background: var(--surface-2);
+        border-radius: 6px;
+    }
+
+    .shortcut-keys {
+        display: flex;
+        gap: 4px;
+    }
+
+    .shortcut-key {
+        padding: 4px 8px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-family: monospace;
+        font-weight: 600;
+        color: var(--text);
+    }
+
+    .shortcut-desc {
+        font-size: 0.9rem;
+        color: var(--text);
+    }
+
     /* Loading State */
     .loading-container {
         display: flex;
@@ -843,6 +1272,38 @@
             align-items: flex-start;
         }
 
+        .quick-stats-bar {
+            flex-direction: column;
+        }
+
+        .stat-card {
+            min-width: 100%;
+        }
+
+        .favorites-toolbar {
+            flex-direction: column;
+        }
+
+        .toolbar-search {
+            width: 100%;
+            min-width: 100%;
+        }
+
+        .toolbar-controls {
+            width: 100%;
+            flex-direction: column;
+        }
+
+        .toolbar-select,
+        .view-toggle {
+            width: 100%;
+        }
+
+        .last-updated {
+            width: 100%;
+            justify-content: center;
+        }
+
         .favorites-grid {
             grid-template-columns: 1fr;
         }
@@ -871,6 +1332,31 @@
         .header-btn {
             flex: 1;
             justify-content: center;
+        }
+
+        .view-list .favorite-item {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .view-list .favorite-prices {
+            width: 100%;
+            justify-content: space-between;
+        }
+
+        .view-list .favorite-spread {
+            border-left: none;
+            border-top: 1px solid var(--border);
+            padding: 8px 0 0 0;
+            margin: 8px 0 0 0;
+            width: 100%;
+        }
+
+        .keyboard-shortcuts-badge {
+            bottom: 16px;
+            right: 16px;
+            width: 44px;
+            height: 44px;
         }
     }
 </style>
@@ -905,11 +1391,110 @@
     </div>
 </div>
 
+<!-- Quick Stats Bar -->
+<div class="quick-stats-bar" id="quickStats" style="display: none;">
+    <div class="stat-card">
+        <div class="stat-icon primary">
+            <svg fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+            </svg>
+        </div>
+        <div class="stat-content">
+            <div class="stat-label">Total Items</div>
+            <div class="stat-value" id="statTotalItems">0</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon success">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+            </svg>
+        </div>
+        <div class="stat-content">
+            <div class="stat-label">Groups</div>
+            <div class="stat-value" id="statTotalGroups">0</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon warning">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+            </svg>
+        </div>
+        <div class="stat-content">
+            <div class="stat-label">Best Spread</div>
+            <div class="stat-value" id="statBestSpread">-</div>
+            <div class="stat-sub" id="statBestSpreadItem"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Toolbar -->
+<div class="favorites-toolbar" id="favoritesToolbar" style="display: none;">
+    <div class="toolbar-search">
+        <div class="toolbar-search-icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+        </div>
+        <input type="text" id="searchFavorites" placeholder="Search favorites..." autocomplete="off">
+        <button class="toolbar-search-clear" id="searchClear">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+        </button>
+    </div>
+    <div class="toolbar-controls">
+        <select id="sortFavorites" class="toolbar-select">
+            <option value="default">Default Order</option>
+            <option value="name-asc">Name (A-Z)</option>
+            <option value="name-desc">Name (Z-A)</option>
+            <option value="spread-high">Spread (High-Low)</option>
+            <option value="spread-low">Spread (Low-High)</option>
+            <option value="price-high">Price (High-Low)</option>
+            <option value="price-low">Price (Low-High)</option>
+        </select>
+        <div class="view-toggle">
+            <button class="view-toggle-btn active" data-view="comfortable">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                </svg>
+                Comfortable
+            </button>
+            <button class="view-toggle-btn" data-view="compact">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                </svg>
+                Compact
+            </button>
+            <button class="view-toggle-btn" data-view="list">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                </svg>
+                List
+            </button>
+        </div>
+        <div class="last-updated" id="lastUpdated">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span>Updated <span id="lastUpdatedTime">just now</span></span>
+        </div>
+    </div>
+</div>
+
 <div id="favorites-content">
     <div class="loading-container">
         <div class="spinner-border" role="status" style="width: 36px; height: 36px; color: var(--primary);"></div>
         <span class="loading-text">Loading</span>
     </div>
+</div>
+
+<!-- Keyboard Shortcuts Badge -->
+<div class="keyboard-shortcuts-badge" id="shortcutsBadge" title="Keyboard Shortcuts (Press ?)">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
+    </svg>
 </div>
 
 <!-- Add Favorite Modal -->
@@ -1079,12 +1664,79 @@
         </div>
     </div>
 </div>
+
+<!-- Keyboard Shortcuts Modal -->
+<div class="modal-overlay shortcuts-modal" id="shortcutsModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Keyboard Shortcuts</h3>
+            <button class="modal-close" onclick="closeShortcutsModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="shortcuts-list">
+                <div class="shortcut-item">
+                    <div class="shortcut-desc">Show this help</div>
+                    <div class="shortcut-keys">
+                        <span class="shortcut-key">?</span>
+                    </div>
+                </div>
+                <div class="shortcut-item">
+                    <div class="shortcut-desc">Add new favorite</div>
+                    <div class="shortcut-keys">
+                        <span class="shortcut-key">N</span>
+                    </div>
+                </div>
+                <div class="shortcut-item">
+                    <div class="shortcut-desc">Focus search</div>
+                    <div class="shortcut-keys">
+                        <span class="shortcut-key">/</span>
+                    </div>
+                </div>
+                <div class="shortcut-item">
+                    <div class="shortcut-desc">Clear search</div>
+                    <div class="shortcut-keys">
+                        <span class="shortcut-key">Esc</span>
+                    </div>
+                </div>
+                <div class="shortcut-item">
+                    <div class="shortcut-desc">Manage groups</div>
+                    <div class="shortcut-keys">
+                        <span class="shortcut-key">G</span>
+                    </div>
+                </div>
+                <div class="shortcut-item">
+                    <div class="shortcut-desc">Toggle compact view</div>
+                    <div class="shortcut-keys">
+                        <span class="shortcut-key">C</span>
+                    </div>
+                </div>
+                <div class="shortcut-item">
+                    <div class="shortcut-desc">Toggle list view</div>
+                    <div class="shortcut-keys">
+                        <span class="shortcut-key">L</span>
+                    </div>
+                </div>
+                <div class="shortcut-item">
+                    <div class="shortcut-desc">Refresh page</div>
+                    <div class="shortcut-keys">
+                        <span class="shortcut-key">R</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script>
 // Store loaded data globally for use by other functions
 let favoritesData = null;
+let lastUpdatedTimestamp = null;
+let currentView = 'comfortable'; // comfortable, compact, list
+let currentSort = 'default';
+let searchQuery = '';
 
 // Format number with commas
 function formatNumber(num) {
@@ -1097,6 +1749,146 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+/**
+ * Update quick stats bar with current favorites data
+ */
+function updateQuickStats(data) {
+    if (!data || !data.favorites) return;
+    
+    const totalItems = data.favorites.length;
+    const totalGroups = (data.groups || []).length;
+    
+    // Find best spread
+    let bestSpread = null;
+    let bestSpreadItem = null;
+    
+    data.favorites.forEach(fav => {
+        if (fav.spread_pct && (!bestSpread || fav.spread_pct > bestSpread)) {
+            bestSpread = fav.spread_pct;
+            bestSpreadItem = fav.item_name;
+        }
+    });
+    
+    $('#statTotalItems').text(totalItems);
+    $('#statTotalGroups').text(totalGroups);
+    
+    if (bestSpread !== null) {
+        $('#statBestSpread').text(bestSpread.toFixed(1) + '%');
+        $('#statBestSpreadItem').text(bestSpreadItem || '');
+    } else {
+        $('#statBestSpread').text('-');
+        $('#statBestSpreadItem').text('');
+    }
+    
+    if (totalItems > 0) {
+        $('#quickStats').fadeIn(200);
+        $('#favoritesToolbar').fadeIn(200);
+    }
+}
+
+/**
+ * Update last updated timestamp
+ */
+function updateLastUpdatedTime() {
+    if (!lastUpdatedTimestamp) return;
+    
+    const now = Date.now();
+    const diff = now - lastUpdatedTimestamp;
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    
+    let timeText;
+    if (seconds < 60) {
+        timeText = 'just now';
+    } else if (minutes < 60) {
+        timeText = minutes === 1 ? '1 min ago' : `${minutes} mins ago`;
+    } else {
+        timeText = hours === 1 ? '1 hour ago' : `${hours} hours ago`;
+    }
+    
+    $('#lastUpdatedTime').text(timeText);
+}
+
+/**
+ * Apply current view mode to the content
+ */
+function applyViewMode(view) {
+    currentView = view;
+    const $content = $('#favorites-content');
+    
+    // Remove all view classes
+    $content.removeClass('view-comfortable view-compact view-list');
+    
+    // Add current view class
+    $content.addClass('view-' + view);
+    
+    // Update button states
+    $('.view-toggle-btn').removeClass('active');
+    $(`.view-toggle-btn[data-view="${view}"]`).addClass('active');
+    
+    // Save preference
+    localStorage.setItem('favorites_view_mode', view);
+}
+
+/**
+ * Sort favorites array based on current sort option
+ */
+function sortFavorites(favorites) {
+    if (!favorites || favorites.length === 0) return favorites;
+    
+    const sorted = [...favorites];
+    
+    switch(currentSort) {
+        case 'name-asc':
+            sorted.sort((a, b) => a.item_name.localeCompare(b.item_name));
+            break;
+        case 'name-desc':
+            sorted.sort((a, b) => b.item_name.localeCompare(a.item_name));
+            break;
+        case 'spread-high':
+            sorted.sort((a, b) => (b.spread_pct || 0) - (a.spread_pct || 0));
+            break;
+        case 'spread-low':
+            sorted.sort((a, b) => (a.spread_pct || 0) - (b.spread_pct || 0));
+            break;
+        case 'price-high':
+            sorted.sort((a, b) => (b.high_price || 0) - (a.high_price || 0));
+            break;
+        case 'price-low':
+            sorted.sort((a, b) => (a.high_price || 0) - (b.high_price || 0));
+            break;
+        default:
+            // Keep original order
+            break;
+    }
+    
+    return sorted;
+}
+
+/**
+ * Filter favorites by search query
+ */
+function filterFavorites(favorites) {
+    if (!searchQuery || searchQuery.trim() === '') {
+        return favorites;
+    }
+    
+    const query = searchQuery.toLowerCase();
+    return favorites.filter(fav => 
+        fav.item_name.toLowerCase().includes(query)
+    );
+}
+
+/**
+ * Apply both sorting and filtering to favorites
+ */
+function processFavorites(favorites) {
+    let processed = filterFavorites(favorites);
+    processed = sortFavorites(processed);
+    return processed;
 }
 
 // Render a single favorite item card
@@ -1149,17 +1941,27 @@ function renderFavoriteItem(fav) {
 // Render the favorites content
 function renderFavoritesContent(data) {
     favoritesData = data;
+    lastUpdatedTimestamp = Date.now();
+    updateLastUpdatedTime();
+    
     const container = document.getElementById('favorites-content');
     const groups = data.groups || [];
     const groupedFavorites = data.grouped_favorites || {};
     const ungroupedFavorites = data.ungrouped_favorites || [];
     const allFavorites = data.favorites || [];
     
+    // Update stats
+    updateQuickStats(data);
+    
     let html = '';
     
     // Render grouped favorites
     groups.forEach(group => {
-        const groupItems = groupedFavorites[group.id] || [];
+        let groupItems = groupedFavorites[group.id] || [];
+        
+        // Apply processing (filter and sort)
+        groupItems = processFavorites(groupItems);
+        
         if (groupItems.length > 0) {
             const itemCount = groupItems.length;
             const plural = itemCount !== 1 ? 's' : '';
@@ -1191,7 +1993,8 @@ function renderFavoritesContent(data) {
     });
     
     // Render ungrouped section only if there are ungrouped items
-    if (ungroupedFavorites.length > 0) {
+    let processedUngrouped = processFavorites(ungroupedFavorites);
+    if (processedUngrouped.length > 0) {
         const showUngroupedHeader = groups.length > 0;
         html += `
             <div class="ungrouped-section">
@@ -1203,14 +2006,26 @@ function renderFavoritesContent(data) {
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
                                 </svg>
                                 Ungrouped
-                                <span class="section-count">(${ungroupedFavorites.length} item${ungroupedFavorites.length !== 1 ? 's' : ''})</span>
+                                <span class="section-count">(${processedUngrouped.length} item${processedUngrouped.length !== 1 ? 's' : ''})</span>
                             </div>
                         </div>
                     </div>
                 ` : ''}
                 <div class="favorites-grid">
-                    ${ungroupedFavorites.map(renderFavoriteItem).join('')}
+                    ${processedUngrouped.map(renderFavoriteItem).join('')}
                 </div>
+            </div>`;
+    }
+    
+    // Show message if no results after filtering
+    if (html === '' && searchQuery) {
+        html = `
+            <div class="empty-state" style="text-align: center; padding: 60px 20px;">
+                <svg style="width: 64px; height: 64px; color: var(--muted); margin-bottom: 16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <h3 style="color: var(--text); margin-bottom: 8px;">No items found</h3>
+                <p style="color: var(--muted);">No favorites match your search for "${escapeHtml(searchQuery)}"</p>
             </div>`;
     }
     
@@ -1218,6 +2033,9 @@ function renderFavoritesContent(data) {
     
     // Initialize collapsed groups state
     initializeCollapsedGroups();
+    
+    // Apply current view mode
+    applyViewMode(currentView);
 }
 
 // Load favorites data
@@ -1392,6 +2210,129 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     });
+});
+
+/**
+ * jQuery-based initialization for new features
+ */
+$(document).ready(function() {
+    
+    // Load saved view preference
+    const savedView = localStorage.getItem('favorites_view_mode');
+    if (savedView) {
+        currentView = savedView;
+    }
+    
+    // Update timestamp every 30 seconds
+    setInterval(updateLastUpdatedTime, 30000);
+    
+    // Search functionality
+    let searchDebounce;
+    $('#searchFavorites').on('input', function() {
+        clearTimeout(searchDebounce);
+        const value = $(this).val().trim();
+        
+        // Show/hide clear button
+        if (value) {
+            $('#searchClear').addClass('show');
+        } else {
+            $('#searchClear').removeClass('show');
+        }
+        
+        searchDebounce = setTimeout(function() {
+            searchQuery = value;
+            if (favoritesData) {
+                renderFavoritesContent(favoritesData);
+            }
+        }, 300);
+    });
+    
+    // Clear search button
+    $('#searchClear').on('click', function() {
+        $('#searchFavorites').val('').trigger('input').focus();
+    });
+    
+    // Sort functionality
+    $('#sortFavorites').on('change', function() {
+        currentSort = $(this).val();
+        localStorage.setItem('favorites_sort_mode', currentSort);
+        if (favoritesData) {
+            renderFavoritesContent(favoritesData);
+        }
+    });
+    
+    // Load saved sort preference
+    const savedSort = localStorage.getItem('favorites_sort_mode');
+    if (savedSort) {
+        currentSort = savedSort;
+        $('#sortFavorites').val(savedSort);
+    }
+    
+    // View toggle buttons
+    $('.view-toggle-btn').on('click', function() {
+        const view = $(this).data('view');
+        applyViewMode(view);
+    });
+    
+    // Keyboard shortcuts badge
+    $('#shortcutsBadge').on('click', function() {
+        openShortcutsModal();
+    });
+    
+    // Global keyboard shortcuts
+    $(document).on('keydown', function(e) {
+        // Don't trigger shortcuts when typing in inputs
+        if ($(e.target).is('input, textarea, select')) {
+            // Exception: Escape key to clear search
+            if (e.key === 'Escape' && $(e.target).is('#searchFavorites')) {
+                $('#searchFavorites').val('').trigger('input').blur();
+                e.preventDefault();
+            }
+            return;
+        }
+        
+        // Don't trigger when modals are open (except for closing them)
+        if ($('.modal-overlay.show').length > 0 && e.key !== 'Escape') {
+            return;
+        }
+        
+        switch(e.key) {
+            case '?':
+                e.preventDefault();
+                openShortcutsModal();
+                break;
+            case 'n':
+            case 'N':
+                e.preventDefault();
+                openAddFavoriteModal();
+                break;
+            case '/':
+                e.preventDefault();
+                $('#searchFavorites').focus();
+                break;
+            case 'g':
+            case 'G':
+                e.preventDefault();
+                openManageGroupsModal();
+                break;
+            case 'c':
+            case 'C':
+                e.preventDefault();
+                applyViewMode('compact');
+                break;
+            case 'l':
+            case 'L':
+                e.preventDefault();
+                applyViewMode('list');
+                break;
+            case 'r':
+            case 'R':
+                e.preventDefault();
+                location.reload();
+                break;
+        }
+    });
+    
 });
 
 function selectItem(itemId, itemName) {
@@ -1708,10 +2649,21 @@ function doDeleteGroup(groupId) {
             alert('Failed to delete group: ' + (data.error || 'Unknown error'));
         }
     })
-    .catch(err => {
+     .catch(err => {
         console.error('Error deleting group:', err);
         closeDeleteGroupModal();
     });
+}
+
+/**
+ * Shortcuts modal functions
+ */
+function openShortcutsModal() {
+    $('#shortcutsModal').addClass('show');
+}
+
+function closeShortcutsModal() {
+    $('#shortcutsModal').removeClass('show');
 }
 
 // Chart Modal Functions
