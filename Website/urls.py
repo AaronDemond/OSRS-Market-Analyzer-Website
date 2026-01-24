@@ -31,6 +31,7 @@ urlpatterns = [
     path('flips/delete/<int:item_id>/', views.delete_flip, name='delete_flip'),
     path('api/flips/stats/', views.flips_stats_api, name='flips_stats_api'),
     path('api/flips/data/', views.flips_data_api, name='flips_data_api'),
+    path('api/flips/historical/', views.flips_historical_api, name='flips_historical_api'),
     path('flips/delete_single/', views.delete_single_flip, name='delete_single_flip'),
     path('flips/item/<int:item_id>/', views.item_detail, name='item_detail'),
     path('api/items/', views.item_search_api, name='item_search_api'),

@@ -521,6 +521,388 @@
         height: 16px;
     }
 
+    /* =========================================================================
+       HISTORICAL VIEW BUTTON STYLES
+       What: Styles for the Historical View button in the search/filter row
+       Why: Needs to match the filter button style but be distinguishable
+       How: Uses similar styling but with a distinct color scheme
+       ========================================================================= */
+    .btn-historical {
+        padding: 8px 14px;
+        background: var(--surface);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+    }
+
+    .btn-historical:hover {
+        background: rgba(59, 130, 246, 0.1);
+        border-color: var(--info);
+        color: var(--info);
+    }
+
+    .btn-historical svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    /* Active state when viewing historical data */
+    .btn-historical.active {
+        background: rgba(59, 130, 246, 0.15);
+        border-color: var(--info);
+        color: var(--info);
+    }
+
+    /* =========================================================================
+       HISTORICAL MODAL STYLES
+       What: Distinct styling for the Historical View modal
+       Why: User requested modal have a distinct appearance from other modals
+       How: Uses a blue/info color scheme and unique visual elements
+       ========================================================================= */
+    .historical-modal .modal-content {
+        border: none;
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(59, 130, 246, 0.25);
+        overflow: hidden;
+    }
+
+    .historical-modal .modal-header {
+        background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);
+        color: white;
+        padding: 20px 24px;
+        border-bottom: none;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .historical-modal .modal-header-icon {
+        width: 40px;
+        height: 40px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .historical-modal .modal-header-icon svg {
+        width: 24px;
+        height: 24px;
+        color: white;
+    }
+
+    .historical-modal .modal-title {
+        font-size: 18px;
+        font-weight: 600;
+        margin: 0;
+        flex-grow: 1;
+    }
+
+    .historical-modal .btn-close {
+        filter: brightness(0) invert(1);
+        opacity: 0.8;
+    }
+
+    .historical-modal .btn-close:hover {
+        opacity: 1;
+    }
+
+    .historical-modal .modal-body {
+        padding: 24px;
+    }
+
+    .historical-description {
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.5;
+        margin-bottom: 20px;
+    }
+
+    .historical-date-picker {
+        margin-bottom: 24px;
+    }
+
+    .historical-date-picker .form-label {
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 8px;
+    }
+
+    .historical-date-input {
+        padding: 12px 14px;
+        border: 2px solid var(--border);
+        border-radius: 10px;
+        font-size: 15px;
+        transition: all 0.2s;
+    }
+
+    .historical-date-input:focus {
+        border-color: var(--info);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        outline: none;
+    }
+
+    .historical-presets {
+        background: var(--surface-2);
+        border-radius: 12px;
+        padding: 16px;
+    }
+
+    .presets-label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 12px;
+    }
+
+    .preset-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .btn-preset {
+        padding: 8px 16px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text);
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+    .btn-preset:hover {
+        background: var(--info);
+        border-color: var(--info);
+        color: white;
+    }
+
+    .btn-preset.selected {
+        background: var(--info);
+        border-color: var(--info);
+        color: white;
+    }
+
+    .historical-modal .modal-footer {
+        padding: 16px 24px 24px;
+        border-top: none;
+        gap: 12px;
+    }
+
+    .btn-cancel-historical {
+        padding: 12px 24px;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        font-weight: 500;
+        color: var(--text);
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+    .btn-cancel-historical:hover {
+        background: var(--surface);
+        border-color: var(--text);
+    }
+
+    .btn-view-historical {
+        padding: 12px 24px;
+        background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);
+        border: none;
+        border-radius: 10px;
+        font-weight: 600;
+        color: white;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-view-historical:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.35);
+    }
+
+    .btn-view-historical svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    /* =========================================================================
+       HISTORICAL BANNER STYLES
+       What: Prominent banner indicating historical data is being viewed
+       Why: Users must clearly see they're viewing past data, not real-time
+       How: Fixed position banner with distinct amber/warning color scheme
+       ========================================================================= */
+    .historical-banner {
+        background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+        color: white;
+        padding: 12px 20px;
+        margin-bottom: 16px;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+        animation: banner-pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes banner-pulse {
+        0%, 100% {
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+        }
+        50% {
+            box-shadow: 0 4px 25px rgba(245, 158, 11, 0.5);
+        }
+    }
+
+    .historical-banner-content {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .historical-banner-icon {
+        width: 40px;
+        height: 40px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .historical-banner-icon svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    .historical-banner-text {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .historical-banner-label {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        opacity: 0.9;
+    }
+
+    .historical-banner-date {
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    .btn-return-realtime {
+        padding: 10px 20px;
+        background: rgba(255, 255, 255, 0.2);
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 8px;
+        color: white;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        white-space: nowrap;
+    }
+
+    .btn-return-realtime:hover {
+        background: rgba(255, 255, 255, 0.3);
+        border-color: rgba(255, 255, 255, 0.5);
+        transform: translateY(-1px);
+    }
+
+    .btn-return-realtime svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    /* Dimmed state for Realized Net card when viewing historical data */
+    .stat-card.dimmed {
+        opacity: 0.5;
+        filter: grayscale(30%);
+        pointer-events: none;
+    }
+
+    .stat-card.dimmed::after {
+        content: 'Not applicable in historical view';
+        position: absolute;
+        bottom: -20px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 10px;
+        color: var(--muted);
+        white-space: nowrap;
+    }
+
+    /* =========================================================================
+       HISTORICAL SKIPPED ITEMS NOTIFICATION
+       What: Notification shown when items are excluded due to missing historical data
+       Why: Users need to know which items weren't included in the historical calculation
+       How: Displays as an info banner below the historical banner
+       ========================================================================= */
+    .historical-skipped-notification {
+        background: rgba(59, 130, 246, 0.1);
+        border: 1px solid rgba(59, 130, 246, 0.3);
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-bottom: 16px;
+    }
+
+    .historical-skipped-notification .notification-content {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .historical-skipped-notification svg {
+        width: 20px;
+        height: 20px;
+        color: var(--info);
+        flex-shrink: 0;
+    }
+
+    .historical-skipped-notification span {
+        flex-grow: 1;
+        font-size: 13px;
+        color: var(--text);
+        line-height: 1.4;
+    }
+
+    .historical-skipped-notification .notification-dismiss {
+        background: none;
+        border: none;
+        color: var(--muted);
+        font-size: 18px;
+        cursor: pointer;
+        padding: 0 4px;
+        line-height: 1;
+    }
+
+    .historical-skipped-notification .notification-dismiss:hover {
+        color: var(--text);
+    }
+
     .filter-badge {
         background: var(--primary);
         color: white;
@@ -1667,6 +2049,95 @@
         .flip-item-cell {
             gap: 0;
         }
+
+        /* =========================================================================
+           HISTORICAL VIEW MOBILE STYLES
+           What: Responsive adjustments for historical view components on mobile
+           Why: Ensures the historical button, modal, and banner work well on small screens
+           How: Adjusts sizing, layout, and visibility for mobile viewports
+           ========================================================================= */
+        
+        /* Historical button - make it icon-only on very small screens */
+        .btn-historical {
+            padding: 8px 12px;
+        }
+
+        .btn-historical span {
+            display: none;
+        }
+
+        /* Historical banner - stack vertically on mobile */
+        .historical-banner {
+            padding: 10px 14px;
+        }
+
+        .historical-banner-content {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .historical-banner-icon {
+            width: 32px;
+            height: 32px;
+        }
+
+        .historical-banner-icon svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .historical-banner-date {
+            font-size: 16px;
+        }
+
+        .btn-return-realtime {
+            width: 100%;
+            justify-content: center;
+            padding: 10px 16px;
+        }
+
+        /* Historical modal - adjust for mobile */
+        .historical-modal .modal-dialog {
+            margin: 10px;
+        }
+
+        .historical-modal .modal-header {
+            padding: 16px 18px;
+        }
+
+        .historical-modal .modal-body {
+            padding: 18px;
+        }
+
+        .preset-buttons {
+            gap: 6px;
+        }
+
+        .btn-preset {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .historical-modal .modal-footer {
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .btn-cancel-historical,
+        .btn-view-historical {
+            width: 100%;
+            justify-content: center;
+        }
+
+        /* Skipped items notification - smaller on mobile */
+        .historical-skipped-notification {
+            padding: 10px 12px;
+        }
+
+        .historical-skipped-notification span {
+            font-size: 12px;
+        }
     }
 
     /* ============================================================
@@ -1777,6 +2248,17 @@
             <input type="text" class="filter-search-input" id="filterSearchInput" placeholder="Search...">
             <button type="button" class="filter-search-clear" id="filterSearchClear">&times;</button>
         </div>
+        <!-- Historical View Button -->
+        <!-- What: Button to open the Historical View modal for viewing past portfolio performance -->
+        <!-- Why: Allows users to see what their unrealized P&L would have been at a past date -->
+        <!-- How: Triggers modal with date picker and presets, fetches historical prices from API -->
+        <button type="button" class="btn-historical" id="historicalViewBtn" data-bs-toggle="modal" data-bs-target="#historicalModal">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Historical
+        </button>
         <div class="filter-sort-group">
             <div class="filter-dropdown-wrapper">
                 <button type="button" class="btn-filter" id="filterDropdownBtn">
@@ -2186,6 +2668,94 @@
     </div>
 </div>
 
+<!-- Historical View Modal -->
+<!-- What: Modal for selecting a historical date to view past portfolio performance -->
+<!-- Why: Allows users to see what their unrealized P&L would have been at a specific date -->
+<!-- How: User selects date via picker or preset, submits to fetch historical prices from API -->
+<div class="modal fade historical-modal" id="historicalModal" tabindex="-1" aria-labelledby="historicalModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-header-icon">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <h5 class="modal-title" id="historicalModalLabel">Historical View</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="historical-description">
+                    View your portfolio's unrealized P&L as it would have been on a past date.
+                    Select a date below or use one of the quick presets.
+                </p>
+                
+                <!-- Date Picker -->
+                <div class="historical-date-picker">
+                    <label for="historicalDateInput" class="form-label">Select Date</label>
+                    <input type="date" class="form-control historical-date-input" id="historicalDateInput">
+                </div>
+                
+                <!-- Quick Presets -->
+                <!-- What: Buttons for common historical time periods -->
+                <!-- Why: Saves users from manually calculating dates for common lookback periods -->
+                <!-- How: Each button calculates the date X days ago and sets the date picker -->
+                <div class="historical-presets">
+                    <span class="presets-label">Quick Presets:</span>
+                    <div class="preset-buttons">
+                        <button type="button" class="btn-preset" data-days="1">Day</button>
+                        <button type="button" class="btn-preset" data-days="7">Week</button>
+                        <button type="button" class="btn-preset" data-days="30">Month</button>
+                        <button type="button" class="btn-preset" data-days="90">Quarter</button>
+                        <button type="button" class="btn-preset" data-days="180">6 Months</button>
+                        <button type="button" class="btn-preset" data-days="365">Year</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel-historical" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn-view-historical" id="submitHistoricalView">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    View Historical Data
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Historical View Banner -->
+<!-- What: Prominent banner indicating the user is viewing historical (not real-time) data -->
+<!-- Why: Users must clearly understand they're not seeing current prices to avoid confusion -->
+<!-- How: Shows the historical date and provides a quick button to return to real-time view -->
+<div class="historical-banner" id="historicalBanner" style="display: none;">
+    <div class="historical-banner-content">
+        <div class="historical-banner-icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        </div>
+        <div class="historical-banner-text">
+            <span class="historical-banner-label">VIEWING HISTORICAL DATA</span>
+            <span class="historical-banner-date" id="historicalBannerDate">--</span>
+        </div>
+        <button type="button" class="btn-return-realtime" id="returnToRealtimeBtn">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Return to Real-Time
+        </button>
+    </div>
+</div>
+
 <table class="table" id="flipsTable">
     <thead>
         <tr>
@@ -2361,7 +2931,19 @@
                 });
         }
 
+        /**
+         * isHistoricalMode: Global flag to track if we're viewing historical data
+         * Why: Prevents auto-refresh from overwriting historical data view
+         * How: Set to true when viewing historical, false when returning to real-time
+         */
+        let isHistoricalMode = false;
+
         function loadFlipsData() {
+            // Skip loading if in historical mode (don't overwrite historical data)
+            if (isHistoricalMode) {
+                return;
+            }
+
             const url = '/api/flips/data/' + (timeFilter !== 'current' ? '?filter=' + timeFilter : '');
 
             fetch(url)
@@ -3963,6 +4545,335 @@
 
         // Initialize mobile sort indicator state on page load
         syncMobileSortIndicator();
+
+        // =========================================================================
+        // HISTORICAL VIEW FUNCTIONALITY
+        // =========================================================================
+        // What: Allows users to view their portfolio's unrealized P&L at a past date
+        // Why: Enables analysis of missed opportunities and portfolio evolution over time
+        // How: Fetches historical prices from OSRS Wiki API and recalculates unrealized net
+        //      without modifying any database records
+        // =========================================================================
+
+        // Note: isHistoricalMode is declared at the top of the script (near loadFlipsData)
+        // to allow the auto-refresh to check if we're in historical mode
+
+        /**
+         * historicalRefreshInterval: Stores the interval ID for auto-refresh
+         * Why: We need to pause auto-refresh when viewing historical data and resume later
+         */
+        let historicalRefreshInterval = null;
+
+        /**
+         * originalFlipsData: Stores the original real-time data before switching to historical
+         * Why: Allows quick restoration of real-time data without re-fetching
+         */
+        let originalFlipsData = null;
+
+        // DOM element references for historical view components
+        const historicalModal = document.getElementById('historicalModal');
+        const historicalDateInput = document.getElementById('historicalDateInput');
+        const historicalBanner = document.getElementById('historicalBanner');
+        const historicalBannerDate = document.getElementById('historicalBannerDate');
+        const submitHistoricalBtn = document.getElementById('submitHistoricalView');
+        const returnToRealtimeBtn = document.getElementById('returnToRealtimeBtn');
+        const historicalViewBtn = document.getElementById('historicalViewBtn');
+        const presetButtons = document.querySelectorAll('.btn-preset');
+
+        /**
+         * Sets the date input max to yesterday (can't view future or today's historical data)
+         * Why: Historical data API only returns past data, today's data is "current"
+         */
+        function initializeDatePicker() {
+            const today = new Date();
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            
+            // Format as YYYY-MM-DD for the input max attribute
+            const maxDate = yesterday.toISOString().split('T')[0];
+            historicalDateInput.max = maxDate;
+            
+            // Set min date to 1 year ago (API limitation)
+            const minDate = new Date(today);
+            minDate.setFullYear(minDate.getFullYear() - 1);
+            historicalDateInput.min = minDate.toISOString().split('T')[0];
+        }
+
+        /**
+         * Calculates the date X days ago and formats it for the date input
+         * @param {number} days - Number of days to go back
+         * @returns {string} Date in YYYY-MM-DD format
+         */
+        function getDateDaysAgo(days) {
+            const date = new Date();
+            date.setDate(date.getDate() - days);
+            return date.toISOString().split('T')[0];
+        }
+
+        /**
+         * Formats a date string for display in the banner
+         * @param {string} dateStr - Date in YYYY-MM-DD format
+         * @returns {string} Formatted date string (e.g., "January 15, 2026")
+         */
+        function formatDateForDisplay(dateStr) {
+            const date = new Date(dateStr + 'T00:00:00');
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
+
+        /**
+         * Shows the historical banner and updates its content
+         * @param {string} dateStr - The historical date being viewed
+         */
+        function showHistoricalBanner(dateStr) {
+            historicalBannerDate.textContent = formatDateForDisplay(dateStr);
+            historicalBanner.style.display = 'block';
+            historicalViewBtn.classList.add('active');
+        }
+
+        /**
+         * Hides the historical banner
+         */
+        function hideHistoricalBanner() {
+            historicalBanner.style.display = 'none';
+            historicalViewBtn.classList.remove('active');
+        }
+
+        /**
+         * Dims the Realized Net stat card when viewing historical data
+         * Why: Realized net is not affected by historical prices, so dimming indicates
+         *      it's not relevant to the historical view
+         */
+        function dimRealizedNetCard() {
+            const realizedCard = document.getElementById('statRealized');
+            realizedCard.classList.add('dimmed');
+        }
+
+        /**
+         * Undims the Realized Net stat card when returning to real-time view
+         */
+        function undimRealizedNetCard() {
+            const realizedCard = document.getElementById('statRealized');
+            realizedCard.classList.remove('dimmed');
+        }
+
+        /**
+         * Notifies the user about items that were skipped due to missing historical data
+         * @param {Array} skippedItems - Array of objects with item_name and reason
+         */
+        function notifySkippedItems(skippedItems) {
+            if (!skippedItems || skippedItems.length === 0) return;
+
+            // Build notification message
+            const itemNames = skippedItems.map(item => item.item_name).join(', ');
+            const message = skippedItems.length === 1
+                ? `Note: "${itemNames}" was excluded - no historical price data available for this date.`
+                : `Note: ${skippedItems.length} items were excluded due to missing historical data: ${itemNames}`;
+
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = 'historical-skipped-notification';
+            notification.innerHTML = `
+                <div class="notification-content">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>${message}</span>
+                    <button class="notification-dismiss">&times;</button>
+                </div>
+            `;
+
+            // Insert notification after the banner
+            historicalBanner.insertAdjacentElement('afterend', notification);
+
+            // Add dismiss functionality
+            notification.querySelector('.notification-dismiss').addEventListener('click', () => {
+                notification.remove();
+            });
+
+            // Auto-dismiss after 10 seconds
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 10000);
+        }
+
+        /**
+         * Pauses the auto-refresh interval when viewing historical data
+         * Why: We don't want to overwrite historical data with live data while user is viewing
+         */
+        function pauseAutoRefresh() {
+            // The auto-refresh is set with setInterval in the main code
+            // We'll track the historical mode and skip refreshes when in that mode
+            isHistoricalMode = true;
+        }
+
+        /**
+         * Resumes the auto-refresh interval when returning to real-time view
+         */
+        function resumeAutoRefresh() {
+            isHistoricalMode = false;
+        }
+
+        /**
+         * Fetches historical data from the API and updates the UI
+         * @param {string} dateStr - Date in YYYY-MM-DD format
+         */
+        async function fetchHistoricalData(dateStr) {
+            // Close the modal immediately so the loading spinner is visible
+            const modalInstance = bootstrap.Modal.getInstance(historicalModal);
+            if (modalInstance) {
+                modalInstance.hide();
+            }
+
+            // Store original data before fetching historical (if not already stored)
+            if (!originalFlipsData && flipsData) {
+                originalFlipsData = JSON.parse(JSON.stringify(flipsData));
+            }
+
+            // Show loading state
+            const tableBody = document.getElementById('flipsTableBody');
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="text-center" style="padding: 20px; color: var(--muted);">
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+                            <div class="spinner-border spinner-border-sm" role="status" style="color: var(--info);"></div>
+                            <span>Loading historical data for ${formatDateForDisplay(dateStr)}...</span>
+                        </div>
+                    </td>
+                </tr>
+            `;
+
+            try {
+                const response = await fetch(`/api/flips/historical/?date=${dateStr}`);
+                const data = await response.json();
+
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                // Update the table and stats with historical data
+                flipsData = data;
+                updateStats(data.stats);
+                renderTableRows(data.items);
+
+                // Show the historical banner
+                showHistoricalBanner(dateStr);
+
+                // Dim the realized net card
+                dimRealizedNetCard();
+
+                // Pause auto-refresh
+                pauseAutoRefresh();
+
+                // Notify about skipped items
+                notifySkippedItems(data.skipped_items);
+
+            } catch (error) {
+                console.error('Error fetching historical data:', error);
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center text-danger" style="padding: 20px;">
+                            Error loading historical data: ${error.message}. Please try again.
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        /**
+         * Returns to real-time data view
+         * Restores the original live data or fetches fresh data
+         */
+        function returnToRealTime() {
+            // Remove any skipped items notifications
+            document.querySelectorAll('.historical-skipped-notification').forEach(el => el.remove());
+
+            // Hide the banner
+            hideHistoricalBanner();
+
+            // Undim the realized net card
+            undimRealizedNetCard();
+
+            // Resume auto-refresh
+            resumeAutoRefresh();
+
+            // Restore original data or fetch fresh
+            if (originalFlipsData) {
+                flipsData = originalFlipsData;
+                updateStats(flipsData.stats);
+                renderTableRows(flipsData.items);
+                originalFlipsData = null;
+            }
+
+            // Fetch fresh data to ensure we have the latest
+            loadFlipsData();
+        }
+
+        // =========================================================================
+        // EVENT LISTENERS FOR HISTORICAL VIEW
+        // =========================================================================
+
+        // Initialize date picker constraints
+        initializeDatePicker();
+
+        // Preset button click handlers
+        presetButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const days = parseInt(this.dataset.days);
+                const dateStr = getDateDaysAgo(days);
+                historicalDateInput.value = dateStr;
+
+                // Update visual selection state
+                presetButtons.forEach(b => b.classList.remove('selected'));
+                this.classList.add('selected');
+            });
+        });
+
+        // Date input change handler (clears preset selection when manually changed)
+        historicalDateInput.addEventListener('change', function() {
+            presetButtons.forEach(b => b.classList.remove('selected'));
+        });
+
+        // Submit historical view button handler
+        submitHistoricalBtn.addEventListener('click', function() {
+            const dateStr = historicalDateInput.value;
+            if (!dateStr) {
+                alert('Please select a date or use one of the quick presets.');
+                return;
+            }
+            fetchHistoricalData(dateStr);
+        });
+
+        // Return to real-time button handler
+        returnToRealtimeBtn.addEventListener('click', returnToRealTime);
+
+        // Reset modal state when closed without submitting
+        historicalModal.addEventListener('hidden.bs.modal', function() {
+            // Only reset if not in historical mode (user cancelled)
+            if (!isHistoricalMode) {
+                historicalDateInput.value = '';
+                presetButtons.forEach(b => b.classList.remove('selected'));
+            }
+        });
+
+        // Modify the auto-refresh to respect historical mode
+        // Override the existing setInterval behavior
+        const originalLoadFlipsData = loadFlipsData;
+        window.loadFlipsDataWithHistoricalCheck = function() {
+            if (!isHistoricalMode) {
+                originalLoadFlipsData();
+            }
+        };
+
+        // Clear the existing interval and set up a new one that respects historical mode
+        // Note: We can't actually clear the original interval since we don't have its ID,
+        // but we can make the loadFlipsData function check the mode
     });
 </script>
 {% endblock %}

@@ -11,6 +11,7 @@ import time
 import re
 import json
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from .models import Flip, FlipProfit, Alert, AlertGroup, FavoriteItem
 
 
@@ -402,6 +403,283 @@ def flips_data_api(request):
             'total_realized': round(total_realized),
             'position_size': int(position_size) if position_size else 0,
         }
+    })
+
+
+def get_historical_prices_for_date(item_id, target_timestamp):
+    """
+    Fetch historical high and low prices for an item at a specific date.
+    
+    What: Retrieves price data from OSRS Wiki timeseries API for a given item at a target date.
+    
+    Why: Needed for the Historical View feature to calculate what unrealized P&L would have
+         been at a specific point in the past.
+    
+    How: 
+        1. Calls the OSRS Wiki timeseries API with 24h timestep (as per requirements)
+        2. Iterates through returned data points to find the one closest to target_timestamp
+        3. Returns the avgHighPrice and avgLowPrice from that data point
+    
+    Args:
+        item_id: The OSRS item ID to fetch prices for
+        target_timestamp: Unix timestamp of the historical date to look up
+        
+    Returns:
+        tuple: (high_price, low_price) or (None, None) if data unavailable
+    """
+    try:
+        # Always use 24h timestep as per requirements (smallest unit is 1 day)
+        response = requests.get(
+            f'https://prices.runescape.wiki/api/v1/osrs/timeseries?timestep=24h&id={item_id}',
+            headers={'User-Agent': 'GE-Tools (not yet live) - demondsoftware@gmail.com'}
+        )
+        if response.status_code == 200:
+            data = response.json()
+            if 'data' in data and data['data']:
+                # closest: Will hold the data point closest to our target timestamp
+                closest = None
+                # closest_diff: Tracks the smallest time difference found so far
+                closest_diff = float('inf')
+                
+                # Iterate through all data points to find the one closest to target_timestamp
+                for point in data['data']:
+                    # diff: Absolute time difference between this point and our target
+                    diff = abs(point['timestamp'] - target_timestamp)
+                    if diff < closest_diff:
+                        closest_diff = diff
+                        closest = point
+                
+                if closest:
+                    # Return the average high and low prices from the closest data point
+                    return closest.get('avgHighPrice'), closest.get('avgLowPrice')
+    except requests.RequestException:
+        # If API call fails, return None values (item will be skipped)
+        pass
+    return None, None
+
+
+def flips_historical_api(request):
+    """
+    API endpoint for historical flip data - calculates unrealized P&L at a past date.
+    
+    What: Returns flip data with prices and unrealized net calculated using historical
+          prices from a user-specified date, WITHOUT modifying any database records.
+    
+    Why: Allows users to see what their unrealized profit/loss would have been if they
+         had checked their portfolio at a specific date in the past. Useful for analyzing
+         missed opportunities or understanding how positions have evolved over time.
+    
+    How:
+        1. Accepts a 'date' GET parameter (ISO format: YYYY-MM-DD)
+        2. Converts date to Unix timestamp for API lookup
+        3. Fetches historical prices for ALL items IN PARALLEL using ThreadPoolExecutor
+        4. For each item the user holds (quantity_held > 0):
+           - Calculates historical unrealized net using:
+             * gross_value = avg_historical_price * quantity_held
+             * tax = min(gross_value * 0.02, 5,000,000)  # 2% GE tax, capped at 5M
+             * unrealized_net = (gross_value - tax) - (average_cost * quantity_held)
+        5. Items without historical data are excluded and reported to the user
+        6. Returns JSON with historical data (does NOT save to database)
+    
+    Performance: Uses concurrent.futures.ThreadPoolExecutor to fetch all item prices
+                 in parallel, significantly reducing load time for users with many items.
+    
+    Parameters:
+        date (GET): ISO format date string (YYYY-MM-DD) for the historical lookup
+        
+    Returns:
+        JSON containing:
+        - items: List of items with historical prices and calculated unrealized net
+        - stats: Aggregated historical unrealized total
+        - skipped_items: List of items excluded due to missing historical data
+        - historical_date: The date being viewed (for display purposes)
+        - is_historical: Boolean flag indicating this is historical data
+    """
+    # date_str: The historical date requested by the user in ISO format
+    date_str = request.GET.get('date')
+    
+    if not date_str:
+        return JsonResponse({'error': 'Date parameter is required'}, status=400)
+    
+    try:
+        # Parse the date string and convert to Unix timestamp for API lookup
+        # We set time to end of day (23:59:59) to get the full day's data
+        from datetime import datetime as dt
+        historical_date = dt.strptime(date_str, '%Y-%m-%d')
+        # target_timestamp: Unix timestamp representing the end of the selected day
+        target_timestamp = historical_date.replace(hour=23, minute=59, second=59).timestamp()
+    except ValueError:
+        return JsonResponse({'error': 'Invalid date format. Use YYYY-MM-DD'}, status=400)
+    
+    # Get current user (or None if not authenticated)
+    user = request.user if request.user.is_authenticated else None
+    
+    # Get all FlipProfit records for this user - these contain the user's holdings
+    # We only care about items with quantity_held > 0 (active positions)
+    flip_profits_qs = FlipProfit.objects.filter(user=user) if user else FlipProfit.objects.none()
+    flips_qs = Flip.objects.filter(user=user) if user else Flip.objects.none()
+    
+    # Get item mapping for icon data - contains wiki image filenames
+    item_mapping = get_item_mapping()
+    
+    # TAX_CAP: Maximum GE tax per transaction (2% capped at 5M gp)
+    TAX_CAP = 5000000
+    
+    # =========================================================================
+    # PARALLEL PRICE FETCHING
+    # =========================================================================
+    # What: Fetches historical prices for all items concurrently
+    # Why: Sequential API calls are slow; parallel calls significantly reduce load time
+    # How: Uses ThreadPoolExecutor to run get_historical_prices_for_date() for all items
+    #      simultaneously, then collects results into a dictionary
+    # =========================================================================
+    
+    # active_flip_profits: List of FlipProfit objects with quantity_held > 0
+    active_flip_profits = [fp for fp in flip_profits_qs if fp.quantity_held > 0]
+    
+    # item_ids_to_fetch: List of item IDs we need to fetch historical prices for
+    item_ids_to_fetch = [fp.item_id for fp in active_flip_profits]
+    
+    # historical_prices: Dictionary mapping item_id -> (high_price, low_price)
+    # This will be populated by the parallel fetch
+    historical_prices = {}
+    
+    # Use ThreadPoolExecutor to fetch all prices in parallel
+    # max_workers=10: Limit concurrent connections to be respectful to the API
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        # future_to_item_id: Maps each Future object to its corresponding item_id
+        # Why: We need to know which item_id each result belongs to when collecting results
+        future_to_item_id = {
+            executor.submit(get_historical_prices_for_date, item_id, target_timestamp): item_id
+            for item_id in item_ids_to_fetch
+        }
+        
+        # Collect results as they complete
+        for future in as_completed(future_to_item_id):
+            item_id = future_to_item_id[future]
+            try:
+                # Get the (high, low) tuple result from the completed future
+                high, low = future.result()
+                historical_prices[item_id] = (high, low)
+            except Exception as e:
+                # If an error occurred, store None values (item will be skipped)
+                historical_prices[item_id] = (None, None)
+    
+    # =========================================================================
+    # PROCESS RESULTS AND BUILD RESPONSE
+    # =========================================================================
+    
+    # items: List to hold the processed item data for response
+    items = []
+    # skipped_items: List of items that couldn't be processed due to missing historical data
+    skipped_items = []
+    # total_historical_unrealized: Running sum of all historical unrealized P&L
+    total_historical_unrealized = 0
+    # total_realized: Sum of realized profits (unchanged by historical view)
+    total_realized = 0
+    # position_size: Sum of all position sizes (cost-based, unchanged by historical view)
+    position_size = 0
+    
+    # Process each FlipProfit record using the pre-fetched prices
+    for flip_profit in active_flip_profits:
+        # item_id: The OSRS item ID for this position
+        item_id = flip_profit.item_id
+        
+        # Get the pre-fetched historical prices for this item
+        historical_high, historical_low = historical_prices.get(item_id, (None, None))
+        
+        # If no historical data available, skip this item and notify user
+        if historical_high is None and historical_low is None:
+            # Get item name for the notification message
+            item_name = flip_profit.item_name
+            if not item_name:
+                flip = flips_qs.filter(item_id=item_id).first()
+                item_name = flip.item_name if flip else f"Item {item_id}"
+            skipped_items.append({
+                'item_id': item_id,
+                'item_name': item_name,
+                'reason': 'No historical price data available for this date'
+            })
+            continue
+        
+        # Calculate average historical price from high and low
+        # historical_avg_price: The average of high and low, used for unrealized calculation
+        if historical_high and historical_low:
+            historical_avg_price = (historical_high + historical_low) / 2
+        elif historical_high:
+            historical_avg_price = historical_high
+        elif historical_low:
+            historical_avg_price = historical_low
+        else:
+            # Should not reach here due to earlier check, but safety fallback
+            continue
+        
+        # Calculate historical unrealized net with GE tax
+        # gross_value: Total value if sold at historical price (before tax)
+        gross_value = historical_avg_price * flip_profit.quantity_held
+        # tax: 2% GE tax, capped at 5M per transaction
+        tax = min(gross_value * 0.02, TAX_CAP)
+        # net_value: Value after tax deduction
+        net_value = gross_value - tax
+        # historical_unrealized: Profit/loss = net sale value - total cost basis
+        historical_unrealized = net_value - (flip_profit.average_cost * flip_profit.quantity_held)
+        
+        # Add to running total
+        total_historical_unrealized += historical_unrealized
+        
+        # Add realized net to total (unchanged by historical view)
+        total_realized += flip_profit.realized_net
+        
+        # Calculate position size (cost-based, unchanged by historical view)
+        item_position_size = flip_profit.average_cost * flip_profit.quantity_held
+        position_size += item_position_size
+        
+        # Get item name from flip_profit or fall back to Flip record
+        item_name = flip_profit.item_name
+        if not item_name:
+            flip = flips_qs.filter(item_id=item_id).first()
+            item_name = flip.item_name if flip else f"Item {item_id}"
+        
+        # Look up the item icon from the mapping for UI display
+        icon = None
+        if item_name and item_mapping:
+            item_data = item_mapping.get(item_name.lower())
+            if item_data:
+                icon = item_data.get('icon')
+        
+        # Get first buy date for time held calculation (unchanged by historical view)
+        buys = flips_qs.filter(item_id=item_id, type='buy')
+        first_buy = buys.order_by('date').first()
+        first_buy_timestamp = first_buy.date.timestamp() if first_buy else None
+        
+        # Build item data object for response
+        items.append({
+            'item_id': item_id,
+            'name': item_name,
+            'icon': icon,
+            'avg_price': int(flip_profit.average_cost),  # User's cost basis (unchanged)
+            'high_price': historical_high,  # Historical high price
+            'low_price': historical_low,  # Historical low price
+            'quantity': flip_profit.quantity_held,
+            'quantity_holding': flip_profit.quantity_held,
+            'unrealized_net': round(historical_unrealized),  # Calculated with historical prices
+            'realized_net': round(flip_profit.realized_net),  # Unchanged
+            'first_buy_timestamp': first_buy_timestamp,
+            'position_size': int(item_position_size),  # Cost-based, unchanged
+        })
+    
+    # Return JSON response with historical data
+    # IMPORTANT: No database records are modified by this endpoint
+    return JsonResponse({
+        'items': items,
+        'stats': {
+            'total_unrealized': round(total_historical_unrealized),
+            'total_realized': round(total_realized),
+            'position_size': int(position_size) if position_size else 0,
+        },
+        'skipped_items': skipped_items,
+        'historical_date': date_str,
+        'is_historical': True,
     })
 
 
