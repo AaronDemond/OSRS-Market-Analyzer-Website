@@ -2281,8 +2281,8 @@ $(document).ready(function() {
     
     // Global keyboard shortcuts
     $(document).on('keydown', function(e) {
-        // Don't trigger shortcuts when typing in inputs
-        if ($(e.target).is('input, textarea, select')) {
+        // Don't trigger shortcuts when typing in inputs or contenteditable elements
+        if ($(e.target).is('input, textarea, select, [contenteditable="true"]')) {
             // Exception: Escape key to clear search
             if (e.key === 'Escape' && $(e.target).is('#searchFavorites')) {
                 $('#searchFavorites').val('').trigger('input').blur();
@@ -2649,7 +2649,7 @@ function doDeleteGroup(groupId) {
             alert('Failed to delete group: ' + (data.error || 'Unknown error'));
         }
     })
-     .catch(err => {
+    .catch(err => {
         console.error('Error deleting group:', err);
         closeDeleteGroupModal();
     });
