@@ -2325,14 +2325,54 @@ def alert_detail(request, alert_id):
                 triggered_info['items'] = []
         elif has_multiple_items and alert.triggered_data and alert.type != 'sustained':
             # Multi-item specific alert (Specific Item(s) mode with item_ids set)
-            # What: Parse triggered_data JSON for multi-item spread alerts
+            # What: Parse triggered_data JSON for multi-item spread/threshold/spike alerts
             # Why: When user selects "Specific Item(s)", the triggered_data contains
-            #      a JSON array of items that met the spread threshold
+            #      a JSON array of items that met the threshold
             # How: Same format as all-items alerts - array of item objects with
-            #      item_id, item_name, high, low, spread fields
+            #      item_id, item_name, and type-specific fields
             # Note: Sustained alerts are handled separately above
+            # =============================================================================
+            # IMPORTANT: Only set items if triggered_data is actually a list
+            # Why: Single-item alerts now store triggered_data as a dict (not a list)
+            #      If we set triggered_info['items'] = dict, Django template will iterate
+            #      over the dict keys (e.g., 'item_id', 'item_name') showing 7-8 "items"
+            # How: Check isinstance before assigning to items
+            # =============================================================================
             try:
-                triggered_info['items'] = json.loads(alert.triggered_data)
+                parsed_data = json.loads(alert.triggered_data)
+                if isinstance(parsed_data, list):
+                    # Multi-item: triggered_data is a list of item dicts
+                    triggered_info['items'] = parsed_data
+                else:
+                    # =============================================================================
+                    # SINGLE-ITEM THRESHOLD WITH ITEM_IDS SET
+                    # =============================================================================
+                    # What: Handle case where item_ids has 1 item but triggered_data is a dict
+                    # Why: When user selects "Specific Items" with only 1 item, item_ids is still
+                    #      a JSON array like [123], making has_multiple_items=True, but triggered_data
+                    #      is stored as a dict (single item format)
+                    # How: Reset has_multiple_items flag and process as single-item threshold alert
+                    # =============================================================================
+                    triggered_info['has_multiple_items'] = False
+                    
+                    # Process single-item threshold data if this is a threshold alert
+                    if alert.type == 'threshold':
+                        triggered_info['reference'] = alert.reference
+                        triggered_info['threshold_value'] = alert.percentage
+                        triggered_info['threshold_type'] = alert.threshold_type
+                        
+                        # parsed_data is the single-item triggered_data dict
+                        if parsed_data.get('threshold_type') == 'value':
+                            # Value-based threshold: use target_price instead of reference_price
+                            triggered_info['threshold_target_price'] = parsed_data.get('target_price')
+                            triggered_info['threshold_current_price'] = parsed_data.get('current_price')
+                            triggered_info['threshold_direction'] = parsed_data.get('direction')
+                        else:
+                            # Percentage-based threshold
+                            triggered_info['threshold_reference_price'] = parsed_data.get('reference_price')
+                            triggered_info['threshold_current_price'] = parsed_data.get('current_price')
+                            triggered_info['threshold_change_percent'] = parsed_data.get('change_percent')
+                            triggered_info['threshold_direction'] = parsed_data.get('direction')
             except json.JSONDecodeError:
                 triggered_info['items'] = []
         elif not alert.is_all_items and alert.item_id:
@@ -2360,7 +2400,7 @@ def alert_detail(request, alert_id):
                 # THRESHOLD ALERT TRIGGERED INFO
                 # What: Populate triggered_info with threshold-specific data for template display
                 # Why: Template needs reference price, current price, threshold value, and change %
-                # How: Parse triggered_data if multi-item, or get single item data from alert fields
+                # How: Parse triggered_data if available, or fall back to calculating from alert fields
                 # =============================================================================
                 triggered_info['reference'] = alert.reference
                 triggered_info['threshold_value'] = alert.percentage
@@ -2382,31 +2422,77 @@ def alert_detail(request, alert_id):
                         pass
                 else:
                     # Single item threshold alert
-                    # Get reference price from stored reference_prices
-                    if alert.reference_prices and alert.item_id:
+                    # =============================================================================
+                    # SINGLE-ITEM THRESHOLD TRIGGERED DATA HANDLING
+                    # What: Extract triggered data from stored triggered_data JSON if available
+                    # Why: triggered_data now stores the exact values at trigger time, which is
+                    #      more accurate than recalculating from current prices
+                    # How: Try to parse triggered_data first; if not available or invalid,
+                    #      fall back to the old method of calculating from reference_prices and
+                    #      current API prices
+                    # Note: triggered_data can be a dict (single item) with fields:
+                    #       - For percentage-based: item_id, item_name, reference_price, current_price, 
+                    #         change_percent, threshold, direction
+                    #       - For value-based: item_id, item_name, target_price, current_price, 
+                    #         direction, threshold_type
+                    # =============================================================================
+                    triggered_data_parsed = False
+                    
+                    if alert.triggered_data:
                         try:
-                            ref_prices = json.loads(alert.reference_prices)
-                            triggered_info['threshold_reference_price'] = ref_prices.get(str(alert.item_id))
+                            # triggered_data_dict: The parsed JSON dict containing trigger details
+                            triggered_data_dict = json.loads(alert.triggered_data)
+                            
+                            if isinstance(triggered_data_dict, dict):
+                                # Successfully parsed single-item triggered_data
+                                # Check if this is a value-based or percentage-based threshold
+                                if triggered_data_dict.get('threshold_type') == 'value':
+                                    # Value-based threshold: use target_price instead of reference_price
+                                    triggered_info['threshold_target_price'] = triggered_data_dict.get('target_price')
+                                    triggered_info['threshold_current_price'] = triggered_data_dict.get('current_price')
+                                    triggered_info['threshold_direction'] = triggered_data_dict.get('direction')
+                                    # For value-based, we don't have change_percent - price just crossed target
+                                else:
+                                    # Percentage-based threshold
+                                    triggered_info['threshold_reference_price'] = triggered_data_dict.get('reference_price')
+                                    triggered_info['threshold_current_price'] = triggered_data_dict.get('current_price')
+                                    triggered_info['threshold_change_percent'] = triggered_data_dict.get('change_percent')
+                                    triggered_info['threshold_direction'] = triggered_data_dict.get('direction')
+                                
+                                triggered_data_parsed = True
                         except json.JSONDecodeError:
+                            # triggered_data exists but couldn't be parsed - fall through to fallback
                             pass
                     
-                    # Get current price
-                    if alert.reference == 'low':
-                        triggered_info['threshold_current_price'] = price_data.get('low')
-                    elif alert.reference == 'average':
-                        high = price_data.get('high')
-                        low = price_data.get('low')
-                        if high and low:
-                            triggered_info['threshold_current_price'] = (high + low) // 2
-                    else:
-                        triggered_info['threshold_current_price'] = price_data.get('high')
-                    
-                    # Calculate change percent
-                    ref_price = triggered_info.get('threshold_reference_price')
-                    curr_price = triggered_info.get('threshold_current_price')
-                    if ref_price and curr_price and ref_price > 0:
-                        change_pct = ((curr_price - ref_price) / ref_price) * 100
-                        triggered_info['threshold_change_percent'] = round(change_pct, 2)
+                    # Fallback: Calculate values from reference_prices and current API data
+                    # Why: For backwards compatibility with alerts triggered before this fix,
+                    #      or if triggered_data parsing fails for any reason
+                    if not triggered_data_parsed:
+                        # Get reference price from stored reference_prices
+                        if alert.reference_prices and alert.item_id:
+                            try:
+                                ref_prices = json.loads(alert.reference_prices)
+                                triggered_info['threshold_reference_price'] = ref_prices.get(str(alert.item_id))
+                            except json.JSONDecodeError:
+                                pass
+                        
+                        # Get current price
+                        if alert.reference == 'low':
+                            triggered_info['threshold_current_price'] = price_data.get('low')
+                        elif alert.reference == 'average':
+                            high = price_data.get('high')
+                            low = price_data.get('low')
+                            if high and low:
+                                triggered_info['threshold_current_price'] = (high + low) // 2
+                        else:
+                            triggered_info['threshold_current_price'] = price_data.get('high')
+                        
+                        # Calculate change percent
+                        ref_price = triggered_info.get('threshold_reference_price')
+                        curr_price = triggered_info.get('threshold_current_price')
+                        if ref_price and curr_price and ref_price > 0:
+                            change_pct = ((curr_price - ref_price) / ref_price) * 100
+                            triggered_info['threshold_change_percent'] = round(change_pct, 2)
 
     # Check if redirected after save
     edit_saved = request.GET.get('edit_saved') == '1'

@@ -538,33 +538,73 @@ class Command(BaseCommand):
         items_to_check = []
         
         if threshold_type == 'value':
-            # Value-based threshold: Single item only
-            # What: Check if current price crosses the target_price
-            # Why: User wants to be alerted when price reaches a specific value
+            # =============================================================================
+            # VALUE-BASED THRESHOLD: SINGLE ITEM ONLY
+            # =============================================================================
+            # What: Check if current price crosses the target_price (absolute gp value)
+            # Why: User wants to be alerted when price reaches a specific gp value
+            # How: Compare current price to target_price based on direction (up/down)
+            # Note: Value-based thresholds are single-item only (no multi-item support)
+            # =============================================================================
             if not alert.item_id or alert.target_price is None:
                 return False
             
+            # item_id_str: String version of item ID for dictionary lookups
             item_id_str = str(alert.item_id)
+            # price_data: Dict containing 'high' and 'low' prices for this item from API
             price_data = all_prices.get(item_id_str)
             if not price_data:
                 return False
             
             # Get current price based on reference type
+            # current_price: The current market price based on reference_type setting (high/low/average)
             current_price = self._get_price_by_reference(price_data, reference_type)
             if current_price is None:
                 return False
             
+            # target: The target price the user wants to be alerted at
             target = alert.target_price
             
             # Check if threshold is crossed
-            # For 'up': trigger when current_price >= target
-            # For 'down': trigger when current_price <= target
+            # For 'up': trigger when current_price >= target (price has risen to/above target)
+            # For 'down': trigger when current_price <= target (price has fallen to/below target)
             if direction == 'up':
                 triggered = current_price >= target
             else:  # direction == 'down'
                 triggered = current_price <= target
             
-            return triggered
+            if triggered:
+                # =============================================================================
+                # BUILD TRIGGERED_DATA FOR VALUE-BASED THRESHOLD ALERT
+                # =============================================================================
+                # What: Create a JSON-serializable dict with all trigger details
+                # Why: The alert_detail view and triggered_text() method need this data to
+                #      display what triggered the alert (target price, current price, direction)
+                # How: Build dict with relevant fields for value-based threshold display
+                # Note: This was previously missing - value-based alerts only returned True/False
+                #       without storing any triggered_data, causing display issues
+                # =============================================================================
+                item_mapping = self.get_item_mapping()
+                # item_name: Human-readable name of the item for display
+                item_name = item_mapping.get(item_id_str, alert.item_name or f'Item {item_id_str}')
+                
+                # triggered_item: Dict containing all information about the triggered alert
+                triggered_item = {
+                    'item_id': item_id_str,
+                    'item_name': item_name,
+                    'target_price': target,
+                    'current_price': current_price,
+                    'direction': direction,
+                    'threshold_type': 'value'
+                }
+                
+                # Store as triggered_data JSON
+                # Why: This enables proper display in alert_detail view and triggered_text()
+                alert.triggered_data = json.dumps(triggered_item)
+                
+                return True
+            
+            return False
         
         # Percentage-based threshold
         # What: Check if current price differs from baseline by threshold %
@@ -694,31 +734,89 @@ class Command(BaseCommand):
         
         else:
             # Single item mode (percentage-based)
+            # =============================================================================
+            # SINGLE-ITEM PERCENTAGE-BASED THRESHOLD ALERT
+            # =============================================================================
+            # What: Checks if a single item's price has changed by the threshold percentage
+            # Why: Users want to be notified when a specific item's price changes significantly
+            # How: 
+            #   1. Get the stored reference price (baseline at alert creation)
+            #   2. Get current price based on reference type (high/low/average)
+            #   3. Calculate percentage change from reference to current
+            #   4. If threshold is crossed, build triggered_data and return True
+            # Note: We must build and store triggered_data here (not just return True)
+            #       so the alert detail page and triggered_text() can display proper info
+            # =============================================================================
             if not alert.item_id:
                 return False
             
+            # item_id_str: String version of item ID for dictionary lookups
             item_id_str = str(alert.item_id)
             
             # Get price data
+            # price_data: Dict containing 'high' and 'low' prices for this item from API
             price_data = all_prices.get(item_id_str)
             if not price_data:
                 return False
             
             # Get reference price
+            # ref_price: The baseline price stored when the alert was created/reset
+            # This is what we compare against to calculate percentage change
             ref_price = reference_prices.get(item_id_str)
             if ref_price is None:
                 return False
             
             # Get current price
+            # current_price: The current market price based on reference_type setting
             current_price = self._get_price_by_reference(price_data, reference_type)
             if current_price is None:
                 return False
             
             # Calculate percentage change
+            # change_percent: How much the price has changed as a percentage
+            # Positive = price increased, Negative = price decreased
             change_percent = self._calculate_percent_change(ref_price, current_price)
             
             # Check if threshold is crossed
-            return self._check_threshold_crossed(change_percent, threshold_value, direction)
+            # threshold_crossed: Boolean indicating if change meets/exceeds threshold in specified direction
+            threshold_crossed = self._check_threshold_crossed(change_percent, threshold_value, direction)
+            
+            if threshold_crossed:
+                # =============================================================================
+                # BUILD TRIGGERED_DATA FOR SINGLE-ITEM THRESHOLD ALERT
+                # =============================================================================
+                # What: Create a JSON-serializable dict with all trigger details
+                # Why: The alert_detail view and triggered_text() method need this data to
+                #      display what triggered the alert (reference price, current price, change %)
+                # How: Build dict with same structure as multi-item triggered items for consistency
+                # Note: This was previously missing - single-item alerts only returned True/False
+                #       without storing any triggered_data, causing display issues
+                # =============================================================================
+                item_mapping = self.get_item_mapping()
+                # item_name: Human-readable name of the item for display
+                item_name = item_mapping.get(item_id_str, alert.item_name or f'Item {item_id_str}')
+                
+                # triggered_item: Dict containing all information about the triggered alert
+                # This matches the structure used by multi-item threshold alerts for consistency
+                triggered_item = {
+                    'item_id': item_id_str,
+                    'item_name': item_name,
+                    'reference_price': ref_price,
+                    'current_price': current_price,
+                    'change_percent': round(change_percent, 2),
+                    'threshold': threshold_value,
+                    'direction': direction
+                }
+                
+                # Store as triggered_data JSON
+                # Why: This enables proper display in alert_detail view and triggered_text()
+                # Note: We store as a single dict (not a list) for single-item alerts
+                #       The view handles both formats (dict for single, list for multi)
+                alert.triggered_data = json.dumps(triggered_item)
+                
+                return True
+            
+            return False
     
     def _get_price_by_reference(self, price_data, reference_type):
         """
