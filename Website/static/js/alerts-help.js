@@ -159,5 +159,4 @@
             closeNewGroupModal();
         }
     });
-</script>
 

@@ -255,3 +255,6 @@
         csrfToken: window.CSRF_TOKEN || ''
     };
 
+console.log("Hello, world");
+console.log(window.CSRF_TOKEN);
+
