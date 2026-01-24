@@ -1,0 +1,167 @@
+{
+  "gainers": [
+    {
+      "id": 13263,
+      "name": "Abyssal bludgeon",
+      "icon": "Abyssal bludgeon.png",
+      "change": 7.92,
+      "price": 24623637,
+      "volume": 260600158
+    },
+    {
+      "id": 536,
+      "name": "Dragon bones",
+      "icon": "Dragon bones.png",
+      "change": 6.88,
+      "price": 1739,
+      "volume": 90191133
+    },
+    {
+      "id": 11808,
+      "name": "Zamorak godsword",
+      "icon": "Zamorak godsword.png",
+      "change": 4.34,
+      "price": 20356763,
+      "volume": 118747784
+    },
+    {
+      "id": 12924,
+      "name": "Toxic blowpipe (empty)",
+      "icon": "Toxic blowpipe (empty).png",
+      "change": 4.31,
+      "price": 9989674,
+      "volume": 295944092
+    },
+    {
+      "id": 26233,
+      "name": "Ancient godsword",
+      "icon": "Ancient godsword.png",
+      "change": 4.19,
+      "price": 43483424,
+      "volume": 210169882
+    },
+    {
+      "id": 24417,
+      "name": "Inquisitor's mace",
+      "icon": "Inquisitor's mace.png",
+      "change": 4.09,
+      "price": 233965208,
+      "volume": 760386926
+    },
+    {
+      "id": 560,
+      "name": "Death rune",
+      "icon": "Death rune.png",
+      "change": 3.97,
+      "price": 131,
+      "volume": 89551376
+    },
+    {
+      "id": 2577,
+      "name": "Ranger boots",
+      "icon": "Ranger boots.png",
+      "change": 3.77,
+      "price": 23169873,
+      "volume": 106195251
+    },
+    {
+      "id": 22481,
+      "name": "Sanguinesti staff (uncharged)",
+      "icon": "Sanguinesti staff (uncharged).png",
+      "change": 3.3,
+      "price": 20592495,
+      "volume": 271992538
+    },
+    {
+      "id": 13237,
+      "name": "Pegasian boots",
+      "icon": "Pegasian boots.png",
+      "change": 3.19,
+      "price": 23422831,
+      "volume": 396236224
+    }
+  ],
+  "losers": [
+    {
+      "id": 22983,
+      "name": "Hydra leather",
+      "icon": "Hydra leather.png",
+      "change": -5.55,
+      "price": 10704801,
+      "volume": 113292477
+    },
+    {
+      "id": 24229,
+      "name": "Ornate maul handle",
+      "icon": "Ornate maul handle.png",
+      "change": -5.0,
+      "price": 1302870,
+      "volume": 79583642
+    },
+    {
+      "id": 27235,
+      "name": "Masori mask (f)",
+      "icon": "Masori mask (f).png",
+      "change": -4.5,
+      "price": 27621904,
+      "volume": 153071384
+    },
+    {
+      "id": 27226,
+      "name": "Masori mask",
+      "icon": "Masori mask.png",
+      "change": -4.19,
+      "price": 19739270,
+      "volume": 120903028
+    },
+    {
+      "id": 28997,
+      "name": "Dual macuahuitl",
+      "icon": "Dual macuahuitl.png",
+      "change": -4.03,
+      "price": 6275565,
+      "volume": 97009775
+    },
+    {
+      "id": 28307,
+      "name": "Ultor ring",
+      "icon": "Ultor ring.png",
+      "change": -3.53,
+      "price": 134094086,
+      "volume": 748691980
+    },
+    {
+      "id": 13239,
+      "name": "Primordial boots",
+      "icon": "Primordial boots.png",
+      "change": -3.42,
+      "price": 24454783,
+      "volume": 500304102
+    },
+    {
+      "id": 12625,
+      "name": "Stamina potion(4)",
+      "icon": "Stamina potion(4).png",
+      "change": -2.9,
+      "price": 7846,
+      "volume": 80444057
+    },
+    {
+      "id": 24777,
+      "name": "Blood shard",
+      "icon": "Blood shard.png",
+      "change": -2.77,
+      "price": 7279461,
+      "volume": 254781135
+    },
+    {
+      "id": 11830,
+      "name": "Armadyl chainskirt",
+      "icon": "Armadyl chainskirt.png",
+      "change": -2.69,
+      "price": 23989958,
+      "volume": 89962342
+    }
+  ],
+  "last_updated": "2026-01-24T15:31:31.417927"
+}

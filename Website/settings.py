@@ -146,3 +146,24 @@ else:
     # Development: print emails to console
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
     DEFAULT_FROM_EMAIL = 'noreply@getools.local'
+
+
+# =============================================================================
+# CACHE CONFIGURATION
+# =============================================================================
+# What: Django cache backend for storing computed data like trending items
+# Why: Avoids expensive API calls on every page load (e.g., trending items hourly)
+# How: Uses local memory cache - simple, no external dependencies
+# Note: Cache is cleared when server restarts; fine for development
+#       For production, consider switching to Redis or file-based cache
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+        'TIMEOUT': 3600,  # Default 1 hour timeout
+        'OPTIONS': {
+            'MAX_ENTRIES': 1000,
+        }
+    }
+}
