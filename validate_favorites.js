@@ -22,8 +22,9 @@ if (!scriptMatches) {
 
 console.log(`Found ${scriptMatches.length} script blocks`);
 
-// Check for jQuery inclusion
-const hasJQuery = content.includes(`jquery-${JQUERY_VERSION}.min.js`) || content.includes('jquery');
+// Check for jQuery inclusion with specific version
+const jqueryRegex = new RegExp(`jquery[.-]${JQUERY_VERSION}[\\.min]*\\.js`);
+const hasJQuery = jqueryRegex.test(content);
 console.log(`jQuery ${JQUERY_VERSION} included: ${hasJQuery}`);
 
 // Check for new features

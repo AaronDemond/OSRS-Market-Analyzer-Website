@@ -1729,7 +1729,9 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js" 
+        integrity="sha384-1H217gwSVyLSIfaLxHbE7dRb3v4mYCKbpQvzx0cegeju1MVsGrX5xXxAvs/HgeFs" 
+        crossorigin="anonymous"></script>
 <script>
 // Store loaded data globally for use by other functions
 let favoritesData = null;
@@ -1767,7 +1769,8 @@ function updateQuickStats(data) {
     data.favorites.forEach(fav => {
         if (fav.spread_pct && (!bestSpread || fav.spread_pct > bestSpread)) {
             bestSpread = fav.spread_pct;
-            bestSpreadItem = fav.item_name;
+            // Safely handle item name with fallback
+            bestSpreadItem = fav.item_name || 'Unknown Item';
         }
     });
     
@@ -1776,7 +1779,7 @@ function updateQuickStats(data) {
     
     if (bestSpread !== null) {
         $('#statBestSpread').text(bestSpread.toFixed(1) + '%');
-        $('#statBestSpreadItem').text(bestSpreadItem || '');
+        $('#statBestSpreadItem').text(bestSpreadItem);
     } else {
         $('#statBestSpread').text('-');
         $('#statBestSpreadItem').text('');
@@ -1843,10 +1846,18 @@ function sortFavorites(favorites) {
     
     switch(currentSort) {
         case 'name-asc':
-            sorted.sort((a, b) => a.item_name.localeCompare(b.item_name));
+            sorted.sort((a, b) => {
+                const nameA = a.item_name || '';
+                const nameB = b.item_name || '';
+                return nameA.localeCompare(nameB);
+            });
             break;
         case 'name-desc':
-            sorted.sort((a, b) => b.item_name.localeCompare(a.item_name));
+            sorted.sort((a, b) => {
+                const nameA = a.item_name || '';
+                const nameB = b.item_name || '';
+                return nameB.localeCompare(nameA);
+            });
             break;
         case 'spread-high':
             sorted.sort((a, b) => (b.spread_pct || 0) - (a.spread_pct || 0));
@@ -1877,9 +1888,10 @@ function filterFavorites(favorites) {
     }
     
     const query = searchQuery.toLowerCase();
-    return favorites.filter(fav => 
-        fav.item_name.toLowerCase().includes(query)
-    );
+    return favorites.filter(fav => {
+        const itemName = fav.item_name || '';
+        return itemName.toLowerCase().includes(query);
+    });
 }
 
 /**
@@ -2282,7 +2294,7 @@ $(document).ready(function() {
     // Global keyboard shortcuts
     $(document).on('keydown', function(e) {
         // Don't trigger shortcuts when typing in inputs or contenteditable elements
-        if ($(e.target).is('input, textarea, select, [contenteditable="true"]')) {
+        if ($(e.target).is('input, textarea, select, [contenteditable]')) {
             // Exception: Escape key to clear search
             if (e.key === 'Escape' && $(e.target).is('#searchFavorites')) {
                 $('#searchFavorites').val('').trigger('input').blur();
