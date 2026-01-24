@@ -891,18 +891,38 @@
                 // =============================================================================
                 // What: Determine if sort values are missing or non-numeric
                 // Why: Alerts with missing values (null, undefined, NaN, 'multi') should sort to the end
-                // How: Check for null, undefined, NaN, and string values (like 'multi' for multi-item alerts)
-                const aMissing = aVal === null || aVal === undefined || Number.isNaN(aVal) || typeof aVal === 'string';
-                const bMissing = bVal === null || bVal === undefined || Number.isNaN(bVal) || typeof bVal === 'string';
+                // How: Check for null, undefined, NaN, and the special 'multi' string marker
+                // Note: We must NOT treat all strings as missing, because alphabetical sort returns strings!
+                //       Only the special 'multi' marker (returned for multi-item threshold alerts) is missing.
+                // =============================================================================
+                const isMissingValue = (val) => val === null || val === undefined || Number.isNaN(val) || val === 'multi';
+                const aMissing = isMissingValue(aVal);
+                const bMissing = isMissingValue(bVal);
 
-                if (!aMissing || !bMissing) {
+                // If one or both values are missing, handle specially
+                if (aMissing || bMissing) {
+                    if (aMissing && bMissing) {
+                        // Both missing - fall back to alphabetical comparison
+                        return (a.text || '').localeCompare(b.text || '');
+                    }
+                    // One is missing - push missing values to the end
                     if (aMissing) return 1;
                     if (bMissing) return -1;
+                }
+                
+                // Both values are valid - compare them based on type
+                // For strings (alphabetical sort): use localeCompare
+                // For numbers (date, threshold distance): use numeric comparison
+                if (typeof aVal === 'string' && typeof bVal === 'string') {
+                    // String comparison (alphabetically sort)
+                    const result = aVal.localeCompare(bVal);
+                    return result * direction;
+                } else {
+                    // Numeric comparison (dates, threshold distance, etc.)
                     if (aVal > bVal) return direction;
                     if (aVal < bVal) return -direction;
+                    return 0;
                 }
-
-                return (a.text || '').localeCompare(b.text || '');
             });
 
             return sorted;
