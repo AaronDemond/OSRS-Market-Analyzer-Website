@@ -2314,6 +2314,9 @@
             -webkit-overflow-scrolling: touch;
             margin-bottom: 12px;
             border-radius: 14px;
+            /* Hide scrollbars for cleaner mobile UX */
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;     /* Firefox */
         }
 
         /* Visual scroll indicators - shadows that appear when scrollable */
@@ -2360,11 +2363,6 @@
            ============================================================================= */
         .table-scroll-wrapper::-webkit-scrollbar {
             display: none; /* Hide scrollbar for Chrome, Safari, and Opera */
-        }
-        
-        .table-scroll-wrapper {
-            -ms-overflow-style: none;  /* Hide scrollbar for IE and Edge */
-            scrollbar-width: none;     /* Hide scrollbar for Firefox */
         }
 
         /* =============================================================================
