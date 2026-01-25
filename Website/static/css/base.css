@@ -321,6 +321,7 @@ body {
    What: A floating button visible only on mobile to toggle the sidebar.
    Why: When sidebar is hidden off-screen, users need a way to access navigation.
    How: Fixed position in top-left corner, hidden on desktop via display:none.
+         When sidebar is open, moves to right side of sidebar header (like desktop).
    ----------------------------------------------------------------------------- */
 .mobile-sidebar-toggle {
     /* Hidden by default - only shown on mobile via media query */
@@ -350,7 +351,32 @@ body {
     
     /* Cursor and transition for interactivity */
     cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, left 0.3s ease, top 0.3s ease;
+}
+
+/* -----------------------------------------------------------------------------
+   Mobile Burger Button - Repositioned When Sidebar is Open
+   -----------------------------------------------------------------------------
+   What: Moves the burger button to the right side of the sidebar header.
+   Why: Mimics desktop toggle button position for consistency. Prevents overlap
+        with "GE Tools" logo text when sidebar is expanded.
+   How: Changes left position to sit inside the sidebar header area.
+   ----------------------------------------------------------------------------- */
+.mobile-sidebar-toggle.sidebar-open {
+    /* Position at right side of sidebar header (260px width - button width - padding) */
+    left: 205px;
+    top: 13px;
+    
+    /* Simpler styling when inside sidebar - no shadow needed */
+    background: transparent;
+    box-shadow: none;
+    border-radius: 4px;
+}
+
+.mobile-sidebar-toggle.sidebar-open:hover {
+    background-color: rgba(102, 126, 234, 0.2);
+    transform: none;
+    box-shadow: none;
 }
 
 /* Hover state for mobile burger button */
@@ -422,28 +448,84 @@ body {
         height: 100%;
         position: fixed;
         
-        /* CRITICAL: Always use collapsed width on mobile - never fully expands */
+        /* Start with collapsed width when hidden (for the transform calculation) */
         width: var(--sidebar-collapsed-width) !important;
         
         /* Position off-screen to the left by the sidebar's width */
         transform: translateX(calc(-1 * var(--sidebar-collapsed-width)));
         
         /* Smooth slide-in animation (GPU-accelerated via transform) */
-        transition: transform 0.3s ease;
+        transition: transform 0.3s ease, width 0.3s ease;
         
         /* Ensure sidebar appears above backdrop */
         z-index: 1000;
     }
     
     /* -------------------------------------------------------------------------
-       Mobile Sidebar Open State
+       Mobile Sidebar Open State - FULL WIDTH with Text Labels
        -------------------------------------------------------------------------
-       What: Slides the sidebar into view when .mobile-open class is added.
-       Why: User tapped the burger button to view navigation.
-       How: Resets transform to 0 (original position = visible).
+       What: Slides the sidebar into view at FULL width when .mobile-open is added.
+       Why: On mobile, when user opens sidebar, show full navigation with text
+            labels for better usability - not just icons.
+       How: Resets transform to 0, expands to full width (260px), shows text.
        ------------------------------------------------------------------------- */
     .sidebar.mobile-open {
         transform: translateX(0);
+        /* Show full-width sidebar with text labels, not collapsed icons-only */
+        width: var(--sidebar-width) !important;
+    }
+    
+    /* -------------------------------------------------------------------------
+       Mobile Open Nav Link Styling - Match Desktop Expanded State
+       -------------------------------------------------------------------------
+       What: Ensures nav links look exactly like desktop expanded sidebar.
+       Why: When collapsed class is present from localStorage, it overrides
+            padding and alignment. We need to restore desktop expanded styles.
+       How: Reset all the collapsed overrides to match expanded desktop nav.
+       ------------------------------------------------------------------------- */
+    .sidebar.mobile-open .nav-link {
+        /* Match desktop expanded: left-aligned with proper padding */
+        justify-content: flex-start !important;
+        padding: 0.75rem 1rem !important;
+        gap: 0.75rem !important;
+    }
+    
+    /* Show nav link text when mobile sidebar is open */
+    .sidebar.mobile-open .nav-link span {
+        display: inline !important;
+        opacity: 1 !important;
+    }
+    
+    /* Nav items should have proper margin like desktop */
+    .sidebar.mobile-open .nav-item {
+        margin: 0.25rem 0.75rem !important;
+    }
+    
+    /* Show the logo/brand text when mobile sidebar is open */
+    .sidebar.mobile-open .sidebar-brand {
+        padding: 1.5rem !important;
+        justify-content: flex-start !important;
+        flex-direction: row !important;
+        gap: 0 !important;
+    }
+    
+    .sidebar.mobile-open .sidebar-brand h4 {
+        display: block !important;
+    }
+    
+    .sidebar.mobile-open .sidebar-brand > svg {
+        display: block !important;
+        margin-right: 0.5rem !important;
+    }
+    
+    /* Footer nav links should match desktop expanded state */
+    .sidebar.mobile-open .sidebar-footer .nav-link {
+        padding: 0.75rem 1.5rem !important;
+        justify-content: flex-start !important;
+    }
+    
+    .sidebar.mobile-open .sidebar-footer .nav-link .nav-icon {
+        margin-right: 12px !important;
     }
     
     /* -------------------------------------------------------------------------
@@ -451,8 +533,9 @@ body {
        -------------------------------------------------------------------------
        What: Ensures mobile sidebar behaves consistently regardless of 
              desktop collapsed/expanded state saved in localStorage.
-       Why: On mobile, we ONLY want collapsed appearance (icons only).
-       How: Force collapsed styles and prevent width changes.
+       Why: When hidden, always use collapsed width for transform calculation.
+            When open (mobile-open), show full width with desktop styling.
+       How: Force collapsed styles when hidden, full width when open.
        ------------------------------------------------------------------------- */
     .sidebar.collapsed {
         width: var(--sidebar-collapsed-width) !important;
@@ -461,6 +544,8 @@ body {
     
     .sidebar.collapsed.mobile-open {
         transform: translateX(0);
+        /* Even if desktop state was collapsed, show full width on mobile open */
+        width: var(--sidebar-width) !important;
     }
     
     /* -------------------------------------------------------------------------
@@ -494,8 +579,9 @@ body {
     .main-content {
         margin-left: 0 !important;
         padding: 1rem;
-        /* Minimal top padding - header will be on same line as burger */
-        padding-top: 15px;
+        /* Top padding to ensure content renders below the burger button
+           Burger is 44px tall + 15px from top = 59px, add some breathing room */
+        padding-top: 70px !important;
     }
     
     .main-content.expanded {
@@ -561,52 +647,15 @@ body {
     }
     
     /* -------------------------------------------------------------------------
-       Mobile Page Header - Same Line as Burger Button
+       Mobile Page Header - Hidden on Mobile
        -------------------------------------------------------------------------
-       What: Positions the page header inline with the burger button, hides icon.
-       Why: On mobile, the icon takes up valuable space. Cleaner with just title.
-       How: Hides the icon with display:none, adds margin to position correctly.
+       What: Completely hides the page header (icon + title) on mobile screens.
+       Why: Saves valuable screen space on mobile. The burger menu provides
+            navigation context. Account settings page has its own header that
+            remains visible (uses .settings-header class, not .page-header).
        ------------------------------------------------------------------------- */
     .page-header {
-        /* Standard row layout */
-        flex-direction: row;
-        justify-content: flex-start;
-        align-items: center;
-        /* Spacing */
-        margin-bottom: 20px;
-        /* Move down 15px and right 25px from previous position */
-        margin-top: 15px;
-        gap: 8px;
-        /* Clear the fixed burger button (44px width + 15px left + 25px extra) */
-        margin-left: 80px;
-    }
-    
-    .page-header-left {
-        /* For favorites page which has page-header-left wrapper */
-        flex-direction: row;
-        gap: 8px;
-    }
-    
-    .page-header-icon {
-        /* Hide the icon entirely on mobile - saves space, cleaner look */
         display: none !important;
-    }
-    
-    .page-header-text {
-        text-align: left;
-    }
-    
-    .page-header-text h1 {
-        font-size: 1.1rem;
-        margin: 0;
-        line-height: 1.2;
-    }
-    
-    .page-header-text p {
-        font-size: 0.7rem;
-        margin: 0;
-        /* Hide the description on mobile to save space */
-        display: none;
     }
 }
 
@@ -617,8 +666,8 @@ body {
     
     .main-content {
         padding: 0.75rem;
-        /* Keep minimal top padding on smaller screens too */
-        padding-top: 15px;
+        /* Maintain consistent top padding below burger on smaller screens */
+        padding-top: 70px !important;
     }
     
     h1 {
@@ -647,21 +696,6 @@ body {
         font-size: 0.75rem;
     }
     
-    /* -------------------------------------------------------------------------
-       Extra Small Mobile Page Header - Tighter Spacing
-       -------------------------------------------------------------------------
-       What: Further reduces page header spacing for very small screens.
-       Why: On phones <480px, space is extremely limited.
-       ------------------------------------------------------------------------- */
-    .page-header {
-        gap: 6px;
-        margin-bottom: 18px;
-        margin-left: 75px;
-    }
-    
-    .page-header-text h1 {
-        font-size: 0.95rem;
-    }
 }
 
 /* Page loading overlay */

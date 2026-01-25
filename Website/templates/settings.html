@@ -289,6 +289,30 @@
         color: var(--danger);
     }
 
+    /* -------------------------------------------------------------------------
+       Mobile Responsive Styles for Settings Page
+       -------------------------------------------------------------------------
+       What: Adjusts layout for mobile screens, particularly the header.
+       Why: On mobile, the burger button is fixed at top-left, so the header
+            needs left margin to avoid overlap.
+       ------------------------------------------------------------------------- */
+    @media (max-width: 768px) {
+        .settings-header {
+            /* Add left margin to clear the fixed burger button */
+            margin-left: 55px;
+            /* Add top margin to align with burger */
+            margin-top: 15px;
+        }
+        
+        .settings-header h1 {
+            font-size: 1.3rem;
+        }
+        
+        .settings-header p {
+            font-size: 0.85rem;
+        }
+    }
+
     @media (max-width: 480px) {
         .settings-container {
             margin: 20px auto;
@@ -298,6 +322,14 @@
             flex-direction: column;
             align-items: flex-start;
             gap: 12px;
+        }
+        
+        .settings-header {
+            margin-left: 50px;
+        }
+        
+        .settings-header h1 {
+            font-size: 1.1rem;
         }
     }
 </style>
