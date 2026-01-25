@@ -50,11 +50,22 @@
     }
     
     /* Search Section */
+    /* What: Container for search card and recent searches card */
+    /* Why: Flexbox layout allows side-by-side cards with centering when recent searches hidden */
+    /* How: Uses justify-content to center when .search-row-centered class is applied */
     .search-row {
         display: flex;
         gap: 20px;
         margin-bottom: 30px;
         align-items: stretch; /* Make both cards same height */
+        transition: justify-content 0.3s ease; /* Smooth transition when centering */
+    }
+    
+    /* What: Centering modifier for search-row when recent searches are collapsed */
+    /* Why: Centers the search section when user hides the recent searches card */
+    /* How: Applied via JavaScript when hide button is clicked */
+    .search-row-centered {
+        justify-content: center;
     }
     
     .search-section {
@@ -64,6 +75,7 @@
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
         flex: 0 1 600px;
         min-width: 300px;
+        max-width: 600px; /* Prevent taking full screen width when centered */
     }
     
     /* Search container - holds input row and trending section */
@@ -255,6 +267,7 @@
        What: A sleek sidebar showing recently searched items in a scrollable list
        Why: Quick access to search history while keeping main search area uncluttered
        How: Fixed-height card with vertical scroll, compact item rows with icons
+            Can be collapsed to a minimal vertical tab with restore icon
        ========================================================================== */
     
     .previous-searches-card {
@@ -268,6 +281,65 @@
         display: flex;
         flex-direction: column;
         overflow: hidden;
+        transition: all 0.3s ease; /* Smooth transition when collapsing */
+    }
+    
+    /* What: Collapsed state for recent searches card */
+    /* Why: Allows users to hide the card while keeping a restore button visible */
+    /* How: Reduces width to minimal, hides content, shows only vertical restore tab */
+    /*      Uses vibrant gradient to make it visually noticeable */
+    .previous-searches-card.collapsed {
+        flex: 0 0 48px; /* Fixed narrow width when collapsed */
+        min-width: 48px;
+        max-width: 48px;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        background: linear-gradient(180deg, #11998e 0%, #38ef7d 100%);
+        box-shadow: 0 2px 8px rgba(17, 153, 142, 0.3);
+        transition: all 0.3s ease;
+    }
+    
+    .previous-searches-card.collapsed:hover {
+        box-shadow: 0 4px 12px rgba(17, 153, 142, 0.4);
+        transform: translateX(-2px);
+    }
+    
+    /* What: Hide header and list when card is collapsed */
+    /* Why: Only show the restore button in collapsed state */
+    /* How: Display none when parent has collapsed class */
+    .previous-searches-card.collapsed .previous-searches-header,
+    .previous-searches-card.collapsed .previous-searches-list {
+        display: none;
+    }
+    
+    /* What: Restore button shown in collapsed state */
+    /* Why: Provides visual cue and clickable area to expand the card */
+    /* How: Positioned absolutely, vertical text, visible only when collapsed */
+    /*      White text for contrast against colored gradient background */
+    .previous-searches-restore {
+        display: none;
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+        font-size: 0.7rem;
+        color: white;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        padding: 8px 0;
+        align-items: center;
+        gap: 6px;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+    
+    .previous-searches-card.collapsed .previous-searches-restore {
+        display: flex;
+    }
+    
+    .previous-searches-restore svg {
+        width: 18px;
+        height: 18px;
+        transform: rotate(90deg);
+        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
     }
     
     .previous-searches-header {
@@ -277,6 +349,15 @@
         padding: 8px 10px 6px 10px;
         border-bottom: 1px solid #f0f0f0;
         flex-shrink: 0;
+    }
+    
+    /* What: Button container for header action buttons */
+    /* Why: Groups clear and hide buttons together */
+    /* How: Flex layout with gap between buttons */
+    .previous-searches-buttons {
+        display: flex;
+        gap: 6px;
+        align-items: center;
     }
     
     .previous-searches-title {
@@ -308,6 +389,34 @@
     }
     
     .previous-searches-clear svg {
+        width: 14px;
+        height: 14px;
+    }
+    
+    /* What: Hide button in header to collapse the card */
+    /* Why: Allows users to hide recent searches and center search UI */
+    /* How: Small icon button matching clear button style */
+    .previous-searches-hide {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        background: transparent;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        color: #9ca3af;
+        transition: all 0.15s ease;
+        padding: 0;
+    }
+    
+    .previous-searches-hide:hover {
+        background: #f3f4f6;
+        color: #374151;
+    }
+    
+    .previous-searches-hide svg {
         width: 14px;
         height: 14px;
     }
@@ -951,14 +1060,33 @@
         <!-- What: Displays recent item searches in a compact scrollable list -->
         <!-- Why: Quick access to recently viewed items while keeping search area clean -->
         <!-- How: Card with vertical scrolling list, compact rows with item icons -->
-        <div class="previous-searches-card">
+        <!--      Can be collapsed to minimal width tab with restore button -->
+        <div class="previous-searches-card" id="previous-searches-card">
+            <!-- What: Restore button shown when card is collapsed -->
+            <!-- Why: Provides way to expand the card after hiding -->
+            <!-- How: Vertical text with eye icon, visible only in collapsed state -->
+            <div class="previous-searches-restore" id="restore-searches-btn" title="Show recent searches">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                </svg>
+                <span>RECENT</span>
+            </div>
+            
             <div class="previous-searches-header">
                 <span class="previous-searches-title">Recent Searches</span>
-                <button class="previous-searches-clear" id="clear-searches-btn" title="Clear history" style="display: none;">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                    </svg>
-                </button>
+                <div class="previous-searches-buttons">
+                    <button class="previous-searches-hide" id="hide-searches-btn" title="Hide recent searches">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+                        </svg>
+                    </button>
+                    <button class="previous-searches-clear" id="clear-searches-btn" title="Clear history" style="display: none;">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
             <div id="previous-searches-list" class="previous-searches-list">
                 <div class="previous-searches-empty">
@@ -1199,11 +1327,15 @@ const ItemSearch = {
     },
     
     setupPreviousSearches() {
-        // What: Sets up click handlers for previous search items and clear button
-        // Why: Users need to be able to click items to load them and clear history
-        // How: Event delegation on container for items, direct handler for clear button
+        // What: Sets up click handlers for previous search items, clear button, and hide/show toggle
+        // Why: Users need to be able to click items to load them, clear history, and collapse the card
+        // How: Event delegation on container for items, direct handlers for clear and hide buttons
         const container = document.getElementById('previous-searches-list');
         const clearBtn = document.getElementById('clear-searches-btn');
+        const hideBtn = document.getElementById('hide-searches-btn');
+        const restoreBtn = document.getElementById('restore-searches-btn');
+        const card = document.getElementById('previous-searches-card');
+        const searchRow = document.querySelector('.search-row');
         
         if (container) {
             container.addEventListener('click', (e) => {
@@ -1222,6 +1354,51 @@ const ItemSearch = {
                     this.clearPreviousSearches();
                 }
             });
+        }
+        
+        // What: Hide button collapses the recent searches card
+        // Why: Users may want to focus only on search and hide the sidebar
+        // How: Adds 'collapsed' class to card and 'search-row-centered' to parent, saves state to localStorage
+        if (hideBtn) {
+            hideBtn.addEventListener('click', () => {
+                if (card) card.classList.add('collapsed');
+                if (searchRow) searchRow.classList.add('search-row-centered');
+                localStorage.setItem('recentSearchesHidden', 'true');
+            });
+        }
+        
+        // What: Restore button expands the collapsed card (also make whole card clickable when collapsed)
+        // Why: Users need a way to show the card again after hiding it
+        // How: Removes 'collapsed' class from card and 'search-row-centered' from parent, saves state to localStorage
+        if (restoreBtn) {
+            restoreBtn.addEventListener('click', () => {
+                if (card) card.classList.remove('collapsed');
+                if (searchRow) searchRow.classList.remove('search-row-centered');
+                localStorage.setItem('recentSearchesHidden', 'false');
+            });
+        }
+        
+        // Make entire collapsed card clickable to restore
+        if (card) {
+            card.addEventListener('click', (e) => {
+                // Only trigger if card is collapsed and not clicking on other buttons
+                if (card.classList.contains('collapsed') && !e.target.closest('.previous-searches-header')) {
+                    if (searchRow) searchRow.classList.remove('search-row-centered');
+                    card.classList.remove('collapsed');
+                    localStorage.setItem('recentSearchesHidden', 'false');
+                }
+            });
+        }
+        
+        // What: Load saved hide state from localStorage on page load
+        // Why: Persist user preference for collapsed/expanded state across sessions
+        // How: Check localStorage and apply classes if card was previously hidden
+        //      Default to hidden (collapsed) state if no preference is saved yet
+        const savedState = localStorage.getItem('recentSearchesHidden');
+        const isHidden = savedState === null ? true : savedState === 'true'; // Default to hidden on first visit
+        if (isHidden && card && searchRow) {
+            card.classList.add('collapsed');
+            searchRow.classList.add('search-row-centered');
         }
     },
     
