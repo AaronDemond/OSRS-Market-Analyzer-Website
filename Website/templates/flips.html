@@ -1968,14 +1968,31 @@
             white-space: nowrap; /* Prevent text wrapping */
         }
 
-        /* Make first column (Item name) slightly sticky for context */
+        /* Make first column (Item name) sticky for context */
+        /* What: Keeps the item name visible while scrolling horizontally
+           Why: Users need to know which row they're looking at
+           How: position: sticky with solid backgrounds to prevent content showing through */
         #flipsTable th:first-child,
         #flipsTable td:first-child {
             position: sticky;
             left: 0;
             z-index: 10;
-            background: inherit;
-            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Set solid backgrounds for sticky cells to prevent content bleeding through */
+        /* What: Ensures sticky column has opaque background
+           Why: With background: inherit, scrolling content shows through the sticky column
+           How: Explicitly set background colors matching the row states */
+        #flipsTable tbody tr:nth-child(odd) td:first-child {
+            background: var(--surface);
+        }
+
+        #flipsTable tbody tr:nth-child(even) td:first-child {
+            background: #F9FAFB;
+        }
+
+        #flipsTable tbody tr:hover td:first-child {
+            background: linear-gradient(135deg, #FEF3E2 0%, #FDE9D0 100%) !important;
         }
 
         /* Ensure header maintains dark background when sticky */
@@ -2316,38 +2333,16 @@
         }
 
         /* Visual scroll indicators - shadows that appear when scrollable */
+        /* What: Gradient shadows at edges to indicate more content
+           Why: Provides visual feedback that table can be scrolled
+           How: Use position: sticky on pseudo-elements so they stay at viewport edges
+                Note: ::before/::after with position: absolute scroll with content
+                      so we disable them and use a different approach */
+        
+        /* Disable the old absolute-positioned shadows that scroll with content */
         .table-scroll-wrapper::before,
         .table-scroll-wrapper::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            width: 20px;
-            pointer-events: none;
-            z-index: 20;
-            transition: opacity 0.3s ease;
-        }
-
-        /* Left shadow - shows when scrolled right */
-        .table-scroll-wrapper::before {
-            left: 0;
-            background: linear-gradient(to right, rgba(0, 0, 0, 0.15), transparent);
-            opacity: 0;
-        }
-
-        .table-scroll-wrapper.scrolled-right::before {
-            opacity: 1;
-        }
-
-        /* Right shadow - shows when scrolled left */
-        .table-scroll-wrapper::after {
-            right: 0;
-            background: linear-gradient(to left, rgba(0, 0, 0, 0.15), transparent);
-            opacity: 1;
-        }
-
-        .table-scroll-wrapper.scrolled-to-end::after {
-            opacity: 0;
+            display: none;
         }
 
         /* Hide scrollbar on some browsers while keeping functionality */
