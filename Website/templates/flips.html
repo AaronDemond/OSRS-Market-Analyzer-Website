@@ -232,12 +232,11 @@
         Table Row Hover - Elevated Effect
         What: Subtle shadow and background change on hover
         Why: Provides interactive feedback and highlights the current row
-        How: Light purple/blue tint with shadow for depth
+        How: Light purple/blue tint with enhanced shadow for depth (no transform for better performance)
     */
     #flipsTable tbody tr:hover {
         background: linear-gradient(135deg, #F0F4FF 0%, #E8F0FE 100%) !important;
-        box-shadow: 0 2px 8px rgba(99, 102, 241, 0.08);
-        transform: scale(1.002);
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.12);
     }
 
     #flipsTable tbody tr:hover>td {
