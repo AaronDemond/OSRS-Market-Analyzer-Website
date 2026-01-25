@@ -1,167 +1,167 @@
 {
   "gainers": [
     {
-      "id": 13263,
-      "name": "Abyssal bludgeon",
-      "icon": "Abyssal bludgeon.png",
-      "change": 7.92,
-      "price": 24623637,
-      "volume": 260600158
+      "id": 1617,
+      "name": "Uncut diamond",
+      "icon": "Uncut diamond.png",
+      "change": 28.97,
+      "price": 3228,
+      "volume": 87187473
     },
     {
-      "id": 536,
-      "name": "Dragon bones",
-      "icon": "Dragon bones.png",
-      "change": 6.88,
-      "price": 1739,
-      "volume": 90191133
+      "id": 22124,
+      "name": "Superior dragon bones",
+      "icon": "Superior dragon bones.png",
+      "change": 13.11,
+      "price": 27101,
+      "volume": 152480388
     },
     {
-      "id": 11808,
-      "name": "Zamorak godsword",
-      "icon": "Zamorak godsword.png",
-      "change": 4.34,
-      "price": 20356763,
-      "volume": 118747784
+      "id": 28919,
+      "name": "Tonalztics of ralos (uncharged)",
+      "icon": "Tonalztics of ralos (uncharged).png",
+      "change": 9.38,
+      "price": 50542531,
+      "volume": 151627593
     },
     {
-      "id": 12924,
-      "name": "Toxic blowpipe (empty)",
-      "icon": "Toxic blowpipe (empty).png",
-      "change": 4.31,
-      "price": 9989674,
-      "volume": 295944092
+      "id": 21000,
+      "name": "Twisted buckler",
+      "icon": "Twisted buckler.png",
+      "change": 7.55,
+      "price": 19631059,
+      "volume": 323094512
     },
     {
-      "id": 26233,
-      "name": "Ancient godsword",
-      "icon": "Ancient godsword.png",
-      "change": 4.19,
-      "price": 43483424,
-      "volume": 210169882
+      "id": 26219,
+      "name": "Osmumten's fang",
+      "icon": "Osmumten's fang.png",
+      "change": 6.32,
+      "price": 25771391,
+      "volume": 939581963
     },
     {
-      "id": 24417,
-      "name": "Inquisitor's mace",
-      "icon": "Inquisitor's mace.png",
-      "change": 4.09,
-      "price": 233965208,
-      "volume": 760386926
+      "id": 27690,
+      "name": "Voidwaker",
+      "icon": "Voidwaker.png",
+      "change": 5.61,
+      "price": 40349939,
+      "volume": 1286154305
     },
     {
-      "id": 560,
-      "name": "Death rune",
-      "icon": "Death rune.png",
-      "change": 3.97,
-      "price": 131,
-      "volume": 89551376
+      "id": 23959,
+      "name": "Enhanced crystal teleport seed",
+      "icon": "Enhanced crystal teleport seed.png",
+      "change": 5.23,
+      "price": 1636761,
+      "volume": 106798655
     },
     {
-      "id": 2577,
-      "name": "Ranger boots",
-      "icon": "Ranger boots.png",
-      "change": 3.77,
-      "price": 23169873,
-      "volume": 106195251
+      "id": 29580,
+      "name": "Tormented synapse",
+      "icon": "Tormented synapse.png",
+      "change": 5.16,
+      "price": 34610498,
+      "volume": 941693966
     },
     {
-      "id": 22481,
-      "name": "Sanguinesti staff (uncharged)",
-      "icon": "Sanguinesti staff (uncharged).png",
-      "change": 3.3,
-      "price": 20592495,
-      "volume": 271992538
+      "id": 22324,
+      "name": "Ghrazi rapier",
+      "icon": "Ghrazi rapier.png",
+      "change": 4.86,
+      "price": 36518380,
+      "volume": 467130944
     },
     {
       "id": 13237,
       "name": "Pegasian boots",
       "icon": "Pegasian boots.png",
-      "change": 3.19,
-      "price": 23422831,
-      "volume": 396236224
+      "change": 4.56,
+      "price": 24490746,
+      "volume": 423485816
     }
   ],
   "losers": [
     {
-      "id": 22983,
-      "name": "Hydra leather",
-      "icon": "Hydra leather.png",
-      "change": -5.55,
-      "price": 10704801,
-      "volume": 113292477
-    },
-    {
-      "id": 24229,
-      "name": "Ornate maul handle",
-      "icon": "Ornate maul handle.png",
-      "change": -5.0,
-      "price": 1302870,
-      "volume": 79583642
-    },
-    {
-      "id": 27235,
-      "name": "Masori mask (f)",
-      "icon": "Masori mask (f).png",
-      "change": -4.5,
-      "price": 27621904,
-      "volume": 153071384
-    },
-    {
-      "id": 27226,
-      "name": "Masori mask",
-      "icon": "Masori mask.png",
-      "change": -4.19,
-      "price": 19739270,
-      "volume": 120903028
-    },
-    {
-      "id": 28997,
-      "name": "Dual macuahuitl",
-      "icon": "Dual macuahuitl.png",
-      "change": -4.03,
-      "price": 6275565,
-      "volume": 97009775
-    },
-    {
-      "id": 28307,
-      "name": "Ultor ring",
-      "icon": "Ultor ring.png",
-      "change": -3.53,
-      "price": 134094086,
-      "volume": 748691980
-    },
-    {
-      "id": 13239,
-      "name": "Primordial boots",
-      "icon": "Primordial boots.png",
-      "change": -3.42,
-      "price": 24454783,
-      "volume": 500304102
+      "id": 31111,
+      "name": "Demon tear",
+      "icon": "Demon tear.png",
+      "change": -6.28,
+      "price": 403,
+      "volume": 79802597
     },
     {
       "id": 12625,
       "name": "Stamina potion(4)",
       "icon": "Stamina potion(4).png",
-      "change": -2.9,
-      "price": 7846,
-      "volume": 80444057
+      "change": -5.96,
+      "price": 7378,
+      "volume": 80881632
     },
     {
-      "id": 24777,
-      "name": "Blood shard",
-      "icon": "Blood shard.png",
-      "change": -2.77,
-      "price": 7279461,
-      "volume": 254781135
+      "id": 26241,
+      "name": "Virtus mask",
+      "icon": "Virtus mask.png",
+      "change": -5.76,
+      "price": 8781715,
+      "volume": 81596768
     },
     {
-      "id": 11830,
-      "name": "Armadyl chainskirt",
-      "icon": "Armadyl chainskirt.png",
-      "change": -2.69,
-      "price": 23989958,
-      "volume": 89962342
+      "id": 26233,
+      "name": "Ancient godsword",
+      "icon": "Ancient godsword.png",
+      "change": -5.44,
+      "price": 41115876,
+      "volume": 174742473
+    },
+    {
+      "id": 28997,
+      "name": "Dual macuahuitl",
+      "icon": "Dual macuahuitl.png",
+      "change": -4.45,
+      "price": 5996446,
+      "volume": 105187656
+    },
+    {
+      "id": 22481,
+      "name": "Sanguinesti staff (uncharged)",
+      "icon": "Sanguinesti staff (uncharged).png",
+      "change": -4.28,
+      "price": 19711443,
+      "volume": 386837068
+    },
+    {
+      "id": 13263,
+      "name": "Abyssal bludgeon",
+      "icon": "Abyssal bludgeon.png",
+      "change": -3.62,
+      "price": 23731831,
+      "volume": 315435587
+    },
+    {
+      "id": 24268,
+      "name": "Basilisk jaw",
+      "icon": "Basilisk jaw.png",
+      "change": -3.35,
+      "price": 18329137,
+      "volume": 313122757
+    },
+    {
+      "id": 13190,
+      "name": "Old school bond",
+      "icon": "Old school bond.png",
+      "change": -2.98,
+      "price": 15196892,
+      "volume": 3522512924
+    },
+    {
+      "id": 28316,
+      "name": "Bellator ring",
+      "icon": "Bellator ring.png",
+      "change": -2.94,
+      "price": 32787623,
+      "volume": 219950304
     }
   ],
-  "last_updated": "2026-01-24T15:31:31.417927"
+  "last_updated": "2026-01-25T00:09:05.926586"
 }

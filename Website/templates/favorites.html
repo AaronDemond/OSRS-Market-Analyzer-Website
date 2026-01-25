@@ -1399,6 +1399,11 @@
             flex-shrink: 0;
         }
 
+        /* Hide view toggle buttons on mobile */
+        .view-toggle {
+            display: none;
+        }
+
         .last-updated {
             width: 100%;
             justify-content: center;
@@ -1528,6 +1533,8 @@
         padding: 4px 8px;
         border-radius: 6px;
         border: 1px solid var(--border);
+        /* Fixed width so both Item Sort and Group Sort have same width */
+        min-width: 240px;
     }
     
     .sort-controls-row {
@@ -1541,6 +1548,8 @@
         color: var(--muted);
         font-weight: 600;
         white-space: nowrap;
+        /* Fixed width so both labels align the dropdowns */
+        min-width: 70px;
     }
     
     .toolbar-select-compact {
@@ -1552,17 +1561,21 @@
         background: var(--surface);
         cursor: pointer;
         transition: all 0.2s;
-        min-width: 100px;
-    }
-    
-    .toolbar-select-compact:hover {
-        border-color: var(--primary);
+        /* Fixed width so both dropdowns are identical */
+        width: 110px;
     }
     
     .toolbar-select-compact:focus {
         outline: none;
         border-color: var(--primary);
         box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+    }
+    
+    /* Only apply hover effect on devices that support hover (not touch) */
+    @media (hover: hover) {
+        .toolbar-select-compact:hover {
+            border-color: var(--primary);
+        }
     }
     
     .sort-direction-btn {
@@ -1578,10 +1591,13 @@
         color: var(--muted);
     }
     
-    .sort-direction-btn:hover {
-        background: var(--primary);
-        border-color: var(--primary);
-        color: white;
+    /* Only apply hover effect on devices that support hover (not touch) */
+    @media (hover: hover) {
+        .sort-direction-btn:hover {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
     }
     
     .sort-direction-btn svg {
@@ -1616,10 +1632,13 @@
         font-weight: 500;
     }
     
-    .toolbar-btn-compact:hover {
-        background: var(--primary);
-        border-color: var(--primary);
-        color: white;
+    /* Only apply hover effect on devices that support hover (not touch) */
+    @media (hover: hover) {
+        .toolbar-btn-compact:hover {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
     }
     
     .toolbar-btn-compact svg {
@@ -1646,6 +1665,7 @@
     
     /* Reduce card padding and gaps */
     .favorites-grid {
+        padding: 10px;
         gap: 12px !important;
     }
     
@@ -2632,6 +2652,8 @@ function renderFavoritesContent(data) {
     
     let html = '';
     let totalVisibleItems = 0;
+    // Track unique visible item IDs to avoid double-counting items in multiple groups
+    let visibleItemIds = new Set();
     
     // Show All View - display all items in a flat list
     if (showAllView) {
@@ -2702,7 +2724,8 @@ function renderFavoritesContent(data) {
             groupItems = processFavorites(groupItems);
             
             if (groupItems.length > 0) {
-                totalVisibleItems += groupItems.length;
+                // Count unique items only (avoid double-counting items in multiple groups)
+                groupItems.forEach(item => visibleItemIds.add(item.item_id));
                 const itemCount = groupItems.length;
                 const plural = itemCount !== 1 ? 's' : '';
                 html += `
@@ -2741,7 +2764,8 @@ function renderFavoritesContent(data) {
         // Render ungrouped section only if there are ungrouped items
         let processedUngrouped = processFavorites(ungroupedFavorites);
         if (processedUngrouped.length > 0) {
-            totalVisibleItems += processedUngrouped.length;
+            // Count unique items only
+            processedUngrouped.forEach(item => visibleItemIds.add(item.item_id));
             const showUngroupedHeader = groups.length > 0;
             html += `
                 <div class="ungrouped-section">
@@ -2776,12 +2800,14 @@ function renderFavoritesContent(data) {
                 <p style="color: var(--muted);">No favorites match your search for "${escapeHtml(searchQuery)}"</p>
             </div>`;
         totalVisibleItems = 0;
+        visibleItemIds.clear();
     }
     
     container.innerHTML = html;
     
-    // Update item count summary
-    updateItemCountSummary(totalVisibleItems, allFavorites.length);
+    // Update item count summary - use Set size for grouped view to count unique items
+    const finalVisibleCount = showAllView ? totalVisibleItems : visibleItemIds.size;
+    updateItemCountSummary(finalVisibleCount, allFavorites.length);
     
     // Initialize collapsed groups state
     initializeCollapsedGroups();
