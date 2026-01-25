@@ -1981,7 +1981,7 @@
         /* Ensure header maintains dark background when sticky */
         #flipsTable thead th:first-child {
             background: #1F2937; /* Same as regular header */
-            z-index: 11; /* Higher than regular sticky to stay on top */
+            z-index: 16; /* Higher than sticky header (15) to stay on top at intersection */
         }
 
         /* ===== MOBILE CONTROLS LAYOUT ===== */
@@ -2309,7 +2309,8 @@
         .table-scroll-wrapper {
             position: relative;
             overflow-x: auto;
-            overflow-y: visible;
+            overflow-y: auto;
+            height: 400px;
             -webkit-overflow-scrolling: touch;
             margin-bottom: 12px;
             border-radius: 14px;
@@ -2350,23 +2351,34 @@
             opacity: 0;
         }
 
-        /* Hide scrollbar on some browsers while keeping functionality */
+        /* =============================================================================
+           HIDE SCROLLBARS
+           =============================================================================
+           What: Hides scrollbars on the table wrapper while keeping scroll functionality
+           Why: Cleaner mobile UX without visible scrollbar clutter
+           How: Uses vendor-specific CSS to hide scrollbars on all major browsers
+           ============================================================================= */
         .table-scroll-wrapper::-webkit-scrollbar {
-            height: 6px;
+            display: none; /* Hide scrollbar for Chrome, Safari, and Opera */
+        }
+        
+        .table-scroll-wrapper {
+            -ms-overflow-style: none;  /* Hide scrollbar for IE and Edge */
+            scrollbar-width: none;     /* Hide scrollbar for Firefox */
         }
 
-        .table-scroll-wrapper::-webkit-scrollbar-track {
-            background: var(--surface-2);
-            border-radius: 3px;
-        }
-
-        .table-scroll-wrapper::-webkit-scrollbar-thumb {
-            background: var(--border);
-            border-radius: 3px;
-        }
-
-        .table-scroll-wrapper::-webkit-scrollbar-thumb:hover {
-            background: var(--muted);
+        /* =============================================================================
+           STICKY TABLE HEADER
+           =============================================================================
+           What: Makes the table header stick to the top when scrolling vertically
+           Why: Keeps column labels visible when scrolling through long lists of flips
+           How: Uses CSS position:sticky on thead elements with proper z-index layering
+           ============================================================================= */
+        #flipsTable thead th {
+            position: sticky;
+            top: 0;
+            z-index: 15;
+            background: #1F2937; /* Ensure background is solid to cover scrolling content */
         }
 
         /* =============================================================================
