@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}My Site{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'css/bootstrap/bootstrap.min.css' %}">
-    <link rel="stylesheet" href="{% static 'css/base.css' %}?v=10">
+    <link rel="stylesheet" href="{% static 'css/base.css' %}?v=15">
     {% block extra_css %}{% endblock %}
 </head>
 
@@ -486,6 +486,7 @@
             function openMobileSidebar() {
                 sidebar.classList.add('mobile-open');
                 sidebarBackdrop.classList.add('active');
+                mobileSidebarToggle.classList.add('sidebar-open');
                 mobileSidebarToggle.setAttribute('aria-expanded', 'true');
                 // Prevent body scrolling when sidebar is open
                 document.body.style.overflow = 'hidden';
@@ -497,6 +498,7 @@
             function closeMobileSidebar() {
                 sidebar.classList.remove('mobile-open');
                 sidebarBackdrop.classList.remove('active');
+                mobileSidebarToggle.classList.remove('sidebar-open');
                 mobileSidebarToggle.setAttribute('aria-expanded', 'false');
                 // Restore body scrolling
                 document.body.style.overflow = '';
