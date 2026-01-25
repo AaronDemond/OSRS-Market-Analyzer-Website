@@ -171,6 +171,23 @@
         padding: 12px 14px;
         border-bottom: 1px solid #374151;
         transition: background 0.15s;
+        /* Each th needs sticky positioning for it to work reliably across browsers
+           What: Makes each header cell sticky at the top of scroll container
+           Why: Some browsers need sticky on th, not thead, for proper behavior
+           How: position: sticky with top: 0 and explicit background */
+        position: sticky;
+        top: 0;
+        z-index: 15;
+    }
+    
+    /* Sticky header - backup for browsers that support sticky on thead
+       What: Makes the entire thead row stick to top of scroll container
+       Why: Double declaration ensures compatibility across browsers
+       How: position: sticky on thead with top: 0 */
+    #flipsTable thead {
+        position: sticky;
+        top: 0;
+        z-index: 15;
     }
 
     #flipsTable tbody td {
@@ -1998,7 +2015,7 @@
         /* Ensure header maintains dark background when sticky */
         #flipsTable thead th:first-child {
             background: #1F2937; /* Same as regular header */
-            z-index: 11; /* Higher than regular sticky to stay on top */
+            z-index: 20; /* Higher than other headers (15) and sticky cells (10) to stay on top */
         }
 
         /* ===== MOBILE CONTROLS LAYOUT ===== */
@@ -2323,13 +2340,19 @@
            How: Overflow wrapper with shadow indicators for scroll position */
         
         /* Note: The wrapper will be added via JavaScript around the table */
+        /* What: Fixed-height scrollable container for the flips table on mobile
+           Why: Limits table height to 400px so both horizontal and vertical scrollbars
+                are visible without needing to scroll the page first
+           How: Sets height (not max-height) with overflow for both directions */
         .table-scroll-wrapper {
             position: relative;
             overflow-x: auto;
-            overflow-y: visible;
+            overflow-y: auto;
             -webkit-overflow-scrolling: touch;
             margin-bottom: 12px;
             border-radius: 14px;
+            height: 400px;
+            min-height: 400px;
         }
 
         /* Visual scroll indicators - shadows that appear when scrollable */
@@ -2345,43 +2368,140 @@
             display: none;
         }
 
-        /* Hide scrollbar on some browsers while keeping functionality */
+        /* Hide scrollbars while keeping scroll functionality */
+        .table-scroll-wrapper {
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE/Edge */
+        }
+        
         .table-scroll-wrapper::-webkit-scrollbar {
-            height: 6px;
-        }
-
-        .table-scroll-wrapper::-webkit-scrollbar-track {
-            background: var(--surface-2);
-            border-radius: 3px;
-        }
-
-        .table-scroll-wrapper::-webkit-scrollbar-thumb {
-            background: var(--border);
-            border-radius: 3px;
-        }
-
-        .table-scroll-wrapper::-webkit-scrollbar-thumb:hover {
-            background: var(--muted);
+            display: none; /* Chrome/Safari/Opera */
         }
 
         /* =============================================================================
-           HIDE ITEM ICONS ON MOBILE
+           SWIPE HINT OVERLAY
            =============================================================================
-           What: Hides the item icons (OSRS Wiki images) and their placeholders on mobile
-           Why: On small screens, table space is limited. Hiding icons allows more room
-                for the item name and critical data columns (prices, P&L) to remain readable.
-           How: Sets display:none on both .flip-icon (actual images) and .flip-icon-placeholder
-                (fallback emoji shown when no icon available). Also removes the gap in the
-                container since there's no icon to space from the text anymore.
-        */
-        .flip-icon,
-        .flip-icon-placeholder {
-            display: none;
+           What: Semi-transparent overlay with "Swipe to scroll" hint on mobile
+           Why: Provides clear visual instruction that the table is scrollable,
+                especially important since not all content is visible initially
+           How: Overlay positioned over the table, fades out on first scroll/touch
+                Uses CSS transitions for smooth fade effect */
+        
+        /* Container needs position relative for overlay positioning */
+        .table-scroll-wrapper.show-swipe-hint {
+            /* Table is dimmed when hint is showing */
+        }
+        
+        /* The table inside the wrapper gets dimmed initially */
+        .table-scroll-wrapper.show-swipe-hint #flipsTable {
+            opacity: 0.4;
+            transition: opacity 0.4s ease;
+        }
+        
+        /* Restore full opacity when hint is dismissed */
+        .table-scroll-wrapper:not(.show-swipe-hint) #flipsTable {
+            opacity: 1;
+            transition: opacity 0.4s ease;
+        }
+        
+        /* The swipe hint overlay element */
+        .swipe-hint-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 25;
+            pointer-events: auto;
+            opacity: 1;
+            transition: opacity 0.4s ease;
+        }
+        
+        /* Hide overlay when hint is dismissed */
+        .table-scroll-wrapper:not(.show-swipe-hint) .swipe-hint-overlay {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        /* The hint text styling */
+        .swipe-hint-text {
+            background: rgba(31, 41, 55, 0.9);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Swipe icon - animated arrows indicating both directions */
+        .swipe-hint-icon {
+            width: 28px;
+            height: 28px;
+            animation: swipeAnimation 1.5s ease-in-out infinite;
+        }
+        
+        /* Swipe animation - subtle pulse to draw attention */
+        @keyframes swipeAnimation {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.1);
+                opacity: 0.8;
+            }
+        }
+        
+        /* "Don't show again" button styling */
+        .swipe-hint-dismiss-btn {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: rgba(255, 255, 255, 0.8);
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.2s ease;
+            pointer-events: auto;
+        }
+        
+        .swipe-hint-dismiss-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.6);
+            color: white;
         }
 
-        /* Remove the gap in the item cell container since there's no icon on mobile */
+        /* =============================================================================
+           ITEM ICONS ON MOBILE
+           =============================================================================
+           What: Adjusts item icons (OSRS Wiki images) for mobile display
+           Why: Icons provide helpful visual identification of items, keeping them visible
+                improves UX even on smaller screens with horizontal scrolling enabled
+           How: Scales down icon size slightly to save space while keeping them visible
+        */
+        .flip-icon {
+            width: 28px;
+            height: 28px;
+        }
+
+        .flip-icon-placeholder {
+            width: 28px;
+            height: 28px;
+            font-size: 16px;
+        }
+
+        /* Reduce gap slightly in item cell on mobile to save horizontal space */
         .flip-item-cell {
-            gap: 0;
+            gap: 6px;
         }
 
         /* =========================================================================
@@ -5558,6 +5678,112 @@
             // Wrap the table
             table.parentNode.insertBefore(wrapper, table);
             wrapper.appendChild(table);
+            
+            // =================================================================
+            // SWIPE HINT OVERLAY SETUP
+            // =================================================================
+            // What: Creates and manages the "Swipe to scroll" hint overlay
+            // Why: Provides clear visual instruction that table is scrollable
+            // How: Shows overlay on page load, dismisses on scroll/touch, with
+            //      option to permanently disable via "Don't show again" button
+            
+            // Check if user has permanently dismissed the hint (stored in localStorage)
+            // Using localStorage so "Don't show again" persists across sessions
+            const swipeHintPermanentKey = 'flipsTableSwipeHintPermanentlyDismissed';
+            const hintPermanentlyDismissed = localStorage.getItem(swipeHintPermanentKey) === 'true';
+            
+            if (!hintPermanentlyDismissed) {
+                // Add the show-swipe-hint class to dim the table
+                wrapper.classList.add('show-swipe-hint');
+                
+                // Create the overlay element
+                // What: The overlay container with hint text, icon, and dismiss button
+                // Why: Provides visual feedback that table can be scrolled in both directions
+                // How: Absolutely positioned over the table with centered content
+                const overlay = document.createElement('div');
+                overlay.className = 'swipe-hint-overlay';
+                overlay.innerHTML = `
+                    <div class="swipe-hint-text">
+                        <svg class="swipe-hint-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <!-- Four-way arrow icon indicating both horizontal and vertical scrolling -->
+                            <!-- Horizontal arrows -->
+                            <path d="M18 12L22 12"></path>
+                            <path d="M20 10L22 12L20 14"></path>
+                            <path d="M6 12L2 12"></path>
+                            <path d="M4 10L2 12L4 14"></path>
+                            <!-- Vertical arrows -->
+                            <path d="M12 6L12 2"></path>
+                            <path d="M10 4L12 2L14 4"></path>
+                            <path d="M12 18L12 22"></path>
+                            <path d="M10 20L12 22L14 20"></path>
+                            <!-- Center crosshair -->
+                            <circle cx="12" cy="12" r="2"></circle>
+                        </svg>
+                        Swipe to scroll
+                    </div>
+                    <button class="swipe-hint-dismiss-btn">Don't show again</button>
+                `;
+                wrapper.appendChild(overlay);
+                
+                // Get the "Don't show again" button
+                const dismissBtn = overlay.querySelector('.swipe-hint-dismiss-btn');
+                
+                // Function to dismiss the hint (temporary - shows again on next visit)
+                // What: Removes the hint overlay and restores table opacity
+                // Why: User has interacted with the table, no longer needs instruction
+                // How: Removes class (triggers CSS transition), does NOT store in localStorage
+                function dismissSwipeHint() {
+                    wrapper.classList.remove('show-swipe-hint');
+                    
+                    // Remove the overlay element after transition completes
+                    setTimeout(() => {
+                        if (overlay.parentNode) {
+                            overlay.remove();
+                        }
+                    }, 500);
+                    
+                    // Clean up event listeners
+                    wrapper.removeEventListener('scroll', onFirstScroll);
+                    wrapper.removeEventListener('touchstart', onFirstTouch);
+                }
+                
+                // Function to permanently dismiss the hint (never shows again)
+                // What: Same as dismissSwipeHint but also stores preference in localStorage
+                // Why: User explicitly requested to never see the hint again
+                // How: Stores flag in localStorage which persists indefinitely
+                function permanentlyDismissSwipeHint(e) {
+                    // Prevent the click from bubbling to touchstart handler
+                    e.stopPropagation();
+                    localStorage.setItem(swipeHintPermanentKey, 'true');
+                    dismissSwipeHint();
+                }
+                
+                // Scroll listener - dismisses hint when user scrolls
+                function onFirstScroll() {
+                    dismissSwipeHint();
+                }
+                
+                // Touch listener - dismisses hint when user touches the table (not the button)
+                // What: Alternative trigger for hint dismissal
+                // Why: Some users may tap before swiping, this feels more responsive
+                // How: Listen for touchstart, dismiss after brief delay to allow swipe
+                function onFirstTouch(e) {
+                    // Don't dismiss if user tapped the "Don't show again" button
+                    if (e.target.closest('.swipe-hint-dismiss-btn')) {
+                        return;
+                    }
+                    // Small delay so the touch registers before dismissing
+                    setTimeout(dismissSwipeHint, 150);
+                }
+                
+                // Attach listeners
+                wrapper.addEventListener('scroll', onFirstScroll, { once: true });
+                wrapper.addEventListener('touchstart', onFirstTouch, { once: true });
+                dismissBtn.addEventListener('click', permanentlyDismissSwipeHint);
+            }
+            // =================================================================
+            // END SWIPE HINT OVERLAY SETUP
+            // =================================================================
 
             // Update scroll indicators based on scroll position
             function updateScrollIndicators() {
