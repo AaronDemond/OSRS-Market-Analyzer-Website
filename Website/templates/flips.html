@@ -1827,23 +1827,19 @@
             font-size: 16px;
         }
 
-        /* Hide columns on mobile: Price Paid, Quantity Holding, High Price, Low Price */
-        #flipsTable th:nth-child(2),
-        #flipsTable td:nth-child(2),
-        #flipsTable th:nth-child(3),
-        #flipsTable td:nth-child(3),
-        #flipsTable th:nth-child(5),
-        #flipsTable td:nth-child(5),
-        #flipsTable th:nth-child(6),
-        #flipsTable td:nth-child(6) {
-            display: none;
-        }
-
+        /* =====================================================================
+           TABLE COLUMNS - ALL VISIBLE WITH HORIZONTAL SCROLL
+           =====================================================================
+           What: All 8 table columns remain visible on tablet/mobile viewports
+           Why: Users requested full data visibility rather than hiding columns
+           How: Removed display:none rules; table uses horizontal scroll wrapper
+                that is applied via JavaScript (setupTableScrollWrapper) at 900px
+           ===================================================================== */
         #flipsTable {
             font-size: 0.75rem;
-            width: 100%;
-            max-width: 100%;
-            table-layout: fixed;
+            width: auto;           /* Allow table to expand beyond viewport width */
+            min-width: 100%;       /* At minimum, fill the available space */
+            table-layout: auto;    /* Let columns size based on their content */
         }
 
         .main-content {
@@ -2032,64 +2028,31 @@
             align-items: center;
         }
 
-        /* ===== COLLAPSIBLE SEARCH BAR ===== */
-        /* What: Search bar collapses to icon button, expands on click
-           Why: Save space when search isn't being used
-           How: Toggle between icon and full input with transition */
+        /* ===== SEARCH BAR - ALWAYS VISIBLE ON MOBILE ===== */
+        /* What: Search bar is always visible and takes available space
+           Why: Simpler UX - no hidden functionality, always ready to search
+           How: Flex-grow to fill space, consistent styling with other inputs */
         
         .filter-search-wrapper {
-            flex: 0 0 auto; /* Don't stretch by default */
-            min-width: 0;
-            transition: flex 0.3s ease;
+            flex: 1 1 auto;         /* Take available space */
+            min-width: 0;           /* Allow shrinking below content size */
         }
 
-        /* Collapsed state - show icon only */
-        .filter-search-wrapper.collapsed {
-            flex: 0 0 44px;
-            width: 44px;
+        .filter-search-input {
+            width: 100%;
+            font-size: 14px;
+            padding: 8px 36px 8px 12px;
+            min-height: 44px;       /* Match other button heights for consistency */
         }
 
-        .filter-search-wrapper.collapsed .filter-search-input {
-            width: 44px;
-            padding: 8px;
-            cursor: pointer;
-            caret-color: transparent;
-        }
-
-        .filter-search-wrapper.collapsed .filter-search-input::placeholder {
-            opacity: 0;
-        }
-
-        /* Show search icon in collapsed state */
-        .filter-search-wrapper.collapsed .filter-search-icon {
-            display: block;
-            left: 50%;
-            transform: translate(-50%, -50%);
-        }
-
-        /* Hide clear button in collapsed state */
-        /* What: Ensures clear button stays hidden in collapsed search
-           Why: No room for clear button in 44px collapsed state
-           How: Increased specificity to override has-value class */
-        .filter-search-wrapper.collapsed.has-value .filter-search-clear,
-        .filter-search-wrapper.collapsed .filter-search-clear {
+        /* Hide the search icon on mobile - not needed when input is always visible */
+        .filter-search-icon {
             display: none;
         }
 
-        /* Expanded state - show full search bar */
-        .filter-search-wrapper.expanded {
-            flex: 1 1 auto;
-        }
-
-        .filter-search-wrapper.expanded .filter-search-input {
-            width: 100%;
-            padding: 8px 36px 8px 12px;
-        }
-
-        /* Search input on mobile */
-        .filter-search-input {
-            font-size: 14px;
-            transition: all 0.3s ease;
+        /* Show clear button when input has value */
+        .filter-search-wrapper.has-value .filter-search-clear {
+            display: flex;
         }
 
         /* ===== ICON-ONLY BUTTONS ON MOBILE ===== */
@@ -2220,25 +2183,33 @@
            Why: Conserve space by grouping actions under one button
            How: Icon button that opens menu with action items */
         
+        /* =====================================================================
+           MOBILE ACTION DROPDOWN BUTTON
+           =====================================================================
+           What: "Actions" button that reveals New Flip and Delete Flip options
+           Why: Groups actions to save horizontal space on mobile
+           How: Button with icon + text label, styled to match other buttons
+           ===================================================================== */
         .mobile-action-dropdown {
             position: relative;
         }
 
         .btn-mobile-actions {
-            padding: 8px 10px;
+            padding: 8px 14px;         /* Match btn-historical/btn-filter padding */
             background: var(--surface);
             color: var(--text);
             border: 1px solid var(--border);
             border-radius: 8px;
             font-weight: 500;
+            font-size: 14px;           /* Consistent font size */
             cursor: pointer;
             transition: all 0.15s;
             display: flex;
             align-items: center;
             gap: 6px;
-            min-width: 44px;
-            min-height: 44px;
+            min-height: 44px;          /* Match other button heights */
             justify-content: center;
+            white-space: nowrap;       /* Prevent text wrapping */
         }
 
         .btn-mobile-actions:hover {
@@ -2305,6 +2276,39 @@
 
         .btn-mobile-actions.delete-mode-active:hover {
             background: linear-gradient(135deg, #D97706 0%, #B45309 100%);
+        }
+
+        /* =====================================================================
+           DELETE MODE INSTRUCTION TEXT
+           =====================================================================
+           What: Inline text shown next to Actions button during delete mode
+           Why: Tells user to tap a row without using a modal popup
+           How: Hidden by default, shown when delete mode is active
+           ===================================================================== */
+        .delete-mode-instruction {
+            display: none;              /* Hidden by default */
+            font-size: 13px;
+            font-weight: 500;
+            color: #F59E0B;             /* Orange to match delete mode button */
+            white-space: nowrap;
+            animation: fadeInSlide 0.3s ease;
+        }
+
+        /* Show instruction text when delete mode is active */
+        .delete-mode-instruction.active {
+            display: inline-block;
+        }
+
+        /* Fade in animation for instruction text */
+        @keyframes fadeInSlide {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
         }
 
         /* ===== TABLE SCROLL WRAPPER ===== */
@@ -2555,12 +2559,16 @@
 <div class="controls-container">
     <div class="d-flex gap-3 align-items-center buttons-row">
         <!-- Mobile Action Dropdown - shown only on mobile -->
+        <!-- What: Dropdown button for grouping action items on mobile
+             Why: Saves horizontal space by combining New Flip and Delete Flip into a menu
+             How: Button labeled "Actions" opens dropdown menu with action items -->
         <div class="mobile-action-dropdown">
             <button type="button" class="btn-mobile-actions" id="mobileActionsBtn" aria-label="Actions menu">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                         d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
                 </svg>
+                <span class="btn-text">Actions</span>
             </button>
             <div class="mobile-action-menu" id="mobileActionMenu">
                 <div class="mobile-action-item" data-action="new-flip">
@@ -2578,6 +2586,12 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Delete Mode Instruction Text - shown when delete mode is active -->
+        <!-- What: Inline text telling user to tap a row to delete
+             Why: Replaces modal for simpler, less intrusive UX
+             How: Hidden by default, shown via JS when delete mode activates -->
+        <span class="delete-mode-instruction" id="deleteModeInstruction">Tap a flip to delete</span>
         
         <!-- Desktop Action Buttons - hidden on mobile -->
         <button type="button" class="btn-new-flip" data-bs-toggle="modal" data-bs-target="#newFlipModal">
@@ -4710,6 +4724,25 @@
         newFlipModal.addEventListener('shown.bs.modal', function () {
             setDateToNow();
             input.focus();
+
+            // =====================================================================
+            // SCROLL MODAL INTO VIEW ON MOBILE
+            // =====================================================================
+            // What: Scrolls the page so the modal is visible above the keyboard
+            // Why: On mobile, the keyboard can cover the modal inputs
+            // How: Scroll the modal dialog to be near the top of viewport
+            //      Use 'start' to keep the top of the modal visible
+            if (window.matchMedia('(max-width: 900px)').matches) {
+                setTimeout(function() {
+                    const modalDialog = newFlipModal.querySelector('.modal-dialog');
+                    if (modalDialog) {
+                        modalDialog.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                }, 300); // Delay to allow keyboard to appear
+            }
         });
 
         // Clear form when modal closes
@@ -4816,29 +4849,98 @@
         let isProcessing = false;
         let selectedRow = null;
 
+        // =====================================================================
+        // Delete Mode Activation
+        // What: Enters delete mode when delete button is clicked
+        // Why: Allows user to select a flip row for deletion
+        // How: Toggles delete mode state, updates button text/style, shows
+        //      inline instruction text on mobile
+        // =====================================================================
+        const deleteInstructionText = document.getElementById('deleteModeInstruction');
+        
         deleteBtn.addEventListener('click', function () {
             if (!deleteMode) {
                 deleteMode = true;
                 deleteBtn.textContent = 'Click a row to delete';
                 deleteBtn.classList.add('delete-mode-active');
                 table.classList.add('delete-mode');
+
+                // Show inline instruction text (works on both mobile and desktop)
+                // What: Displays helper text next to Actions button
+                // Why: Users need guidance that they should tap/click a row
+                // How: Add 'active' class to show the instruction text
+                if (deleteInstructionText) {
+                    deleteInstructionText.classList.add('active');
+                }
             } else {
                 cancelDeleteMode();
             }
         });
 
+        // =====================================================================
+        // Cancel Delete Mode Function
+        // What: Exits delete mode and resets all related state
+        // Why: Provides clean exit from delete mode for any cancellation scenario
+        // How: Resets flags, button text/styling, table class, instruction text, and selected row
+        // =====================================================================
         function cancelDeleteMode() {
             deleteMode = false;
             isProcessing = false;
             deleteBtn.textContent = 'Delete Flip';
             deleteBtn.classList.remove('delete-mode-active');
             table.classList.remove('delete-mode');
+            
+            // Hide inline instruction text
+            if (deleteInstructionText) {
+                deleteInstructionText.classList.remove('active');
+            }
+            
             // Clear any selected row
             if (selectedRow) {
                 selectedRow.classList.remove('selected-for-delete');
                 selectedRow = null;
             }
         }
+
+        // =====================================================================
+        // Global Click Listener to Cancel Delete Mode
+        // What: Cancels delete mode when user clicks outside the table
+        // Why: Users expect clicking elsewhere to cancel the current action
+        // How: Listens for clicks on document, checks if click is outside table
+        //      and not on delete button, then cancels delete mode
+        // =====================================================================
+        document.addEventListener('click', function(e) {
+            // Only act if we're in delete mode and not currently processing a delete
+            if (!deleteMode || isProcessing) return;
+
+            // Get the elements we want to allow clicks on (table and delete button)
+            const flipsTable = document.getElementById('flipsTable');
+            const mobileActionsBtn = document.getElementById('mobileActionsBtn');
+            const mobileActionMenu = document.getElementById('mobileActionMenu');
+
+            // Check if click was inside the table, on delete button, or on mobile action elements
+            const isInsideTable = flipsTable && flipsTable.contains(e.target);
+            const isDeleteButton = deleteBtn.contains(e.target);
+            const isMobileActions = (mobileActionsBtn && mobileActionsBtn.contains(e.target)) ||
+                                   (mobileActionMenu && mobileActionMenu.contains(e.target));
+
+            // If click is outside all allowed elements, cancel delete mode
+            if (!isInsideTable && !isDeleteButton && !isMobileActions) {
+                cancelDeleteMode();
+            }
+        });
+
+        // =====================================================================
+        // Cancel Delete Mode on Page Navigation (beforeunload)
+        // What: Cancels delete mode when user navigates away from page
+        // Why: Clean state management, prevents orphaned delete mode state
+        // How: Listen for beforeunload event and cancel delete mode
+        // =====================================================================
+        window.addEventListener('beforeunload', function() {
+            if (deleteMode) {
+                cancelDeleteMode();
+            }
+        });
 
         table.querySelector('tbody').addEventListener('click', function (e) {
             if (!deleteMode || isProcessing) return;
@@ -5363,17 +5465,14 @@
         }
 
         /**
-         * Collapsible Search Bar
-         * What: Search bar that collapses to icon on mobile, expands on interaction
-         * Why: Save horizontal space when search isn't actively being used
-         * How: Toggle collapsed/expanded classes based on focus and content
+         * Search Bar - Scroll Into View on Mobile Focus
+         * What: Scrolls the search input into view when focused on mobile
+         * Why: Mobile keyboards can cover the input field
+         * How: Listen for focus event and scroll the wrapper into view
+         * Note: Search bar is now always visible (no collapse/expand behavior)
          */
         const filterSearchWrapper = document.getElementById('filterSearchWrapper');
         const filterSearchInput = document.getElementById('filterSearchInput');
-
-        // Configuration constants
-        const SEARCH_COLLAPSE_DELAY_MS = 200; // Delay before collapsing to allow clear button clicks
-        const RESIZE_DEBOUNCE_DELAY_MS = 100; // Delay for resize event debouncing
 
         if (filterSearchWrapper && filterSearchInput) {
             // Check if we're on mobile (max-width: 900px)
@@ -5381,50 +5480,19 @@
                 return window.matchMedia('(max-width: 900px)').matches;
             }
 
-            // Initialize collapsed state on mobile if no search value
-            function initializeSearchBar() {
-                if (isMobile() && !filterSearchInput.value) {
-                    filterSearchWrapper.classList.add('collapsed');
-                    filterSearchWrapper.classList.remove('expanded');
-                } else if (isMobile()) {
-                    filterSearchWrapper.classList.add('expanded');
-                    filterSearchWrapper.classList.remove('collapsed');
-                }
-            }
-
-            // Expand search bar on focus or click
+            // Scroll search into view when focused on mobile
+            // What: Ensures the search input remains visible above the keyboard
+            // Why: Mobile keyboards can cover input fields, causing user confusion
+            // How: Delay allows keyboard to appear, then scroll with smooth animation
             filterSearchInput.addEventListener('focus', function() {
                 if (isMobile()) {
-                    filterSearchWrapper.classList.remove('collapsed');
-                    filterSearchWrapper.classList.add('expanded');
-                }
-            });
-
-            // Collapse search bar on blur if empty
-            filterSearchInput.addEventListener('blur', function() {
-                if (isMobile() && !filterSearchInput.value) {
                     setTimeout(function() {
-                        filterSearchWrapper.classList.add('collapsed');
-                        filterSearchWrapper.classList.remove('expanded');
-                    }, SEARCH_COLLAPSE_DELAY_MS);
+                        filterSearchWrapper.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'center'
+                        });
+                    }, 300); // Delay to allow keyboard animation to start
                 }
-            });
-
-            // Expand when clicking the collapsed search icon
-            filterSearchWrapper.addEventListener('click', function(e) {
-                if (isMobile() && filterSearchWrapper.classList.contains('collapsed')) {
-                    filterSearchInput.focus();
-                }
-            });
-
-            // Initialize on page load
-            initializeSearchBar();
-
-            // Re-initialize on window resize (debounced)
-            let resizeTimeout;
-            window.addEventListener('resize', function() {
-                clearTimeout(resizeTimeout);
-                resizeTimeout = setTimeout(initializeSearchBar, RESIZE_DEBOUNCE_DELAY_MS);
             });
         }
 
