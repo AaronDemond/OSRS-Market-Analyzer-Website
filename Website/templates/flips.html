@@ -159,82 +159,51 @@
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: 14px;
-        overflow: hidden; /* Clip content to show rounded corners */
+        overflow: hidden; /* Clip corners to show border-radius */
         border-collapse: separate;
         border-spacing: 0;
+    }
+
+    /* =============================================================================
+       TABLE CORNER ROUNDING
+       =============================================================================
+       What: Rounds the corners of the table header and body cells
+       Why: With border-collapse: separate, we need to round individual cells
+            to match the table's border-radius and create a polished look
+       How: Apply border-radius to first/last th and td cells in corners
+       ============================================================================= */
+    
+    /* Top-left corner - first header cell */
+    #flipsTable thead tr:first-child th:first-child {
+        border-top-left-radius: 13px; /* Slightly less than table's 14px for clean fit */
+    }
+    
+    /* Top-right corner - last header cell */
+    #flipsTable thead tr:first-child th:last-child {
+        border-top-right-radius: 13px;
+    }
+    
+    /* Bottom-left corner - first cell of last body row */
+    #flipsTable tbody tr:last-child td:first-child {
+        border-bottom-left-radius: 13px;
+    }
+    
+    /* Bottom-right corner - last cell of last body row */
+    #flipsTable tbody tr:last-child td:last-child {
+        border-bottom-right-radius: 13px;
     }
 
     /* =============================================================================
        DELETE MODE INSTRUCTION - HIDDEN ON DESKTOP
        =============================================================================
        What: The "Tap a flip to delete" instruction text
-       Why: This instruction is only relevant for mobile touch interaction
-       How: Hidden by default on all screen sizes, only shown in mobile media query
+       Why: This instruction is only relevant for mobile touch interaction;
+            on desktop, users have hover tooltips and click-based deletion
+       How: Hidden by default with !important; mobile media query overrides
+            this to show when delete mode is active
        ============================================================================= */
     .delete-mode-instruction {
-        display: none !important; /* Hidden on desktop - mobile styles override this */
-    }
-
-    /* =============================================================================
-       TABLE SCROLL WRAPPER - BASE STYLES (ALL SCREEN SIZES)
-       =============================================================================
-       What: Horizontally and vertically scrollable container for the flips table
-       Why: When the table becomes too wide for the viewport, users need to scroll
-            horizontally to see all columns. This wrapper enables that scrolling.
-       How: 
-         - overflow-x: auto enables horizontal scroll when content exceeds width
-         - overflow-y: auto enables vertical scroll when content exceeds max-height
-         - The wrapper is added via JavaScript (setupTableScrollWrapper function)
-         - Scrollbars are styled to be visible and larger for better usability
-       ============================================================================= */
-    .table-scroll-wrapper {
-        position: relative;
-        overflow-x: auto;  /* Enable horizontal scrolling when table is wider than viewport */
-        overflow-y: auto;  /* Enable vertical scrolling when table is taller than max-height */
-        -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS devices */
-        margin-bottom: 12px;
-        border-radius: 14px;
-        max-height: 70vh; /* Limit height to 70% of viewport to show vertical scrollbar */
-        /* Firefox scrollbar styling */
-        scrollbar-width: auto; /* Firefox - shows standard visible scrollbar */
-        scrollbar-color: #9CA3AF #E5E7EB; /* Firefox - thumb color, track color */
-    }
-
-    /* =============================================================================
-       VISIBLE SCROLLBARS - WEBKIT BROWSERS (Chrome/Safari/Edge)
-       =============================================================================
-       What: Makes scrollbars visible and larger for webkit-based browsers
-       Why: Users need clear visual feedback that the table is scrollable,
-            and larger scrollbars are easier to grab/tap
-       How: Uses ::-webkit-scrollbar pseudo-elements for full customization
-       ============================================================================= */
-    
-    /* Scrollbar track and thumb size - 24px for maximum visibility */
-    .table-scroll-wrapper::-webkit-scrollbar {
-        width: 24px;  /* Vertical scrollbar width */
-        height: 24px; /* Horizontal scrollbar height */
-    }
-    
-    /* Scrollbar track (background) - light gray */
-    .table-scroll-wrapper::-webkit-scrollbar-track {
-        background: #E5E7EB;
-        border-radius: 12px;
-    }
-    
-    /* Scrollbar thumb (draggable part) - darker gray with hover effect */
-    .table-scroll-wrapper::-webkit-scrollbar-thumb {
-        background: #9CA3AF;
-        border-radius: 12px;
-        border: 3px solid #E5E7EB;
-    }
-    
-    .table-scroll-wrapper::-webkit-scrollbar-thumb:hover {
-        background: #6B7280;
-    }
-    
-    /* Scrollbar corner where both scrollbars meet */
-    .table-scroll-wrapper::-webkit-scrollbar-corner {
-        background: #E5E7EB;
+        display: none !important;
     }
 
     #flipsTable thead th {
@@ -459,7 +428,7 @@
     }
 
         #flipsTable {
-            font-size: 0.75rem !important;
+            font-size: 0.75rem;
         }
 
     #flipsTable.delete-mode tbody tr {
@@ -1885,8 +1854,6 @@
         margin: 0;
     }
 
-    /* Mobile styles */
-    @media (max-width: 1200px) {
         .stats-row {
             flex-direction: row;
             gap: 0.5rem;
@@ -2005,7 +1972,6 @@
             height: 14px;
             font-size: 12px;
         }
-    }
 
     /* =========================================================================
        MOBILE STYLES - COMPREHENSIVE OVERHAUL
@@ -2013,7 +1979,7 @@
        Why: Optimize layout and controls for small screens with touch interfaces
        How: Collapsible search, action dropdown menu, horizontal table scroll
        ========================================================================= */
-    @media (max-width: 768px) {
+    @media (max-width: 900px) {
         /* ===== STATS ROW MOBILE ===== */
         .stats-row {
             flex-direction: column;
@@ -2356,7 +2322,7 @@
            How: Hidden by default, shown when delete mode is active
            ===================================================================== */
         .delete-mode-instruction {
-            display: none !important;   /* Hidden by default - overrides base style */
+            display: none;              /* Hidden by default */
             font-size: 13px;
             font-weight: 500;
             color: #F59E0B;             /* Orange to match delete mode button */
@@ -2364,12 +2330,9 @@
             animation: fadeInSlide 0.3s ease;
         }
 
-        /* Show instruction text when delete mode is active - MOBILE ONLY */
-        /* What: Shows the "Tap a flip to delete" text when delete mode is active
-           Why: On mobile, users need instruction since there's no hover tooltip
-           How: Override the hidden state with inline-block and !important */
+        /* Show instruction text when delete mode is active */
         .delete-mode-instruction.active {
-            display: inline-block !important;
+            display: inline-block;
         }
 
         /* Fade in animation for instruction text */
@@ -2416,6 +2379,16 @@
         .table-scroll-wrapper::before,
         .table-scroll-wrapper::after {
             display: none;
+        }
+
+        /* Hide scrollbars while keeping scroll functionality */
+        .table-scroll-wrapper {
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE/Edge */
+        }
+        
+        .table-scroll-wrapper::-webkit-scrollbar {
+            display: none; /* Chrome/Safari/Opera */
         }
 
         /* =============================================================================
