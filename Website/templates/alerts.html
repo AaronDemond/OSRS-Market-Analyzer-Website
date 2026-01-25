@@ -4,6 +4,16 @@
 {% block title %}Alerts - GE Tools{% endblock %}
 
 {% block extra_css %}
+<!-- Alert page styles - loaded in head to prevent FOUC (Flash of Unstyled Content) -->
+<!-- What: CSS files for styling the alerts page components -->
+<!-- Why: Loading in the head ensures styles are applied before content renders, preventing the icon from flashing full-screen -->
+<!-- How: Using Django's static template tag to load CSS files in order of dependency -->
+<link rel="stylesheet" href="{% static 'css/alerts-variables.css' %}">
+<link rel="stylesheet" href="{% static 'css/alerts-help-modal.css' %}">
+<link rel="stylesheet" href="{% static 'css/alerts-components.css' %}">
+<link rel="stylesheet" href="{% static 'css/alerts-form.css' %}">
+<link rel="stylesheet" href="{% static 'css/alerts-modals.css' %}">
+<link rel="stylesheet" href="{% static 'css/alerts-responsive.css' %}">
 <!-- Group selector styles (shared with alert_detail.html) -->
 <link rel="stylesheet" href="{% static 'css/group-selector.css' %}">
 {% endblock %}
@@ -802,12 +812,6 @@
         </div>
     </div>
 </div>
-<link rel="stylesheet" href="{% static 'css/alerts-variables.css' %}">
-<link rel="stylesheet" href="{% static 'css/alerts-help-modal.css' %}">
-<link rel="stylesheet" href="{% static 'css/alerts-components.css' %}">
-<link rel="stylesheet" href="{% static 'css/alerts-form.css' %}">
-<link rel="stylesheet" href="{% static 'css/alerts-modals.css' %}">
-<link rel="stylesheet" href="{% static 'css/alerts-responsive.css' %}">
 
 <!-- =============================================================================
      NEW GROUP MODAL
