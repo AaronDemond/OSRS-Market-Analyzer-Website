@@ -153,62 +153,135 @@
         font-size: 0.95rem;
     }
 
-    /* Table styles */
+    /* 
+        Table Styles - Modern Card Design
+        ==================================
+        What: Styling for the flips table with modern, sleek appearance
+        Why: Table should match the card-based design seen throughout the site
+        How: Uses subtle shadows, gradients, smooth transitions, and improved spacing
+    */
     #flipsTable {
         width: 100%;
         background: var(--surface);
         border: 1px solid var(--border);
-        border-radius: 14px;
+        border-radius: 16px;
         overflow: hidden;
         border-collapse: separate;
         border-spacing: 0;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 4px 12px rgba(0, 0, 0, 0.04);
     }
 
+    /* 
+        Table Header - Gradient Design
+        What: Modern gradient header matching site's accent colors
+        Why: Creates visual hierarchy and makes headers stand out
+        How: Uses green gradient similar to page header icons
+    */
     #flipsTable thead th {
-        background: #1F2937;
-        color: #E5E7EB;
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        color: #FFFFFF;
         font-weight: 600;
-        padding: 12px 14px;
-        border-bottom: 1px solid #374151;
-        transition: background 0.15s;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+        padding: 16px 18px;
+        border-bottom: none;
+        transition: all 0.2s ease;
+        position: relative;
     }
 
+    /* 
+        Table Header - First and Last Child Styling
+        What: Ensures first and last header cells maintain border radius
+        Why: Preserves the card-like rounded corners on the table
+    */
+    #flipsTable thead th:first-child {
+        border-top-left-radius: 16px;
+    }
+
+    #flipsTable thead th:last-child {
+        border-top-right-radius: 16px;
+    }
+
+    /* 
+        Table Cells - Improved Spacing and Typography
+        What: Better padding and subtle borders for table cells
+        Why: Improves readability and creates cleaner visual separation
+        How: Increased padding, lighter border colors
+    */
     #flipsTable tbody td {
-        padding: 12px 14px;
-        border-top: 1px solid var(--border);
+        padding: 16px 18px;
+        border-top: 1px solid #F3F4F6;
         color: var(--text);
+        font-size: 0.9375rem;
+        transition: all 0.2s ease;
     }
 
-    /* Zebra striping */
-    #flipsTable tbody tr:nth-child(odd) {
+    /* 
+        Table Row - No Zebra Striping
+        What: Clean white background for all rows
+        Why: Modern tables often use subtle borders instead of alternating colors
+        How: Uniform white background with hover effects for interaction
+    */
+    #flipsTable tbody tr {
         background: var(--surface);
+        transition: all 0.2s ease;
     }
 
-    #flipsTable tbody tr:nth-child(even) {
-        background: #F9FAFB;
-    }
-
-    /* Row hover - muted orange */
+    /* 
+        Table Row Hover - Elevated Effect
+        What: Subtle shadow and background change on hover
+        Why: Provides interactive feedback and highlights the current row
+        How: Light purple/blue tint with shadow for depth
+    */
     #flipsTable tbody tr:hover {
-        background: linear-gradient(135deg, #FEF3E2 0%, #FDE9D0 100%) !important;
+        background: linear-gradient(135deg, #F0F4FF 0%, #E8F0FE 100%) !important;
+        box-shadow: 0 2px 8px rgba(99, 102, 241, 0.08);
+        transform: scale(1.002);
     }
 
     #flipsTable tbody tr:hover>td {
         background: inherit !important;
+        border-top-color: rgba(99, 102, 241, 0.1);
     }
 
-    /* Header hover - muted orange */
+    /* 
+        Sortable Header Hover - Enhanced Interaction
+        What: Darker gradient on hover for sortable columns
+        Why: Indicates clickable/interactive headers
+        How: Slightly darker green gradient with smooth transition
+    */
     .sortable:hover {
-        background: linear-gradient(135deg, #D97706 0%, #F59E0B 100%) !important;
+        background: linear-gradient(135deg, #0d8075 0%, #2dd368 100%) !important;
         color: #fff;
+        cursor: pointer;
+        box-shadow: inset 0 -2px 8px rgba(0, 0, 0, 0.1);
     }
 
+    /* 
+        Links in Table - Primary Color
+        What: Styled links matching the site's primary color scheme
+        Why: Consistent with the rest of the site's link styling
+    */
     #flipsTable a {
         color: var(--primary);
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 0.15s ease;
     }
 
     #flipsTable a:hover {
         color: var(--primary-hover);
+        text-decoration: underline;
+    }
+
+    /* 
+        First Row Special Styling
+        What: Adds slight top border to first row
+        Why: Creates visual separation from header
+    */
+    #flipsTable tbody tr:first-child td {
+        border-top-color: rgba(17, 153, 142, 0.2);
     }
 
     .autocomplete-wrapper {
@@ -246,26 +319,50 @@
         color: #fff;
     }
 
+    /* 
+        Sortable Column Styling
+        What: Interactive columns that can be clicked to sort the table
+        Why: Users need to sort data by different columns
+        How: Cursor and transition effects indicate interactivity
+    */
     .sortable {
         cursor: pointer;
         user-select: none;
-        transition: background 0.15s;
+        transition: all 0.2s ease;
+    }
+
+    /* 
+        Sort Icon - Modern Arrows
+        What: Visual indicator showing sort capability and current sort state
+        Why: Users need to know which columns are sortable and current sort direction
+        How: Unicode arrows with opacity and smooth transitions
+    */
+    .sort-icon {
+        display: inline-block;
+        margin-left: 6px;
+        transition: all 0.2s ease;
     }
 
     .sort-icon::after {
         content: '⇅';
-        margin-left: 5px;
-        opacity: 0.5;
+        opacity: 0.6;
+        font-size: 0.9em;
+    }
+
+    .sortable:hover .sort-icon::after {
+        opacity: 0.9;
     }
 
     .sortable.asc .sort-icon::after {
         content: '↑';
         opacity: 1;
+        font-weight: bold;
     }
 
     .sortable.desc .sort-icon::after {
         content: '↓';
         opacity: 1;
+        font-weight: bold;
     }
 
     /* Stats row */
