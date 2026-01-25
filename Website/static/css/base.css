@@ -298,20 +298,218 @@ body {
     display: none;
 }
 
+/* =============================================================================
+   MOBILE SIDEBAR - HIDDEN BY DEFAULT WITH BURGER TOGGLE
+   =============================================================================
+   What: Styles for mobile-specific sidebar behavior where the sidebar is 
+         completely hidden off-screen by default and revealed via a burger button.
+   
+   Why: On mobile devices, the always-visible sidebar takes up valuable screen
+        space and causes rendering issues when expanded. This implementation:
+        - Hides the sidebar completely by default on mobile
+        - Shows a floating burger button to toggle visibility
+        - Only shows sidebar in collapsed state (icons only, 70px wide)
+        - Uses a backdrop for easy dismissal
+   
+   How: Uses CSS transforms for GPU-accelerated animations and media queries
+        to apply mobile-specific behavior without affecting desktop.
+   ============================================================================= */
+
+/* -----------------------------------------------------------------------------
+   Mobile Burger Button (Outside Sidebar)
+   -----------------------------------------------------------------------------
+   What: A floating button visible only on mobile to toggle the sidebar.
+   Why: When sidebar is hidden off-screen, users need a way to access navigation.
+   How: Fixed position in top-left corner, hidden on desktop via display:none.
+   ----------------------------------------------------------------------------- */
+.mobile-sidebar-toggle {
+    /* Hidden by default - only shown on mobile via media query */
+    display: none;
+    
+    /* Positioning: Fixed to top-left corner of viewport */
+    position: fixed;
+    top: 15px;
+    left: 15px;
+    
+    /* Z-index: ABOVE sidebar (1000) so it can be clicked to close when sidebar is open */
+    z-index: 1100;
+    
+    /* Sizing: 44x44px minimum for touch accessibility (Apple HIG recommends 44pt) */
+    width: 44px;
+    height: 44px;
+    
+    /* Styling: Matches sidebar aesthetic */
+    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    
+    /* Flexbox for centering the icon */
+    align-items: center;
+    justify-content: center;
+    
+    /* Cursor and transition for interactivity */
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Hover state for mobile burger button */
+.mobile-sidebar-toggle:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* Active/pressed state for mobile burger button */
+.mobile-sidebar-toggle:active {
+    transform: scale(0.95);
+}
+
+/* Icon inside the mobile burger button */
+.mobile-sidebar-toggle svg {
+    width: 24px;
+    height: 24px;
+    color: #667eea;
+}
+
+/* -----------------------------------------------------------------------------
+   Sidebar Backdrop (Mobile Only)
+   -----------------------------------------------------------------------------
+   What: A semi-transparent overlay that appears behind the sidebar when open.
+   Why: Provides visual feedback that sidebar is open and allows easy dismissal
+        by tapping anywhere outside the sidebar.
+   How: Fixed position covering entire viewport, hidden by default, shown via
+        .active class when sidebar is opened on mobile.
+   ----------------------------------------------------------------------------- */
+.sidebar-backdrop {
+    /* Hidden by default */
+    display: none;
+    
+    /* Positioning: Fixed to cover entire viewport */
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    
+    /* Styling: Semi-transparent dark overlay */
+    background: rgba(0, 0, 0, 0.5);
+    
+    /* Z-index: Below sidebar (1000) but above main content */
+    z-index: 998;
+    
+    /* Smooth fade-in animation */
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+/* Active state shows the backdrop */
+.sidebar-backdrop.active {
+    display: block;
+    opacity: 1;
+}
+
 /* Mobile Responsive Styles */
 @media (max-width: 768px) {
+    /* -------------------------------------------------------------------------
+       Mobile Sidebar - Hidden Off-Screen by Default
+       -------------------------------------------------------------------------
+       What: Positions sidebar completely off-screen to the left.
+       Why: Frees up screen real estate on mobile; sidebar accessed via burger.
+       How: Uses transform:translateX for GPU-accelerated slide animation.
+       ------------------------------------------------------------------------- */
     .sidebar {
         min-height: 100vh;
         height: 100%;
         position: fixed;
+        
+        /* CRITICAL: Always use collapsed width on mobile - never fully expands */
+        width: var(--sidebar-collapsed-width) !important;
+        
+        /* Position off-screen to the left by the sidebar's width */
+        transform: translateX(calc(-1 * var(--sidebar-collapsed-width)));
+        
+        /* Smooth slide-in animation (GPU-accelerated via transform) */
+        transition: transform 0.3s ease;
+        
+        /* Ensure sidebar appears above backdrop */
+        z-index: 1000;
     }
     
+    /* -------------------------------------------------------------------------
+       Mobile Sidebar Open State
+       -------------------------------------------------------------------------
+       What: Slides the sidebar into view when .mobile-open class is added.
+       Why: User tapped the burger button to view navigation.
+       How: Resets transform to 0 (original position = visible).
+       ------------------------------------------------------------------------- */
+    .sidebar.mobile-open {
+        transform: translateX(0);
+    }
+    
+    /* -------------------------------------------------------------------------
+       Override Desktop Collapsed State on Mobile
+       -------------------------------------------------------------------------
+       What: Ensures mobile sidebar behaves consistently regardless of 
+             desktop collapsed/expanded state saved in localStorage.
+       Why: On mobile, we ONLY want collapsed appearance (icons only).
+       How: Force collapsed styles and prevent width changes.
+       ------------------------------------------------------------------------- */
+    .sidebar.collapsed {
+        width: var(--sidebar-collapsed-width) !important;
+        transform: translateX(calc(-1 * var(--sidebar-collapsed-width)));
+    }
+    
+    .sidebar.collapsed.mobile-open {
+        transform: translateX(0);
+    }
+    
+    /* -------------------------------------------------------------------------
+       Hide Desktop Toggle Button on Mobile
+       -------------------------------------------------------------------------
+       What: Hides the toggle button that's inside the sidebar.
+       Why: On mobile, we use the external burger button instead.
+       How: Display none on the sidebar-toggle element.
+       ------------------------------------------------------------------------- */
+    .sidebar-toggle {
+        display: none !important;
+    }
+    
+    /* -------------------------------------------------------------------------
+       Show Mobile Burger Button
+       -------------------------------------------------------------------------
+       What: Makes the external burger button visible on mobile.
+       Why: This is the primary way to access the sidebar on mobile.
+       ------------------------------------------------------------------------- */
+    .mobile-sidebar-toggle {
+        display: flex;
+    }
+    
+    /* -------------------------------------------------------------------------
+       Main Content - Full Width on Mobile
+       -------------------------------------------------------------------------
+       What: Removes left margin so content uses full screen width.
+       Why: Sidebar is hidden by default, so no need to reserve space for it.
+       How: Override margin-left to 0, regardless of expanded/collapsed state.
+       ------------------------------------------------------------------------- */
+    .main-content {
+        margin-left: 0 !important;
+        padding: 1rem;
+        /* Minimal top padding - header will be on same line as burger */
+        padding-top: 15px;
+    }
+    
+    .main-content.expanded {
+        margin-left: 0 !important;
+    }
+    
+    /* -------------------------------------------------------------------------
+       Typography and Element Sizing for Mobile
+       -------------------------------------------------------------------------
+       What: Reduces font sizes and padding for smaller screens.
+       Why: Mobile screens have limited space; elements need to be compact.
+       ------------------------------------------------------------------------- */
     body {
         font-size: 0.875rem;
-    }
-    
-    .main-content {
-        padding: 1rem;
     }
     
     h1 {
@@ -361,6 +559,55 @@ body {
         font-size: 0.875rem;
         padding: 0.5rem;
     }
+    
+    /* -------------------------------------------------------------------------
+       Mobile Page Header - Same Line as Burger Button
+       -------------------------------------------------------------------------
+       What: Positions the page header inline with the burger button, hides icon.
+       Why: On mobile, the icon takes up valuable space. Cleaner with just title.
+       How: Hides the icon with display:none, adds margin to position correctly.
+       ------------------------------------------------------------------------- */
+    .page-header {
+        /* Standard row layout */
+        flex-direction: row;
+        justify-content: flex-start;
+        align-items: center;
+        /* Spacing */
+        margin-bottom: 20px;
+        /* Move down 15px and right 25px from previous position */
+        margin-top: 15px;
+        gap: 8px;
+        /* Clear the fixed burger button (44px width + 15px left + 25px extra) */
+        margin-left: 80px;
+    }
+    
+    .page-header-left {
+        /* For favorites page which has page-header-left wrapper */
+        flex-direction: row;
+        gap: 8px;
+    }
+    
+    .page-header-icon {
+        /* Hide the icon entirely on mobile - saves space, cleaner look */
+        display: none !important;
+    }
+    
+    .page-header-text {
+        text-align: left;
+    }
+    
+    .page-header-text h1 {
+        font-size: 1.1rem;
+        margin: 0;
+        line-height: 1.2;
+    }
+    
+    .page-header-text p {
+        font-size: 0.7rem;
+        margin: 0;
+        /* Hide the description on mobile to save space */
+        display: none;
+    }
 }
 
 @media (max-width: 480px) {
@@ -370,6 +617,8 @@ body {
     
     .main-content {
         padding: 0.75rem;
+        /* Keep minimal top padding on smaller screens too */
+        padding-top: 15px;
     }
     
     h1 {
@@ -396,6 +645,22 @@ body {
     
     .filter-label {
         font-size: 0.75rem;
+    }
+    
+    /* -------------------------------------------------------------------------
+       Extra Small Mobile Page Header - Tighter Spacing
+       -------------------------------------------------------------------------
+       What: Further reduces page header spacing for very small screens.
+       Why: On phones <480px, space is extremely limited.
+       ------------------------------------------------------------------------- */
+    .page-header {
+        gap: 6px;
+        margin-bottom: 18px;
+        margin-left: 75px;
+    }
+    
+    .page-header-text h1 {
+        font-size: 0.95rem;
     }
 }
 

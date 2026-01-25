@@ -1335,8 +1335,16 @@
 
     @media (max-width: 640px) {
         .page-header {
-            flex-direction: column;
-            align-items: flex-start;
+            /* Override: Use row-reverse to put icon after title, inline with burger */
+            flex-direction: row-reverse !important;
+            justify-content: flex-end !important;
+            align-items: center !important;
+            margin-left: 50px;
+        }
+        
+        .page-header-left {
+            flex-direction: row-reverse;
+            gap: 10px;
         }
 
         .quick-stats-bar {

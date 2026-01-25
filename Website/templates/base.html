@@ -7,11 +7,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}My Site{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'css/bootstrap/bootstrap.min.css' %}">
-    <link rel="stylesheet" href="{% static 'css/base.css' %}?v=4">
+    <link rel="stylesheet" href="{% static 'css/base.css' %}?v=10">
     {% block extra_css %}{% endblock %}
 </head>
 
 <body>
+    <!-- 
+        Mobile Sidebar Toggle Button
+        =============================
+        What: A floating burger button visible only on mobile devices to toggle the sidebar.
+        Why: On mobile, the sidebar is hidden off-screen by default to save space.
+             This button provides access to the navigation without the sidebar always being visible.
+        How: Positioned fixed in top-left corner, hidden on desktop via CSS (display:none).
+             JavaScript adds/removes 'mobile-open' class on sidebar when clicked.
+    -->
+    <button class="mobile-sidebar-toggle" id="mobileSidebarToggle" aria-label="Toggle Navigation Menu" aria-expanded="false">
+        <svg fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd"
+                d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
+                clip-rule="evenodd" />
+        </svg>
+    </button>
+
+    <!-- 
+        Sidebar Backdrop (Mobile Only)
+        ===============================
+        What: A semi-transparent overlay that appears when the sidebar is open on mobile.
+        Why: Provides visual feedback that the sidebar is open and allows users to close
+             the sidebar by tapping anywhere outside of it (standard mobile drawer pattern).
+        How: Hidden by default, JavaScript adds 'active' class when sidebar opens on mobile.
+             Clicking the backdrop removes 'mobile-open' from sidebar and 'active' from backdrop.
+    -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
     <!-- Sidebar -->
     <nav class="sidebar collapsed">
         <div class="sidebar-brand">
@@ -427,6 +455,109 @@
             const sidebar = document.querySelector('.sidebar');
             const mainContent = document.querySelector('.main-content');
             const toggleBtn = document.getElementById('sidebarToggle');
+            
+            // =================================================================
+            // MOBILE SIDEBAR TOGGLE FUNCTIONALITY
+            // =================================================================
+            // What: Handles the mobile-specific sidebar behavior where the sidebar
+            //       is hidden off-screen by default and shown via a burger button.
+            // Why: On mobile, showing the sidebar by default takes up valuable space
+            //       and causes rendering issues. This provides a clean drawer pattern.
+            // How: 
+            //   1. Detect if we're on mobile (viewport width <= 768px)
+            //   2. Mobile burger button toggles 'mobile-open' class on sidebar
+            //   3. Backdrop appears when sidebar is open, clicking it closes sidebar
+            //   4. Handle window resize to clean up mobile state when switching to desktop
+            // =================================================================
+            
+            // mobileSidebarToggle: The burger button visible only on mobile
+            const mobileSidebarToggle = document.getElementById('mobileSidebarToggle');
+            
+            // sidebarBackdrop: The semi-transparent overlay behind the sidebar
+            const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+            
+            // isMobile: Helper function to check if current viewport is mobile-sized
+            // Returns true if viewport width is 768px or less (matches CSS media query)
+            const isMobile = () => window.innerWidth <= 768;
+            
+            // openMobileSidebar: Opens the sidebar on mobile devices
+            // What: Adds 'mobile-open' class to sidebar and 'active' class to backdrop
+            // Why: Shows the sidebar and backdrop, updates ARIA attribute for accessibility
+            function openMobileSidebar() {
+                sidebar.classList.add('mobile-open');
+                sidebarBackdrop.classList.add('active');
+                mobileSidebarToggle.setAttribute('aria-expanded', 'true');
+                // Prevent body scrolling when sidebar is open
+                document.body.style.overflow = 'hidden';
+            }
+            
+            // closeMobileSidebar: Closes the sidebar on mobile devices
+            // What: Removes 'mobile-open' class from sidebar and 'active' from backdrop
+            // Why: Hides the sidebar and backdrop, updates ARIA attribute for accessibility
+            function closeMobileSidebar() {
+                sidebar.classList.remove('mobile-open');
+                sidebarBackdrop.classList.remove('active');
+                mobileSidebarToggle.setAttribute('aria-expanded', 'false');
+                // Restore body scrolling
+                document.body.style.overflow = '';
+            }
+            
+            // Mobile burger button click handler
+            if (mobileSidebarToggle) {
+                mobileSidebarToggle.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Toggle sidebar open/closed state
+                    if (sidebar.classList.contains('mobile-open')) {
+                        closeMobileSidebar();
+                    } else {
+                        openMobileSidebar();
+                    }
+                });
+            }
+            
+            // Backdrop click handler - closes the sidebar
+            // What: Clicking the backdrop (area outside sidebar) closes the sidebar
+            // Why: Standard mobile drawer UX pattern - tap outside to dismiss
+            if (sidebarBackdrop) {
+                sidebarBackdrop.addEventListener('click', function(e) {
+                    closeMobileSidebar();
+                });
+            }
+            
+            // Close sidebar when a nav link is clicked on mobile
+            // What: Automatically closes sidebar after user selects a navigation item
+            // Why: Better UX - user doesn't have to manually close sidebar after navigating
+            const navLinks = sidebar.querySelectorAll('.nav-link');
+            navLinks.forEach(link => {
+                link.addEventListener('click', function() {
+                    if (isMobile() && sidebar.classList.contains('mobile-open')) {
+                        closeMobileSidebar();
+                    }
+                });
+            });
+            
+            // Window resize handler
+            // What: Cleans up mobile state when window is resized to desktop size
+            // Why: If user opens sidebar on mobile then resizes to desktop, we need to
+            //      remove mobile-specific classes to prevent visual glitches
+            window.addEventListener('resize', function() {
+                if (!isMobile()) {
+                    // Remove mobile-specific classes when switching to desktop
+                    sidebar.classList.remove('mobile-open');
+                    sidebarBackdrop.classList.remove('active');
+                    mobileSidebarToggle.setAttribute('aria-expanded', 'false');
+                    document.body.style.overflow = '';
+                }
+            });
+            
+            // =================================================================
+            // DESKTOP SIDEBAR TOGGLE FUNCTIONALITY (Original)
+            // =================================================================
+            // What: Handles the desktop sidebar expand/collapse behavior
+            // Why: On desktop, users can choose between expanded and collapsed sidebar
+            // How: Toggle button switches between expanded (260px) and collapsed (70px)
 
             console.log('Sidebar:', sidebar);
             console.log('Toggle button:', toggleBtn);
