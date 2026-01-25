@@ -289,6 +289,77 @@
         color: var(--danger);
     }
 
+    /* Theme Toggle Switch */
+    .theme-toggle-container {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .theme-toggle-switch {
+        position: relative;
+        width: 56px;
+        height: 28px;
+        background: var(--border-dark);
+        border-radius: 14px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+
+    .theme-toggle-switch.active {
+        background: var(--primary);
+    }
+
+    .theme-toggle-slider {
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 24px;
+        height: 24px;
+        background: white;
+        border-radius: 50%;
+        transition: transform 0.3s ease;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .theme-toggle-switch.active .theme-toggle-slider {
+        transform: translateX(28px);
+    }
+
+    .theme-toggle-icon {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 14px;
+        height: 14px;
+        color: white;
+        transition: opacity 0.3s ease;
+    }
+
+    .theme-toggle-icon.sun {
+        left: 6px;
+        opacity: 1;
+    }
+
+    .theme-toggle-icon.moon {
+        right: 6px;
+        opacity: 0;
+    }
+
+    .theme-toggle-switch.active .theme-toggle-icon.sun {
+        opacity: 0;
+    }
+
+    .theme-toggle-switch.active .theme-toggle-icon.moon {
+        opacity: 1;
+    }
+
+    .theme-label {
+        font-weight: 500;
+        color: var(--text);
+        min-width: 80px;
+    }
+
     @media (max-width: 480px) {
         .settings-container {
             margin: 20px auto;
@@ -335,6 +406,38 @@
                     <div class="settings-row-value">{{ user.email }}</div>
                 </div>
                 <button class="settings-btn settings-btn-primary" onclick="openModal('emailModal')">Change Email</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Appearance Settings -->
+    <div class="settings-card">
+        <div class="settings-card-header">
+            <h2>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>
+                </svg>
+                Appearance
+            </h2>
+        </div>
+        <div class="settings-card-body">
+            <div class="settings-row">
+                <div class="settings-row-info">
+                    <div class="settings-row-label">Theme</div>
+                    <div class="settings-row-value">Choose between light and dark mode</div>
+                </div>
+                <div class="theme-toggle-container">
+                    <span class="theme-label" id="themeLabel">Light Mode</span>
+                    <div class="theme-toggle-switch" id="themeToggle" onclick="toggleTheme()">
+                        <svg class="theme-toggle-icon sun" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"/>
+                        </svg>
+                        <svg class="theme-toggle-icon moon" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>
+                        </svg>
+                        <div class="theme-toggle-slider"></div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -523,5 +626,53 @@ document.addEventListener('keydown', function(e) {
 document.getElementById('delete-confirm').addEventListener('input', function() {
     document.getElementById('deleteSubmitBtn').disabled = this.value !== 'DELETE';
 });
+
+// Theme Toggle Functionality
+/**
+ * Initializes the theme based on localStorage value
+ * This function runs on page load to set the correct theme state
+ */
+function initTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    const themeToggle = document.getElementById('themeToggle');
+    const themeLabel = document.getElementById('themeLabel');
+    
+    if (savedTheme === 'dark') {
+        themeToggle.classList.add('active');
+        themeLabel.textContent = 'Dark Mode';
+    } else {
+        themeToggle.classList.remove('active');
+        themeLabel.textContent = 'Light Mode';
+    }
+}
+
+/**
+ * Toggles between light and dark theme
+ * Saves the preference to localStorage and applies it to the document
+ */
+function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    const themeToggle = document.getElementById('themeToggle');
+    const themeLabel = document.getElementById('themeLabel');
+    
+    // Update the document theme attribute
+    document.documentElement.setAttribute('data-theme', newTheme);
+    
+    // Save to localStorage for persistence across pages
+    localStorage.setItem('theme', newTheme);
+    
+    // Update toggle UI
+    if (newTheme === 'dark') {
+        themeToggle.classList.add('active');
+        themeLabel.textContent = 'Dark Mode';
+    } else {
+        themeToggle.classList.remove('active');
+        themeLabel.textContent = 'Light Mode';
+    }
+}
+
+// Initialize theme on page load
+initTheme();
 </script>
 {% endblock %}
