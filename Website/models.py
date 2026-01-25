@@ -710,3 +710,6 @@ class ItemPriceSnapshot(models.Model):
         high_gp = (self.high_price_volume or 0) * (self.avg_high_price or 0)
         low_gp = (self.low_price_volume or 0) * (self.avg_low_price or 0)
         return high_gp + low_gp
+
+
+
