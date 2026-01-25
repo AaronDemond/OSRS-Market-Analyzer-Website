@@ -1,0 +1,198 @@
+/* 
+ * Theme CSS Variables System
+ * This file defines the complete color system for light and dark themes.
+ * All color values should reference these variables for consistent theming.
+ */
+
+/* ============================================
+   LIGHT THEME (Default)
+   ============================================ */
+:root {
+    /* Background Colors */
+    --bg: #F8F9FA;                    /* Main page background */
+    --bg-secondary: #F4F6F9;          /* Secondary background areas */
+    --surface: #FFFFFF;               /* Card/surface background */
+    --surface-2: #F5F6F8;             /* Secondary surface (headers, etc) */
+    --surface-hover: #F9FAFB;         /* Hover state for surfaces */
+    
+    /* Border Colors */
+    --border: #E5E7EB;                /* Default border color */
+    --border-light: #F3F4F6;          /* Light borders */
+    --border-dark: #D1D5DB;           /* Darker borders for emphasis */
+    
+    /* Text Colors */
+    --text: #374151;                  /* Primary text color */
+    --text-secondary: #6B7280;        /* Secondary/muted text */
+    --text-tertiary: #9CA3AF;         /* Tertiary/subtle text */
+    --text-inverse: #FFFFFF;          /* Text on dark backgrounds */
+    --muted: #6B7280;                 /* Muted text (alias) */
+    
+    /* Brand/Primary Colors */
+    --primary: #6366F1;               /* Primary brand color */
+    --primary-hover: #5558E3;         /* Primary hover state */
+    --primary-light: #818CF8;         /* Light primary variant */
+    --primary-dark: #4F46E5;          /* Dark primary variant */
+    
+    /* Semantic Colors - Success */
+    --success: #22C55E;               /* Success/positive states */
+    --success-hover: #16A34A;         /* Success hover state */
+    --success-light: #4ADE80;         /* Light success variant */
+    --success-bg: #F0FDF4;            /* Success background */
+    
+    /* Semantic Colors - Danger/Error */
+    --danger: #EF4444;                /* Danger/error states */
+    --danger-hover: #DC2626;          /* Danger hover state */
+    --danger-light: #F87171;          /* Light danger variant */
+    --danger-bg: #FEF2F2;             /* Danger background */
+    
+    /* Semantic Colors - Warning */
+    --warning: #F59E0B;               /* Warning states */
+    --warning-hover: #D97706;         /* Warning hover state */
+    --warning-light: #FCD34D;         /* Light warning variant */
+    --warning-bg: #FFFBEB;            /* Warning background */
+    
+    /* Semantic Colors - Info */
+    --info: #3B82F6;                  /* Info states */
+    --info-hover: #2563EB;            /* Info hover state */
+    --info-light: #60A5FA;            /* Light info variant */
+    --info-bg: #EFF6FF;               /* Info background */
+    
+    /* Accent Colors (Green gradient theme) */
+    --accent-1: #11998e;              /* Teal accent */
+    --accent-2: #38ef7d;              /* Green accent */
+    --accent-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    
+    /* Additional UI Colors */
+    --hover-orange: #F97316;          /* Orange hover states */
+    --hover-orange-light: #FDBA74;    /* Light orange hover */
+    
+    /* Shadow Colors */
+    --shadow-sm: rgba(0, 0, 0, 0.05);
+    --shadow-md: rgba(0, 0, 0, 0.1);
+    --shadow-lg: rgba(0, 0, 0, 0.15);
+    --shadow-xl: rgba(0, 0, 0, 0.2);
+    
+    /* Overlay Colors */
+    --overlay: rgba(0, 0, 0, 0.5);
+    --overlay-light: rgba(0, 0, 0, 0.3);
+    
+    /* Input Colors */
+    --input-bg: #FFFFFF;
+    --input-border: #D1D5DB;
+    --input-border-focus: #6366F1;
+    --input-text: #374151;
+    --input-placeholder: #9CA3AF;
+    
+    /* Sidebar Colors (Always dark, even in light mode) */
+    --sidebar-bg: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+    --sidebar-text: #FFFFFF;
+    --sidebar-text-muted: rgba(255, 255, 255, 0.7);
+    --sidebar-hover: rgba(255, 255, 255, 0.1);
+    --sidebar-active: rgba(102, 102, 241, 0.2);
+    --sidebar-border: rgba(255, 255, 255, 0.1);
+    --sidebar-icon: #667eea;
+}
+
+/* ============================================
+   DARK THEME
+   ============================================ */
+[data-theme="dark"] {
+    /* Background Colors */
+    --bg: #0f0f1e;                    /* Darker main background */
+    --bg-secondary: #1a1a2e;          /* Secondary background */
+    --surface: #1e1e2e;               /* Card/surface background */
+    --surface-2: #25254a;             /* Secondary surface */
+    --surface-hover: #2a2a3e;         /* Hover state */
+    
+    /* Border Colors */
+    --border: #2d2d4a;                /* Default border */
+    --border-light: #25253a;          /* Light borders */
+    --border-dark: #35355a;           /* Darker borders */
+    
+    /* Text Colors */
+    --text: #e0e0e0;                  /* Primary text */
+    --text-secondary: #a0a0b0;        /* Secondary text */
+    --text-tertiary: #707080;         /* Tertiary text */
+    --text-inverse: #0f0f1e;          /* Text on light backgrounds */
+    --muted: #a0a0b0;                 /* Muted text */
+    
+    /* Brand/Primary Colors (Pink/Magenta for dark mode) */
+    --primary: #ff6b9d;               /* Vibrant pink primary */
+    --primary-hover: #ff5588;         /* Darker pink hover */
+    --primary-light: #ff88b3;         /* Light pink variant */
+    --primary-dark: #ff4477;          /* Dark pink variant */
+    
+    /* Semantic Colors - Success (Cyan/Turquoise for dark mode) */
+    --success: #00d9ff;               /* Bright cyan success */
+    --success-hover: #00b8d9;         /* Darker cyan hover */
+    --success-light: #33e0ff;         /* Light cyan variant */
+    --success-bg: #0a2a2e;            /* Success background */
+    
+    /* Semantic Colors - Danger/Error (Orange/Red for dark mode) */
+    --danger: #ff6b4a;                /* Coral red danger */
+    --danger-hover: #ff5535;          /* Darker coral hover */
+    --danger-light: #ff8866;          /* Light coral variant */
+    --danger-bg: #2e1a1a;             /* Danger background */
+    
+    /* Semantic Colors - Warning (Gold/Amber for dark mode) */
+    --warning: #ffd93d;               /* Bright gold warning */
+    --warning-hover: #ffc920;         /* Darker gold hover */
+    --warning-light: #ffe066;         /* Light gold variant */
+    --warning-bg: #2e2a1a;            /* Warning background */
+    
+    /* Semantic Colors - Info (Purple for dark mode) */
+    --info: #a78bfa;                  /* Purple info */
+    --info-hover: #8b5cf6;            /* Darker purple hover */
+    --info-light: #c4b5fd;            /* Light purple variant */
+    --info-bg: #1e1a2e;               /* Info background */
+    
+    /* Accent Colors (Purple/Blue gradient for dark mode) */
+    --accent-1: #667eea;              /* Purple accent */
+    --accent-2: #764ba2;              /* Deep purple accent */
+    --accent-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    
+    /* Additional UI Colors */
+    --hover-orange: #ff9966;          /* Lighter orange for dark mode */
+    --hover-orange-light: #ffaa88;    /* Very light orange */
+    
+    /* Shadow Colors (More pronounced in dark mode) */
+    --shadow-sm: rgba(0, 0, 0, 0.3);
+    --shadow-md: rgba(0, 0, 0, 0.4);
+    --shadow-lg: rgba(0, 0, 0, 0.5);
+    --shadow-xl: rgba(0, 0, 0, 0.6);
+    
+    /* Overlay Colors */
+    --overlay: rgba(0, 0, 0, 0.7);
+    --overlay-light: rgba(0, 0, 0, 0.5);
+    
+    /* Input Colors */
+    --input-bg: #1e1e2e;
+    --input-border: #2d2d4a;
+    --input-border-focus: #ff6b9d;
+    --input-text: #e0e0e0;
+    --input-placeholder: #707080;
+    
+    /* Sidebar Colors (Remains dark, but slightly adjusted) */
+    --sidebar-bg: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+    --sidebar-text: #FFFFFF;
+    --sidebar-text-muted: rgba(255, 255, 255, 0.7);
+    --sidebar-hover: rgba(255, 255, 255, 0.1);
+    --sidebar-active: rgba(255, 107, 157, 0.2);
+    --sidebar-border: rgba(255, 255, 255, 0.1);
+    --sidebar-icon: #ff6b9d;
+}
+
+/* ============================================
+   SMOOTH THEME TRANSITIONS
+   ============================================ */
+* {
+    transition: background-color 0.3s ease, 
+                border-color 0.3s ease, 
+                color 0.3s ease,
+                box-shadow 0.3s ease;
+}
+
+/* Prevent transition on page load */
+.no-transition * {
+    transition: none !important;
+}
