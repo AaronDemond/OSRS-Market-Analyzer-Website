@@ -1047,26 +1047,7 @@
         border-color: var(--primary);
     }
 
-    .sort-indicator.flash {
-        animation: sortFlash 0.25s ease 5;
-    }
 
-    @keyframes sortFlash {
-        0% {
-            background: var(--surface);
-            border-color: var(--border);
-        }
-
-        50% {
-            background: rgba(99, 102, 241, 0.15);
-            border-color: var(--primary);
-        }
-
-        100% {
-            background: var(--surface);
-            border-color: var(--border);
-        }
-    }
 
     .sort-indicator-label {
         color: var(--text-muted);
@@ -3595,13 +3576,6 @@
             sortIndicatorValueMobile.textContent = sortIndicatorValue.textContent;
             sortIndicatorArrowMobile.textContent = sortIndicatorArrow.textContent;
             
-            // Copy flash animation
-            if (sortIndicator.classList.contains('flash')) {
-                sortIndicatorMobile.classList.add('flash');
-            } else {
-                sortIndicatorMobile.classList.remove('flash');
-            }
-            
             // Sync dropdown options - rebuild mobile dropdown from active filters
             // What: Populates mobile dropdown with the same options as desktop
             // Why: Mobile users need the same sort switching functionality
@@ -3617,16 +3591,13 @@
                 // Add click handlers for mobile sort dropdown options
                 // What: Handles clicks on dropdown items to change sort filter
                 // Why: Allows users to select a different filter for sorting
-                // How: Updates currentSortFilter, triggers animation, re-sorts table
+                // How: Updates currentSortFilter, re-sorts table
                 sortIndicatorOptionsMobile.querySelectorAll('.sort-by-item').forEach(item => {
                     item.addEventListener('click', function (e) {
                         e.stopPropagation();
                         const newSort = this.dataset.sort;
                         if (newSort !== currentSortFilter) {
                             currentSortFilter = newSort;
-                            sortIndicator.classList.remove('flash');
-                            void sortIndicator.offsetWidth;
-                            sortIndicator.classList.add('flash');
                             clearColumnSortStyling();
                             updateSortByOptions();
                             sortTableByFilter();
@@ -3775,13 +3746,6 @@
                     currentSortFilter = filterKeys[0];
                 }
 
-                // Flash the indicator when sort changes or first activates
-                if (previousSort !== currentSortFilter || !previousSort) {
-                    sortIndicator.classList.remove('flash');
-                    void sortIndicator.offsetWidth;
-                    sortIndicator.classList.add('flash');
-                }
-
                 // Update sort indicator text
                 sortIndicatorValue.textContent = filterDisplayNames[currentSortFilter];
                 sortIndicatorArrow.textContent = sortAscending ? '↑' : '↓';
@@ -3800,9 +3764,6 @@
                         const newSort = this.dataset.sort;
                         if (newSort !== currentSortFilter) {
                             currentSortFilter = newSort;
-                            sortIndicator.classList.remove('flash');
-                            void sortIndicator.offsetWidth;
-                            sortIndicator.classList.add('flash');
                             clearColumnSortStyling();
                             updateSortByOptions();
                             sortTableByFilter();
@@ -3830,9 +3791,6 @@
                     const newSort = this.dataset.sort;
                     columnSortActive = false;
                     currentSortFilter = newSort;
-                    sortIndicator.classList.remove('flash');
-                    void sortIndicator.offsetWidth;
-                    sortIndicator.classList.add('flash');
                     clearColumnSortStyling();
                     updateSortByOptions();
                     sortTableByFilter();
@@ -4249,11 +4207,6 @@
             clearColumnSortStyling();
             updateFilterUI();
             applyFilters();
-
-            // Trigger flash animation
-            sortIndicator.classList.remove('flash');
-            void sortIndicator.offsetWidth;
-            sortIndicator.classList.add('flash');
             syncMobileSortIndicator();
 
             bootstrap.Modal.getInstance(timeHeldModal).hide();
@@ -4290,11 +4243,6 @@
             clearColumnSortStyling();
             updateFilterUI();
             applyFilters();
-
-            // Trigger flash animation
-            sortIndicator.classList.remove('flash');
-            void sortIndicator.offsetWidth;
-            sortIndicator.classList.add('flash');
             syncMobileSortIndicator();
 
             bootstrap.Modal.getInstance(unrealizedModal).hide();
@@ -4331,11 +4279,6 @@
             clearColumnSortStyling();
             updateFilterUI();
             applyFilters();
-
-            // Trigger flash animation
-            sortIndicator.classList.remove('flash');
-            void sortIndicator.offsetWidth;
-            sortIndicator.classList.add('flash');
             syncMobileSortIndicator();
 
             bootstrap.Modal.getInstance(realizedModal).hide();
@@ -4372,11 +4315,6 @@
             clearColumnSortStyling();
             updateFilterUI();
             applyFilters();
-
-            // Trigger flash animation
-            sortIndicator.classList.remove('flash');
-            void sortIndicator.offsetWidth;
-            sortIndicator.classList.add('flash');
             syncMobileSortIndicator();
 
             bootstrap.Modal.getInstance(positionSizeModal).hide();
@@ -4413,11 +4351,6 @@
             clearColumnSortStyling();
             updateFilterUI();
             applyFilters();
-
-            // Trigger flash animation
-            sortIndicator.classList.remove('flash');
-            void sortIndicator.offsetWidth;
-            sortIndicator.classList.add('flash');
             syncMobileSortIndicator();
 
             bootstrap.Modal.getInstance(quantityModal).hide();
@@ -4453,10 +4386,6 @@
                 clearColumnSortStyling();
                 updateFilterUI();
                 applyFilters();
-
-                sortIndicator.classList.remove('flash');
-                void sortIndicator.offsetWidth;
-                sortIndicator.classList.add('flash');
                 syncMobileSortIndicator();
             }
             bootstrap.Modal.getInstance(completionModal).hide();
