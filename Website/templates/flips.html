@@ -427,13 +427,17 @@
         align-items: center;
     }
 
-    /*
+    /* Search/filter row - horizontal layout with search, buttons */
     .search-filter-row {
         display: flex;
         gap: 8px;
         align-items: center;
     }
-    */
+
+    /* Mobile action dropdown - hidden on desktop */
+    .mobile-action-dropdown {
+        display: none;
+    }
 
     /* Filter search bar - stretches to fill available space */
     .filter-search-wrapper {
@@ -461,6 +465,22 @@
 
     .filter-search-input::placeholder {
         color: var(--muted);
+    }
+
+    /* Search icon - shows in collapsed mobile search */
+    .filter-search-icon {
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+        color: var(--muted);
+        display: none;
+    }
+
+    .filter-search-icon svg {
+        width: 18px;
+        height: 18px;
     }
 
     .filter-search-clear {
@@ -1907,8 +1927,14 @@
         }
     }
 
-    /* Mobile styles */
+    /* =========================================================================
+       MOBILE STYLES - COMPREHENSIVE OVERHAUL
+       What: Responsive design for mobile devices (max-width: 900px)
+       Why: Optimize layout and controls for small screens with touch interfaces
+       How: Collapsible search, action dropdown menu, horizontal table scroll
+       ========================================================================= */
     @media (max-width: 900px) {
+        /* ===== STATS ROW MOBILE ===== */
         .stats-row {
             flex-direction: column;
             gap: 0.5rem;
@@ -1933,71 +1959,209 @@
             font-size: 16px;
         }
 
-        /* Hide columns on mobile: Price Paid, Quantity Holding, High Price, Low Price */
-        #flipsTable th:nth-child(2),
-        #flipsTable td:nth-child(2),
-        #flipsTable th:nth-child(3),
-        #flipsTable td:nth-child(3),
-        #flipsTable th:nth-child(5),
-        #flipsTable td:nth-child(5),
-        #flipsTable th:nth-child(6),
-        #flipsTable td:nth-child(6) {
-            display: none;
-        }
-
-        #flipsTable {
-            font-size: 0.75rem;
-            width: 100%;
-            max-width: 100%;
-            table-layout: fixed;
-        }
-
+        /* ===== TABLE MOBILE - SHOW ALL COLUMNS WITH HORIZONTAL SCROLL ===== */
+        /* What: Display all table columns with horizontal scrolling container
+           Why: Keep all data visible instead of hiding columns
+           How: Wrap table in scrollable container with visual indicators */
+        
+        /* Prevent page-level horizontal scroll */
         .main-content {
             overflow-x: hidden;
         }
 
-        #flipsTable th,
-        #flipsTable td {
-            padding: 0.4rem 0.25rem;
+        /* Table stays readable but compact */
+        #flipsTable {
+            font-size: 0.75rem;
+            width: auto; /* Allow table to be wider than viewport */
+            min-width: 100%;
+            table-layout: auto; /* Allow columns to size based on content */
         }
 
-        /* Mobile controls layout */
+        #flipsTable th,
+        #flipsTable td {
+            padding: 0.5rem 0.4rem;
+            white-space: nowrap; /* Prevent text wrapping */
+        }
+
+        /* Make first column (Item name) slightly sticky for context */
+        #flipsTable th:first-child,
+        #flipsTable td:first-child {
+            position: sticky;
+            left: 0;
+            z-index: 10;
+            background: inherit;
+            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Ensure header maintains dark background when sticky */
+        #flipsTable thead th:first-child {
+            background: #1F2937; /* Same as regular header */
+            z-index: 11; /* Higher than regular sticky to stay on top */
+        }
+
+        /* ===== MOBILE CONTROLS LAYOUT ===== */
         .controls-container {
             gap: 0.75rem;
         }
 
+        /* ===== BUTTONS ROW - ACTION DROPDOWN ===== */
+        /* What: Group New Flip and Delete Flip into dropdown menu
+           Why: Save horizontal space on small screens
+           How: Show icon button that reveals action menu */
+        
         .buttons-row {
             justify-content: flex-start;
-        }
-
-        .search-filter-row {
-            flex-direction: row;
             gap: 0.5rem;
         }
 
-        /* Search bar stretches on mobile */
+        /* Show mobile action dropdown on mobile */
+        .mobile-action-dropdown {
+            display: block;
+        }
+
+        /* Hide individual action buttons on mobile */
+        .btn-new-flip,
+        .btn-delete-flip {
+            display: none;
+        }
+
+        /* ===== SEARCH/FILTER ROW MOBILE ===== */
+        .search-filter-row {
+            flex-direction: row;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        /* ===== COLLAPSIBLE SEARCH BAR ===== */
+        /* What: Search bar collapses to icon button, expands on click
+           Why: Save space when search isn't being used
+           How: Toggle between icon and full input with transition */
+        
         .filter-search-wrapper {
-            flex: 1;
+            flex: 0 0 auto; /* Don't stretch by default */
             min-width: 0;
+            transition: flex 0.3s ease;
         }
 
-        .filter-search-input {
+        /* Collapsed state - show icon only */
+        .filter-search-wrapper.collapsed {
+            flex: 0 0 44px;
+            width: 44px;
+        }
+
+        .filter-search-wrapper.collapsed .filter-search-input {
+            width: 44px;
+            padding: 8px;
+            cursor: pointer;
+            caret-color: transparent;
+        }
+
+        .filter-search-wrapper.collapsed .filter-search-input::placeholder {
+            opacity: 0;
+        }
+
+        /* Show search icon in collapsed state */
+        .filter-search-wrapper.collapsed .filter-search-icon {
+            display: block;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Hide clear button in collapsed state */
+        /* What: Ensures clear button stays hidden in collapsed search
+           Why: No room for clear button in 44px collapsed state
+           How: Increased specificity to override has-value class */
+        .filter-search-wrapper.collapsed.has-value .filter-search-clear,
+        .filter-search-wrapper.collapsed .filter-search-clear {
+            display: none;
+        }
+
+        /* Expanded state - show full search bar */
+        .filter-search-wrapper.expanded {
+            flex: 1 1 auto;
+        }
+
+        .filter-search-wrapper.expanded .filter-search-input {
             width: 100%;
-            font-size: 14px;
-            padding: 8px 12px;
+            padding: 8px 36px 8px 12px;
         }
 
+        /* Search input on mobile */
+        .filter-search-input {
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        /* ===== ICON-ONLY BUTTONS ON MOBILE ===== */
+        /* What: Remove text labels from Historical and Filter buttons
+           Why: Save horizontal space while keeping functionality
+           How: Hide text spans, ensure icons are properly sized */
+        
+        /* Historical button - icon only */
+        .btn-historical {
+            padding: 8px 10px;
+            min-width: 44px;
+            min-height: 44px;
+            justify-content: center;
+        }
+
+        .btn-historical .btn-text {
+            display: none;
+        }
+
+        .btn-historical svg {
+            width: 20px;
+            height: 20px;
+            margin: 0;
+        }
+
+        /* Filter button - icon only */
+        .btn-filter {
+            padding: 8px 10px;
+            min-width: 44px;
+            min-height: 44px;
+            justify-content: center;
+            gap: 4px;
+            position: relative;
+        }
+
+        .btn-filter .btn-text {
+            display: none;
+        }
+
+        .btn-filter svg {
+            width: 20px;
+            height: 20px;
+            margin: 0;
+        }
+
+        /* Keep filter badge visible but smaller */
+        .filter-badge {
+            font-size: 10px;
+            padding: 2px 5px;
+            margin-left: 0;
+            position: absolute;
+            top: 4px;
+            right: 4px;
+        }
+
+        /* ===== SORT INDICATOR MOBILE ===== */
         /* Hide desktop sort indicator on mobile */
+        /* What: Ensures desktop inline sort stays hidden on mobile viewports
+           Why: Mobile has its own dedicated sort indicator row
+           How: Already inside mobile media query, no nesting needed */
         .desktop-sort {
-            display: none !important;
+            display: none;
         }
 
         /* Hide desktop filter tags row on mobile */
+        /* What: Hides the desktop filter tags row on mobile devices
+           Why: Mobile displays filter tags in the mobile sort indicator row
+           How: Already inside mobile media query, no nesting needed */
         .active-filter-tags-row {
-            display: none !important;
+            display: none;
         }
 
-        /* Show mobile sort indicator as its own row on mobile - only when active or has filters */
         .sort-indicator-mobile-row.active,
         .sort-indicator-mobile-row.has-filters {
             display: flex;
@@ -2008,26 +2172,208 @@
 
         .sort-indicator {
             padding: 6px 10px;
-            font-size: 12px;
+            font-size: 11px;
             gap: 4px;
             white-space: nowrap;
+        }
+
+        .sort-indicator-label {
+            font-size: 10px;
+        }
+
+        .sort-indicator-value {
+            font-size: 11px;
         }
 
         .sort-indicator-arrow {
             padding: 2px 5px;
             font-size: 12px;
+            min-width: 24px;
+            min-height: 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        /* Mobile filter tags */
+        /* ===== MOBILE FILTER TAGS ===== */
+        /* What: Display active filters compactly below controls
+           Why: Show which filters are active without cluttering main controls
+           How: Small badges with remove buttons, wrap to multiple lines if needed */
+        
         .filter-tag {
-            padding: 3px 6px 3px 8px;
-            font-size: 11px;
+            padding: 4px 6px 4px 8px;
+            font-size: 10px;
+            border-radius: 12px;
+            gap: 4px;
         }
 
         .filter-tag-remove {
-            width: 14px;
-            height: 14px;
+            width: 16px;
+            height: 16px;
             font-size: 12px;
+            min-width: 16px;
+            min-height: 16px;
+        }
+
+        /* ===== MOBILE ACTION DROPDOWN ===== */
+        /* What: Dropdown menu for New Flip and Delete Flip actions
+           Why: Conserve space by grouping actions under one button
+           How: Icon button that opens menu with action items */
+        
+        .mobile-action-dropdown {
+            position: relative;
+        }
+
+        .btn-mobile-actions {
+            padding: 8px 10px;
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            min-width: 44px;
+            min-height: 44px;
+            justify-content: center;
+        }
+
+        .btn-mobile-actions:hover {
+            background: var(--surface-2);
+            border-color: var(--primary);
+        }
+
+        .btn-mobile-actions svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .mobile-action-menu {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+            min-width: 180px;
+            z-index: 1000;
+            display: none;
+            padding: 6px;
+        }
+
+        .mobile-action-menu.show {
+            display: block;
+        }
+
+        .mobile-action-item {
+            padding: 10px 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.15s;
+            border-radius: 6px;
+            margin: 2px 0;
+            background: var(--surface-2);
+            border: 1px solid transparent;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        .mobile-action-item:hover {
+            background: linear-gradient(135deg, rgba(234, 179, 140, 0.3), rgba(216, 155, 108, 0.25));
+            border-color: rgba(200, 140, 90, 0.3);
+        }
+
+        .mobile-action-item svg {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+
+        /* Delete mode active state for mobile action button */
+        .btn-mobile-actions.delete-mode-active {
+            background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+            border-color: transparent;
+            color: #fff;
+        }
+
+        .btn-mobile-actions.delete-mode-active:hover {
+            background: linear-gradient(135deg, #D97706 0%, #B45309 100%);
+        }
+
+        /* ===== TABLE SCROLL WRAPPER ===== */
+        /* What: Horizontally scrollable container with visual indicators
+           Why: Allow table to show all columns while keeping page width fixed
+           How: Overflow wrapper with shadow indicators for scroll position */
+        
+        /* Note: The wrapper will be added via JavaScript around the table */
+        .table-scroll-wrapper {
+            position: relative;
+            overflow-x: auto;
+            overflow-y: visible;
+            -webkit-overflow-scrolling: touch;
+            margin-bottom: 12px;
+            border-radius: 14px;
+        }
+
+        /* Visual scroll indicators - shadows that appear when scrollable */
+        .table-scroll-wrapper::before,
+        .table-scroll-wrapper::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 20px;
+            pointer-events: none;
+            z-index: 20;
+            transition: opacity 0.3s ease;
+        }
+
+        /* Left shadow - shows when scrolled right */
+        .table-scroll-wrapper::before {
+            left: 0;
+            background: linear-gradient(to right, rgba(0, 0, 0, 0.15), transparent);
+            opacity: 0;
+        }
+
+        .table-scroll-wrapper.scrolled-right::before {
+            opacity: 1;
+        }
+
+        /* Right shadow - shows when scrolled left */
+        .table-scroll-wrapper::after {
+            right: 0;
+            background: linear-gradient(to left, rgba(0, 0, 0, 0.15), transparent);
+            opacity: 1;
+        }
+
+        .table-scroll-wrapper.scrolled-to-end::after {
+            opacity: 0;
+        }
+
+        /* Hide scrollbar on some browsers while keeping functionality */
+        .table-scroll-wrapper::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        .table-scroll-wrapper::-webkit-scrollbar-track {
+            background: var(--surface-2);
+            border-radius: 3px;
+        }
+
+        .table-scroll-wrapper::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        .table-scroll-wrapper::-webkit-scrollbar-thumb:hover {
+            background: var(--muted);
         }
 
         /* =============================================================================
@@ -2057,15 +2403,6 @@
            How: Adjusts sizing, layout, and visibility for mobile viewports
            ========================================================================= */
         
-        /* Historical button - make it icon-only on very small screens */
-        .btn-historical {
-            padding: 8px 12px;
-        }
-
-        .btn-historical span {
-            display: none;
-        }
-
         /* Historical banner - stack vertically on mobile */
         .historical-banner {
             padding: 10px 14px;
@@ -2217,6 +2554,32 @@
 
 <div class="controls-container">
     <div class="d-flex gap-3 align-items-center buttons-row">
+        <!-- Mobile Action Dropdown - shown only on mobile -->
+        <div class="mobile-action-dropdown">
+            <button type="button" class="btn-mobile-actions" id="mobileActionsBtn" aria-label="Actions menu">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                        d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                </svg>
+            </button>
+            <div class="mobile-action-menu" id="mobileActionMenu">
+                <div class="mobile-action-item" data-action="new-flip">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    New Flip
+                </div>
+                <div class="mobile-action-item" data-action="delete-flip">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Delete Flip
+                </div>
+            </div>
+        </div>
+        
+        <!-- Desktop Action Buttons - hidden on mobile -->
         <button type="button" class="btn-new-flip" data-bs-toggle="modal" data-bs-target="#newFlipModal">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -2245,6 +2608,12 @@
             </div>
         </div>
         <div class="filter-search-wrapper" id="filterSearchWrapper">
+            <span class="filter-search-icon" id="filterSearchIcon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+            </span>
             <input type="text" class="filter-search-input" id="filterSearchInput" placeholder="Search...">
             <button type="button" class="filter-search-clear" id="filterSearchClear">&times;</button>
         </div>
@@ -2257,7 +2626,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            Historical
+            <span class="btn-text">Historical</span>
         </button>
         <div class="filter-sort-group">
             <div class="filter-dropdown-wrapper">
@@ -2266,7 +2635,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                     </svg>
-                    Filters
+                    <span class="btn-text">Filters</span>
                     <span class="filter-badge" id="filterBadge" style="display: none;">0</span>
                 </button>
                 <div class="filter-dropdown-menu" id="filterDropdownMenu">
@@ -4878,6 +5247,280 @@
         // Clear the existing interval and set up a new one that respects historical mode
         // Note: We can't actually clear the original interval since we don't have its ID,
         // but we can make the loadFlipsData function check the mode
+
+        // =========================================================================
+        // MOBILE-SPECIFIC FUNCTIONALITY
+        // =========================================================================
+
+        /**
+         * Mobile Action Dropdown Menu
+         * What: Dropdown menu for New Flip and Delete Flip on mobile devices
+         * Why: Conserve horizontal space on small screens by grouping actions
+         * How: Toggle menu visibility, delegate click events to actual buttons
+         */
+        const mobileActionsBtn = document.getElementById('mobileActionsBtn');
+        const mobileActionMenu = document.getElementById('mobileActionMenu');
+        
+        if (mobileActionsBtn && mobileActionMenu) {
+            // Toggle action menu on button click
+            mobileActionsBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                mobileActionMenu.classList.toggle('show');
+            });
+
+            // Handle action menu item clicks
+            mobileActionMenu.addEventListener('click', function(e) {
+                const item = e.target.closest('.mobile-action-item');
+                if (!item) return;
+
+                const action = item.dataset.action;
+                mobileActionMenu.classList.remove('show');
+
+                if (action === 'new-flip') {
+                    // Trigger the New Flip modal with proper instance management
+                    // What: Opens new flip modal safely without creating duplicate instances
+                    // Why: Prevents memory leaks from multiple modal instances
+                    // How: Reuse existing instance or create new one only if needed
+                    const newFlipModalElement = document.getElementById('newFlipModal');
+                    if (newFlipModalElement) {
+                        let modal = bootstrap.Modal.getInstance(newFlipModalElement);
+                        if (!modal) {
+                            modal = new bootstrap.Modal(newFlipModalElement);
+                        }
+                        modal.show();
+                    }
+                } else if (action === 'delete-flip') {
+                    // Trigger the delete flip button click with null check
+                    const deleteBtn = document.getElementById('deleteFlipBtn');
+                    if (deleteBtn) {
+                        deleteBtn.click();
+                    }
+                }
+            });
+
+            // Close menu when clicking outside (only on mobile)
+            // What: Closes action menu when user clicks elsewhere
+            // Why: Standard dropdown behavior
+            // How: Single event listener, managed based on viewport
+            function handleOutsideClick(e) {
+                if (!mobileActionsBtn.contains(e.target) && !mobileActionMenu.contains(e.target)) {
+                    mobileActionMenu.classList.remove('show');
+                }
+            }
+
+            // Track if listener is active to prevent duplicates
+            let isListenerActive = false;
+            
+            // Add listener if on mobile
+            if (window.matchMedia('(max-width: 900px)').matches) {
+                document.addEventListener('click', handleOutsideClick);
+                isListenerActive = true;
+            }
+
+            // Handle viewport resize - add/remove listener as needed
+            // What: Manages click listener lifecycle based on viewport
+            // Why: Prevent memory leaks and unnecessary event handling on desktop
+            // How: Add listener on mobile, remove on desktop, prevent duplicates
+            window.addEventListener('resize', function() {
+                const isMobileNow = window.matchMedia('(max-width: 900px)').matches;
+                
+                if (isMobileNow && !isListenerActive) {
+                    // Switched to mobile - add listener
+                    document.addEventListener('click', handleOutsideClick);
+                    isListenerActive = true;
+                } else if (!isMobileNow && isListenerActive) {
+                    // Switched to desktop - remove listener
+                    document.removeEventListener('click', handleOutsideClick);
+                    isListenerActive = false;
+                    mobileActionMenu.classList.remove('show'); // Close menu if resizing to desktop
+                }
+            });
+
+            // Sync delete mode active state to mobile button
+            // What: Keep mobile action button styling in sync with desktop delete button
+            // Why: Visual feedback when delete mode is active
+            // How: Use MutationObserver to watch for class changes, optimized
+            const deleteBtn = document.getElementById('deleteFlipBtn');
+            if (deleteBtn) {
+                const observer = new MutationObserver(function() {
+                    // Optimized: Check class directly without iterating mutations
+                    // What: Update mobile button state based on desktop button
+                    // Why: Synchronize visual state across both button implementations
+                    // How: Check current class, update mobile button accordingly
+                    if (deleteBtn.classList.contains('delete-mode-active')) {
+                        mobileActionsBtn.classList.add('delete-mode-active');
+                    } else {
+                        mobileActionsBtn.classList.remove('delete-mode-active');
+                    }
+                });
+
+                // Only watch for class attribute changes to optimize performance
+                observer.observe(deleteBtn, { 
+                    attributes: true,
+                    attributeFilter: ['class']
+                });
+            }
+        }
+
+        /**
+         * Collapsible Search Bar
+         * What: Search bar that collapses to icon on mobile, expands on interaction
+         * Why: Save horizontal space when search isn't actively being used
+         * How: Toggle collapsed/expanded classes based on focus and content
+         */
+        const filterSearchWrapper = document.getElementById('filterSearchWrapper');
+        const filterSearchInput = document.getElementById('filterSearchInput');
+
+        // Configuration constants
+        const SEARCH_COLLAPSE_DELAY_MS = 200; // Delay before collapsing to allow clear button clicks
+        const RESIZE_DEBOUNCE_DELAY_MS = 100; // Delay for resize event debouncing
+
+        if (filterSearchWrapper && filterSearchInput) {
+            // Check if we're on mobile (max-width: 900px)
+            function isMobile() {
+                return window.matchMedia('(max-width: 900px)').matches;
+            }
+
+            // Initialize collapsed state on mobile if no search value
+            function initializeSearchBar() {
+                if (isMobile() && !filterSearchInput.value) {
+                    filterSearchWrapper.classList.add('collapsed');
+                    filterSearchWrapper.classList.remove('expanded');
+                } else if (isMobile()) {
+                    filterSearchWrapper.classList.add('expanded');
+                    filterSearchWrapper.classList.remove('collapsed');
+                }
+            }
+
+            // Expand search bar on focus or click
+            filterSearchInput.addEventListener('focus', function() {
+                if (isMobile()) {
+                    filterSearchWrapper.classList.remove('collapsed');
+                    filterSearchWrapper.classList.add('expanded');
+                }
+            });
+
+            // Collapse search bar on blur if empty
+            filterSearchInput.addEventListener('blur', function() {
+                if (isMobile() && !filterSearchInput.value) {
+                    setTimeout(function() {
+                        filterSearchWrapper.classList.add('collapsed');
+                        filterSearchWrapper.classList.remove('expanded');
+                    }, SEARCH_COLLAPSE_DELAY_MS);
+                }
+            });
+
+            // Expand when clicking the collapsed search icon
+            filterSearchWrapper.addEventListener('click', function(e) {
+                if (isMobile() && filterSearchWrapper.classList.contains('collapsed')) {
+                    filterSearchInput.focus();
+                }
+            });
+
+            // Initialize on page load
+            initializeSearchBar();
+
+            // Re-initialize on window resize (debounced)
+            let resizeTimeout;
+            window.addEventListener('resize', function() {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(initializeSearchBar, RESIZE_DEBOUNCE_DELAY_MS);
+            });
+        }
+
+        /**
+         * Table Horizontal Scroll Wrapper
+         * What: Wraps table in scrollable container with visual scroll indicators
+         * Why: Allow all columns to be visible on mobile while preventing page scroll
+         * How: Create wrapper div, add shadow indicators based on scroll position
+         */
+        function setupTableScrollWrapper() {
+            const table = document.getElementById('flipsTable');
+            if (!table) {
+                return; // Table doesn't exist
+            }
+
+            // Check if table is already wrapped (check ancestors, not just parent)
+            // What: Prevent duplicate wrappers
+            // Why: Avoid multiple resize listeners and DOM nesting issues
+            // How: Check if table or any ancestor has wrapper class
+            if (table.closest('.table-scroll-wrapper')) {
+                return; // Already wrapped
+            }
+
+            // Configuration constants
+            const SCROLL_THRESHOLD_PX = 5; // Pixels from edge to trigger shadow indicators
+
+            // Create wrapper
+            const wrapper = document.createElement('div');
+            wrapper.className = 'table-scroll-wrapper';
+            
+            // Wrap the table
+            table.parentNode.insertBefore(wrapper, table);
+            wrapper.appendChild(table);
+
+            // Update scroll indicators based on scroll position
+            function updateScrollIndicators() {
+                const scrollLeft = wrapper.scrollLeft;
+                const scrollWidth = wrapper.scrollWidth;
+                const clientWidth = wrapper.clientWidth;
+                const maxScroll = scrollWidth - clientWidth;
+
+                // Add/remove classes for shadow indicators
+                // Left shadow appears when scrolled away from left edge
+                if (scrollLeft > SCROLL_THRESHOLD_PX) {
+                    wrapper.classList.add('scrolled-right');
+                } else {
+                    wrapper.classList.remove('scrolled-right');
+                }
+
+                // Right shadow disappears when scrolled to right edge
+                if (scrollLeft >= maxScroll - SCROLL_THRESHOLD_PX) {
+                    wrapper.classList.add('scrolled-to-end');
+                } else {
+                    wrapper.classList.remove('scrolled-to-end');
+                }
+            }
+
+            // Listen for scroll events on wrapper only
+            wrapper.addEventListener('scroll', updateScrollIndicators);
+
+            // Initialize indicators
+            updateScrollIndicators();
+
+            // Update on window resize - attach to wrapper to cleanup with wrapper
+            // What: Update shadows when table width changes
+            // Why: Table width can change on orientation change or browser resize
+            // How: Use same handler, attached once per wrapper instance
+            const resizeHandler = function() {
+                updateScrollIndicators();
+            };
+            window.addEventListener('resize', resizeHandler);
+            
+            // Store handler on wrapper for potential future cleanup
+            wrapper._resizeHandler = resizeHandler;
+        }
+
+        // Setup table scroll wrapper on mobile
+        if (window.matchMedia('(max-width: 900px)').matches) {
+            setupTableScrollWrapper();
+        }
+
+        // Re-setup on window resize if entering/leaving mobile viewport
+        let currentIsMobile = window.matchMedia('(max-width: 900px)').matches;
+        window.addEventListener('resize', function() {
+            const nowIsMobile = window.matchMedia('(max-width: 900px)').matches;
+            if (nowIsMobile !== currentIsMobile) {
+                currentIsMobile = nowIsMobile;
+                if (nowIsMobile) {
+                    setupTableScrollWrapper();
+                }
+            }
+        });
+
+        // =========================================================================
+        // END MOBILE-SPECIFIC FUNCTIONALITY
+        // =========================================================================
     });
 </script>
 {% endblock %}
