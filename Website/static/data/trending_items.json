@@ -1,167 +1,167 @@
 {
   "gainers": [
     {
-      "id": 1617,
-      "name": "Uncut diamond",
-      "icon": "Uncut diamond.png",
-      "change": 28.97,
-      "price": 3228,
-      "volume": 87187473
+      "id": 32115,
+      "name": "Dragon cannon barrel",
+      "icon": "Dragon cannon barrel.png",
+      "change": 9.28,
+      "price": 5184207,
+      "volume": 259858375
     },
     {
-      "id": 22124,
-      "name": "Superior dragon bones",
-      "icon": "Superior dragon bones.png",
-      "change": 13.11,
-      "price": 27101,
-      "volume": 152480388
+      "id": 562,
+      "name": "Chaos rune",
+      "icon": "Chaos rune.png",
+      "change": 7.14,
+      "price": 75,
+      "volume": 110318478
     },
     {
-      "id": 28919,
-      "name": "Tonalztics of ralos (uncharged)",
-      "icon": "Tonalztics of ralos (uncharged).png",
-      "change": 9.38,
-      "price": 50542531,
-      "volume": 151627593
+      "id": 6889,
+      "name": "Mage's book",
+      "icon": "Mage's book.png",
+      "change": 6.34,
+      "price": 2546954,
+      "volume": 78743327
     },
     {
-      "id": 21000,
-      "name": "Twisted buckler",
-      "icon": "Twisted buckler.png",
-      "change": 7.55,
-      "price": 19631059,
-      "volume": 323094512
-    },
-    {
-      "id": 26219,
-      "name": "Osmumten's fang",
-      "icon": "Osmumten's fang.png",
-      "change": 6.32,
-      "price": 25771391,
-      "volume": 939581963
-    },
-    {
-      "id": 27690,
-      "name": "Voidwaker",
-      "icon": "Voidwaker.png",
-      "change": 5.61,
-      "price": 40349939,
-      "volume": 1286154305
-    },
-    {
-      "id": 23959,
-      "name": "Enhanced crystal teleport seed",
-      "icon": "Enhanced crystal teleport seed.png",
-      "change": 5.23,
-      "price": 1636761,
-      "volume": 106798655
-    },
-    {
-      "id": 29580,
-      "name": "Tormented synapse",
-      "icon": "Tormented synapse.png",
-      "change": 5.16,
-      "price": 34610498,
-      "volume": 941693966
-    },
-    {
-      "id": 22324,
-      "name": "Ghrazi rapier",
-      "icon": "Ghrazi rapier.png",
-      "change": 4.86,
-      "price": 36518380,
-      "volume": 467130944
-    },
-    {
-      "id": 13237,
-      "name": "Pegasian boots",
-      "icon": "Pegasian boots.png",
-      "change": 4.56,
-      "price": 24490746,
-      "volume": 423485816
-    }
-  ],
-  "losers": [
-    {
-      "id": 31111,
-      "name": "Demon tear",
-      "icon": "Demon tear.png",
-      "change": -6.28,
-      "price": 403,
-      "volume": 79802597
-    },
-    {
-      "id": 12625,
-      "name": "Stamina potion(4)",
-      "icon": "Stamina potion(4).png",
-      "change": -5.96,
-      "price": 7378,
-      "volume": 80881632
-    },
-    {
-      "id": 26241,
-      "name": "Virtus mask",
-      "icon": "Virtus mask.png",
-      "change": -5.76,
-      "price": 8781715,
-      "volume": 81596768
-    },
-    {
-      "id": 26233,
-      "name": "Ancient godsword",
-      "icon": "Ancient godsword.png",
-      "change": -5.44,
-      "price": 41115876,
-      "volume": 174742473
-    },
-    {
-      "id": 28997,
-      "name": "Dual macuahuitl",
-      "icon": "Dual macuahuitl.png",
-      "change": -4.45,
-      "price": 5996446,
-      "volume": 105187656
-    },
-    {
-      "id": 22481,
-      "name": "Sanguinesti staff (uncharged)",
-      "icon": "Sanguinesti staff (uncharged).png",
-      "change": -4.28,
-      "price": 19711443,
-      "volume": 386837068
+      "id": 5374,
+      "name": "Magic sapling",
+      "icon": "Magic sapling.png",
+      "change": 5.68,
+      "price": 98790,
+      "volume": 85618000
     },
     {
       "id": 13263,
       "name": "Abyssal bludgeon",
       "icon": "Abyssal bludgeon.png",
-      "change": -3.62,
-      "price": 23731831,
-      "volume": 315435587
+      "change": 5.42,
+      "price": 19523363,
+      "volume": 460425977
     },
     {
-      "id": 24268,
-      "name": "Basilisk jaw",
-      "icon": "Basilisk jaw.png",
-      "change": -3.35,
-      "price": 18329137,
-      "volume": 313122757
+      "id": 5316,
+      "name": "Magic seed",
+      "icon": "Magic seed 5.png",
+      "change": 4.87,
+      "price": 95187,
+      "volume": 76316177
     },
     {
-      "id": 13190,
-      "name": "Old school bond",
-      "icon": "Old school bond.png",
-      "change": -2.98,
-      "price": 15196892,
-      "volume": 3522512924
+      "id": 6733,
+      "name": "Archers ring",
+      "icon": "Archers ring.png",
+      "change": 4.53,
+      "price": 2965917,
+      "volume": 142364016
     },
     {
-      "id": 28316,
-      "name": "Bellator ring",
-      "icon": "Bellator ring.png",
-      "change": -2.94,
-      "price": 32787623,
-      "volume": 219950304
+      "id": 21012,
+      "name": "Dragon hunter crossbow",
+      "icon": "Dragon hunter crossbow.png",
+      "change": 4.36,
+      "price": 47711519,
+      "volume": 1457189309
+    },
+    {
+      "id": 30070,
+      "name": "Dragon hunter wand",
+      "icon": "Dragon hunter wand.png",
+      "change": 3.72,
+      "price": 17312982,
+      "volume": 408297825
+    },
+    {
+      "id": 23959,
+      "name": "Enhanced crystal teleport seed",
+      "icon": "Enhanced crystal teleport seed.png",
+      "change": 3.64,
+      "price": 2036487,
+      "volume": 204242675
     }
   ],
-  "last_updated": "2026-01-25T04:19:26.742796"
+  "losers": [
+    {
+      "id": 1617,
+      "name": "Uncut diamond",
+      "icon": "Uncut diamond.png",
+      "change": -7.41,
+      "price": 2724,
+      "volume": 111603869
+    },
+    {
+      "id": 31111,
+      "name": "Demon tear",
+      "icon": "Demon tear.png",
+      "change": -6.73,
+      "price": 388,
+      "volume": 116086851
+    },
+    {
+      "id": 31088,
+      "name": "Avernic treads",
+      "icon": "Avernic treads.png",
+      "change": -5.64,
+      "price": 233654336,
+      "volume": 3378252274
+    },
+    {
+      "id": 27690,
+      "name": "Voidwaker",
+      "icon": "Voidwaker.png",
+      "change": -5.63,
+      "price": 41074277,
+      "volume": 2259085235
+    },
+    {
+      "id": 24587,
+      "name": "Rune pouch note",
+      "icon": "Rune pouch note.png",
+      "change": -5.09,
+      "price": 6714923,
+      "volume": 141572959
+    },
+    {
+      "id": 28919,
+      "name": "Tonalztics of ralos (uncharged)",
+      "icon": "Tonalztics of ralos (uncharged).png",
+      "change": -4.82,
+      "price": 45581680,
+      "volume": 167132826
+    },
+    {
+      "id": 25975,
+      "name": "Lightbearer",
+      "icon": "Lightbearer.png",
+      "change": -4.71,
+      "price": 5850461,
+      "volume": 295935818
+    },
+    {
+      "id": 28310,
+      "name": "Venator ring",
+      "icon": "Venator ring.png",
+      "change": -4.47,
+      "price": 51009103,
+      "volume": 554723995
+    },
+    {
+      "id": 27662,
+      "name": "Accursed sceptre (u)",
+      "icon": "Accursed sceptre (u).png",
+      "change": -4.13,
+      "price": 4839875,
+      "volume": 104662296
+    },
+    {
+      "id": 24514,
+      "name": "Volatile orb",
+      "icon": "Volatile orb.png",
+      "change": -3.61,
+      "price": 40184122,
+      "volume": 115529350
+    }
+  ],
+  "last_updated": "2026-02-04T15:07:58.953138"
 }
