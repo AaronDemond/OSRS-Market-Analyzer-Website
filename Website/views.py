@@ -1967,6 +1967,19 @@ def create_alert(request):
                         # Why: User wants to monitor specific items
                         # How: Parse the item_ids JSON and use those
                         items_to_capture = [str(x) for x in json_module.loads(threshold_item_ids_json)]
+                    elif final_item_id:
+                        # =============================================================================
+                        # SINGLE-ITEM THRESHOLD ALERT: CAPTURE REFERENCE PRICE
+                        # =============================================================================
+                        # What: Add the single item ID to items_to_capture for reference price capture
+                        # Why: Single-item percentage-based threshold alerts need a reference price to
+                        #      calculate percentage change. Without this, the alert will never trigger
+                        #      because reference_prices will be empty.
+                        # How: Check if final_item_id is set (single-item mode) and add it to the list
+                        # Note: This case was previously missing, causing single-item percentage threshold
+                        #       alerts to never capture their baseline price and thus never trigger
+                        # =============================================================================
+                        items_to_capture = [str(final_item_id)]
                     
                     # Capture reference prices for each item
                     # What: Get the baseline price using the user's chosen reference type
