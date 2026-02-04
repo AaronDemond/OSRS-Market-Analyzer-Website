@@ -48,10 +48,17 @@
         /**
          * Dismisses a triggered alert notification.
          * The alert remains in the system but the notification banner is hidden.
+         * 
+         * What: Sends POST request to server to set is_dismissed=True for the alert.
+         * Why: User clicked X on a notification and wants it gone until new data arrives.
+         * How: POSTs alert_id to /api/alerts/dismiss/ endpoint.
+         * 
+         * DEBUG: Added logging to trace dismiss flow.
          */
         async dismissAlert(alertId) {
+            console.log('[DISMISS DEBUG] AlertsAPI.dismissAlert called with alertId:', alertId);
             try {
-                await fetch(AlertsConfig.endpoints.dismiss, {
+                const response = await fetch(AlertsConfig.endpoints.dismiss, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -59,9 +66,12 @@
                     },
                     body: JSON.stringify({alert_id: alertId})
                 });
+                const data = await response.json();
+                console.log('[DISMISS DEBUG] Server response:', data);
+                console.log('[DISMISS DEBUG] Response status:', response.status);
                 return true;
             } catch (error) {
-                console.error('Error dismissing alert:', error);
+                console.error('[DISMISS DEBUG] Error dismissing alert:', error);
                 return false;
             }
         },
