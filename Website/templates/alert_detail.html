@@ -2156,7 +2156,7 @@
                     <div class="form-group form-group-full-width" id="reference-prices-group" style="display: none;">
                         <label>Reference Prices (Baseline)</label>
                         <div id="reference-prices-display" class="reference-prices-display">
-                            <span class="no-data">No reference prices stored</span>
+                            <span class="no-data">N/A</span>
                         </div>
                         <small class="form-hint">Baseline prices captured when alert was created (not editable)</small>
                     </div>
@@ -3804,7 +3804,7 @@ function populateReferencePricesDisplay(referencePricesData, itemMapping) {
     if (!display) return;
     
     if (!referencePricesData) {
-        display.innerHTML = '<span class="no-data">No reference prices stored</span>';
+        display.innerHTML = '<span class="no-data">N/A</span>';
         return;
     }
     
@@ -3823,7 +3823,7 @@ function populateReferencePricesDisplay(referencePricesData, itemMapping) {
         const entries = Object.entries(referencePrices);
         
         if (entries.length === 0) {
-            display.innerHTML = '<span class="no-data">No reference prices stored</span>';
+            display.innerHTML = '<span class="no-data">N/A</span>';
             return;
         }
         
@@ -3869,7 +3869,7 @@ function populateReferencePricesDisplayView(referencePricesData, itemMapping) {
     if (!display) return;
     
     if (!referencePricesData) {
-        display.innerHTML = '<span class="no-data">No reference prices stored</span>';
+        display.innerHTML = '<span class="no-data">N/A</span>';
         return;
     }
     
@@ -3885,7 +3885,7 @@ function populateReferencePricesDisplayView(referencePricesData, itemMapping) {
         const entries = Object.entries(referencePrices);
         
         if (entries.length === 0) {
-            display.innerHTML = '<span class="no-data">No reference prices stored</span>';
+            display.innerHTML = '<span class="no-data">N/A</span>';
             return;
         }
         
