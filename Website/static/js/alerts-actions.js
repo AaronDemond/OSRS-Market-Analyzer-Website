@@ -17,21 +17,38 @@
 
         /**
          * Dismisses a triggered alert notification.
+         * 
+         * What: Handles the full dismiss flow - updates localStorage, removes UI, calls API.
+         * Why: User clicked X on a notification and wants it dismissed.
+         * How: 
+         *   1. Mark dismissed in localStorage (client-side persistence)
+         *   2. Remove from active notifications cache
+         *   3. Animate and remove the UI element
+         *   4. Call API to persist is_dismissed=True to database
+         * 
+         * DEBUG: Added logging to trace dismiss flow.
          */
         async dismiss(alertId) {
+            console.log('[DISMISS DEBUG] AlertActions.dismiss called with alertId:', alertId);
+            
             // Mark as dismissed in localStorage so it stays dismissed across refreshes
+            console.log('[DISMISS DEBUG] Marking as dismissed in localStorage...');
             AlertsState.dismissNotification(alertId);
+            
             // Also remove from active notifications cache
+            console.log('[DISMISS DEBUG] Removing from active notifications cache...');
             AlertsState.removeActiveNotification(alertId);
             
             // Animate out immediately for responsive feedback
             const banner = document.querySelector('.triggered-notification[data-alert-id="' + alertId + '"]');
+            console.log('[DISMISS DEBUG] Found banner element:', banner);
             if (banner) {
                 banner.classList.add('dismissing');
                 setTimeout(() => banner.remove(), 300);
             }
 
             const line = document.querySelector('.status-notification .notification-line[data-kind="triggered"][data-alert-id="' + alertId + '"]');
+            console.log('[DISMISS DEBUG] Found notification line:', line);
             if (line) {
                 const box = line.closest('.status-notification');
                 line.remove();
@@ -45,7 +62,9 @@
                 }
             }
 
+            console.log('[DISMISS DEBUG] Calling AlertsAPI.dismissAlert...');
             await AlertsAPI.dismissAlert(alertId);
+            console.log('[DISMISS DEBUG] API call completed');
         },
 
         /**

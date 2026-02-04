@@ -83,6 +83,19 @@
         iconCache: {},                  // Cache for item icons (keyed by item_id)
         previousTriggeredItems: {},     // Track previously seen triggered items per alert (keyed by alert ID)
         dismissedNotifications: null,   // Set of dismissed alert notification IDs (persisted to localStorage)
+        
+        // recentlyDismissedTimestamps: Object tracking when each alert was dismissed
+        // What: Maps alert ID -> timestamp when dismiss was initiated
+        // Why: Prevents race condition where stale API data clears a fresh dismiss
+        // How: When dismissing, record timestamp. When considering clearing, check if recent.
+        recentlyDismissedTimestamps: {},
+        
+        // DISMISS_COOLDOWN_MS: How long to protect a dismissed alert from being re-shown
+        // What: Time in milliseconds to ignore stale API data after a dismiss
+        // Why: API polling may return stale data that predates the dismiss action
+        // How: If dismiss happened within this window, don't clear localStorage
+        DISMISS_COOLDOWN_MS: 10000,  // 10 seconds should cover any in-flight requests
+        
         sorting: {                      // Current sorting state
             sortKey: null,
             sortOrder: null,
@@ -113,13 +126,33 @@
 
         /**
          * Marks a notification as dismissed.
-         * Persists to localStorage.
+         * Persists to localStorage and records dismiss timestamp.
+         * 
+         * What: Adds alert ID to dismissed set and records when it was dismissed.
+         * Why: Need to track dismissals AND prevent race condition with stale API data.
+         * How: 
+         *   1. Add to dismissed set in localStorage
+         *   2. Record timestamp in recentlyDismissedTimestamps to protect from stale data
+         * 
+         * DEBUG: Added logging to trace localStorage operations.
          */
         dismissNotification(alertId) {
+            console.log('[DISMISS DEBUG] AlertsState.dismissNotification called with alertId:', alertId);
             const dismissed = this.getDismissedNotifications();
+            console.log('[DISMISS DEBUG] Current dismissed set before add:', [...dismissed]);
             dismissed.add(String(alertId));
+            console.log('[DISMISS DEBUG] Dismissed set after add:', [...dismissed]);
+            
+            // Record the dismiss timestamp to protect against race conditions
+            // What: Store when this alert was dismissed
+            // Why: Stale API responses may try to re-show the alert; we need to ignore them
+            // How: Check this timestamp in clearDismissedNotification before clearing
+            this.recentlyDismissedTimestamps[String(alertId)] = Date.now();
+            console.log('[DISMISS DEBUG] Recorded dismiss timestamp:', this.recentlyDismissedTimestamps[String(alertId)]);
+            
             try {
                 localStorage.setItem('dismissedAlertNotifications', JSON.stringify([...dismissed]));
+                console.log('[DISMISS DEBUG] Saved to localStorage successfully');
             } catch (e) {
                 console.error('Error saving dismissed notifications to localStorage:', e);
             }
@@ -129,15 +162,64 @@
          * Checks if a notification has been dismissed.
          */
         isNotificationDismissed(alertId) {
-            return this.getDismissedNotifications().has(String(alertId));
+            const isDismissed = this.getDismissedNotifications().has(String(alertId));
+            console.log('[DISMISS DEBUG] isNotificationDismissed(' + alertId + '):', isDismissed);
+            return isDismissed;
+        },
+        
+        /**
+         * Checks if an alert was recently dismissed (within cooldown period).
+         * 
+         * What: Returns true if the alert was dismissed within DISMISS_COOLDOWN_MS.
+         * Why: Prevents stale API data from re-showing a freshly dismissed notification.
+         * How: Compare current time to recorded dismiss timestamp.
+         * 
+         * @param {string|number} alertId - The alert ID to check
+         * @returns {boolean} - True if dismissed within cooldown period
+         */
+        isRecentlyDismissed(alertId) {
+            const dismissTime = this.recentlyDismissedTimestamps[String(alertId)];
+            if (!dismissTime) {
+                return false;
+            }
+            const elapsed = Date.now() - dismissTime;
+            const isRecent = elapsed < this.DISMISS_COOLDOWN_MS;
+            console.log('[DISMISS DEBUG] isRecentlyDismissed(' + alertId + '): dismissTime=' + dismissTime + ', elapsed=' + elapsed + 'ms, isRecent=' + isRecent);
+            return isRecent;
         },
 
         /**
          * Clears a dismissed notification (e.g., when alert is re-triggered with new data).
+         * 
+         * What: Removes alert from dismissed set, allowing notification to show again.
+         * Why: When alert data changes, the notification should re-appear.
+         * How: 
+         *   1. Check if alert was recently dismissed (within cooldown) - if so, SKIP clearing
+         *   2. Otherwise, remove from dismissed set in localStorage
+         * 
+         * IMPORTANT: This now checks for recent dismissals to prevent race conditions
+         * where stale API data tries to re-show a notification that was just dismissed.
+         * 
+         * DEBUG: Added logging - THIS IS WHERE DISMISSED NOTIFICATIONS GET RE-SHOWN!
          */
         clearDismissedNotification(alertId) {
+            console.log('[DISMISS DEBUG] clearDismissedNotification called with alertId:', alertId);
+            
+            // Check if this alert was recently dismissed - if so, don't clear it!
+            // What: Protect recently dismissed alerts from stale API data
+            // Why: Race condition - API polling may return data from before the dismiss
+            // How: If dismissed within cooldown period, skip the clear operation
+            if (this.isRecentlyDismissed(alertId)) {
+                console.log('[DISMISS DEBUG] SKIPPING clear - alert was recently dismissed (within cooldown period)');
+                console.log('[DISMISS DEBUG] This protects against stale API data race condition');
+                return;  // Don't clear - the dismiss is fresh and should be respected
+            }
+            
+            console.log('[DISMISS DEBUG] Proceeding with clear - alert was NOT recently dismissed');
             const dismissed = this.getDismissedNotifications();
+            console.log('[DISMISS DEBUG] Dismissed set before clear:', [...dismissed]);
             dismissed.delete(String(alertId));
+            console.log('[DISMISS DEBUG] Dismissed set after clear:', [...dismissed]);
             try {
                 localStorage.setItem('dismissedAlertNotifications', JSON.stringify([...dismissed]));
             } catch (e) {
