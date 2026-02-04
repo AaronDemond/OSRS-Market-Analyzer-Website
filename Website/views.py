@@ -3784,6 +3784,324 @@ def update_single_alert(request, alert_id):
     return JsonResponse({'success': True})
 
 
+# =============================================================================
+# ITEM COLLECTION API ENDPOINTS
+# =============================================================================
+# What: API endpoints for managing user item collections
+# Why: Users need to create, list, and delete collections of items that can be
+#      quickly applied to alerts. These endpoints support the "Item Collection"
+#      modal on the alerts page.
+# How: Three endpoints - list (GET), create (POST), delete (DELETE)
+# Note: All endpoints require authentication (no anonymous access)
+# =============================================================================
+
+def list_item_collections(request):
+    """
+    List all item collections for the current user.
+    
+    What: Returns JSON array of all collections owned by the authenticated user
+    Why: The Item Collection modal needs to display existing collections for selection
+    How: Query ItemCollection model filtered by user, serialize to JSON
+    
+    Request: GET /api/item-collections/
+    
+    Response (200 OK):
+        {
+            "success": true,
+            "collections": [
+                {
+                    "id": 1,
+                    "name": "High-value weapons",
+                    "item_ids": [4151, 11802, 12924],
+                    "item_names": ["Abyssal whip", "Armadyl godsword", "Dragonfire shield"],
+                    "item_count": 3
+                },
+                ...
+            ]
+        }
+    
+    Response (401 Unauthorized) - if user not authenticated:
+        {"success": false, "error": "Authentication required"}
+    """
+    import json
+    from .models import ItemCollection
+    
+    # Check authentication - this feature is only for logged-in users
+    # What: Verify user is authenticated before allowing access
+    # Why: Collections are personal to each user; anonymous users cannot have persistent collections
+    # How: Check request.user.is_authenticated; return 401 if not
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'success': False,
+            'error': 'Authentication required'
+        }, status=401)
+    
+    # Query all collections for this user
+    # collections_qs: QuerySet of ItemCollection objects belonging to the user
+    # Why: Filter by user to ensure users only see their own collections
+    # How: Django ORM filter on user field
+    collections_qs = ItemCollection.objects.filter(user=request.user)
+    
+    # Build response data
+    # collections_data: List of dictionaries containing collection info for JSON response
+    # Why: Need to serialize model data to JSON-compatible format
+    # How: Iterate through queryset, parse JSON fields, build dict for each collection
+    collections_data = []
+    for collection in collections_qs:
+        try:
+            # Parse JSON fields to return as actual arrays (not strings)
+            # item_ids_list: Parsed list of item IDs from JSON string
+            # item_names_list: Parsed list of item names from JSON string
+            item_ids_list = json.loads(collection.item_ids)
+            item_names_list = json.loads(collection.item_names)
+        except (json.JSONDecodeError, TypeError):
+            # If JSON parsing fails, use empty arrays
+            # Why: Gracefully handle corrupted data rather than crashing
+            item_ids_list = []
+            item_names_list = []
+        
+        collections_data.append({
+            'id': collection.id,
+            'name': collection.name,
+            'item_ids': item_ids_list,
+            'item_names': item_names_list,
+            'item_count': len(item_ids_list)
+        })
+    
+    return JsonResponse({
+        'success': True,
+        'collections': collections_data
+    })
+
+
+@csrf_exempt
+def create_item_collection(request):
+    """
+    Create a new item collection.
+    
+    What: Creates a new ItemCollection record in the database
+    Why: Users need to save collections of items for future use
+    How: Parse JSON body, validate data, create ItemCollection model instance
+    
+    Request: POST /api/item-collections/create/
+    Body (JSON):
+        {
+            "name": "High-value weapons",
+            "item_ids": "4151,11802,12924",  // Comma-separated string
+            "item_names": "Abyssal whip,Armadyl godsword,Dragonfire shield"  // Comma-separated
+        }
+    
+    Response (200 OK):
+        {
+            "success": true,
+            "collection": {
+                "id": 1,
+                "name": "High-value weapons",
+                "item_ids": [4151, 11802, 12924],
+                "item_names": ["Abyssal whip", "Armadyl godsword", "Dragonfire shield"],
+                "item_count": 3
+            }
+        }
+    
+    Response (400 Bad Request) - if validation fails:
+        {"success": false, "error": "Collection name is required"}
+    
+    Response (401 Unauthorized) - if user not authenticated:
+        {"success": false, "error": "Authentication required"}
+    
+    Response (409 Conflict) - if collection name already exists:
+        {"success": false, "error": "A collection with this name already exists"}
+    """
+    import json
+    from .models import ItemCollection
+    
+    # Only allow POST requests
+    # What: Enforce HTTP method restriction
+    # Why: Create operations should use POST for RESTful design
+    if request.method != 'POST':
+        return JsonResponse({
+            'success': False,
+            'error': 'POST required'
+        }, status=405)
+    
+    # Check authentication
+    # What: Verify user is authenticated before allowing collection creation
+    # Why: Collections must be tied to a user account for persistence
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'success': False,
+            'error': 'Authentication required'
+        }, status=401)
+    
+    try:
+        # Parse request body
+        # data: Dictionary parsed from JSON request body
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid JSON'
+        }, status=400)
+    
+    # Extract and validate fields
+    # name: User-provided name for the collection (required)
+    # item_ids_str: Comma-separated string of item IDs (required)
+    # item_names_str: Comma-separated string of item names (required)
+    name = data.get('name', '').strip()
+    item_ids_data = data.get('item_ids', [])
+    item_names_data = data.get('item_names', [])
+    
+    # Validate required fields
+    # What: Ensure all required data is present
+    # Why: Cannot create a valid collection without name and items
+    if not name:
+        return JsonResponse({
+            'success': False,
+            'error': 'Collection name is required'
+        }, status=400)
+    
+    if not item_ids_data:
+        return JsonResponse({
+            'success': False,
+            'error': 'At least one item is required'
+        }, status=400)
+    
+    # Parse item data - handles both JSON arrays and comma-separated strings
+    # item_ids_list: List of integer item IDs
+    # item_names_list: List of item name strings
+    # Why: Frontend sends JSON arrays; we validate and convert to proper format
+    try:
+        # If item_ids_data is already a list (from JSON), use it directly
+        # Otherwise, parse as comma-separated string for backwards compatibility
+        if isinstance(item_ids_data, list):
+            item_ids_list = [int(x) for x in item_ids_data]
+        else:
+            item_ids_list = [int(x.strip()) for x in str(item_ids_data).split(',') if x.strip()]
+    except (ValueError, TypeError):
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid item IDs'
+        }, status=400)
+    
+    # Parse item names - handles both JSON arrays and comma-separated strings
+    if isinstance(item_names_data, list):
+        item_names_list = [str(x).strip() for x in item_names_data]
+    else:
+        item_names_list = [x.strip() for x in str(item_names_data).split(',') if x.strip()]
+    
+    # Validate that we have matching counts
+    # What: Ensure item_ids and item_names arrays have the same length
+    # Why: Each item ID should have a corresponding name; mismatched counts indicate an error
+    if len(item_ids_list) != len(item_names_list):
+        return JsonResponse({
+            'success': False,
+            'error': 'Item IDs and names count mismatch'
+        }, status=400)
+    
+    if not item_ids_list:
+        return JsonResponse({
+            'success': False,
+            'error': 'At least one item is required'
+        }, status=400)
+    
+    # Check for duplicate collection name
+    # What: Verify this user doesn't already have a collection with this name
+    # Why: Collection names must be unique per user (enforced by unique_together)
+    # How: Query database for existing collection with same user+name
+    if ItemCollection.objects.filter(user=request.user, name=name).exists():
+        return JsonResponse({
+            'success': False,
+            'error': 'A collection with this name already exists'
+        }, status=409)
+    
+    # Create the collection
+    # collection: New ItemCollection model instance
+    # Why: Store the collection in the database for future use
+    # How: Create model instance with JSON-serialized arrays
+    collection = ItemCollection.objects.create(
+        user=request.user,
+        name=name,
+        item_ids=json.dumps(item_ids_list),
+        item_names=json.dumps(item_names_list)
+    )
+    
+    # Return the created collection data
+    # Why: Frontend needs the new collection's ID and data to update UI
+    return JsonResponse({
+        'success': True,
+        'collection': {
+            'id': collection.id,
+            'name': collection.name,
+            'item_ids': item_ids_list,
+            'item_names': item_names_list,
+            'item_count': len(item_ids_list)
+        }
+    })
+
+
+@csrf_exempt
+def delete_item_collection(request, collection_id):
+    """
+    Delete an item collection.
+    
+    What: Deletes an ItemCollection record from the database
+    Why: Users need to be able to remove collections they no longer need
+    How: Find collection by ID, verify ownership, delete
+    
+    Request: POST /api/item-collections/<id>/delete/
+    
+    Response (200 OK):
+        {"success": true}
+    
+    Response (401 Unauthorized) - if user not authenticated:
+        {"success": false, "error": "Authentication required"}
+    
+    Response (404 Not Found) - if collection doesn't exist or doesn't belong to user:
+        {"success": false, "error": "Collection not found"}
+    """
+    from .models import ItemCollection
+    
+    # Only allow POST requests (using POST instead of DELETE for simplicity with CSRF)
+    # What: Enforce HTTP method restriction
+    # Why: Destructive operations should be explicit; POST works better with Django CSRF
+    if request.method != 'POST':
+        return JsonResponse({
+            'success': False,
+            'error': 'POST required'
+        }, status=405)
+    
+    # Check authentication
+    # What: Verify user is authenticated before allowing deletion
+    # Why: Users should only be able to delete their own collections
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'success': False,
+            'error': 'Authentication required'
+        }, status=401)
+    
+    # Find the collection
+    # What: Query for the collection by ID, filtered by user
+    # Why: Filtering by user ensures users can only delete their own collections
+    # How: Use filter().first() to get None if not found (instead of exception)
+    collection = ItemCollection.objects.filter(
+        id=collection_id,
+        user=request.user
+    ).first()
+    
+    if not collection:
+        return JsonResponse({
+            'success': False,
+            'error': 'Collection not found'
+        }, status=404)
+    
+    # Delete the collection
+    # What: Remove the collection record from the database
+    # Why: User requested deletion; collection is no longer needed
+    collection.delete()
+    
+    return JsonResponse({'success': True})
+
+
 @csrf_exempt
 def add_favorite(request):
     """API endpoint to add an item to favorites"""

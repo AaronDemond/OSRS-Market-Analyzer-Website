@@ -13,12 +13,39 @@
 <link rel="stylesheet" href="{% static 'css/alerts-components.css' %}">
 <link rel="stylesheet" href="{% static 'css/alerts-form.css' %}">
 <link rel="stylesheet" href="{% static 'css/alerts-modals.css' %}">
+<link rel="stylesheet" href="{% static 'css/alerts-item-collections.css' %}">
 <link rel="stylesheet" href="{% static 'css/alerts-responsive.css' %}">
 <!-- Group selector styles (shared with alert_detail.html) -->
 <link rel="stylesheet" href="{% static 'css/group-selector.css' %}">
+
 {% endblock %}
 
 {% block content %}
+
+<style>
+
+.btn-buy-limit {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 500;
+    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    position: relative;
+}
+
+.btn-buy-limit:hover:not(:disabled) {
+    background: linear-gradient(135deg, #34D399 0%, #10B981 100%);
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+    transform: translateY(-1px);
+}
+</style>
 
 
 
@@ -274,6 +301,18 @@
             <div class="form-group" id="spike-items-group" style="display: none;">
                 <div class="label-with-notification">
                     <label for="spike-item-input">Items</label>
+                    <!-- =============================================================================
+                         ITEM COLLECTION BUTTON - SPIKE ALERTS
+                         What: Button to open the Item Collection modal for quick item selection
+                         Why: Users can apply saved collections of items instead of selecting one by one
+                         How: Opens modal with onclick, passes 'spike' as the alert type parameter
+                    ============================================================================= -->
+                    <button type="button" class="btn-buy-limit" onclick="ItemCollectionManager.open('spike')" title="Apply a saved item collection">
+                        <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
+                            <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"/>
+                        </svg>
+                        Collection
+                    </button>
                     <!-- Small notification shown when items are added or not found -->
                     <span id="spike-item-notification" class="item-notification"></span>
                 </div>
@@ -324,6 +363,18 @@
             <div class="form-group" id="spread-items-group" style="display: none;">
                 <div class="label-with-notification">
                     <label for="spread-item-input">Items</label>
+                    <!-- =============================================================================
+                         ITEM COLLECTION BUTTON - SPREAD ALERTS
+                         What: Button to open the Item Collection modal for quick item selection
+                         Why: Users can apply saved collections of items instead of selecting one by one
+                         How: Opens modal with onclick, passes 'spread' as the alert type parameter
+                    ============================================================================= -->
+                    <button type="button" class="btn-buy-limit" onclick="ItemCollectionManager.open('spread')" title="Apply a saved item collection">
+                        <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
+                            <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"/>
+                        </svg>
+                        Collection
+                    </button>
                     <!-- Small notification shown when items are added or not found -->
                     <span id="spread-item-notification" class="item-notification"></span>
                 </div>
@@ -432,6 +483,18 @@
             <div class="form-group" id="sustained-items-group" style="display: none;">
                 <div class="label-with-notification">
                     <label for="sustained-item-input">Items</label>
+                    <!-- =============================================================================
+                         ITEM COLLECTION BUTTON - SUSTAINED ALERTS
+                         What: Button to open the Item Collection modal for quick item selection
+                         Why: Users can apply saved collections of items instead of selecting one by one
+                         How: Opens modal with onclick, passes 'sustained' as the alert type parameter
+                    ============================================================================= -->
+                    <button type="button" class="btn-buy-limit" onclick="ItemCollectionManager.open('sustained')" title="Apply a saved item collection">
+                        <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
+                            <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"/>
+                        </svg>
+                        Collection
+                    </button>
                     <!-- Small notification shown when items are added or not found -->
                     <span id="sustained-item-notification" class="item-notification"></span>
                 </div>
@@ -558,6 +621,18 @@
             <div class="form-group" id="threshold-items-group" style="display: none;">
                 <div class="label-with-notification">
                     <label for="threshold-item-input">Item(s)</label>
+                    <!-- =============================================================================
+                         ITEM COLLECTION BUTTON - THRESHOLD ALERTS
+                         What: Button to open the Item Collection modal for quick item selection
+                         Why: Users can apply saved collections of items instead of selecting one by one
+                         How: Opens modal with onclick, passes 'threshold' as the alert type parameter
+                    ============================================================================= -->
+                    <button type="button" class="btn-buy-limit" onclick="ItemCollectionManager.open('threshold')" title="Apply a saved item collection">
+                        <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
+                            <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"/>
+                        </svg>
+                        Collection
+                    </button>
                     <!-- Small notification shown when items are added or not found -->
                     <span id="threshold-item-notification" class="item-notification"></span>
                 </div>
@@ -835,6 +910,243 @@
         <div class="new-group-modal-footer">
             <button type="button" class="new-group-modal-btn cancel" onclick="closeNewGroupModal()">Cancel</button>
             <button type="button" class="new-group-modal-btn create" id="create-group-btn" onclick="createNewGroup()">Create Group</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- =============================================================================
+     ITEM COLLECTION MODAL
+     What: Modal dialog for managing and applying item collections to alerts
+     Why: Users can save groups of items they commonly use together and quickly
+          apply them to new alerts, reducing repetitive item selection
+     How: Modal has two views: 
+          1) Select View - Browse/apply/delete existing collections
+          2) Create View - Create new collections with name and items
+          User can switch between views using navigation buttons
+     Variables:
+       - item-collection-modal: Main modal container overlay element
+       - item-collection-modal-content: Inner content container for the modal
+       - item-collection-select-view: The view for browsing existing collections
+       - item-collection-create-view: The view for creating new collections
+============================================================================= -->
+<div class="item-collection-modal-overlay" id="item-collection-modal">
+    <div class="item-collection-modal-content">
+        <!-- =============================================================================
+             MODAL HEADER
+             What: Header section with title and close button
+             Why: Provides clear context and easy way to dismiss modal
+             How: Uses flex layout with title left, close button right
+        ============================================================================= -->
+        <div class="item-collection-modal-header">
+            <h3>
+                <svg viewBox="0 0 20 20" fill="currentColor" width="20" height="20">
+                    <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"/>
+                </svg>
+                Item Collections
+            </h3>
+            <button class="item-collection-close-btn" onclick="ItemCollectionManager.close()" title="Close">
+                &times;
+            </button>
+        </div>
+
+        <!-- =============================================================================
+             SELECT VIEW - Browse and apply existing collections
+             What: View that displays all saved collections for selection/deletion
+             Why: Users need to see their collections and apply or manage them
+             How: Shows list of collections, each with apply and delete buttons
+                  If no collections exist, shows create prompt instead
+        ============================================================================= -->
+        <div class="item-collection-view" id="item-collection-select-view">
+            <!-- =============================================================================
+                 COLLECTIONS LIST CONTAINER
+                 What: Scrollable container showing all user's saved collections
+                 Why: Users may have many collections, needs to be scrollable
+                 How: Shows each collection as a card with name, item count, and actions
+            ============================================================================= -->
+            <div class="item-collection-list-container">
+                <div class="item-collection-list" id="item-collection-list">
+                    <!-- Collections will be populated dynamically by JavaScript -->
+                </div>
+                <!-- =============================================================================
+                     EMPTY STATE MESSAGE
+                     What: Shown when user has no saved collections
+                     Why: Guide user to create their first collection
+                     How: Hidden by default, shown via JS when collections array is empty
+                ============================================================================= -->
+                <div class="item-collection-empty" id="item-collection-empty">
+                    <svg viewBox="0 0 20 20" fill="currentColor" width="48" height="48">
+                        <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"/>
+                    </svg>
+                    <p>No collections yet</p>
+                    <span>Create your first item collection to get started</span>
+                </div>
+            </div>
+
+            <!-- =============================================================================
+                 APPLICATION MODE SELECTOR
+                 What: Radio buttons to choose merge vs replace when applying collection
+                 Why: User may want to add to existing items OR replace them entirely
+                 How: Two radio buttons, selection stored and used when Apply is clicked
+            ============================================================================= -->
+            <div class="item-collection-apply-mode" id="item-collection-apply-mode">
+                <label class="apply-mode-label">When applying:</label>
+                <div class="apply-mode-options">
+                    <label class="apply-mode-option">
+                        <input type="radio" name="apply-mode" value="merge" checked>
+                        <span class="apply-mode-text">
+                            <strong>Merge</strong>
+                            <small>Add to existing items</small>
+                        </span>
+                    </label>
+                    <label class="apply-mode-option">
+                        <input type="radio" name="apply-mode" value="replace">
+                        <span class="apply-mode-text">
+                            <strong>Replace</strong>
+                            <small>Clear existing items first</small>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- =============================================================================
+                 SELECT VIEW FOOTER BUTTONS
+                 What: Navigation and action buttons for the select view
+                 Why: User needs to switch to create view or close modal
+                 How: "Create New" switches to create view, "Close" dismisses modal
+            ============================================================================= -->
+            <div class="item-collection-modal-buttons">
+                <button type="button" class="item-collection-btn secondary" onclick="ItemCollectionManager.close()">
+                    Close
+                </button>
+                <button type="button" class="item-collection-btn primary" onclick="ItemCollectionManager.showCreateView()">
+                    <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+                        <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"/>
+                    </svg>
+                    Create New Collection
+                </button>
+            </div>
+        </div>
+
+        <!-- =============================================================================
+             CREATE VIEW - Create new item collections
+             What: View for creating a new collection with name and items
+             Why: Users need a way to define new collections
+             How: Form with name input, multi-item selector, preview card, and save buttons
+        ============================================================================= -->
+        <div class="item-collection-view hidden" id="item-collection-create-view">
+            <!-- =============================================================================
+                 COLLECTION NAME INPUT
+                 What: Text input for naming the new collection
+                 Why: Collections need unique, descriptive names for easy identification
+                 How: Standard text input with placeholder and validation
+            ============================================================================= -->
+            <div class="item-collection-form-group">
+                <label for="collection-name-input">Collection Name</label>
+                <input type="text" id="collection-name-input" placeholder="e.g., High-Value Flips, Daily Watchlist..." maxlength="100" autocomplete="off">
+                <small class="form-hint">Give your collection a memorable name</small>
+            </div>
+
+            <!-- =============================================================================
+                 MULTI-ITEM SELECTOR FOR COLLECTION
+                 What: Item selector matching the existing multi-item UI pattern
+                 Why: Must function exactly like other item selectors for consistency
+                 How: Uses same structure as spike/spread/sustained/threshold selectors:
+                      - Text input with autocomplete suggestions
+                      - Dropdown toggle button with chevron
+                      - Suggestions dropdown (appears when typing)
+                      - Selected items dropdown (appears when clicking chevron)
+            ============================================================================= -->
+            <div class="item-collection-form-group">
+                <div class="label-with-notification">
+                    <label for="collection-item-input">Items</label>
+                    <span id="collection-item-notification" class="item-notification"></span>
+                </div>
+                <div class="multi-item-selector">
+                    <div class="multi-item-selector-box">
+                        <!-- Search input for adding items to collection -->
+                        <input type="text" id="collection-item-input" placeholder="Search for item to add..." autocomplete="off">
+                        <!-- Dropdown toggle button with chevron arrow -->
+                        <button type="button" class="multi-item-dropdown-toggle" id="collection-multi-item-toggle" title="Show selected items">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </button>
+                        <!-- Autocomplete suggestions dropdown (shown when typing) -->
+                        <div id="collection-item-suggestions" class="multi-item-suggestions-dropdown"></div>
+                        <!-- Selected items dropdown (shown when clicking arrow) -->
+                        <div id="collection-selected-items-dropdown" class="multi-item-selected-dropdown">
+                            <div class="selected-items-list" id="collection-selected-items-list">
+                                <!-- Items will be populated dynamically -->
+                            </div>
+                            <div class="no-items-message" id="collection-no-items-message">No items selected</div>
+                        </div>
+                    </div>
+                </div>
+                <small class="form-hint">Add items to include in this collection</small>
+            </div>
+
+            <!-- =============================================================================
+                 ITEMS PREVIEW CARD
+                 What: Scrollable card showing all items that will be in the collection
+                 Why: User requested preview of items before saving
+                 How: Shows list of item names, updates dynamically as items are added/removed
+            ============================================================================= -->
+            <div class="item-collection-preview" id="collection-items-preview">
+                <div class="preview-header">
+                    <span class="preview-title">Items in Collection</span>
+                    <span class="preview-count" id="collection-preview-count">0 items</span>
+                </div>
+                <div class="preview-items-list" id="collection-preview-list">
+                    <div class="preview-empty">No items added yet</div>
+                </div>
+            </div>
+
+            <!-- =============================================================================
+                 CREATE VIEW FOOTER BUTTONS
+                 What: Action buttons for saving or canceling collection creation
+                 Why: User needs to save, save & apply, or go back
+                 How: Three buttons - Back (return to select), Save, Save & Apply
+            ============================================================================= -->
+            <div class="item-collection-modal-buttons">
+                <button type="button" class="item-collection-btn secondary" onclick="ItemCollectionManager.showSelectView()">
+                    <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+                        <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/>
+                    </svg>
+                    Back
+                </button>
+                <button type="button" class="item-collection-btn primary" onclick="ItemCollectionManager.saveCollection(false)" id="save-collection-btn">
+                    Save
+                </button>
+                <button type="button" class="item-collection-btn success" onclick="ItemCollectionManager.saveCollection(true)" id="save-apply-collection-btn">
+                    Save & Apply
+                </button>
+            </div>
+        </div>
+
+        <!-- =============================================================================
+             DELETE CONFIRMATION VIEW
+             What: Confirmation dialog before deleting a collection
+             Why: Prevent accidental deletion of collections
+             How: Shows collection name and confirm/cancel buttons
+        ============================================================================= -->
+        <div class="item-collection-view hidden" id="item-collection-delete-view">
+            <div class="delete-confirmation">
+                <svg viewBox="0 0 20 20" fill="currentColor" width="48" height="48" class="delete-icon">
+                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                </svg>
+                <h4>Delete Collection?</h4>
+                <p>Are you sure you want to delete "<span id="delete-collection-name"></span>"?</p>
+                <p class="delete-warning">This action cannot be undone.</p>
+            </div>
+            <div class="item-collection-modal-buttons">
+                <button type="button" class="item-collection-btn secondary" onclick="ItemCollectionManager.showSelectView()">
+                    Cancel
+                </button>
+                <button type="button" class="item-collection-btn danger" onclick="ItemCollectionManager.confirmDelete()" id="confirm-delete-btn">
+                    Delete Collection
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -1370,6 +1682,7 @@
 <script defer src="{% static 'js/alerts-managers.js' %}"></script>
 <script defer src="{% static 'js/alerts-actions.js' %}"></script>
 <script defer src="{% static 'js/alerts-selectors.js' %}"></script>
+<script defer src="{% static 'js/alerts-item-collections.js' %}"></script>
 <script defer src="{% static 'js/alerts-init.js' %}"></script>
 <script defer src="{% static 'js/alerts-help.js' %}"></script>
 {% endblock %}
