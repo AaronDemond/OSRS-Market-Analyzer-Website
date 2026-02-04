@@ -2471,14 +2471,38 @@ def alerts_api_prices(request):
 
 @csrf_exempt
 def dismiss_triggered_alert(request):
-    """Dismiss a triggered alert notification"""
+    """
+    Dismiss a triggered alert notification.
+    
+    What: Sets is_dismissed=True AND show_notification=False for a specific alert 
+          when the user clicks the X button on a notification.
+    Why: Users need to permanently dismiss notifications. Setting show_notification=False
+         ensures the notification won't reappear even if the alert re-triggers.
+         The is_dismissed flag handles the current notification state, while 
+         show_notification controls whether future notifications should appear.
+    How: Receives alert_id via POST, updates both fields in the Alert record.
+    """
     if request.method == 'POST':
         import json
+        
+        # Get the authenticated user, or None if not logged in
         user = request.user if request.user.is_authenticated else None
+        
+        # Parse the JSON body to get the alert_id
         data = json.loads(request.body)
         alert_id = data.get('alert_id')
+        
         if alert_id:
-            Alert.objects.filter(id=alert_id, user=user).update(is_dismissed=True)
+            # Perform the update - filter by both alert_id AND user for security
+            # What: Update both is_dismissed and show_notification flags
+            # Why: is_dismissed=True hides the current notification
+            #      show_notification=False prevents future notifications from appearing
+            # How: Single update query sets both fields atomically
+            Alert.objects.filter(id=alert_id, user=user).update(
+                is_dismissed=True,
+                show_notification=False
+            )
+    
     return JsonResponse({'success': True})
 
 

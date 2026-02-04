@@ -651,6 +651,16 @@
             }
         });
     </script>
+    
+    <!-- 
+        Global Checkbox Toggle Script
+        ==============================
+        What: External JavaScript file that enables Enter key to toggle checkboxes
+        Why: Improves keyboard accessibility and prevents accidental form submission
+        How: Loaded as a separate module for better maintainability and reusability
+        File: /static/js/checkbox-toggle.js
+    -->
+    <script src="{% static 'js/checkbox-toggle.js' %}"></script>
     {% block extra_js %}{% endblock %}
 </body>
 
