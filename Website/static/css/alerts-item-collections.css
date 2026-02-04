@@ -346,19 +346,14 @@
 }
 
 .collection-count {
-    /* Item count badge */
-    background: var(--surface-2);
-    padding: 2px 6px;
+    /* Item count badge - styled with yellow/orange to make it pop */
+    background: linear-gradient(135deg, #F59E0B, #D97706);
+    color: #fff;
+    padding: 3px 8px;
     border-radius: 4px;
-    font-weight: 500;
-}
-
-.collection-preview {
-    /* Items preview text */
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 150px;
+    font-weight: 600;
+    font-size: 11px;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
 }
 
 .collection-actions {
@@ -914,11 +909,6 @@
         /* Stack options vertically on mobile */
         flex-direction: column;
         gap: 8px;
-    }
-    
-    .collection-preview {
-        /* Smaller preview on mobile */
-        max-width: 80px;
     }
     
     .collection-actions {

@@ -542,7 +542,6 @@ const ItemCollectionManager = {
                         <div class="collection-name">${this.escapeHtml(collection.name)}</div>
                         <div class="collection-meta">
                             <span class="collection-count">${itemCount} item${itemCount !== 1 ? 's' : ''}</span>
-                            <span class="collection-preview">${this.escapeHtml(itemPreview)}${hasMore}</span>
                         </div>
                     </div>
                     <div class="collection-actions">
@@ -577,7 +576,7 @@ const ItemCollectionManager = {
 
     /**
      * Renders the selected items list in the create view dropdown.
-     * 
+     *
      * What: Updates the dropdown showing items added to the new collection
      * Why: Provides visual feedback of selected items with remove option
      * How: Generates HTML for each item with red X remove button
