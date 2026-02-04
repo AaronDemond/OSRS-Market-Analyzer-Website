@@ -533,18 +533,14 @@ const ItemCollectionManager = {
         listContainer.innerHTML = this.collections.map(collection => {
             // item_names is an array of item name strings
             const itemCount = collection.item_names ? collection.item_names.length : 0;
-            const itemPreview = collection.item_names ? collection.item_names.slice(0, 3).join(', ') : '';
-            const hasMore = itemCount > 3 ? ` +${itemCount - 3} more` : '';
             
             return `
                 <div class="item-collection-card" data-collection-id="${collection.id}">
                     <div class="collection-info">
                         <div class="collection-name">${this.escapeHtml(collection.name)}</div>
-                        <div class="collection-meta">
-                            <span class="collection-count">${itemCount} item${itemCount !== 1 ? 's' : ''}</span>
-                        </div>
                     </div>
                     <div class="collection-actions">
+                        <span class="collection-count">${itemCount} item${itemCount !== 1 ? 's' : ''}</span>
                         <button type="button" class="collection-apply-btn" 
                             onclick="ItemCollectionManager.applyCollection(${collection.id})" 
                             title="Apply this collection">
