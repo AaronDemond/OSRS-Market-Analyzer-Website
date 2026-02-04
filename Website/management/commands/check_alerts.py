@@ -1925,4 +1925,4 @@ class Command(BaseCommand):
                 self.stdout.write('No alerts to check.')
             
             # Wait 30 seconds before next check
-            time.sleep(15)
+            time.sleep(5)
