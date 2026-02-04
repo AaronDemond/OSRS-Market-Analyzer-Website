@@ -52,6 +52,16 @@ urlpatterns = [
     path('api/alerts/unlink-groups/', views.unlink_groups, name='unlink_groups'),
     path('alerts/<int:alert_id>/', views.alert_detail, name='alert_detail'),
     path('api/alerts/<int:alert_id>/update/', views.update_single_alert, name='update_single_alert'),
+    # =============================================================================
+    # ITEM COLLECTION API ROUTES
+    # =============================================================================
+    # What: URL routes for item collection management
+    # Why: Users need to list, create, and delete item collections from the alerts page
+    # How: Three endpoints for CRUD operations (without update for now)
+    # =============================================================================
+    path('api/item-collections/', views.list_item_collections, name='list_item_collections'),
+    path('api/item-collections/create/', views.create_item_collection, name='create_item_collection'),
+    path('api/item-collections/<int:collection_id>/delete/', views.delete_item_collection, name='delete_item_collection'),
     path('api/favorites/add/', views.add_favorite, name='add_favorite'),
     path('api/favorites/remove/', views.remove_favorite, name='remove_favorite'),
     path('api/favorites/groups/delete/', views.delete_favorite_group, name='delete_favorite_group'),

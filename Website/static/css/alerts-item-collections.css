@@ -1,0 +1,906 @@
+/* =============================================================================
+   ITEM COLLECTION STYLES
+   =============================================================================
+   What: Styles for the Item Collection feature components
+   Why: Provides consistent, polished UI for the collection modal and buttons
+   How: Uses existing CSS variables for consistency with the rest of the alerts page
+   
+   Sections:
+   1. Collection Button (next to item labels)
+   2. Modal Overlay and Container
+   3. Modal Header
+   4. Select View (browse collections)
+   5. Collection Cards
+   6. Apply Mode Options
+   7. Create View (new collection form)
+   8. Items Preview Card
+   9. Delete Confirmation View
+   10. Modal Buttons
+   11. Responsive Adjustments
+============================================================================= */
+
+/* =============================================================================
+   1. COLLECTION BUTTON
+   What: Small button that appears next to "Items" label in form
+   Why: Quick access to open the collection modal
+   How: Styled to match the Buy Limit button on the flips page
+============================================================================= */
+.item-collection-btn {
+    /* Layout and sizing - matches .btn-buy-limit */
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    
+    /* Typography */
+    font-size: 11px;
+    font-weight: 500;
+    
+    /* Colors - purple/indigo tint to differentiate from green Buy Limit */
+    background: linear-gradient(135deg, var(--primary) 0%, #4F46E5 100%);
+    color: white;
+    
+    /* Border and shape */
+    border: none;
+    border-radius: 4px;
+    
+    /* Interaction */
+    cursor: pointer;
+    transition: all 0.15s ease;
+    
+    /* Slight spacing from the label */
+    margin-left: 8px;
+}
+
+.item-collection-btn:hover {
+    /* Hover state - slightly brighter with shadow */
+    background: linear-gradient(135deg, #818CF8 0%, var(--primary) 100%);
+    box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3);
+    transform: translateY(-1px);
+}
+
+.item-collection-btn:active {
+    /* Pressed state */
+    transform: translateY(0);
+    box-shadow: none;
+}
+
+.item-collection-btn svg {
+    /* Icon sizing */
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+}
+
+/* =============================================================================
+   2. MODAL OVERLAY AND CONTAINER
+   What: Full-screen overlay and centered modal container
+   Why: Standard modal pattern for focused interaction
+   How: Fixed positioning with flex centering, z-index above page content
+============================================================================= */
+.item-collection-modal-overlay {
+    /* Full viewport overlay */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    
+    /* Semi-transparent dark background */
+    background: rgba(0, 0, 0, 0.6);
+    
+    /* Center the modal content */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    
+    /* Above all other page content */
+    z-index: 2000;
+    
+    /* Hidden by default */
+    opacity: 0;
+    visibility: hidden;
+    
+    /* Smooth fade transition */
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.item-collection-modal-overlay.show {
+    /* Visible state */
+    opacity: 1;
+    visibility: visible;
+}
+
+.item-collection-modal-content {
+    /* Modal container sizing */
+    background: var(--surface);
+    border-radius: 12px;
+    width: 100%;
+    max-width: 500px;
+    max-height: 85vh;
+    
+    /* Shadow for depth */
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    
+    /* Enable scrolling if content overflows */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    
+    /* Slide up animation */
+    transform: translateY(20px);
+    transition: transform 0.2s ease;
+}
+
+.item-collection-modal-overlay.show .item-collection-modal-content {
+    /* Visible position */
+    transform: translateY(0);
+}
+
+/* =============================================================================
+   3. MODAL HEADER
+   What: Header with title and close button
+   Why: Provides context and easy dismissal
+   How: Flex layout with gradient background matching other modals
+============================================================================= */
+.item-collection-modal-header {
+    /* Flex layout for title and close button */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    
+    /* Padding and gradient background */
+    padding: 16px 20px;
+    background: linear-gradient(135deg, var(--primary) 0%, #4F46E5 100%);
+    color: white;
+    
+    /* Prevent shrinking */
+    flex-shrink: 0;
+}
+
+.item-collection-modal-header h3 {
+    /* Title styling */
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    
+    /* Icon alignment */
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.item-collection-modal-header h3 svg {
+    /* Header icon */
+    opacity: 0.9;
+}
+
+.item-collection-close-btn {
+    /* Close button styling */
+    background: none;
+    border: none;
+    font-size: 24px;
+    line-height: 1;
+    color: white;
+    cursor: pointer;
+    opacity: 0.8;
+    padding: 4px;
+    transition: opacity 0.15s;
+}
+
+.item-collection-close-btn:hover {
+    opacity: 1;
+}
+
+/* =============================================================================
+   4. VIEW CONTAINERS
+   What: Container for each view (select, create, delete)
+   Why: Allows showing/hiding different modal states
+   How: Flex column layout with padding, hidden class toggles display
+============================================================================= */
+.item-collection-view {
+    /* View layout */
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    gap: 16px;
+    
+    /* Allow scrolling */
+    flex: 1;
+    overflow-y: auto;
+}
+
+.item-collection-view.hidden {
+    /* Hidden state */
+    display: none;
+}
+
+/* =============================================================================
+   5. COLLECTIONS LIST (Select View)
+   What: Scrollable list of saved collections
+   Why: Shows all available collections for selection
+   How: Scrollable container with collection cards
+============================================================================= */
+.item-collection-list-container {
+    /* Scrollable container */
+    flex: 1;
+    min-height: 200px;
+    max-height: 300px;
+    overflow-y: auto;
+    
+    /* Subtle border */
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+}
+
+.item-collection-list {
+    /* List container */
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+}
+
+/* Empty state styling */
+.item-collection-empty {
+    /* Centered empty message */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--muted);
+    
+    /* Hidden by default (shown via JS) */
+    display: none;
+}
+
+.item-collection-empty svg {
+    /* Large icon */
+    opacity: 0.3;
+    margin-bottom: 12px;
+}
+
+.item-collection-empty p {
+    /* Main message */
+    margin: 0 0 4px 0;
+    font-weight: 500;
+    color: var(--text);
+}
+
+.item-collection-empty span {
+    /* Sub-message */
+    font-size: 13px;
+}
+
+/* =============================================================================
+   6. COLLECTION CARDS
+   What: Individual collection display in the list
+   Why: Shows collection info with apply/delete actions
+   How: Card layout with info section and action buttons
+============================================================================= */
+.item-collection-card {
+    /* Card layout */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    
+    /* Card styling */
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    
+    /* Hover effect */
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.item-collection-card:hover {
+    border-color: var(--primary);
+    box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.1);
+}
+
+.collection-info {
+    /* Info section layout */
+    flex: 1;
+    min-width: 0; /* Allows text truncation */
+}
+
+.collection-name {
+    /* Collection name styling */
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 2px;
+    
+    /* Truncate long names */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.collection-meta {
+    /* Metadata line */
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.collection-count {
+    /* Item count badge */
+    background: var(--surface-2);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.collection-preview {
+    /* Items preview text */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
+}
+
+.collection-actions {
+    /* Action buttons container */
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.collection-apply-btn,
+.collection-delete-btn {
+    /* Button base styling */
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.collection-apply-btn {
+    /* Apply button - primary style */
+    background: var(--primary);
+    border: none;
+    color: white;
+}
+
+.collection-apply-btn:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+}
+
+.collection-delete-btn {
+    /* Delete button - subtle danger style */
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+}
+
+.collection-delete-btn:hover {
+    background: rgba(220, 38, 38, 0.1);
+    border-color: #DC2626;
+    color: #DC2626;
+}
+
+/* =============================================================================
+   7. APPLY MODE OPTIONS
+   What: Radio buttons for merge vs replace mode
+   Why: User needs to choose how to apply collection items
+   How: Styled radio buttons with descriptive labels
+============================================================================= */
+.item-collection-apply-mode {
+    /* Container styling */
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+}
+
+.apply-mode-label {
+    /* Section label */
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 10px;
+}
+
+.apply-mode-options {
+    /* Options layout */
+    display: flex;
+    gap: 12px;
+}
+
+.apply-mode-option {
+    /* Individual option */
+    flex: 1;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    cursor: pointer;
+    padding: 10px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    transition: border-color 0.15s, background-color 0.15s;
+}
+
+.apply-mode-option:hover {
+    border-color: var(--primary);
+}
+
+.apply-mode-option input[type="radio"] {
+    /* Radio input styling */
+    margin-top: 2px;
+    accent-color: var(--primary);
+}
+
+.apply-mode-option input[type="radio"]:checked + .apply-mode-text strong {
+    color: var(--primary);
+}
+
+.apply-mode-text {
+    /* Text container */
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.apply-mode-text strong {
+    /* Option title */
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.apply-mode-text small {
+    /* Option description */
+    font-size: 11px;
+    color: var(--muted);
+}
+
+/* =============================================================================
+   8. CREATE VIEW FORM
+   What: Form for creating new collections
+   Why: User needs to input name and select items
+   How: Form groups matching existing form styling
+============================================================================= */
+.item-collection-form-group {
+    /* Form group container */
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.item-collection-form-group label {
+    /* Label styling */
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.item-collection-form-group input[type="text"] {
+    /* Text input styling */
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--text);
+    background: var(--surface);
+    transition: border-color 0.15s, box-shadow 0.15s;
+    box-sizing: border-box;
+}
+
+.item-collection-form-group input[type="text"]:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
+}
+
+.item-collection-form-group .form-hint {
+    /* Form hint text */
+    font-size: 12px;
+    color: var(--muted);
+    margin: 0;
+}
+
+/* Multi-item selector in modal - matches existing styling */
+.item-collection-form-group .multi-item-selector {
+    position: relative;
+}
+
+.item-collection-form-group .multi-item-selector-box {
+    display: flex;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0 0 0 0;
+    position: relative;
+}
+
+.item-collection-form-group .multi-item-selector-box input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 10px 14px;
+    font-size: 14px;
+    color: var(--text);
+    outline: none;
+}
+
+.item-collection-form-group .multi-item-dropdown-toggle {
+    background: none;
+    border: none;
+    border-left: 1px solid var(--border);
+    padding: 10px 12px;
+    cursor: pointer;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s, background-color 0.15s;
+}
+
+.item-collection-form-group .multi-item-dropdown-toggle:hover,
+.item-collection-form-group .multi-item-dropdown-toggle.active {
+    color: var(--primary);
+    background: rgba(var(--primary-rgb), 0.05);
+}
+
+.item-collection-form-group .multi-item-dropdown-toggle svg {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.2s;
+}
+
+.item-collection-form-group .multi-item-dropdown-toggle.active svg {
+    transform: rotate(180deg);
+}
+
+/* Suggestions and selected items dropdowns */
+.item-collection-form-group .multi-item-suggestions-dropdown,
+.item-collection-form-group .multi-item-selected-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.item-collection-form-group .multi-item-selected-dropdown {
+    display: none;
+}
+
+.item-collection-form-group .multi-item-selected-dropdown.show {
+    display: block;
+}
+
+.item-collection-form-group .selected-items-list {
+    padding: 8px;
+}
+
+.item-collection-form-group .selected-item-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 10px;
+    background: var(--surface-2);
+    border-radius: 6px;
+    margin-bottom: 4px;
+}
+
+.item-collection-form-group .selected-item-row:last-child {
+    margin-bottom: 0;
+}
+
+.item-collection-form-group .selected-item-row .item-name {
+    font-size: 13px;
+    color: var(--text);
+}
+
+.item-collection-form-group .selected-item-row .remove-item-btn {
+    background: none;
+    border: none;
+    color: #DC2626;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: background-color 0.15s;
+}
+
+.item-collection-form-group .selected-item-row .remove-item-btn:hover {
+    background: rgba(220, 38, 38, 0.1);
+}
+
+.item-collection-form-group .no-items-message {
+    padding: 12px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    display: none;
+}
+
+.item-collection-form-group .no-items-message.show {
+    display: block;
+}
+
+/* =============================================================================
+   9. ITEMS PREVIEW CARD
+   What: Scrollable preview of items in new collection
+   Why: User wants to see all items before saving
+   How: Card with header showing count and scrollable list
+============================================================================= */
+.item-collection-preview {
+    /* Card container */
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.preview-header {
+    /* Header with title and count */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+}
+
+.preview-title {
+    /* Title styling */
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.preview-count {
+    /* Count badge */
+    font-size: 12px;
+    color: var(--primary);
+    font-weight: 500;
+}
+
+.preview-items-list {
+    /* Scrollable items list */
+    max-height: 120px;
+    overflow-y: auto;
+    padding: 8px 12px;
+}
+
+.preview-item {
+    /* Individual item in preview - flex layout for name + remove button */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--surface);
+    border-radius: 4px;
+    margin-bottom: 4px;
+}
+
+.preview-item:last-child {
+    margin-bottom: 0;
+}
+
+.preview-item-name {
+    /* Item name text */
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.preview-item-remove {
+    /* Red X remove button in preview */
+    background: none;
+    border: none;
+    color: #DC2626;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 2px 4px;
+    margin-left: 8px;
+    border-radius: 3px;
+    transition: background-color 0.15s;
+    flex-shrink: 0;
+}
+
+.preview-item-remove:hover {
+    background: rgba(220, 38, 38, 0.15);
+}
+
+.preview-empty {
+    /* Empty state */
+    padding: 20px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+/* =============================================================================
+   10. DELETE CONFIRMATION VIEW
+   What: Confirmation dialog for collection deletion
+   Why: Prevents accidental deletion
+   How: Centered icon, message, and confirm/cancel buttons
+============================================================================= */
+.delete-confirmation {
+    /* Centered layout */
+    text-align: center;
+    padding: 20px 0;
+}
+
+.delete-confirmation .delete-icon {
+    /* Large warning icon */
+    color: #DC2626;
+    margin-bottom: 16px;
+}
+
+.delete-confirmation h4 {
+    /* Title */
+    margin: 0 0 8px 0;
+    font-size: 1.1rem;
+    color: var(--text);
+}
+
+.delete-confirmation p {
+    /* Message text */
+    margin: 0 0 4px 0;
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.delete-confirmation .delete-warning {
+    /* Warning text */
+    color: #DC2626;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+/* =============================================================================
+   11. MODAL BUTTONS
+   What: Footer buttons for modal actions
+   Why: Provides consistent action buttons across views
+   How: Flex layout with styled button variants
+============================================================================= */
+.item-collection-modal-buttons {
+    /* Button container */
+    display: flex;
+    gap: 10px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    margin-top: auto; /* Push to bottom */
+}
+
+.item-collection-btn {
+    /* Base button styling */
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.item-collection-btn.secondary {
+    /* Secondary/cancel button */
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+
+.item-collection-btn.secondary:hover {
+    background: var(--surface-2);
+    border-color: var(--muted);
+}
+
+.item-collection-btn.primary {
+    /* Primary action button */
+    background: var(--primary);
+    border: none;
+    color: white;
+}
+
+.item-collection-btn.primary:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+}
+
+.item-collection-btn.success {
+    /* Success/confirm action button */
+    background: #10B981;
+    border: none;
+    color: white;
+}
+
+.item-collection-btn.success:hover {
+    background: #059669;
+    transform: translateY(-1px);
+}
+
+.item-collection-btn.danger {
+    /* Danger/delete button */
+    background: #DC2626;
+    border: none;
+    color: white;
+}
+
+.item-collection-btn.danger:hover {
+    background: #B91C1C;
+    transform: translateY(-1px);
+}
+
+.item-collection-btn svg {
+    /* Button icon */
+    width: 16px;
+    height: 16px;
+}
+
+/* =============================================================================
+   12. RESPONSIVE ADJUSTMENTS
+   What: Mobile-friendly adaptations
+   Why: Modal should work on smaller screens
+   How: Adjusts sizing and layout for mobile viewport
+============================================================================= */
+@media (max-width: 576px) {
+    .item-collection-modal-content {
+        /* Full width on mobile with margin */
+        max-width: calc(100% - 24px);
+        margin: 12px;
+        max-height: calc(100vh - 24px);
+    }
+    
+    .apply-mode-options {
+        /* Stack options vertically on mobile */
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .collection-preview {
+        /* Smaller preview on mobile */
+        max-width: 80px;
+    }
+    
+    .collection-actions {
+        /* Stack buttons on very small screens */
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .collection-apply-btn,
+    .collection-delete-btn {
+        /* Full width buttons on mobile */
+        width: 100%;
+        justify-content: center;
+    }
+}

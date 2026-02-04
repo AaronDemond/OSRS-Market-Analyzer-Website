@@ -591,6 +591,123 @@ class FavoriteItem(models.Model):
         return self.item_name
 
 
+# =============================================================================
+# ITEM COLLECTION MODEL
+# =============================================================================
+# What: Stores named collections of items that users can quickly apply to alerts
+# Why: Users often want to monitor the same group of items across multiple alerts
+#      (e.g., "High-value weapons", "Skilling supplies", "Boss drops"). This model
+#      allows them to save a selection of items once and reuse it for future alerts
+#      without having to search and select each item individually every time.
+# How: Stores item IDs and names as JSON arrays, linked to a user account.
+#      Collections are accessed via the "Item Collection" button on the alerts page,
+#      which opens a modal allowing users to create, select, and apply collections.
+# =============================================================================
+
+class ItemCollection(models.Model):
+    """
+    ItemCollection Model
+    ====================
+    What: Represents a user-defined collection of OSRS items for quick alert setup.
+    Why: Streamlines the process of creating multi-item alerts by allowing users to
+         save and reuse item selections across different alerts.
+    How: Stores item data as JSON arrays; user selects collection via modal UI.
+    
+    Fields:
+        user: The owner of this collection (required - no anonymous collections)
+        name: User-defined name for the collection (e.g., "GWD Drops", "Flip Items")
+        item_ids: JSON array of item IDs (e.g., "[4151, 11802, 12924]")
+        item_names: JSON array of item names for display without API lookup
+        created_at: Timestamp when collection was created
+        updated_at: Timestamp when collection was last modified
+    
+    Usage:
+        1. User clicks "Item Collection" button above item selector
+        2. Modal shows existing collections or option to create new one
+        3. User can apply a collection to quickly populate the item selector
+        4. Collections persist and can be reused across multiple alerts
+    """
+    
+    # user: The owner of this collection
+    # What: Foreign key linking collection to a specific user account
+    # Why: Collections are personal to each user; different users have different needs
+    # How: CASCADE delete ensures collections are removed when user account is deleted
+    # Note: NOT nullable - this feature is only available to authenticated users
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    
+    # name: User-defined name for the collection
+    # What: A descriptive name chosen by the user to identify this collection
+    # Why: Users need to distinguish between multiple collections they've created
+    # How: Displayed in the collection list modal; must be unique per user
+    # Note: Max 100 chars provides enough room for descriptive names
+    name = models.CharField(max_length=100)
+    
+    # item_ids: JSON array storing the item IDs in this collection
+    # What: Stores item IDs as a JSON-formatted string array (e.g., "[4151, 11802]")
+    # Why: Items are identified by their OSRS item ID for reliable matching
+    # How: Parsed as JSON when applying collection; stored as text for flexibility
+    # Note: Uses TextField to accommodate collections with many items
+    item_ids = models.TextField()
+    
+    # item_names: JSON array storing item names for display
+    # What: Stores item names as a JSON-formatted string array
+    # Why: Allows displaying item names in the UI without needing to look them up
+    #      from the item mapping every time the collection is shown
+    # How: Captured at collection creation time; displayed in preview card
+    # Note: Names are stored in the same order as item_ids for index matching
+    item_names = models.TextField()
+    
+    # created_at: Timestamp when collection was created
+    # What: Auto-set datetime when the collection record is first created
+    # Why: Useful for sorting collections and potential future features
+    # How: auto_now_add=True sets this once on initial save
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    # updated_at: Timestamp when collection was last modified
+    # What: Auto-updated datetime whenever the collection is saved
+    # Why: Tracks when collection was last changed (for future edit feature)
+    # How: auto_now=True updates this on every save
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        # unique_together: Prevent duplicate collection names for the same user
+        # What: Database constraint ensuring user+name combination is unique
+        # Why: Users shouldn't have two collections with the same name (confusing)
+        # How: Django enforces this at the database level
+        unique_together = ['user', 'name']
+        
+        # ordering: Default sort order when querying collections
+        # What: Sort alphabetically by name by default
+        # Why: Makes it easy for users to find collections in the modal
+        ordering = ['name']
+
+    def __str__(self):
+        """String representation showing collection name and item count."""
+        import json
+        try:
+            item_count = len(json.loads(self.item_ids))
+        except (json.JSONDecodeError, TypeError):
+            item_count = 0
+        return f"{self.name} ({item_count} items)"
+    
+    def get_item_count(self):
+        """
+        Returns the number of items in this collection.
+        
+        What: Parses item_ids JSON and returns the count
+        Why: Used in UI to display "X items" badge on collection cards
+        How: JSON parse the item_ids array and return its length
+        
+        Returns:
+            int: Number of items in the collection, or 0 if parsing fails
+        """
+        import json
+        try:
+            return len(json.loads(self.item_ids))
+        except (json.JSONDecodeError, TypeError):
+            return 0
+
+
 class PasswordResetToken(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     token = models.CharField(max_length=64, unique=True)
