@@ -1029,15 +1029,24 @@
         </div>
 
         <!-- =============================================================================
-             CREATE VIEW - Create new item collections
-             What: View for creating a new collection with name and items
-             Why: Users need a way to define new collections
-             How: Form with name input, multi-item selector, preview card, and save buttons
+             CREATE VIEW - Create new item collections (also used for editing)
+             What: View for creating a new collection or editing an existing one
+             Why: Users need a way to define new collections and modify existing ones
+             How: Form with name input, multi-item selector, preview card, and save button
+                  Header text changes dynamically based on create vs edit mode
         ============================================================================= -->
         <div class="item-collection-view hidden" id="item-collection-create-view">
             <!-- =============================================================================
+                 CREATE/EDIT VIEW HEADER
+                 What: Dynamic header that shows "Create New Collection" or "Edit Collection"
+                 Why: Same view is used for both operations, header indicates current mode
+                 How: Text content is updated by JavaScript based on editingCollectionId
+            ============================================================================= -->
+            <h4 class="item-collection-view-header" id="create-view-header">Create New Collection</h4>
+            
+            <!-- =============================================================================
                  COLLECTION NAME INPUT
-                 What: Text input for naming the new collection
+                 What: Text input for naming the collection
                  Why: Collections need unique, descriptive names for easy identification
                  How: Standard text input with placeholder and validation
             ============================================================================= -->
@@ -1103,10 +1112,10 @@
             </div>
 
             <!-- =============================================================================
-                 CREATE VIEW FOOTER BUTTONS
-                 What: Action buttons for saving or canceling collection creation
-                 Why: User needs to save, save & apply, or go back
-                 How: Three buttons - Back (return to select), Save, Save & Apply
+                 CREATE/EDIT VIEW FOOTER BUTTONS
+                 What: Action buttons for saving or canceling collection creation/editing
+                 Why: User needs to save changes or go back
+                 How: Two buttons - Back (return to select view) and Save
             ============================================================================= -->
             <div class="item-collection-modal-buttons">
                 <button type="button" class="item-collection-btn secondary" onclick="ItemCollectionManager.showSelectView()">
@@ -1117,9 +1126,6 @@
                 </button>
                 <button type="button" class="item-collection-btn primary" onclick="ItemCollectionManager.saveCollection(false)" id="save-collection-btn">
                     Save
-                </button>
-                <button type="button" class="item-collection-btn success" onclick="ItemCollectionManager.saveCollection(true)" id="save-apply-collection-btn">
-                    Save & Apply
                 </button>
             </div>
         </div>
