@@ -594,6 +594,67 @@
         height: 18px;
     }
 
+    /* =========================================================================
+       Mobile Action Bar
+       =========================================================================
+       What: A compact action bar that appears only on mobile screens.
+       Why: The main page-header is hidden on mobile (via base.css) to save space,
+            but users still need access to "Manage Groups" and "Add Item" buttons.
+       How: Hidden on desktop (display: none), shown on mobile via media query.
+            Styled as a flex row with two buttons that share the available width.
+       ========================================================================= */
+    
+    /* Desktop: Hide the mobile action bar completely */
+    .mobile-action-bar {
+        display: none;
+    }
+
+    /* Mobile action button base styles (used when visible on mobile) */
+    .mobile-action-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 10px 16px;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        flex: 1;
+        border: 1px solid transparent;
+    }
+
+    .mobile-action-btn svg {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+    }
+
+    /* Outline variant (for "Groups" button) */
+    .mobile-action-btn-outline {
+        background: var(--surface);
+        color: var(--text);
+        border-color: var(--border);
+    }
+
+    .mobile-action-btn-outline:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+
+    /* Primary variant (for "Add Item" button) */
+    .mobile-action-btn-primary {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    .mobile-action-btn-primary:hover {
+        background: var(--primary-hover);
+        border-color: var(--primary-hover);
+    }
+
     /* Group Section */
     .favorites-section {
         margin-bottom: 32px;
@@ -1334,6 +1395,20 @@
     }
 
     @media (max-width: 640px) {
+        /* =====================================================================
+           Mobile Action Bar - Visible on Mobile
+           =====================================================================
+           What: Shows the mobile action bar with Groups and Add Item buttons.
+           Why: The page-header is hidden on mobile (base.css), so we need an
+                alternative way to access these important actions.
+           How: Display as flex row, with buttons sharing width equally.
+           ===================================================================== */
+        .mobile-action-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        
         .page-header {
             /* Override: Use row-reverse to put icon after title, inline with burger */
             flex-direction: row-reverse !important;
@@ -1945,6 +2020,31 @@
             Add Item
         </button>
     </div>
+</div>
+
+<!-- 
+    Mobile Action Bar
+    =================
+    What: A compact action bar that appears only on mobile screens.
+    Why: The main page-header is hidden on mobile (via base.css) to save space,
+         but users still need access to "Manage Groups" and "Add Item" buttons.
+    How: This bar is hidden on desktop (display: none) and shown on mobile
+         (display: flex). It appears at the top of the content area, below
+         the burger menu button.
+-->
+<div class="mobile-action-bar">
+    <button class="mobile-action-btn mobile-action-btn-outline" onclick="openManageGroupsModal()">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+        </svg>
+        Groups
+    </button>
+    <button class="mobile-action-btn mobile-action-btn-primary" onclick="openAddFavoriteModal()">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+        </svg>
+        Add Item
+    </button>
 </div>
 
 <!-- Toolbar -->
