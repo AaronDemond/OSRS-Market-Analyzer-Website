@@ -911,17 +911,11 @@
         gap: 8px;
     }
     
-    .collection-actions {
-        /* Stack buttons on very small screens */
-        flex-direction: column;
-        gap: 4px;
-    }
-    
+    /* Keep buttons in a row on mobile, just make them more compact */
     .collection-apply-btn,
     .collection-edit-btn,
     .collection-delete-btn {
-        /* Full width buttons on mobile */
-        width: 100%;
-        justify-content: center;
+        padding: 4px 6px;
+        font-size: 11px;
     }
 }
