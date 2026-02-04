@@ -2902,6 +2902,20 @@ def update_alert(request):
                 alert.is_dismissed = not show_notification
                 alert.is_active = True
                 
+                # =============================================================================
+                # TRIGGERED STATE MANAGEMENT AFTER EDIT
+                # =============================================================================
+                # What: Determine whether the alert should remain triggered after an edit,
+                #       based on whether triggered_data still contains any entries after cleanup
+                # Why: When a user edits an alert, items may be added or removed. The cleanup
+                #      methods (cleanup_triggered_data_for_removed_items) have already run and
+                #      removed triggered data for items that were deleted from the alert.
+                #      We need to check the POST-CLEANUP state to decide the trigger status.
+                # How: Check if items were added (requires full reset) OR if triggered_data
+                #      is now empty after cleanup (requires reset). Otherwise, preserve trigger state.
+                # Note: This check happens AFTER cleanup methods have executed, so we're looking
+                #       at the cleaned-up version of triggered_data, not the original version.
+                
                 if items_were_added:
                     # Items were added - full reset required because new items haven't been checked
                     # What: Clear all triggered state and data when new items are added
@@ -2912,15 +2926,34 @@ def update_alert(request):
                     alert.triggered_data = None
                     alert.triggered_at = None
                 else:
-                    # Only items were removed (or no item changes) - preserve remaining triggered_data
-                    # What: Keep the triggered_data that was already cleaned up for removed items
-                    # Why: If user removes some items from a triggered alert, the remaining items
-                    #      that already triggered should stay triggered with their data intact
-                    # How: Only reset is_triggered/triggered_at if triggered_data is now empty
-                    #      (cleanup_triggered_data_for_removed_items sets triggered_data=None if all removed)
-                    if alert.triggered_data is None:
+                    # Only items were removed (or no item changes) - check post-cleanup triggered_data
+                    # What: Examine the triggered_data field AFTER cleanup to determine trigger status
+                    # Why: If cleanup removed all triggered entries, the alert should no longer be
+                    #      considered triggered. But if some triggered data remains for items still
+                    #      being monitored, the alert should stay triggered.
+                    # How: Check if triggered_data is None or empty after cleanup:
+                    #      - If None/empty → set is_triggered=False, triggered_at=None
+                    #      - If still has data → set is_triggered=True, preserve triggered_at
+                    # Note: cleanup_triggered_data_for_removed_items() sets triggered_data=None
+                    #       when all triggered entries are removed
+                    
+                    if alert.triggered_data is None or alert.triggered_data == '':
+                        # All triggered data was removed - reset trigger state
+                        # What: Clear is_triggered and triggered_at because no triggered data remains
+                        # Why: An alert with no triggered data should not be marked as triggered
+                        # How: Set both fields to their default "not triggered" state
                         alert.is_triggered = False
                         alert.triggered_at = None
+                    else:
+                        # Some triggered data still exists - keep alert triggered
+                        # What: Set is_triggered=True because triggered_data still has entries
+                        # Why: The cleanup removed only the data for deleted items; data for items
+                        #      still being monitored remains, so the alert should stay triggered
+                        # How: Explicitly set is_triggered=True, preserve existing triggered_at timestamp
+                        # Note: We explicitly set True (rather than leaving as-is) to ensure consistency
+                        #       in case the field was somehow in an incorrect state
+                        alert.is_triggered = True
+                        # triggered_at is preserved - no change needed, keep the original timestamp
                 
                 alert.save()
     return JsonResponse({'success': True})
@@ -3698,11 +3731,39 @@ def update_single_alert(request, alert_id):
             group, _ = AlertGroup.objects.get_or_create(user=user, name=name)
             alert.groups.add(group)
     
-    # Reset triggered state when alert is edited (unless we kept some triggered_data above)
-    # Only clear triggered_at if triggered_data was also cleared
-    if alert.triggered_data is None:
+    # =============================================================================
+    # TRIGGERED STATE MANAGEMENT AFTER EDIT
+    # =============================================================================
+    # What: Determine whether the alert should remain triggered after an edit,
+    #       based on whether triggered_data still contains any entries after cleanup
+    # Why: When a user edits an alert via this API endpoint, items may be removed.
+    #      The cleanup methods (cleanup_triggered_data_for_removed_items) have already
+    #      run and removed triggered data for items that were deleted from the alert.
+    #      We need to check the POST-CLEANUP state to decide the trigger status.
+    # How: Check if triggered_data is None or empty after all cleanup operations:
+    #      - If None/empty → set is_triggered=False, triggered_at=None
+    #      - If still has data → set is_triggered=True, preserve triggered_at
+    # Note: This logic mirrors the update_alert() function to ensure consistent behavior
+    #       across both update endpoints
+    
+    if alert.triggered_data is None or alert.triggered_data == '':
+        # All triggered data was removed - reset trigger state
+        # What: Clear is_triggered and triggered_at because no triggered data remains
+        # Why: An alert with no triggered data should not be marked as triggered
+        # How: Set both fields to their default "not triggered" state
         alert.is_triggered = False
         alert.triggered_at = None
+    else:
+        # Some triggered data still exists - keep alert triggered
+        # What: Set is_triggered=True because triggered_data still has entries
+        # Why: The cleanup removed only the data for deleted items; data for items
+        #      still being monitored remains, so the alert should stay triggered
+        # How: Explicitly set is_triggered=True, preserve existing triggered_at timestamp
+        # Note: We explicitly set True (rather than leaving as-is) to ensure consistency
+        #       in case the field was somehow in an incorrect state
+        alert.is_triggered = True
+        # triggered_at is preserved - no change needed, keep the original timestamp
+    
     alert.is_dismissed = not alert.show_notification if alert.show_notification is not None else False
     
     alert.save()
