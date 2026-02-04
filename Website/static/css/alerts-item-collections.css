@@ -216,6 +216,21 @@
 }
 
 /* =============================================================================
+   4a. VIEW HEADER
+   What: Header text for create/edit views
+   Why: Indicates to user whether they are creating or editing a collection
+   How: Styled h4 element at top of create/edit view
+============================================================================= */
+.item-collection-view-header {
+    /* Header styling */
+    margin: 0 0 4px 0;
+    padding: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--foreground);
+}
+
+/* =============================================================================
    5. COLLECTIONS LIST (Select View)
    What: Scrollable list of saved collections
    Why: Shows all available collections for selection
@@ -355,6 +370,7 @@
 }
 
 .collection-apply-btn,
+.collection-edit-btn,
 .collection-delete-btn {
     /* Button base styling */
     display: flex;
@@ -378,6 +394,20 @@
 .collection-apply-btn:hover {
     background: var(--primary-hover);
     transform: translateY(-1px);
+}
+
+.collection-edit-btn {
+    /* Edit button - subtle secondary style with blue/teal accent */
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+}
+
+.collection-edit-btn:hover {
+    /* Blue/teal hover state to indicate edit action */
+    background: rgba(59, 130, 246, 0.1);
+    border-color: #3B82F6;
+    color: #3B82F6;
 }
 
 .collection-delete-btn {
@@ -898,6 +928,7 @@
     }
     
     .collection-apply-btn,
+    .collection-edit-btn,
     .collection-delete-btn {
         /* Full width buttons on mobile */
         width: 100%;

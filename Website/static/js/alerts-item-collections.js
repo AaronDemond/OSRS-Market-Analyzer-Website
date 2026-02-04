@@ -79,6 +79,14 @@ const ItemCollectionManager = {
      * Cleared and reset when new notification shown to prevent stacking
      */
     notificationTimeout: null,
+    
+    /**
+     * editingCollectionId: ID of collection currently being edited, or null if creating new
+     * What: Tracks which collection is being edited (if any)
+     * Why: When saving, we need to know whether to call create or update API
+     * How: Set when user clicks Edit on a collection, cleared when creating new
+     */
+    editingCollectionId: null,
 
     // =============================================================================
     // MODAL OPEN/CLOSE METHODS
@@ -176,15 +184,23 @@ const ItemCollectionManager = {
         const selectView = document.getElementById('item-collection-select-view');
         const createView = document.getElementById('item-collection-create-view');
         const deleteView = document.getElementById('item-collection-delete-view');
+        const createViewHeader = document.getElementById('create-view-header');
         
         if (selectView) selectView.classList.add('hidden');
         if (createView) createView.classList.remove('hidden');
         if (deleteView) deleteView.classList.add('hidden');
         
-        // Reset create view state
+        // Reset create view state - this is a new collection, not editing
+        // editingCollectionId: Set to null because we're creating, not editing
+        this.editingCollectionId = null;
         this.selectedItems = [];
         this.dropdownOpen = false;
         this.selectedIndex = -1;
+        
+        // Update header to reflect create mode
+        // What: Change header text to indicate creating new collection
+        // Why: Same view is used for create and edit, so header must reflect current mode
+        if (createViewHeader) createViewHeader.textContent = 'Create New Collection';
         
         // Clear form inputs
         const nameInput = document.getElementById('collection-name-input');
@@ -196,6 +212,85 @@ const ItemCollectionManager = {
         this.initCreateViewSelector();
         this.renderCreateViewSelectedItems();
         this.updatePreview();
+        
+        // Focus the name input
+        if (nameInput) nameInput.focus();
+    },
+    
+    /**
+     * Shows the edit collection view (same UI as create but pre-filled).
+     * 
+     * What: Opens the create/edit view with existing collection data loaded
+     * Why: User wants to modify an existing collection's items or name
+     * How: Find collection by ID, populate form fields, set editing state
+     * 
+     * @param {number} collectionId - ID of the collection to edit
+     */
+    showEditView(collectionId) {
+        // Find the collection in our loaded collections array
+        // collection: The ItemCollection object to edit, or undefined if not found
+        const collection = this.collections.find(c => c.id === collectionId);
+        if (!collection) {
+            alert('Collection not found');
+            return;
+        }
+        
+        console.log('=== showEditView called ===');
+        console.log('Collection ID:', collectionId);
+        console.log('Collection data:', JSON.stringify(collection));
+        
+        const selectView = document.getElementById('item-collection-select-view');
+        const createView = document.getElementById('item-collection-create-view');
+        const deleteView = document.getElementById('item-collection-delete-view');
+        const createViewHeader = document.getElementById('create-view-header');
+        
+        if (selectView) selectView.classList.add('hidden');
+        if (createView) createView.classList.remove('hidden');
+        if (deleteView) deleteView.classList.add('hidden');
+        
+        // Set editing state - we're editing an existing collection
+        // editingCollectionId: Store the ID so saveCollection knows to call update API
+        this.editingCollectionId = collectionId;
+        this.dropdownOpen = false;
+        this.selectedIndex = -1;
+        
+        // Update header to reflect edit mode
+        // What: Change header text to indicate editing existing collection
+        // Why: Same view is used for create and edit, so header must reflect current mode
+        if (createViewHeader) createViewHeader.textContent = 'Edit Collection';
+        
+        // Pre-populate the name input with the collection's current name
+        const nameInput = document.getElementById('collection-name-input');
+        if (nameInput) nameInput.value = collection.name || '';
+        
+        // Pre-populate selectedItems array with the collection's current items
+        // What: Build selectedItems array from collection's item_ids and item_names
+        // Why: The item selector uses this.selectedItems to track what's in the collection
+        // How: Map item_ids and item_names arrays into {id, name} objects
+        this.selectedItems = [];
+        if (collection.item_ids && collection.item_names) {
+            for (let i = 0; i < collection.item_ids.length; i++) {
+                this.selectedItems.push({
+                    id: collection.item_ids[i],
+                    name: collection.item_names[i] || `Item ${collection.item_ids[i]}`
+                });
+            }
+        }
+        
+        console.log('selectedItems after populating:', JSON.stringify(this.selectedItems));
+        
+        // Clear the item search input
+        const itemInput = document.getElementById('collection-item-input');
+        if (itemInput) itemInput.value = '';
+        
+        // Initialize the item selector and update displays
+        // What: Set up event listeners and render current items
+        // Why: Need to show existing items and allow adding/removing
+        this.initCreateViewSelector();
+        this.renderCreateViewSelectedItems();
+        this.updatePreview();
+        
+        console.log('selectedItems after initCreateViewSelector:', JSON.stringify(this.selectedItems));
         
         // Focus the name input
         if (nameInput) nameInput.focus();
@@ -240,6 +335,7 @@ const ItemCollectionManager = {
      * How: Makes GET request to /api/item-collections/, stores result in this.collections
      */
     async loadCollections() {
+        console.log('=== loadCollections called ===');
         try {
             const response = await fetch('/api/item-collections/', {
                 method: 'GET',
@@ -254,7 +350,9 @@ const ItemCollectionManager = {
             }
             
             const data = await response.json();
+            console.log('loadCollections response:', JSON.stringify(data));
             this.collections = data.collections || [];
+            console.log('this.collections after load:', JSON.stringify(this.collections));
             
             // Update the UI with loaded collections
             this.renderCollections();
@@ -267,13 +365,16 @@ const ItemCollectionManager = {
     },
 
     /**
-     * Saves a new collection to the server.
+     * Saves a collection to the server (create new or update existing).
      * 
-     * What: Creates a new item collection with the given name and items
+     * What: Creates a new item collection or updates an existing one
      * Why: Persists the collection for future use
-     * How: POST to /api/item-collections/create/ with name and items
+     * How: Check if editingCollectionId is set - if so, call update API; otherwise create API
      * 
-     * @param {boolean} applyAfterSave - If true, applies collection after saving
+     * Note: The applyAfterSave parameter is no longer used (removed "Save & Apply" button)
+     *       but kept for backwards compatibility. Always goes back to select view after save.
+     * 
+     * @param {boolean} applyAfterSave - DEPRECATED: No longer used, always false
      */
     async saveCollection(applyAfterSave) {
         // Get the collection name from input
@@ -286,6 +387,10 @@ const ItemCollectionManager = {
             return;
         }
         
+        console.log('=== saveCollection called ===');
+        console.log('this.selectedItems at save time:', JSON.stringify(this.selectedItems));
+        console.log('this.selectedItems.length:', this.selectedItems.length);
+        
         if (this.selectedItems.length === 0) {
             alert('Please add at least one item to the collection');
             return;
@@ -293,23 +398,48 @@ const ItemCollectionManager = {
         
         try {
             // Prepare data for API
+            // itemIds: Array of integer item IDs to save
+            // itemNames: Array of string item names to save
             const itemIds = this.selectedItems.map(item => item.id);
             const itemNames = this.selectedItems.map(item => item.name);
             
-            const response = await fetch('/api/item-collections/create/', {
+            console.log('itemIds to send:', JSON.stringify(itemIds));
+            console.log('itemNames to send:', JSON.stringify(itemNames));
+            console.log('editingCollectionId:', this.editingCollectionId);
+            
+            // Determine API endpoint based on whether we're editing or creating
+            // What: Choose between create and update API endpoint
+            // Why: If editingCollectionId is set, we're updating an existing collection
+            // How: Build URL dynamically based on editingCollectionId
+            let url;
+            if (this.editingCollectionId) {
+                // Update existing collection
+                url = `/api/item-collections/${this.editingCollectionId}/update/`;
+            } else {
+                // Create new collection
+                url = '/api/item-collections/create/';
+            }
+            
+            console.log('URL:', url);
+            
+            const requestBody = {
+                name: name,
+                item_ids: itemIds,
+                item_names: itemNames
+            };
+            console.log('Request body:', JSON.stringify(requestBody));
+            
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': window.CSRF_TOKEN
                 },
-                body: JSON.stringify({
-                    name: name,
-                    item_ids: itemIds,
-                    item_names: itemNames
-                })
+                body: JSON.stringify(requestBody)
             });
             
             const data = await response.json();
+            console.log('Response:', JSON.stringify(data));
             
             if (!response.ok) {
                 alert(data.error || 'Failed to save collection');
@@ -317,15 +447,13 @@ const ItemCollectionManager = {
             }
             
             // Collection saved successfully
-            if (applyAfterSave) {
-                // Apply the newly created collection to the form
-                this.applyCollectionToForm(itemIds, itemNames);
-                this.close();
-            } else {
-                // Reload collections and go back to select view
-                await this.loadCollections();
-                this.showSelectView();
-            }
+            // Always reload collections and go back to select view
+            // (Save & Apply was removed per user request)
+            await this.loadCollections();
+            this.showSelectView();
+            
+            // Clear editing state after successful save
+            this.editingCollectionId = null;
             
         } catch (error) {
             console.error('Error saving collection:', error);
@@ -401,7 +529,7 @@ const ItemCollectionManager = {
         if (applyModeSection) applyModeSection.style.display = 'block';
         
         // Generate HTML for each collection
-        // Each collection card shows: name, item count, items preview, apply/delete buttons
+        // Each collection card shows: name, item count, items preview, apply/edit/delete buttons
         listContainer.innerHTML = this.collections.map(collection => {
             // item_names is an array of item name strings
             const itemCount = collection.item_names ? collection.item_names.length : 0;
@@ -425,6 +553,14 @@ const ItemCollectionManager = {
                                 <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                             </svg>
                             Apply
+                        </button>
+                        <button type="button" class="collection-edit-btn" 
+                            onclick="ItemCollectionManager.showEditView(${collection.id})" 
+                            title="Edit this collection">
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
+                            </svg>
+                            Edit
                         </button>
                         <button type="button" class="collection-delete-btn" 
                             onclick="ItemCollectionManager.showDeleteView(${collection.id}, '${this.escapeHtml(collection.name).replace(/'/g, "\\'")}')" 
@@ -559,8 +695,29 @@ const ItemCollectionManager = {
         const freshToggle = document.getElementById('collection-multi-item-toggle');
         const freshDropdown = document.getElementById('collection-item-suggestions');
         const freshSelectedDropdown = document.getElementById('collection-selected-items-dropdown');
-        const freshSelectedList = document.getElementById('collection-selected-items-list');
+        let freshSelectedList = document.getElementById('collection-selected-items-list');
         const freshSelectorBox = freshInput ? freshInput.closest('.multi-item-selector-box') : null;
+        
+        // Clone and replace selectedList to remove old event listeners
+        // What: Prevents duplicate event listeners from accumulating
+        // Why: initCreateViewSelector() is called multiple times (each create/edit)
+        // How: Clone the element, replace it, get fresh reference
+        if (freshSelectedList) {
+            const newSelectedList = freshSelectedList.cloneNode(true);
+            freshSelectedList.parentNode.replaceChild(newSelectedList, freshSelectedList);
+            freshSelectedList = document.getElementById('collection-selected-items-list');
+        }
+        
+        // Clone and replace previewList to remove old event listeners
+        // What: Prevents duplicate event listeners from accumulating
+        // Why: initCreateViewSelector() is called multiple times (each create/edit)
+        // How: Clone the element, replace it, get fresh reference
+        let previewList = document.getElementById('collection-preview-list');
+        if (previewList) {
+            const newPreviewList = previewList.cloneNode(true);
+            previewList.parentNode.replaceChild(newPreviewList, previewList);
+            previewList = document.getElementById('collection-preview-list');
+        }
         
         /**
          * Adds an item to the selected list for the new collection.
@@ -595,9 +752,19 @@ const ItemCollectionManager = {
          * @param {string} id - Item's unique identifier to remove
          */
         const removeItem = (id) => {
+            console.log('=== removeItem called ===');
+            console.log('Item ID to remove:', id);
+            console.log('selectedItems BEFORE removal:', JSON.stringify(self.selectedItems));
+            
             const itemToRemove = self.selectedItems.find(item => String(item.id) === String(id));
             const itemName = itemToRemove ? itemToRemove.name : 'Item';
+            
+            console.log('Item found to remove:', itemToRemove);
+            
             self.selectedItems = self.selectedItems.filter(item => String(item.id) !== String(id));
+            
+            console.log('selectedItems AFTER removal:', JSON.stringify(self.selectedItems));
+            
             self.renderCreateViewSelectedItems();
             self.updatePreview();
             
@@ -619,13 +786,22 @@ const ItemCollectionManager = {
             });
         };
         
+        console.log('=== Adding event listeners ===');
+        console.log('freshSelectedList exists:', !!freshSelectedList);
+        console.log('previewList exists:', !!previewList);
+        
         // Handle remove button clicks in selected items dropdown
         if (freshSelectedList) {
+            console.log('Adding click listener to freshSelectedList');
             freshSelectedList.addEventListener('click', function(e) {
+                console.log('freshSelectedList click event fired');
+                console.log('e.target:', e.target);
+                console.log('e.target.classList:', e.target.classList.toString());
                 if (e.target.classList.contains('remove-item-btn')) {
                     e.preventDefault();
                     e.stopPropagation();
                     const itemId = e.target.dataset.id;
+                    console.log('Calling removeItem from freshSelectedList with id:', itemId);
                     removeItem(itemId);
                 }
             });
@@ -635,13 +811,18 @@ const ItemCollectionManager = {
         // What: Allows removing items directly from the preview card
         // Why: User wants to remove items from preview without using the dropdown
         // How: Uses event delegation to handle clicks on dynamically generated buttons
-        const previewList = document.getElementById('collection-preview-list');
+        // Note: previewList was already cloned and replaced above to remove old listeners
         if (previewList) {
+            console.log('Adding click listener to previewList');
             previewList.addEventListener('click', function(e) {
+                console.log('previewList click event fired');
+                console.log('e.target:', e.target);
+                console.log('e.target.classList:', e.target.classList.toString());
                 if (e.target.classList.contains('preview-item-remove')) {
                     e.preventDefault();
                     e.stopPropagation();
                     const itemId = e.target.dataset.id;
+                    console.log('Calling removeItem from previewList with id:', itemId);
                     removeItem(itemId);
                 }
             });

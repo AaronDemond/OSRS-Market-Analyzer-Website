@@ -4102,6 +4102,179 @@ def delete_item_collection(request, collection_id):
     return JsonResponse({'success': True})
 
 
+def update_item_collection(request, collection_id):
+    """
+    Update an existing item collection.
+    
+    What: Updates an existing ItemCollection record in the database
+    Why: Users need to be able to modify their saved collections (add/remove items, rename)
+    How: Find collection by ID, verify ownership, update fields, save
+    
+    Request: POST /api/item-collections/<id>/update/
+    Body (JSON):
+        {
+            "name": "Updated collection name",
+            "item_ids": [4151, 11802],  // Array of item IDs
+            "item_names": ["Abyssal whip", "Armadyl godsword"]  // Array of item names
+        }
+    
+    Response (200 OK):
+        {
+            "success": true,
+            "collection": {
+                "id": 1,
+                "name": "Updated collection name",
+                "item_ids": [4151, 11802],
+                "item_names": ["Abyssal whip", "Armadyl godsword"],
+                "item_count": 2
+            }
+        }
+    
+    Response (400 Bad Request) - if validation fails:
+        {"success": false, "error": "Collection name is required"}
+    
+    Response (401 Unauthorized) - if user not authenticated:
+        {"success": false, "error": "Authentication required"}
+    
+    Response (404 Not Found) - if collection doesn't exist or doesn't belong to user:
+        {"success": false, "error": "Collection not found"}
+    
+    Response (409 Conflict) - if new name conflicts with another collection:
+        {"success": false, "error": "A collection with this name already exists"}
+    """
+    import json
+    from .models import ItemCollection
+    
+    # Only allow POST requests
+    # What: Enforce HTTP method restriction
+    # Why: Update operations should use POST for simplicity with Django CSRF
+    if request.method != 'POST':
+        return JsonResponse({
+            'success': False,
+            'error': 'POST required'
+        }, status=405)
+    
+    # Check authentication
+    # What: Verify user is authenticated before allowing collection update
+    # Why: Users should only be able to update their own collections
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'success': False,
+            'error': 'Authentication required'
+        }, status=401)
+    
+    # Find the collection
+    # What: Query for the collection by ID, filtered by user
+    # Why: Filtering by user ensures users can only update their own collections
+    # How: Use filter().first() to get None if not found (instead of exception)
+    # collection: The ItemCollection instance to update, or None if not found
+    collection = ItemCollection.objects.filter(
+        id=collection_id,
+        user=request.user
+    ).first()
+    
+    if not collection:
+        return JsonResponse({
+            'success': False,
+            'error': 'Collection not found'
+        }, status=404)
+    
+    try:
+        # Parse request body
+        # data: Dictionary parsed from JSON request body containing updated fields
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid JSON'
+        }, status=400)
+    
+    # Extract and validate fields
+    # name: Updated name for the collection (required)
+    # item_ids_data: Array of item IDs (required)
+    # item_names_data: Array of item names (required)
+    name = data.get('name', '').strip()
+    item_ids_data = data.get('item_ids', [])
+    item_names_data = data.get('item_names', [])
+    
+    # Validate required fields
+    # What: Ensure all required data is present
+    # Why: Cannot update a collection without name and items
+    if not name:
+        return JsonResponse({
+            'success': False,
+            'error': 'Collection name is required'
+        }, status=400)
+    
+    if not item_ids_data:
+        return JsonResponse({
+            'success': False,
+            'error': 'At least one item is required'
+        }, status=400)
+    
+    # Check for duplicate name (excluding current collection)
+    # What: Ensure no other collection by this user has the same name
+    # Why: Collection names should be unique per user for identification
+    # How: Query for collections with same name, exclude current collection ID
+    # existing: QuerySet of collections with matching name (excluding current)
+    existing = ItemCollection.objects.filter(
+        user=request.user,
+        name__iexact=name
+    ).exclude(id=collection_id)
+    
+    if existing.exists():
+        return JsonResponse({
+            'success': False,
+            'error': 'A collection with this name already exists'
+        }, status=409)
+    
+    # Parse item IDs - handle both arrays and comma-separated strings
+    # What: Convert item_ids_data into a list of integers
+    # Why: Frontend may send JSON array or comma-separated string
+    # How: Check type and parse accordingly
+    # item_ids_list: List of integer item IDs
+    if isinstance(item_ids_data, list):
+        item_ids_list = [int(x) for x in item_ids_data]
+    else:
+        item_ids_str = str(item_ids_data)
+        item_ids_list = [int(x.strip()) for x in item_ids_str.split(',') if x.strip()]
+    
+    # Parse item names - handle both arrays and comma-separated strings
+    # What: Convert item_names_data into a list of strings
+    # Why: Frontend may send JSON array or comma-separated string
+    # How: Check type and parse accordingly
+    # item_names_list: List of item name strings
+    if isinstance(item_names_data, list):
+        item_names_list = [str(x) for x in item_names_data]
+    else:
+        item_names_str = str(item_names_data)
+        item_names_list = [x.strip() for x in item_names_str.split(',') if x.strip()]
+    
+    # Update collection fields
+    # What: Update the collection instance with new values
+    # Why: Apply the user's changes to the database record
+    # How: JSON-serialize the lists before saving (TextField stores JSON strings)
+    collection.name = name
+    collection.item_ids = json.dumps(item_ids_list)
+    collection.item_names = json.dumps(item_names_list)
+    collection.save()
+    
+    # Return success response with updated collection data
+    # What: Respond with the updated collection details
+    # Why: Frontend may need the updated data for display
+    # Note: Return the Python lists (not JSON strings) for easier frontend consumption
+    return JsonResponse({
+        'success': True,
+        'collection': {
+            'id': collection.id,
+            'name': collection.name,
+            'item_ids': item_ids_list,
+            'item_names': item_names_list,
+            'item_count': len(item_ids_list)
+        }
+    })
+
+
 @csrf_exempt
 def add_favorite(request):
     """API endpoint to add an item to favorites"""
