@@ -911,6 +911,23 @@
         gap: 8px;
     }
     
+    /* Stack collection card contents vertically on mobile */
+    .item-collection-card {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+    
+    /* Collection name takes full width on its own line */
+    .collection-info {
+        width: 100%;
+    }
+    
+    /* Action buttons and count on second line, aligned right */
+    .collection-actions {
+        justify-content: flex-end;
+    }
+    
     /* Keep buttons in a row on mobile, just make them more compact */
     .collection-apply-btn,
     .collection-edit-btn,
