@@ -4422,6 +4422,38 @@ async function saveChanges() {
             data.minimum_price = document.getElementById('edit-minimum-price').value || null;
             data.maximum_price = document.getElementById('edit-maximum-price').value || null;
         }
+    } else if (alertType === 'collective_move') {
+        // =============================================================================
+        // COLLECTIVE MOVE ALERT SAVE DATA
+        // What: Collect collective_move-specific field values for saving
+        // Why: Collective move alerts have unique fields (percentage threshold, direction,
+        //      reference type, calculation_method) that need to be sent to the server
+        // How: Get values from the shared form inputs used by collective_move alerts
+        // =============================================================================
+        
+        // percentage: The threshold percentage for average price change
+        // What: How much the average price change must exceed to trigger the alert
+        // Why: Core setting for collective move - triggers when avg change >= this value
+        data.percentage = document.getElementById('edit-percentage').value || null;
+        
+        // direction: Which direction of price movement to monitor (up/down/both)
+        // What: Filter to only trigger on upward, downward, or any price movement
+        // Why: Users may only care about prices going up (or down)
+        data.direction = document.getElementById('edit-direction').value || 'both';
+        
+        // reference: Which price to use as baseline (high/low/average)
+        // What: Determines which OSRS price value to compare against
+        // Why: Different trading strategies may prefer different reference points
+        data.reference = document.getElementById('edit-reference').value || 'average';
+        
+        // calculation_method: How to calculate the average (simple/weighted)
+        // What: Simple = arithmetic mean, Weighted = value-weighted mean
+        // Why: Weighted gives more influence to expensive items
+        // Note: This field may not exist in the edit form yet - check if element exists
+        const calcMethodEl = document.getElementById('edit-calculation-method');
+        if (calcMethodEl) {
+            data.calculation_method = calcMethodEl.value || 'simple';
+        }
     }
     
     try {
