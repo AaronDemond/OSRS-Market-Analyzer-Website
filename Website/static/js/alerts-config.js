@@ -208,6 +208,23 @@
                 thresholdDirection: '#threshold-direction',
                 thresholdValue: '#threshold-value',
                 thresholdReference: '#threshold-reference',
+                // Collective Move alert multi-item selector elements
+                // What: DOM selectors for collective_move alert's item selection UI
+                // Why: Enables the multi-item picker functionality for collective move alerts
+                // How: Similar pattern to threshold/spike alerts with scope, items, and settings
+                collectiveScope: '#collective-scope',
+                collectiveItemInput: '#collective-item-input',
+                collectiveItemIds: '#collective-item-ids',
+                collectiveItemSuggestions: '#collective-item-suggestions',
+                collectiveSelectedItemsDropdown: '#collective-selected-items-dropdown',
+                collectiveSelectedItemsList: '#collective-selected-items-list',
+                collectiveNoItemsMessage: '#collective-no-items-message',
+                collectiveMultiItemToggle: '#collective-multi-item-toggle',
+                collectiveItemNotification: '#collective-item-notification',
+                collectiveReference: '#collective-reference',
+                collectiveCalculationMethod: '#collective-calculation-method',
+                collectiveDirection: '#collective-direction',
+                collectiveThreshold: '#collective-threshold',
                 alertGroup: '#alert-group',
                 groups: {
                     spreadScope: '#spread-scope-group',
@@ -239,7 +256,16 @@
                     thresholdType: '#threshold-type-group',
                     thresholdDirection: '#threshold-direction-group',
                     thresholdValue: '#threshold-value-group',
-                    thresholdReference: '#threshold-reference-group'
+                    thresholdReference: '#threshold-reference-group',
+                    // Collective Move alert form groups
+                    // What: DOM selectors for collective_move alert form field containers
+                    // Why: Controls visibility of collective_move-specific form fields
+                    collectiveScope: '#collective-scope-group',
+                    collectiveItems: '#collective-items-group',
+                    collectiveReference: '#collective-reference-group',
+                    collectiveCalculationMethod: '#collective-calculation-method-group',
+                    collectiveDirection: '#collective-direction-group',
+                    collectiveThreshold: '#collective-threshold-group'
                 }
             },
             // Other UI elements
@@ -262,7 +288,8 @@
             SPREAD: 'spread',
             SPIKE: 'spike',
             SUSTAINED: 'sustained',
-            THRESHOLD: 'threshold'
+            THRESHOLD: 'threshold',
+            COLLECTIVE_MOVE: 'collective_move'
         },
 
         // CSRF token for Django POST requests

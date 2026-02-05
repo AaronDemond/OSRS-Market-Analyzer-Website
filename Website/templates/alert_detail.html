@@ -1022,6 +1022,123 @@
         font-style: italic;
     }
     
+    /* =========================================================================
+       COLLECTIVE MOVE TRIGGERED DATA STYLES
+       What: Styles for collective move alert triggered data display
+       Why: Users need to see average change prominently, then detailed item table
+       How: Large average change at top, then full-width sortable table below
+    ========================================================================= */
+    
+    /* Highlight the average change value - make it prominent */
+    .collective-average-highlight {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 8px;
+        padding: 15px !important;
+    }
+    
+    .collective-average-highlight .detail-value.large {
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+    
+    /* Table section container - spans full width */
+    .collective-items-table-section {
+        grid-column: 1 / -1;
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid #e9ecef;
+    }
+    
+    /* Table header */
+    .collective-table-header {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #343a40;
+        margin: 0 0 12px 0;
+    }
+    
+    /* Table wrapper for horizontal scrolling on mobile */
+    .collective-items-table-wrapper {
+        overflow-x: auto;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        background: #fff;
+    }
+    
+    /* The actual table */
+    .collective-items-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+    }
+    
+    .collective-items-table thead {
+        background: #f8f9fa;
+        position: sticky;
+        top: 0;
+    }
+    
+    .collective-items-table th {
+        padding: 12px 15px;
+        text-align: left;
+        font-weight: 600;
+        color: #495057;
+        border-bottom: 2px solid #dee2e6;
+    }
+    
+    .collective-items-table th.num-col {
+        text-align: right;
+    }
+    
+    .collective-items-table td {
+        padding: 10px 15px;
+        border-bottom: 1px solid #f0f0f0;
+        color: #495057;
+    }
+    
+    .collective-items-table td.num-col {
+        text-align: right;
+        font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+    }
+    
+    .collective-items-table td.item-name-cell {
+        font-weight: 500;
+    }
+    
+    .collective-items-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+    
+    .collective-items-table tbody tr:hover {
+        background: #f8f9fa;
+    }
+    
+    /* Positive/negative coloring for change column */
+    .collective-items-table td.positive {
+        color: #28a745;
+        font-weight: 600;
+    }
+    
+    .collective-items-table td.negative {
+        color: #dc3545;
+        font-weight: 600;
+    }
+    
+    /* Note below table */
+    .collective-items-note {
+        margin-top: 10px;
+        font-size: 0.85rem;
+        color: #6c757d;
+        font-style: italic;
+        text-align: center;
+    }
+    
+    /* Max height with scroll for large tables */
+    .collective-items-table-wrapper {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    
     /* Timestamps */
     .timestamp-grid {
         display: grid;
@@ -1873,6 +1990,7 @@
                             <option value="spike" {% if alert.type == 'spike' %}selected{% endif %}>Spike</option>
                             <option value="sustained" {% if alert.type == 'sustained' %}selected{% endif %}>Sustained Move</option>
                             <option value="threshold" {% if alert.type == 'threshold' %}selected{% endif %}>Threshold</option>
+                            <option value="collective_move" {% if alert.type == 'collective_move' %}selected{% endif %}>Collective Move</option>
                         </select>
                         <small class="form-hint">The condition that triggers this alert</small>
                     </div>
@@ -2402,6 +2520,86 @@
                                 <span class="detail-value {% if triggered_info.threshold_change_percent >= 0 %}positive{% else %}negative{% endif %}">{% if triggered_info.threshold_change_percent %}{{ triggered_info.threshold_change_percent }}%{% else %}N/A{% endif %}</span>
                             </div>
                         {% endif %}
+                    
+                    {% elif triggered_info.alert_type == 'collective_move' %}
+                        <!-- =============================================================================
+                             COLLECTIVE MOVE ALERT TRIGGERED DATA DISPLAY
+                             What: Displays triggered data for collective move alerts
+                             Why: Users need to see the average change at top, then a table of all items
+                             How: Summary stats at top, then full table with baseline/current/change columns
+                             Note: Items are sorted by absolute change percent (highest impact first)
+                        ============================================================================= -->
+                        
+                        {% if triggered_info.collective_data %}
+                            <!-- Summary Statistics -->
+                            <div class="triggered-info-item collective-average-highlight">
+                                <span class="detail-label">Average Change</span>
+                                <span class="detail-value large {% if triggered_info.collective_data.average_change >= 0 %}positive{% else %}negative{% endif %}">
+                                    {% if triggered_info.collective_data.average_change is not None %}{{ triggered_info.collective_data.average_change }}%{% else %}N/A{% endif %}
+                                </span>
+                            </div>
+                            <div class="triggered-info-item">
+                                <span class="detail-label">Threshold</span>
+                                <span class="detail-value">{% if triggered_info.collective_data.threshold %}{{ triggered_info.collective_data.threshold }}%{% else %}N/A{% endif %}</span>
+                            </div>
+                            <div class="triggered-info-item">
+                                <span class="detail-label">Direction</span>
+                                <span class="detail-value">{% if triggered_info.collective_data.effective_direction %}{{ triggered_info.collective_data.effective_direction|title }}{% else %}N/A{% endif %}</span>
+                            </div>
+                            <div class="triggered-info-item">
+                                <span class="detail-label">Calculation</span>
+                                <span class="detail-value">{% if triggered_info.collective_data.calculation_method == 'weighted' %}Weighted{% else %}Simple{% endif %}</span>
+                            </div>
+                            <div class="triggered-info-item">
+                                <span class="detail-label">Items Checked</span>
+                                <span class="detail-value">{{ triggered_info.collective_data.total_items_checked|default:"N/A" }}</span>
+                            </div>
+                            <div class="triggered-info-item">
+                                <span class="detail-label">Reference</span>
+                                <span class="detail-value">{{ triggered_info.collective_data.reference_type|default:"Average"|title }}</span>
+                            </div>
+                            
+                            <!-- Items Table - Full width below the summary -->
+                            {% if triggered_info.collective_data.items %}
+                            <div class="collective-items-table-section">
+                                <h4 class="collective-table-header">Item Breakdown (sorted by change)</h4>
+                                <div class="collective-items-table-wrapper">
+                                    <table class="collective-items-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Item</th>
+                                                <th class="num-col">Baseline</th>
+                                                <th class="num-col">Current</th>
+                                                <th class="num-col">Change</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in triggered_info.collective_data.items %}
+                                            <tr>
+                                                <td class="item-name-cell">{{ item.item_name }}</td>
+                                                <td class="num-col">{{ item.reference_price|floatformat:0|intcomma }}</td>
+                                                <td class="num-col">{{ item.current_price|floatformat:0|intcomma }}</td>
+                                                <td class="num-col {% if item.change_percent >= 0 %}positive{% else %}negative{% endif %}">
+                                                    {{ item.change_percent }}%
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% if triggered_info.collective_data.total_items_checked > triggered_info.collective_data.items_in_response %}
+                                <p class="collective-items-note">
+                                    Showing top {{ triggered_info.collective_data.items_in_response }} items by change magnitude ({{ triggered_info.collective_data.total_items_checked }} total)
+                                </p>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        {% else %}
+                            <div class="triggered-info-item">
+                                <span class="detail-label">Status</span>
+                                <span class="detail-value">Triggered data not available</span>
+                            </div>
+                        {% endif %}
                     {% endif %}
                 </div>
             {% endif %}
@@ -2585,6 +2783,38 @@ const alertGroups = {{ groups_json|safe }};
 // allGroupsForEdit: Array of all group names available for this user (for edit form dropdown)
 // Note: Named differently from 'allGroups' which is used by the groups card section
 let allGroupsForEdit = {{ all_groups_json|safe }};
+
+// =============================================================================
+// COLLECTIVE MOVE TRIGGERED DATA TOGGLE FUNCTION
+// What: Toggles visibility of individual items list in collective move triggered data
+// Why: Users can expand to see which items contributed to the collective average
+// How: Toggles display of items list and updates button aria-expanded state
+// =============================================================================
+function toggleCollectiveItems() {
+    // Get the toggle button and items list elements
+    const button = document.querySelector('.btn-toggle-collective-items');
+    const itemsList = document.querySelector('.collective-items-list');
+    
+    // If elements don't exist, exit early
+    if (!button || !itemsList) return;
+    
+    // Check current expanded state
+    const isExpanded = button.getAttribute('aria-expanded') === 'true';
+    
+    if (isExpanded) {
+        // Collapse: hide items list and update button state
+        itemsList.style.display = 'none';
+        button.setAttribute('aria-expanded', 'false');
+        // Update button text to show "Show" instead of "Hide"
+        button.innerHTML = button.innerHTML.replace('Hide', 'Show');
+    } else {
+        // Expand: show items list and update button state
+        itemsList.style.display = 'block';
+        button.setAttribute('aria-expanded', 'true');
+        // Update button text to show "Hide" instead of "Show"
+        button.innerHTML = button.innerHTML.replace('Show', 'Hide');
+    }
+}
 
 /**
  * EditMultiItemSelector: Module for managing the multi-item selector in the edit form.
@@ -3583,6 +3813,37 @@ function handleTypeChange() {
         
         // Let scope change handler determine item/min/max visibility
         handleThresholdScopeChange();
+    } else if (alertType === 'collective_move') {
+        // =============================================================================
+        // COLLECTIVE MOVE ALERT TYPE HANDLING
+        // What: Shows collective_move-specific fields and hides other alert type fields
+        // Why: Collective move alerts cannot use "All Items" - must specify items
+        // How: Hide all items toggle, show item selector, reference, direction, percentage
+        // =============================================================================
+        
+        // Hide all items toggle - collective move must use specific items
+        groups.allItems.style.display = 'none';
+        
+        // Show fields needed for collective move alerts
+        groups.itemName.style.display = 'none';  // Using multi-item selector instead
+        groups.price.style.display = 'none';
+        groups.reference.style.display = 'block';  // Reference price (high/low/average)
+        groups.percentage.style.display = 'block';  // Threshold percentage
+        groups.timeFrame.style.display = 'none';
+        groups.direction.style.display = 'block';  // Direction (up/down/both)
+        groups.minPrice.style.display = 'none';
+        groups.maxPrice.style.display = 'none';
+        
+        hideSustainedFields();
+        hideThresholdFields();
+        
+        // Ensure is_all_items is always false for collective move
+        document.getElementById('edit-is-all-items').value = 'false';
+        document.getElementById('edit-all-items').checked = false;
+        
+        // Show the multi-item selector for collective move
+        const multiItemGroup = document.getElementById('multi-item-group');
+        if (multiItemGroup) multiItemGroup.style.display = 'block';
     } else {
         // NOTE: Above/Below Threshold alerts were removed.
         //

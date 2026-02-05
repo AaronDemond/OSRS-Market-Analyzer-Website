@@ -418,6 +418,33 @@
                         'threshold-reference': 12,
                         'threshold-value': 13
                     }
+                },
+                
+                // COLLECTIVE_MOVE alert tabindex configuration
+                // What: Tab order for collective_move alerts in both specific and all items modes
+                // Why: Users need logical tab flow through collective move configuration
+                // How: Groups related fields together for efficient form completion
+                collective_move: {
+                    // Specific Items: Apply To → Items → Reference → Calculation Method → Direction → Threshold
+                    specific: {
+                        'collective-scope': 7,
+                        'collective-item-input': 8,
+                        'collective-multi-item-toggle': 9,
+                        'collective-reference': 10,
+                        'collective-calculation-method': 11,
+                        'collective-direction': 12,
+                        'collective-threshold': 13
+                    },
+                    // All Items: Apply To → Max Price → Min Price → Reference → Calculation Method → Direction → Threshold
+                    all: {
+                        'collective-scope': 7,
+                        'maximum-price': 8,
+                        'minimum-price': 9,
+                        'collective-reference': 10,
+                        'collective-calculation-method': 11,
+                        'collective-direction': 12,
+                        'collective-threshold': 13
+                    }
                 }
             };
             
@@ -478,7 +505,16 @@
                 thresholdType: document.querySelector(groups.thresholdType),
                 thresholdDirection: document.querySelector(groups.thresholdDirection),
                 thresholdValue: document.querySelector(groups.thresholdValue),
-                thresholdReference: document.querySelector(groups.thresholdReference)
+                thresholdReference: document.querySelector(groups.thresholdReference),
+                // Collective Move alert elements
+                // What: DOM elements for collective_move alert form field containers
+                // Why: Controls visibility and access to collective_move-specific form fields
+                collectiveScope: document.querySelector(groups.collectiveScope),
+                collectiveItems: document.querySelector(groups.collectiveItems),
+                collectiveReference: document.querySelector(groups.collectiveReference),
+                collectiveCalculationMethod: document.querySelector(groups.collectiveCalculationMethod),
+                collectiveDirection: document.querySelector(groups.collectiveDirection),
+                collectiveThreshold: document.querySelector(groups.collectiveThreshold)
             };
 
             // Helper to hide all sustained move fields
@@ -509,6 +545,25 @@
                 if (elements.thresholdReference) elements.thresholdReference.style.display = 'none';
                 // Clear selected items when hiding
                 ThresholdMultiItemSelector.clear();
+            };
+            
+            /**
+             * Helper to hide all collective move alert specific fields
+             * What: Hides all form fields that are specific to collective_move alerts
+             * Why: When switching away from collective_move alert type, these fields should be hidden
+             * How: Sets display to 'none' for each collective_move-specific field group
+             */
+            const hideCollectiveFields = () => {
+                if (elements.collectiveScope) elements.collectiveScope.style.display = 'none';
+                if (elements.collectiveItems) elements.collectiveItems.style.display = 'none';
+                if (elements.collectiveReference) elements.collectiveReference.style.display = 'none';
+                if (elements.collectiveCalculationMethod) elements.collectiveCalculationMethod.style.display = 'none';
+                if (elements.collectiveDirection) elements.collectiveDirection.style.display = 'none';
+                if (elements.collectiveThreshold) elements.collectiveThreshold.style.display = 'none';
+                // Clear selected items when hiding
+                if (typeof CollectiveMoveMultiItemSelector !== 'undefined') {
+                    CollectiveMoveMultiItemSelector.clear();
+                }
             };
 
             /**
@@ -554,6 +609,7 @@
                 hideSustainedFields();
                 hideThresholdFields();
                 hideSpikeFields();
+                hideCollectiveFields();
 
                 // Let scope change handler determine remaining visibility
                 this.handleSpreadScopeChange(formType);
@@ -563,6 +619,7 @@
                 // Why: Spike alerts can monitor all items or specific item(s) via the multi-item selector
                 // How: Show spike-specific fields and use handleSpikeScopeChange to manage item selector visibility
                 hideSpreadFields();  // Hide spread items to prevent duplicate item inputs
+                hideCollectiveFields();
                 if (elements.spikeScope) elements.spikeScope.style.display = 'block';
                 // Note: itemName is hidden for spike alerts - we use the multi-item selector instead
                 elements.itemName.style.display = 'none';
@@ -582,6 +639,7 @@
                 // How: Show all sustained-specific fields plus the reference dropdown
                 hideSpreadFields();  // Hide spread items to prevent duplicate item inputs
                 hideSpikeFields();
+                hideCollectiveFields();
                 elements.itemName.style.display = 'none';
                 elements.price.style.display = 'none';
                 elements.reference.style.display = 'block';  // Show reference selector for sustained alerts
@@ -616,6 +674,7 @@
                 hideSpreadFields();  // Hide spread items to prevent duplicate item inputs
                 hideSpikeFields();   // Hide spike items to prevent duplicate item inputs
                 hideSustainedFields();
+                hideCollectiveFields();
                 if (elements.numberItems) elements.numberItems.style.display = 'none';
                 elements.itemName.style.display = 'none';  // Using threshold's own item selector
                 elements.price.style.display = 'none';  // Using threshold value instead
@@ -641,12 +700,46 @@
                 if (itemsTrackedSelect) {
                     document.querySelector(selectors.isAllItems).value = itemsTrackedSelect.value === 'all' ? 'true' : 'false';
                 }
+            } else if (alertType === AlertsConfig.alertTypes.COLLECTIVE_MOVE) {
+                /**
+                 * Collective Move alerts configuration
+                 * What: Shows collective_move-specific fields and hides other alert type fields
+                 * Why: Collective move alerts monitor average percentage change across multiple items
+                 * How: Hides other alert type fields, shows collective_move fields
+                 * Note: Collective move alerts MUST use specific items (no "All Items" option)
+                 */
+                hideSpreadFields();
+                hideSpikeFields();
+                hideSustainedFields();
+                hideThresholdFields();
+                if (elements.numberItems) elements.numberItems.style.display = 'none';
+                elements.itemName.style.display = 'none';  // Using collective's own item selector
+                elements.price.style.display = 'none';
+                elements.reference.style.display = 'none';  // Using collective reference instead
+                elements.percentage.style.display = 'none';  // Using collective threshold instead
+                elements.timeFrame.style.display = 'none';
+                elements.direction.style.display = 'none';  // Using collective direction instead
+                elements.minPrice.style.display = 'none';
+                elements.maxPrice.style.display = 'none';
+
+                // Show collective_move-specific fields
+                // Note: collectiveScope is NOT shown - collective move must use specific items
+                if (elements.collectiveScope) elements.collectiveScope.style.display = 'none';
+                if (elements.collectiveItems) elements.collectiveItems.style.display = 'block';  // Always show item selector
+                if (elements.collectiveReference) elements.collectiveReference.style.display = 'block';
+                if (elements.collectiveCalculationMethod) elements.collectiveCalculationMethod.style.display = 'block';
+                if (elements.collectiveDirection) elements.collectiveDirection.style.display = 'block';
+                if (elements.collectiveThreshold) elements.collectiveThreshold.style.display = 'block';
+
+                // Collective move alerts must use specific items, not all items
+                document.querySelector(selectors.isAllItems).value = 'false';
             } else {
                 // Above/Below alerts: show threshold fields
                 hideSpreadFields();  // Hide spread items to prevent duplicate item inputs
                 hideSpikeFields();   // Hide spike items to prevent duplicate item inputs
                 hideSustainedFields();
                 hideThresholdFields();
+                hideCollectiveFields();
                 if (elements.numberItems) elements.numberItems.style.display = 'none';
                 elements.itemName.style.display = 'block';
                 elements.price.style.display = 'block';
@@ -664,6 +757,56 @@
             const directionInput = document.querySelector(selectors.direction);
             if (directionInput && elements.direction.style.display === 'none') {
                 directionInput.value = 'both';
+            }
+        },
+
+        /**
+         * Handles changes to the collective_move alert "Scope" dropdown.
+         * 
+         * What: Shows/hides the item selector and min/max price based on scope selection
+         * Why: When "All Items" is selected, items selector is hidden and price filters are shown
+         *      When "Specific Items" is selected, items selector is shown and price filters hidden
+         * How: Toggles visibility of items group and price filters
+         * 
+         * @param {string} formType - 'create' for create form
+         */
+        handleCollectiveScopeChange(formType) {
+            const selectors = AlertsConfig.selectors[formType];
+            const groups = selectors.groups;
+            
+            // Get the scope selection
+            const collectiveScopeSelect = document.querySelector(selectors.collectiveScope);
+            const collectiveItemsGroup = document.querySelector(groups.collectiveItems);
+            const isAllItemsInput = document.querySelector(selectors.isAllItems);
+            const minPriceGroup = document.querySelector(groups.minPrice);
+            const maxPriceGroup = document.querySelector(groups.maxPrice);
+            
+            if (!collectiveScopeSelect) return;
+            
+            const selection = collectiveScopeSelect.value;
+            
+            if (selection === 'all') {
+                // All Items mode: hide item selector, show price filters
+                if (collectiveItemsGroup) collectiveItemsGroup.style.display = 'none';
+                if (minPriceGroup) minPriceGroup.style.display = 'block';
+                if (maxPriceGroup) maxPriceGroup.style.display = 'block';
+                
+                // Set is_all_items flag
+                if (isAllItemsInput) isAllItemsInput.value = 'true';
+                
+                // Update tab indices for all items mode
+                this.updateTabIndices('collective_move', true);
+            } else {
+                // Specific Items mode: show item selector, hide price filters
+                if (collectiveItemsGroup) collectiveItemsGroup.style.display = 'block';
+                if (minPriceGroup) minPriceGroup.style.display = 'none';
+                if (maxPriceGroup) maxPriceGroup.style.display = 'none';
+                
+                // Clear is_all_items flag
+                if (isAllItemsInput) isAllItemsInput.value = 'false';
+                
+                // Update tab indices for specific items mode
+                this.updateTabIndices('collective_move', false);
             }
         },
 
