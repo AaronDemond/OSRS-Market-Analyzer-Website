@@ -234,6 +234,7 @@
                     <option value="spike">Spike</option>
                     <option value="sustained">Sustained Move</option>
                     <option value="threshold" selected>Threshold</option>
+                    <option value="collective_move">Collective Move</option>
                 </select>
                 <button type="button" class="alert-help-btn" onclick="openAlertHelpModal()" tabindex="2">
                     <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
@@ -726,6 +727,125 @@
                     <option value="average" selected>Average</option>
                 </select>
                 <small class="form-hint">Which price to monitor for threshold changes</small>
+            </div>
+
+            <!-- =========================================================================
+                 COLLECTIVE MOVE ALERT SPECIFIC FIELDS
+                 What: Form fields for creating Collective Move alerts
+                 Why: Collective Move alerts monitor average percentage change across multiple items
+                 How: These fields are shown/hidden via JavaScript when "Collective Move" alert type is selected
+                 ========================================================================= -->
+            
+            <!-- Collective Move: Scope selector -->
+            <!-- What: Dropdown to choose between tracking all items or specific items -->
+            <!-- Why: Users may want to monitor a curated list or the entire market (filtered by price) -->
+            <!-- How: Shows/hides the specific items selector and min/max price based on selection -->
+            <div class="form-group" id="collective-scope-group" style="display: none;">
+                <label for="collective-scope">Apply To</label>
+                <select name="collective_scope" id="collective-scope" onchange="handleCollectiveScopeChange()" tabindex="7">
+                    <option value="specific" selected>Specific Item(s)</option>
+                    <option value="all">All Items</option>
+                </select>
+                <small class="form-hint">Choose to track specific items or all items at once</small>
+            </div>
+
+            <!-- Collective Move: Multi-item selector (shown when "Specific Item(s)" is selected) -->
+            <!-- What: Allows users to select multiple specific items to monitor for collective average -->
+            <!-- Why: Users may want to monitor a curated list of items (e.g., all herbs, all ores) -->
+            <!-- How: Uses box-style input with dropdown arrow - matching other multi-item selectors -->
+            <div class="form-group" id="collective-items-group" style="display: none;">
+                <div class="label-with-notification">
+                    <label for="collective-item-input">Item(s)</label>
+                    <!-- =============================================================================
+                         ITEM COLLECTION BUTTON - COLLECTIVE MOVE ALERTS
+                         What: Button to open the Item Collection modal for quick item selection
+                         Why: Users can apply saved collections of items instead of selecting one by one
+                         How: Opens modal with onclick, passes 'collective_move' as the alert type parameter
+                    ============================================================================= -->
+                    <button type="button" class="btn-buy-limit" onclick="ItemCollectionManager.open('collective_move')" title="Apply a saved item collection">
+                        <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
+                            <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"/>
+                        </svg>
+                        Collection
+                    </button>
+                    <!-- Small notification shown when items are added or not found -->
+                    <span id="collective-item-notification" class="item-notification"></span>
+                </div>
+                <div class="multi-item-selector">
+                    <div class="multi-item-selector-box">
+                        <!-- Search input for adding new items -->
+                        <input type="text" id="collective-item-input" placeholder="Search for item to add..." autocomplete="off" tabindex="8">
+                        <!-- Dropdown toggle button with chevron arrow -->
+                        <button type="button" class="multi-item-dropdown-toggle" id="collective-multi-item-toggle" title="Show selected items" tabindex="9">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </button>
+                        <!-- Hidden input for form submission - stores comma-separated item IDs -->
+                        <input type="hidden" name="collective_item_ids" id="collective-item-ids" value="">
+                        <!-- Autocomplete suggestions dropdown (shown when typing) -->
+                        <div id="collective-item-suggestions" class="multi-item-suggestions-dropdown"></div>
+                        <!-- Selected items dropdown (shown when clicking arrow) -->
+                        <div id="collective-selected-items-dropdown" class="multi-item-selected-dropdown">
+                            <div class="selected-items-list" id="collective-selected-items-list">
+                                <!-- Items will be populated here dynamically -->
+                            </div>
+                            <div class="no-items-message" id="collective-no-items-message">No items selected</div>
+                        </div>
+                    </div>
+                </div>
+                <small class="form-hint">Add items to monitor for collective average movement</small>
+            </div>
+
+            <!-- Collective Move: Reference Price selector -->
+            <!-- What: Dropdown to choose which price to use for baseline and comparison (high, low, or average) -->
+            <!-- Why: Different strategies use different price points -->
+            <!-- How: Determines which price type is used for storing baselines and calculating % change -->
+            <div class="form-group" id="collective-reference-group" style="display: none;">
+                <label for="collective-reference">Reference Price</label>
+                <select name="collective_reference" id="collective-reference" tabindex="10">
+                    <option value="high">High (Instant Buy)</option>
+                    <option value="low">Low (Instant Sell)</option>
+                    <option value="average" selected>Average</option>
+                </select>
+                <small class="form-hint">Which price to use for calculating percentage change</small>
+            </div>
+
+            <!-- Collective Move: Calculation Method selector -->
+            <!-- What: Dropdown to choose between simple (arithmetic mean) or weighted (by value) average -->
+            <!-- Why: Simple mean treats all items equally; weighted gives more influence to expensive items -->
+            <!-- How: 'simple' = sum(changes)/count, 'weighted' = sum(change*value)/sum(values) -->
+            <div class="form-group" id="collective-calculation-method-group" style="display: none;">
+                <label for="collective-calculation-method">Calculation Method</label>
+                <select name="collective_calculation_method" id="collective-calculation-method" tabindex="11">
+                    <option value="simple" selected>Non Weighted (Equal Items)</option>
+                    <option value="weighted">Weighted by Value</option>
+                </select>
+                <small class="form-hint">How to calculate the average: simple treats all items equally, weighted gives more influence to expensive items</small>
+            </div>
+
+            <!-- Collective Move: Direction selector -->
+            <!-- What: Dropdown to choose whether to alert on average going up, down, or both -->
+            <!-- Why: Users may only care about collective increases or decreases depending on strategy -->
+            <!-- How: 'up' alerts when average >= threshold, 'down' when average <= -threshold, 'both' when |average| >= threshold -->
+            <div class="form-group" id="collective-direction-group" style="display: none;">
+                <label for="collective-direction">Direction</label>
+                <select name="collective_direction" id="collective-direction" tabindex="12">
+                    <option value="up">Up (Collective Increase)</option>
+                    <option value="down">Down (Collective Decrease)</option>
+                    <option value="both" selected>Both (Any Direction)</option>
+                </select>
+                <small class="form-hint">Alert when the average moves up, down, or either direction</small>
+            </div>
+
+            <!-- Collective Move: Threshold input -->
+            <!-- What: Numeric input for the percentage threshold -->
+            <!-- Why: Users need to specify what average percentage change should trigger the alert -->
+            <!-- How: Alert triggers when average change crosses this threshold in the specified direction -->
+            <div class="form-group" id="collective-threshold-group" style="display: none;">
+                <label for="collective-threshold">Threshold (%)</label>
+                <input type="number" name="collective_threshold" id="collective-threshold" step="0.01" min="0.01" placeholder="e.g. 5" tabindex="13">
+                <small class="form-hint">The average percentage change that triggers the alert (e.g., 5 for 5%)</small>
             </div>
 
             <!-- =====================================================================================

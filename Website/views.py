@@ -1560,6 +1560,26 @@ def create_alert(request):
         # threshold_reference: Which price to monitor - 'high' (instant sell), 'low' (instant buy), 'average'
         threshold_reference = request.POST.get('threshold_reference', 'high')
         
+        # =============================================================================
+        # COLLECTIVE MOVE ALERT SPECIFIC FIELDS
+        # =============================================================================
+        # What: Extract form data specific to collective_move alerts
+        # Why: Collective move alerts monitor average percentage change across multiple items
+        # How: Parse scope, item IDs, calculation method, direction, and threshold
+        
+        # collective_scope: 'all' for monitoring all items, 'specific' for selected items
+        collective_scope = request.POST.get('collective_scope', 'specific')
+        # collective_item_ids_str: Comma-separated list of item IDs from the multi-item selector
+        collective_item_ids_str = request.POST.get('collective_item_ids', '')
+        # collective_calculation_method: 'simple' for arithmetic mean, 'weighted' for value-weighted
+        collective_calculation_method = request.POST.get('collective_calculation_method', 'simple')
+        # collective_direction: 'up' for increases, 'down' for decreases, 'both' for either
+        collective_direction = request.POST.get('collective_direction', 'both')
+        # collective_threshold: The percentage threshold to trigger the alert
+        collective_threshold = request.POST.get('collective_threshold')
+        # collective_reference: Which price to monitor - 'high', 'low', or 'average'
+        collective_reference = request.POST.get('collective_reference', 'average')
+        
         direction_value = None
         if alert_type in ['spike', 'sustained']:
             direction_value = (direction or '').lower()
@@ -1570,6 +1590,11 @@ def create_alert(request):
             direction_value = (threshold_direction or '').lower()
             if direction_value not in ['up', 'down']:
                 direction_value = 'up'
+        # For collective_move alerts, use the collective_direction field
+        elif alert_type == 'collective_move':
+            direction_value = (collective_direction or '').lower()
+            if direction_value not in ['up', 'down', 'both']:
+                direction_value = 'both'
         
         # Determine all-items flag based on selection
         is_all_items = is_all_items_flag
@@ -1582,6 +1607,9 @@ def create_alert(request):
         # For threshold alerts, use the threshold_items_tracked field to determine all-items flag
         elif alert_type == 'threshold':
             is_all_items = (threshold_items_tracked == 'all')
+        # For collective_move alerts, use the collective_scope field to determine all-items flag
+        elif alert_type == 'collective_move':
+            is_all_items = (collective_scope == 'all')
         
         # Handle sustained move multi-item selection
         sustained_item_ids_json = None
@@ -1658,6 +1686,26 @@ def create_alert(request):
                             threshold_item_name = item['name']
                             break
         
+        # =============================================================================
+        # HANDLE COLLECTIVE MOVE MULTI-ITEM SELECTION
+        # =============================================================================
+        # What: Process collective_item_ids when user selects "Specific Item(s)" for collective_move alerts
+        # Why: Collective move alerts track average change across multiple items
+        # How: Parse comma-separated IDs, convert to JSON array, get first item name for display
+        collective_item_ids_json = None
+        collective_item_name = None
+        if alert_type == 'collective_move' and collective_scope == 'specific' and collective_item_ids_str:
+            # Parse comma-separated item IDs from the multi-item selector
+            item_ids = [int(x) for x in collective_item_ids_str.split(',') if x.strip()]
+            if item_ids:
+                collective_item_ids_json = json_module.dumps(item_ids)
+                # Get first item name for display purposes in alert list
+                mapping = get_item_mapping()
+                for name, item in mapping.items():
+                    if item['id'] == item_ids[0]:
+                        collective_item_name = item['name']
+                        break
+        
         # Look up item ID from name if not provided (for non-sustained alerts)
         if not item_id and item_name and alert_type != 'sustained':
             mapping = get_item_mapping()
@@ -1694,6 +1742,9 @@ def create_alert(request):
         elif alert_type == 'threshold' and threshold_item_name:
             # For threshold alerts with specific items, use first item name
             final_item_name = threshold_item_name
+        elif alert_type == 'collective_move' and collective_item_name:
+            # For collective_move alerts with specific items, use first item name
+            final_item_name = collective_item_name
         elif not is_all_items:
             final_item_name = item_name
         
@@ -1713,6 +1764,10 @@ def create_alert(request):
             # Store first item ID for backwards compatibility
             item_ids = json_module.loads(threshold_item_ids_json)
             final_item_id = item_ids[0] if item_ids else None
+        elif alert_type == 'collective_move' and collective_item_ids_json:
+            # Store first item ID for backwards compatibility
+            item_ids = json_module.loads(collective_item_ids_json)
+            final_item_id = item_ids[0] if item_ids else None
         elif item_id and not is_all_items:
             final_item_id = int(item_id)
         
@@ -1727,6 +1782,9 @@ def create_alert(request):
         if alert_type == 'threshold':
             # Threshold alerts use their own reference field from the form
             reference_value = threshold_reference if threshold_reference else 'average'
+        elif alert_type == 'collective_move':
+            # Collective move alerts use their own reference field from the form
+            reference_value = collective_reference if collective_reference else 'average'
         else:
             # Spike and Sustained alerts use the generic reference field
             # Default to 'average' if not specified (previously defaulted to 'high' for spike)
@@ -1754,6 +1812,9 @@ def create_alert(request):
             else:
                 # Percentage-based threshold: Store in percentage, leave target_price as None
                 percentage_value = float(threshold_value)
+        elif alert_type == 'collective_move' and collective_threshold:
+            # Collective move alerts use percentage field for their threshold
+            percentage_value = float(collective_threshold)
         elif percentage:
             # Non-threshold alerts use percentage field normally
             percentage_value = float(percentage)
@@ -1762,7 +1823,7 @@ def create_alert(request):
         # DETERMINE ITEM_IDS VALUE
         # =============================================================================
         # What: Determine which item_ids JSON to store based on alert type
-        # Why: Different alert types (spread, threshold, spike) use the same item_ids field
+        # Why: Different alert types (spread, threshold, spike, collective_move) use the same item_ids field
         # How: Check alert type and use the appropriate item_ids variable
         item_ids_json = None
         if alert_type == 'threshold' and threshold_item_ids_json:
@@ -1771,6 +1832,8 @@ def create_alert(request):
             item_ids_json = spread_item_ids_json
         elif alert_type == 'spike' and spike_item_ids_json:
             item_ids_json = spike_item_ids_json
+        elif alert_type == 'collective_move' and collective_item_ids_json:
+            item_ids_json = collective_item_ids_json
         
         alert = Alert.objects.create(
             user=user,
@@ -1806,7 +1869,7 @@ def create_alert(request):
             sustained_item_ids=sustained_item_ids_json,
             min_pressure_strength=min_pressure_strength,
             min_pressure_spread_pct=float(min_pressure_spread_pct) if min_pressure_spread_pct else None,
-            # item_ids: JSON array of item IDs for multi-item alerts (spread, threshold, spike)
+            # item_ids: JSON array of item IDs for multi-item alerts (spread, threshold, spike, collective_move)
             item_ids=item_ids_json,
             # threshold_type: 'percentage' or 'value' for threshold alerts only
             threshold_type=threshold_type if alert_type == 'threshold' else None,
@@ -1814,7 +1877,12 @@ def create_alert(request):
             # What: Specifies comparison method for spike alerts (single_point, average, min_max)
             # Why: Different comparison methods may be useful for different trading strategies
             # How: Currently defaults to 'single_point' (compare to price at exactly [timeframe] ago)
-            baseline_method='single_point' if alert_type == 'spike' else None
+            baseline_method='single_point' if alert_type == 'spike' else None,
+            # calculation_method: 'simple' or 'weighted' for collective_move alerts only
+            # What: Determines how average is calculated (arithmetic mean vs value-weighted mean)
+            # Why: Users may want expensive items to count more in the average
+            # How: 'simple' = sum(changes)/count, 'weighted' = sum(change*value)/sum(values)
+            calculation_method=collective_calculation_method if alert_type == 'collective_move' else None
         )
         
         # =============================================================================
@@ -2019,6 +2087,89 @@ def create_alert(request):
                         alert.reference_prices = json_module.dumps(reference_prices_dict)
                         alert.target_price = None  # Clear target price for percentage mode
                         alert.save()
+        
+        # =============================================================================
+        # COLLECTIVE MOVE ALERT: CAPTURE REFERENCE PRICES (BASELINES)
+        # =============================================================================
+        # What: For collective_move alerts, capture baseline prices for all monitored items
+        # Why: Collective move alerts calculate average percentage change from baseline
+        #      Each item needs its own baseline price to calculate individual % change
+        # How: Fetch current prices and store in reference_prices JSON dict, same as threshold
+        # Note: Uses the collective_reference setting (high/low/average) for baseline price type
+        if alert_type == 'collective_move':
+            all_prices = get_all_current_prices()
+            
+            if all_prices:
+                reference_prices_dict = {}
+                
+                # Determine which items to capture reference prices for
+                # items_to_capture: List of item IDs to get reference prices for
+                items_to_capture = []
+                
+                if is_all_items:
+                    # All items mode: capture prices for all items (respecting min/max filters)
+                    # What: Get baseline prices for entire market
+                    # Why: User wants to monitor ALL items for collective average change
+                    # How: Iterate all prices, apply min/max filters if set
+                    for item_id, price_data in all_prices.items():
+                        # Apply min/max price filters if configured
+                        # What: Skip items outside the user's price range
+                        # Why: User may only want to monitor items in a specific price range
+                        high = price_data.get('high')
+                        low = price_data.get('low')
+                        
+                        if alert.minimum_price is not None:
+                            if high is None or low is None or high < alert.minimum_price or low < alert.minimum_price:
+                                continue
+                        if alert.maximum_price is not None:
+                            if high is None or low is None or high > alert.maximum_price or low > alert.maximum_price:
+                                continue
+                        
+                        items_to_capture.append(item_id)
+                elif collective_item_ids_json:
+                    # Specific items mode: capture prices for selected items only
+                    # What: Get baseline prices for user-selected items
+                    # Why: User wants to monitor specific group of items
+                    # How: Parse the item_ids JSON and use those
+                    items_to_capture = [str(x) for x in json_module.loads(collective_item_ids_json)]
+                
+                # Capture reference prices for each item
+                # What: Get the baseline price using the user's chosen reference type
+                # Why: This is the price we'll compare against to calculate % change
+                # How: For each item, get the high/low/average price based on reference setting
+                for item_id in items_to_capture:
+                    item_id_str = str(item_id)
+                    price_data = all_prices.get(item_id_str)
+                    
+                    if not price_data:
+                        # Skip items where price data is unavailable
+                        continue
+                    
+                    # Get the appropriate reference price based on user's selection
+                    # reference_price: The baseline price for this item
+                    high = price_data.get('high')
+                    low = price_data.get('low')
+                    
+                    if collective_reference == 'high':
+                        reference_price = high
+                    elif collective_reference == 'low':
+                        reference_price = low
+                    elif collective_reference == 'average':
+                        # Average of high and low prices
+                        if high is not None and low is not None:
+                            reference_price = (high + low) // 2
+                        else:
+                            reference_price = high or low
+                    else:
+                        reference_price = high  # Default to high
+                    
+                    if reference_price is not None:
+                        reference_prices_dict[item_id_str] = reference_price
+                
+                # Store the reference prices if any were captured
+                if reference_prices_dict:
+                    alert.reference_prices = json_module.dumps(reference_prices_dict)
+                    alert.save()
         
         # Assign to group if specified
         if group_id:
@@ -2829,9 +2980,9 @@ def update_alert(request):
                 reference = data.get('reference')
                 alert.reference = reference if reference else 'average'
 
-                # Handle direction for spike and sustained
+                # Handle direction for spike, sustained, and collective_move
                 direction = data.get('direction')
-                if alert.type in ['spike', 'sustained']:
+                if alert.type in ['spike', 'sustained', 'collective_move']:
                     direction_value = (direction or '').lower() if isinstance(direction, str) else ''
                     if direction_value not in ['up', 'down', 'both']:
                         direction_value = 'both'
@@ -2839,12 +2990,28 @@ def update_alert(request):
                 else:
                     alert.direction = None
                 
-                # Handle percentage for spread or spike alerts (not sustained)
-                if alert.type in ['spread', 'spike']:
+                # Handle percentage for spread, spike, or collective_move alerts (not sustained)
+                if alert.type in ['spread', 'spike', 'collective_move']:
                     percentage = data.get('percentage')
                     alert.percentage = float(percentage) if percentage else None
                 else:
                     alert.percentage = None
+                
+                # =============================================================================
+                # HANDLE CALCULATION_METHOD FOR COLLECTIVE_MOVE ALERTS
+                # =============================================================================
+                # What: Update the calculation method (simple vs weighted) for collective_move alerts
+                # Why: Users can change how the average is computed between simple arithmetic mean
+                #      and value-weighted mean (where expensive items count more)
+                # How: Get calculation_method from request data, default to 'simple' if not specified
+                if alert.type == 'collective_move':
+                    calculation_method = data.get('calculation_method')
+                    if calculation_method in ['simple', 'weighted']:
+                        alert.calculation_method = calculation_method
+                    else:
+                        alert.calculation_method = 'simple'
+                else:
+                    alert.calculation_method = None
                 
                 # Handle min/max price for all items alerts
                 minimum_price = data.get('minimum_price')
@@ -3060,6 +3227,25 @@ def alert_detail(request, alert_id):
                         triggered_info['sustained_volume'] = sustained_data.get('volume')
                 except json.JSONDecodeError:
                     pass
+
+        # =============================================================================
+        # COLLECTIVE MOVE ALERT TRIGGERED INFO
+        # What: Populate triggered_info with collective_move data for template display
+        # Why: Template needs average change, threshold, items list, and calculation details
+        # How: Parse triggered_data JSON which contains the collective average and items
+        # Note: This is handled separately because collective_move alerts have a unique
+        #       triggered_data structure with average_change, items array, etc.
+        # =============================================================================
+        if alert.type == 'collective_move':
+            if alert.triggered_data:
+                try:
+                    collective_data = json.loads(alert.triggered_data)
+                    if isinstance(collective_data, dict):
+                        triggered_info['collective_data'] = collective_data
+                except json.JSONDecodeError:
+                    triggered_info['collective_data'] = None
+            else:
+                triggered_info['collective_data'] = None
 
         
         # has_multiple_items: Boolean indicating if this alert monitors multiple specific items

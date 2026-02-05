@@ -157,6 +157,7 @@ class Alert(models.Model):
         ('spike', 'Spike'),
         ('sustained', 'Sustained Move'),
         ('threshold', 'Threshold'),  # Percentage or value-based threshold from reference price
+        ('collective_move', 'Collective Move'),  # Average percentage change across multiple items
     ]
     
     # THRESHOLD_TYPE_CHOICES: Options for how threshold alerts calculate their trigger condition
@@ -168,13 +169,22 @@ class Alert(models.Model):
         ('value', 'Value'),  # Threshold as absolute gp change from reference price
     ]
     
+    # CALCULATION_METHOD_CHOICES: Options for how collective_move alerts calculate the average
+    # What: Defines whether average is simple (arithmetic mean) or weighted by item value
+    # Why: Simple mean treats all items equally; weighted mean gives more influence to high-value items
+    # How: Used by collective_move alerts to determine averaging method
+    CALCULATION_METHOD_CHOICES = [
+        ('simple', 'Non Weighted'),  # Simple arithmetic mean - each item counts equally
+        ('weighted', 'Weighted by Value'),  # Weighted by baseline value - expensive items count more
+    ]
+    
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     alert_name = models.CharField(max_length=255, default='Default')
     # type: The alert type selector (validated by ALERT_CHOICES)
     # What: Stores which alert evaluation strategy to use (spread/spike/sustained/threshold).
     # Why: We removed legacy above/below alert types; default must be a supported type to avoid invalid forms.
     # How: Default is set to 'threshold' because it is the closest modern replacement for value/percentage triggers.
-    type = models.CharField(max_length=10, null=True, choices=ALERT_CHOICES, default='threshold')
+    type = models.CharField(max_length=25, null=True, choices=ALERT_CHOICES, default='threshold')
     direction = models.CharField(max_length=10, choices=DIRECTION_CHOICES, blank=True, null=True)
     # unused field
     above_below = models.CharField(max_length=10, choices=ABOVE_BELOW_CHOICES, blank=True, null=True)
@@ -246,6 +256,24 @@ class Alert(models.Model):
     #      For specific items, stores baselines only for selected items
     # Note: Prices are stored using the reference type (high/low/average) specified by the user
     reference_prices = models.TextField(blank=True, null=True, default=None)
+    
+    # =============================================================================
+    # COLLECTIVE MOVE ALERT SPECIFIC FIELDS
+    # =============================================================================
+    # calculation_method: Determines how the average is calculated for collective_move alerts
+    # What: Stores whether average is 'simple' (arithmetic mean) or 'weighted' (by baseline value)
+    # Why: Simple mean treats all items equally; weighted gives more influence to expensive items
+    #      Example: A 10% move on a 1B item affects weighted average more than 10% move on 10K item
+    # How: When 'simple', average = sum(changes) / count
+    #      When 'weighted', average = sum(change * baseline) / sum(baselines)
+    # Note: Default is 'simple' for intuitive behavior; users can opt for weighted if desired
+    calculation_method = models.CharField(
+        max_length=10, 
+        choices=[('simple', 'Non Weighted'), ('weighted', 'Weighted by Value')], 
+        blank=True, 
+        null=True, 
+        default='simple'
+    )
     
     # Pressure filter fields for sustained alerts
     PRESSURE_STRENGTH_CHOICES = [
@@ -397,6 +425,24 @@ class Alert(models.Model):
                 threshold_str = f"{int(threshold_val):,} gp"
             
             return f"{target} {direction} {threshold_str} ({reference})"
+        
+        # =========================================================================
+        # COLLECTIVE MOVE ALERTS: "[target] collective [direction] ≥[percentage]% ([method])"
+        # =========================================================================
+        # What: Display format for collective_move alerts showing key configuration
+        # Why: Users need to quickly understand what the alert monitors at a glance
+        # How: Shows target items, direction, threshold percentage, and calculation method
+        if self.type == 'collective_move':
+            target = get_target()
+            direction = (self.direction or 'both').capitalize()
+            perc = f"{self.percentage}%" if self.percentage is not None else "N/A"
+            # Display calculation method in human-readable form
+            method = 'Weighted' if self.calculation_method == 'weighted' else 'Simple'
+            
+            if direction == 'Both':
+                return f"{target} collective ≥{perc} in any direction ({method})"
+            else:
+                return f"{target} collective {direction} ≥{perc} ({method})"
         
         # =========================================================================
         # FALLBACK: Generic format for unknown types

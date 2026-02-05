@@ -594,6 +594,17 @@
         FormManager.handleThresholdItemsTrackedChange('create');
     }
 
+    /**
+     * Global wrapper for handling collective move scope dropdown changes.
+     * 
+     * What: Calls FormManager.handleCollectiveScopeChange when user changes "All Items" vs "Specific Items"
+     * Why: HTML onchange attributes can only call global functions, not module-scoped ones
+     * How: Delegates to FormManager which shows/hides the item selector and min/max price fields
+     */
+    function handleCollectiveScopeChange() {
+        FormManager.handleCollectiveScopeChange('create');
+    }
+
     // Modal handlers
     function closeSpreadModal() {
         ModalManager.closeSpreadModal();
@@ -961,6 +972,7 @@
                 SpreadMultiItemSelector.init();
                 SpikeMultiItemSelector.init();
                 ThresholdMultiItemSelector.init();
+                CollectiveMoveMultiItemSelector.init();
             }
         };
         

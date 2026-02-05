@@ -1572,6 +1572,353 @@
 
 
     // =============================================================================
+    // COLLECTIVE MOVE MULTI-ITEM SELECTOR
+    // =============================================================================
+    /**
+     * Manages multi-item selection for collective move alerts.
+     * 
+     * What: Allows users to select multiple specific items to monitor for collective average
+     * Why: Users may want to monitor collective movement on a curated list of items (e.g., herbs)
+     * How: Uses box-style input with dropdown toggle showing selected items
+     */
+    const CollectiveMoveMultiItemSelector = {
+        // selectedItems: Array of {id, name} objects representing currently selected items
+        selectedItems: [],
+        // selectedIndex: Index of currently highlighted suggestion in dropdown (-1 = none)
+        selectedIndex: -1,
+        // notificationTimeout: Reference to timeout for auto-hiding notifications
+        notificationTimeout: null,
+        // dropdownOpen: Tracks if the selected items dropdown is currently open
+        dropdownOpen: false,
+
+        /**
+         * Initializes the collective move multi-item selector.
+         * 
+         * What: Sets up event listeners for the collective item search input and dropdown toggle
+         * Why: Enables autocomplete functionality, dropdown management, and item removal
+         * How: Attaches input, keydown, click handlers to relevant DOM elements
+         */
+        init() {
+            // Get all DOM elements needed for the multi-item selector
+            const input = document.querySelector(AlertsConfig.selectors.create.collectiveItemInput);
+            const dropdown = document.querySelector(AlertsConfig.selectors.create.collectiveItemSuggestions);
+            const hiddenInput = document.querySelector(AlertsConfig.selectors.create.collectiveItemIds);
+            const selectedDropdown = document.querySelector(AlertsConfig.selectors.create.collectiveSelectedItemsDropdown);
+            const selectedList = document.querySelector(AlertsConfig.selectors.create.collectiveSelectedItemsList);
+            const noItemsMsg = document.querySelector(AlertsConfig.selectors.create.collectiveNoItemsMessage);
+            const toggleBtn = document.querySelector(AlertsConfig.selectors.create.collectiveMultiItemToggle);
+            const selectorBox = input ? input.closest('.multi-item-selector-box') : null;
+
+            if (!input || !dropdown || !hiddenInput || !selectedDropdown) {
+                return;
+            }
+
+            const self = this;
+            this.selectedItems = [];
+            this.selectedIndex = -1;
+            this.dropdownOpen = false;
+
+            /**
+             * Updates the hidden input with current selected item IDs.
+             */
+            const updateHiddenInput = () => {
+                hiddenInput.value = this.selectedItems.map(item => item.id).join(',');
+            };
+
+            /**
+             * Updates visual selection state in autocomplete dropdown.
+             */
+            const updateSelection = () => {
+                const items = dropdown.querySelectorAll('.suggestion-item');
+                items.forEach((item, index) => {
+                    if (index === this.selectedIndex) {
+                        item.classList.add('selected');
+                        item.scrollIntoView({block: 'nearest'});
+                    } else {
+                        item.classList.remove('selected');
+                    }
+                });
+            };
+
+            /**
+             * Adds an item to the selected list.
+             */
+            const addItem = (id, name) => {
+                if (this.selectedItems.some(item => String(item.id) === String(id))) {
+                    this.showNotification(`${name} is already selected`, 'error');
+                    return;
+                }
+
+                this.selectedItems.push({id, name});
+                updateHiddenInput();
+                this.renderSelectedItems();
+                input.value = '';
+                dropdown.style.display = 'none';
+                this.selectedIndex = -1;
+
+                this.showNotification(`${name} added`, 'success');
+            };
+
+            /**
+             * Removes an item from the selected list.
+             */
+            const removeItem = (id) => {
+                const itemToRemove = this.selectedItems.find(item => String(item.id) === String(id));
+                const itemName = itemToRemove ? itemToRemove.name : 'Item';
+                this.selectedItems = this.selectedItems.filter(item => String(item.id) !== String(id));
+                updateHiddenInput();
+                this.renderSelectedItems();
+
+                this.showNotification(`${itemName} removed`, 'success');
+            };
+
+            // Handle remove button clicks in selected items dropdown
+            // What: Event delegation for remove button clicks
+            // Why: Buttons are dynamically created, so we attach listener to parent
+            // How: Check if clicked element is .remove-item-btn, then call removeItem
+            if (selectedList) {
+                selectedList.addEventListener('click', function(e) {
+                    const removeBtn = e.target.closest('.remove-item-btn');
+                    if (removeBtn) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const id = removeBtn.dataset.id;
+                        if (id) {
+                            removeItem(id);
+                        }
+                    }
+                });
+            }
+
+            // Toggle button click handler
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    if (self.dropdownOpen) {
+                        selectedDropdown.classList.remove('show');
+                        self.dropdownOpen = false;
+                        toggleBtn.classList.remove('open');
+                    } else {
+                        selectedDropdown.classList.add('show');
+                        self.dropdownOpen = true;
+                        toggleBtn.classList.add('open');
+                        dropdown.style.display = 'none';
+                    }
+                });
+            }
+
+            // Input event handler for autocomplete
+            // What: Handles user typing in the search input
+            // Why: Need to fetch item suggestions as user types
+            // How: Uses AlertsAPI.searchItems() with async/await pattern (same as ThresholdMultiItemSelector)
+            input.addEventListener('input', async function(e) {
+                const query = e.target.value.trim();
+                self.selectedIndex = -1;
+
+                // Close selected items dropdown when user starts typing
+                if (self.dropdownOpen) {
+                    selectedDropdown.classList.remove('show');
+                    self.dropdownOpen = false;
+                    if (toggleBtn) toggleBtn.classList.remove('open');
+                }
+
+                // minSearchLength: Minimum characters before searching (prevents API spam)
+                if (query.length < AlertsConfig.timing.minSearchLength) {
+                    dropdown.style.display = 'none';
+                    return;
+                }
+
+                // Fetch matching items from API
+                const items = await AlertsAPI.searchItems(query);
+
+                // Filter out already selected items from suggestions
+                // What: Removes items that are already in the selectedItems array from the suggestions
+                // Why: Once a user has added an item, it shouldn't appear in suggestions anymore
+                // How: Uses Array.filter() to keep only items whose ID is not found in selectedItems
+                const filteredItems = items.filter(item =>
+                    !self.selectedItems.some(selected => String(selected.id) === String(item.id))
+                );
+
+                if (filteredItems.length > 0) {
+                    dropdown.innerHTML = filteredItems.map(item => 
+                        `<div class="suggestion-item" data-id="${item.id}" data-name="${item.name}">${item.name}</div>`
+                    ).join('');
+                } else if (items.length > 0) {
+                    // All results are already selected
+                    dropdown.innerHTML = '<div class="suggestion-item no-results">All matching items already selected</div>';
+                } else {
+                    dropdown.innerHTML = '<div class="suggestion-item no-results">No items found</div>';
+                }
+                dropdown.style.display = 'block';
+            });
+
+            // Keyboard navigation
+            // What: Handles arrow keys, Tab, Enter, and Escape for navigating suggestions
+            // Why: Provides keyboard accessibility for power users
+            // How: Arrow keys and Tab move selection, Enter selects, Escape closes
+            input.addEventListener('keydown', function(e) {
+                const items = dropdown.querySelectorAll('.suggestion-item:not(.no-results)');
+                
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    // Wrap around to first item if at end
+                    self.selectedIndex = (self.selectedIndex + 1) % items.length;
+                    updateSelection();
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    // Wrap around to last item if at beginning
+                    self.selectedIndex = self.selectedIndex <= 0
+                        ? items.length - 1
+                        : self.selectedIndex - 1;
+                    updateSelection();
+                } else if (e.key === 'Tab') {
+                    // Tab also navigates through suggestions (Shift+Tab goes backwards)
+                    e.preventDefault();
+                    if (e.shiftKey) {
+                        self.selectedIndex = self.selectedIndex <= 0
+                            ? items.length - 1
+                            : self.selectedIndex - 1;
+                    } else {
+                        self.selectedIndex = (self.selectedIndex + 1) % items.length;
+                    }
+                    updateSelection();
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (self.selectedIndex >= 0 && items[self.selectedIndex]) {
+                        const selectedItem = items[self.selectedIndex];
+                        addItem(selectedItem.dataset.id, selectedItem.dataset.name);
+                    } else if (items.length === 1) {
+                        addItem(items[0].dataset.id, items[0].dataset.name);
+                    }
+                } else if (e.key === 'Escape') {
+                    dropdown.style.display = 'none';
+                    self.selectedIndex = -1;
+                }
+            });
+
+            // Click handler for autocomplete suggestions
+            dropdown.addEventListener('click', function(e) {
+                const item = e.target.closest('.suggestion-item');
+                if (item && !item.classList.contains('no-results')) {
+                    addItem(item.dataset.id, item.dataset.name);
+                }
+            });
+
+            // Mouse hover updates selection highlight
+            // What: Highlights suggestion when mouse hovers over it
+            // Why: Provides visual feedback and allows mouse+keyboard hybrid navigation
+            dropdown.addEventListener('mouseover', function(e) {
+                if (e.target.classList.contains('suggestion-item') && !e.target.classList.contains('no-results')) {
+                    const items = dropdown.querySelectorAll('.suggestion-item:not(.no-results)');
+                    items.forEach((item, index) => {
+                        if (item === e.target) {
+                            self.selectedIndex = index;
+                        }
+                    });
+                    updateSelection();
+                }
+            });
+
+            // Click outside handler
+            document.addEventListener('click', function(e) {
+                if (selectorBox && !selectorBox.contains(e.target)) {
+                    dropdown.style.display = 'none';
+                    if (self.dropdownOpen) {
+                        selectedDropdown.classList.remove('show');
+                        self.dropdownOpen = false;
+                        if (toggleBtn) toggleBtn.classList.remove('open');
+                    }
+                }
+            });
+
+            // Focus handler
+            input.addEventListener('focus', function() {
+                if (self.dropdownOpen) {
+                    selectedDropdown.classList.remove('show');
+                    self.dropdownOpen = false;
+                    if (toggleBtn) toggleBtn.classList.remove('open');
+                }
+            });
+        },
+
+        /**
+         * Shows a notification message.
+         */
+        showNotification(message, type = 'success') {
+            const notification = document.querySelector(AlertsConfig.selectors.create.collectiveItemNotification);
+            if (!notification) return;
+
+            if (this.notificationTimeout) {
+                clearTimeout(this.notificationTimeout);
+            }
+
+            notification.textContent = message;
+            notification.className = 'item-notification';
+            notification.classList.add(type === 'success' ? 'success' : 'error');
+            notification.classList.add('show');  // Use 'show' class for visibility (CSS uses opacity)
+
+            this.notificationTimeout = setTimeout(() => {
+                notification.classList.remove('show');
+                notification.textContent = '';
+            }, 2000);
+        },
+
+        /**
+         * Renders the selected items list in the dropdown.
+         */
+        renderSelectedItems() {
+            const selectedList = document.querySelector(AlertsConfig.selectors.create.collectiveSelectedItemsList);
+            const noItemsMsg = document.querySelector(AlertsConfig.selectors.create.collectiveNoItemsMessage);
+            const selectedDropdown = document.querySelector(AlertsConfig.selectors.create.collectiveSelectedItemsDropdown);
+            const toggleBtn = document.querySelector(AlertsConfig.selectors.create.collectiveMultiItemToggle);
+
+            if (!selectedList || !noItemsMsg) return;
+
+            if (this.selectedItems.length === 0) {
+                selectedList.innerHTML = '';
+                noItemsMsg.classList.add('show');
+                if (selectedDropdown && this.dropdownOpen) {
+                    selectedDropdown.classList.remove('show');
+                    this.dropdownOpen = false;
+                    if (toggleBtn) toggleBtn.classList.remove('open');
+                }
+            } else {
+                noItemsMsg.classList.remove('show');
+                // Use .item-name and .remove-item-btn classes to match existing CSS in alerts-form.css
+                selectedList.innerHTML = this.selectedItems.map(item => `
+                    <div class="selected-item-row">
+                        <span class="item-name">${item.name}</span>
+                        <button type="button" class="remove-item-btn" data-id="${item.id}" title="Remove ${item.name}">×</button>
+                    </div>
+                `).join('');
+            }
+        },
+
+        /**
+         * Clears all selected items.
+         */
+        clear() {
+            this.selectedItems = [];
+            const selectedList = document.querySelector(AlertsConfig.selectors.create.collectiveSelectedItemsList);
+            const noItemsMsg = document.querySelector(AlertsConfig.selectors.create.collectiveNoItemsMessage);
+            const hiddenInput = document.querySelector(AlertsConfig.selectors.create.collectiveItemIds);
+            
+            if (selectedList) selectedList.innerHTML = '';
+            if (noItemsMsg) noItemsMsg.classList.add('show');
+            if (hiddenInput) hiddenInput.value = '';
+        },
+
+        /**
+         * Gets the selected item IDs.
+         * @returns {Array} Array of item ID strings
+         */
+        getSelectedIds() {
+            return this.selectedItems.map(item => item.id);
+        }
+    };
+
+
+    // =============================================================================
     // ALERTS REFRESH
     // =============================================================================
     /**

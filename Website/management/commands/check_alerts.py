@@ -818,6 +818,222 @@ class Command(BaseCommand):
             
             return False
     
+    # =============================================================================
+    # COLLECTIVE MOVE ALERT CHECKING
+    # =============================================================================
+    def check_collective_move_alert(self, alert, all_prices):
+        """
+        Check if a collective move alert should trigger.
+        
+        What: Checks if the average percentage change across multiple items meets the threshold
+        Why: Users want to be notified when a group of items moves together (e.g., all herbs up 5%)
+        How:
+            1. Load reference prices (baselines) for all tracked items
+            2. Calculate percentage change for each item from its baseline
+            3. Compute average change (simple or weighted by baseline value)
+            4. Check if average crosses threshold in specified direction
+            5. Store top 50 individual item changes in triggered_data for display
+        
+        Calculation Methods:
+            - Simple: arithmetic mean = sum(changes) / count
+            - Weighted: weighted mean = sum(change * baseline) / sum(baselines)
+              This gives more influence to expensive items
+        
+        Args:
+            alert: Alert model instance with collective_move configuration
+            all_prices: Dictionary of all current prices keyed by item_id
+        
+        Returns:
+            - True if alert should trigger (also sets alert.triggered_data)
+            - False otherwise
+        """
+        # =============================================================================
+        # GET ALERT CONFIGURATION
+        # =============================================================================
+        # calculation_method: 'simple' for arithmetic mean, 'weighted' for value-weighted mean
+        calculation_method = alert.calculation_method or 'simple'
+        # direction: 'up' for increases, 'down' for decreases, 'both' for either
+        direction = (alert.direction or 'both').lower()
+        # reference_type: Which price to monitor - 'high' (instant sell), 'low' (instant buy), 'average'
+        reference_type = alert.reference or 'average'
+        # threshold_value: The percentage threshold to trigger (stored in alert.percentage)
+        threshold_value = alert.percentage if alert.percentage is not None else 0
+        
+        # =============================================================================
+        # LOAD REFERENCE PRICES (BASELINES)
+        # =============================================================================
+        # reference_prices: Dict mapping item_id -> baseline price stored at alert creation
+        # These baselines are used to calculate percentage change for each item
+        reference_prices = {}
+        if alert.reference_prices:
+            try:
+                reference_prices = json.loads(alert.reference_prices)
+            except (json.JSONDecodeError, TypeError):
+                pass
+        
+        if not reference_prices:
+            # No reference prices stored - cannot calculate changes
+            return False
+        
+        # =============================================================================
+        # DETERMINE ITEMS TO CHECK
+        # =============================================================================
+        # items_to_check: List of item IDs to process
+        items_to_check = []
+        
+        if alert.is_all_items:
+            # All items mode: Use all items in reference_prices (filtered at creation)
+            items_to_check = list(reference_prices.keys())
+        elif alert.item_ids:
+            # Multi-item mode: Use specific list of items
+            try:
+                item_ids_list = json.loads(alert.item_ids)
+                items_to_check = [str(item_id) for item_id in item_ids_list]
+            except (json.JSONDecodeError, TypeError):
+                return False
+        else:
+            # Single item in item_id field - not typical for collective but handle it
+            if alert.item_id:
+                items_to_check = [str(alert.item_id)]
+        
+        if not items_to_check:
+            return False
+        
+        # =============================================================================
+        # CALCULATE INDIVIDUAL ITEM CHANGES
+        # =============================================================================
+        # item_changes: List of dicts with change data for each item
+        # Each entry: {item_id, item_name, reference_price, current_price, change_percent, baseline_value}
+        item_changes = []
+        item_mapping = self.get_item_mapping()
+        
+        # sum_weighted_changes: Sum of (change_percent * baseline) for weighted calculation
+        sum_weighted_changes = 0.0
+        # sum_baselines: Sum of baseline values for weighted calculation divisor
+        sum_baselines = 0.0
+        # sum_changes: Sum of change percentages for simple calculation
+        sum_changes = 0.0
+        # valid_count: Number of items with valid price data
+        valid_count = 0
+        
+        for item_id_str in items_to_check:
+            # Get price data for this item
+            price_data = all_prices.get(item_id_str)
+            if not price_data:
+                continue
+            
+            # Get reference (baseline) price for this item
+            ref_price = reference_prices.get(item_id_str)
+            if ref_price is None or ref_price == 0:
+                continue
+            
+            # Apply min/max price filters if configured (for all-items mode)
+            if alert.is_all_items:
+                high = price_data.get('high')
+                low = price_data.get('low')
+                
+                if alert.minimum_price is not None:
+                    if high is None or low is None or high < alert.minimum_price or low < alert.minimum_price:
+                        continue
+                if alert.maximum_price is not None:
+                    if high is None or low is None or high > alert.maximum_price or low > alert.maximum_price:
+                        continue
+            
+            # Get current price based on reference type
+            current_price = self._get_price_by_reference(price_data, reference_type)
+            if current_price is None:
+                continue
+            
+            # Calculate percentage change for this item
+            change_percent = self._calculate_percent_change(ref_price, current_price)
+            
+            # Get item name for display
+            item_name = item_mapping.get(item_id_str, f'Item {item_id_str}')
+            
+            # Store individual item change data
+            item_changes.append({
+                'item_id': item_id_str,
+                'item_name': item_name,
+                'reference_price': ref_price,
+                'current_price': current_price,
+                'change_percent': round(change_percent, 2),
+                'baseline_value': ref_price  # Used for weighted calculation display
+            })
+            
+            # Accumulate for average calculation
+            sum_changes += change_percent
+            sum_weighted_changes += change_percent * ref_price
+            sum_baselines += ref_price
+            valid_count += 1
+        
+        if valid_count == 0:
+            # No valid items to check
+            return False
+        
+        # =============================================================================
+        # CALCULATE AVERAGE PERCENTAGE CHANGE
+        # =============================================================================
+        # average_change: The computed average based on calculation method
+        if calculation_method == 'weighted':
+            # Weighted average: sum(change * baseline) / sum(baselines)
+            # This gives more influence to expensive items
+            # Example: If a 1B item moves 10% and a 10K item moves 10%, 
+            #          the 1B item contributes much more to the average
+            if sum_baselines == 0:
+                return False
+            average_change = sum_weighted_changes / sum_baselines
+        else:
+            # Simple average: sum(changes) / count
+            # Each item contributes equally regardless of value
+            average_change = sum_changes / valid_count
+        
+        # =============================================================================
+        # CHECK IF THRESHOLD IS CROSSED
+        # =============================================================================
+        # threshold_crossed: Boolean indicating if average meets/exceeds threshold in specified direction
+        threshold_crossed = self._check_threshold_crossed(average_change, threshold_value, direction)
+        
+        if threshold_crossed:
+            # =============================================================================
+            # BUILD TRIGGERED_DATA
+            # =============================================================================
+            # What: Create JSON with average change and top individual items
+            # Why: The alert_detail view needs this to display what triggered the alert
+            # How: Sort items by absolute change, limit to top 50, include summary stats
+            
+            # Sort items by absolute change percentage (highest first)
+            item_changes.sort(key=lambda x: abs(x['change_percent']), reverse=True)
+            
+            # Limit to top 50 items to prevent huge triggered_data
+            # MAX_TRIGGERED_ITEMS: Maximum items to include in triggered_data
+            MAX_TRIGGERED_ITEMS = 50
+            top_items = item_changes[:MAX_TRIGGERED_ITEMS]
+            
+            # Determine effective direction of the move
+            # effective_direction: 'up' if average is positive, 'down' if negative
+            effective_direction = 'up' if average_change >= 0 else 'down'
+            
+            # Build triggered_data dict
+            # triggered_data: JSON object with all information about the triggered alert
+            triggered_data = {
+                'average_change': round(average_change, 2),
+                'calculation_method': calculation_method,
+                'direction': direction,
+                'effective_direction': effective_direction,
+                'threshold': threshold_value,
+                'total_items_checked': valid_count,
+                'items_in_response': len(top_items),
+                'reference_type': reference_type,
+                'items': top_items
+            }
+            
+            # Store in alert
+            alert.triggered_data = json.dumps(triggered_data)
+            
+            return True
+        
+        return False
+    
     def _get_price_by_reference(self, price_data, reference_type):
         """
         Get the appropriate price from price_data based on reference type.
@@ -1365,13 +1581,22 @@ class Command(BaseCommand):
         
         What: Evaluates alert conditions against current price data
         Why: Core function that determines when users should be notified
-        How: Dispatches to type-specific handlers (spread, spike, sustained, threshold)
+        How: Dispatches to type-specific handlers (spread, spike, sustained, threshold, collective_move)
         
         Returns:
             - True/False for simple alerts
             - List of matching items for all_items spread/spike/threshold
             - List of triggered items for multi-item spread/threshold (via item_ids)
         """
+        
+        # =============================================================================
+        # HANDLE COLLECTIVE MOVE ALERTS
+        # =============================================================================
+        # What: Checks if average percentage change across multiple items meets threshold
+        # Why: Users want to track collective movement of item groups (e.g., all herbs)
+        # How: Calculates simple or weighted average of item changes, compares to threshold
+        if alert.type == 'collective_move':
+            return self.check_collective_move_alert(alert, all_prices)
         
         # Handle threshold alerts
         # What: Checks if price has crossed a threshold (percentage or value) from reference price
@@ -1792,7 +2017,7 @@ class Command(BaseCommand):
             active_alerts = Alert.objects.filter(is_active=True)
             # alerts_to_check: Filter to non-triggered OR alerts that can re-trigger
             # What: Determines which alerts need to be checked this cycle
-            # Why: Some alerts (all_items spread, spike, sustained, multi-item spread) can re-trigger
+            # Why: Some alerts (all_items spread, spike, sustained, multi-item spread, collective_move) can re-trigger
             # How: Include non-triggered alerts PLUS special alert types that stay active
             alerts_to_check = [
                 a for a in active_alerts
@@ -1803,6 +2028,7 @@ class Command(BaseCommand):
                    or (a.type == 'spike' and a.item_ids)  # Multi-item spike can re-trigger
                    or (a.type == 'sustained')  # Sustained always re-checks
                    or (a.type == 'threshold' and (a.is_all_items or a.item_ids))  # Multi-item/all-items threshold can re-trigger
+                   or (a.type == 'collective_move')  # Collective move alerts always re-check (monitors groups)
             ]
             
             if alerts_to_check:
@@ -1814,6 +2040,30 @@ class Command(BaseCommand):
                 if all_prices:
                     for alert in alerts_to_check:
                         result = self.check_alert(alert, all_prices)
+                        
+                        # =============================================================================
+                        # HANDLE COLLECTIVE MOVE ALERTS
+                        # =============================================================================
+                        # What: Process collective_move alerts which return True/False
+                        # Why: Collective move alerts monitor group averages and can re-trigger
+                        # How: When triggered, mark as triggered and save; always stays active
+                        if alert.type == 'collective_move':
+                            if result:
+                                alert.is_triggered = True
+                                # Only show notification if show_notification is enabled
+                                alert.is_dismissed = not alert.show_notification
+                                alert.is_active = True  # Keep monitoring - never auto-deactivate
+                                alert.triggered_at = timezone.now()
+                                alert.save()
+                                self.stdout.write(
+                                    self.style.WARNING(f'TRIGGERED (collective move): {alert}')
+                                )
+                                # Send email notification if enabled, then disable to prevent spam
+                                if alert.email_notification:
+                                    self.send_alert_notification(alert, alert.triggered_text())
+                                    alert.email_notification = False
+                                    alert.save()
+                            continue  # Skip to next alert
                         
                         # Handle multi-item spread alerts FIRST, even when result is empty list
                         # What: Always process multi-item spread alerts to update triggered_data
