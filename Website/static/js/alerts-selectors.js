@@ -1990,6 +1990,14 @@
             // =================================================================
             const data = await AlertsAPI.fetchAlerts();
             if (data) {
+                // DEBUG: Log what triggered alerts are coming back from server
+                console.log('[REFRESH DEBUG] Triggered alerts from server:', data.triggered);
+                if (data.triggered && data.triggered.length > 0) {
+                    data.triggered.forEach(t => {
+                        console.log('[REFRESH DEBUG] Triggered alert id=' + t.id + ', type=' + t.type);
+                    });
+                }
+                
                 AlertsUI.updateMyAlertsPane(data);
                 
                 // =============================================================

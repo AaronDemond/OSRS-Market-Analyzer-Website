@@ -2656,16 +2656,31 @@ def dismiss_triggered_alert(request):
         data = json.loads(request.body)
         alert_id = data.get('alert_id')
         
+        # DEBUG: Log the dismiss request details
+        print(f"[DISMISS DEBUG] dismiss_notification called with alert_id={alert_id}, user={user}")
+        
         if alert_id:
             # Perform the update - filter by both alert_id AND user for security
             # What: Update both is_dismissed and show_notification flags
             # Why: is_dismissed=True hides the current notification
             #      show_notification=False prevents future notifications from appearing
             # How: Single update query sets both fields atomically
-            Alert.objects.filter(id=alert_id, user=user).update(
+            rows_updated = Alert.objects.filter(id=alert_id, user=user).update(
                 is_dismissed=True,
                 show_notification=False
             )
+            
+            # DEBUG: Log how many rows were updated
+            print(f"[DISMISS DEBUG] Rows updated: {rows_updated}")
+            
+            # DEBUG: Verify the alert state after update
+            try:
+                alert = Alert.objects.get(id=alert_id)
+                print(f"[DISMISS DEBUG] After update: is_dismissed={alert.is_dismissed}, show_notification={alert.show_notification}, is_triggered={alert.is_triggered}")
+            except Alert.DoesNotExist:
+                print(f"[DISMISS DEBUG] Alert {alert_id} not found after update")
+            
+            return JsonResponse({'success': True, 'rows_updated': rows_updated})
     
     return JsonResponse({'success': True})
 

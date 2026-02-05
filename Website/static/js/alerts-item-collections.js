@@ -45,7 +45,7 @@ const ItemCollectionManager = {
     
     /**
      * currentAlertType: String identifying which alert type opened the modal
-     * Valid values: 'spike', 'spread', 'sustained', 'threshold'
+     * Valid values: 'spike', 'spread', 'sustained', 'threshold', 'collective_move'
      * Used to determine which form elements to update when applying a collection
      */
     currentAlertType: null,
@@ -99,7 +99,7 @@ const ItemCollectionManager = {
      * Why: Called when user clicks "Collection" button above an item selector
      * How: Sets currentAlertType, shows modal overlay, loads collections from API
      * 
-     * @param {string} alertType - The alert type: 'spike', 'spread', 'sustained', 'threshold'
+     * @param {string} alertType - The alert type: 'spike', 'spread', 'sustained', 'threshold', 'collective_move'
      */
     open(alertType) {
         // Store which alert type opened the modal so we know which form to update
@@ -1057,6 +1057,7 @@ const ItemCollectionManager = {
         // - SpreadMultiItemSelector (not SpreadItemSelector)
         // - MultiItemSelector (for sustained)
         // - ThresholdMultiItemSelector (not ThresholdItemSelector)
+        // - CollectiveMoveMultiItemSelector (for collective_move)
         const selectorMap = {
             'spike': {
                 selector: typeof SpikeMultiItemSelector !== 'undefined' ? SpikeMultiItemSelector : null,
@@ -1085,6 +1086,17 @@ const ItemCollectionManager = {
                 selectedList: '#threshold-selected-items-list',
                 noItemsMsg: '#threshold-no-items-message',
                 notification: '#threshold-item-notification'
+            },
+            'collective_move': {
+                // CollectiveMoveMultiItemSelector: Selector for collective move alert type
+                // What: Maps collective_move alert type to its multi-item selector
+                // Why: Allows applying item collections to collective move alerts
+                // How: References the CollectiveMoveMultiItemSelector object defined in alerts-selectors.js
+                selector: typeof CollectiveMoveMultiItemSelector !== 'undefined' ? CollectiveMoveMultiItemSelector : null,
+                hiddenInput: '#collective-item-ids',
+                selectedList: '#collective-selected-items-list',
+                noItemsMsg: '#collective-no-items-message',
+                notification: '#collective-item-notification'
             }
         };
         

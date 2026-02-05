@@ -2244,7 +2244,7 @@
                     
                     <!-- 3. Show Alert Notification -->
                     <div class="form-group toggle-group" id="show-notification-group">
-                        <label>Show Alert Notification?</label>
+                        <label>Show Alert Notification</label>
                         <div class="toggle-container">
                             <label class="toggle-switch">
                                 <input type="checkbox" id="edit-show-notification" {% if alert.show_notification %}checked{% endif %}>
@@ -2298,6 +2298,7 @@
     <!-- Current Market Data (if item has current price) -->
     {# Hide this section for multi-item alerts (All Items or Specific Item(s)) since #}
     {# displaying single item market data doesn't make sense when monitoring multiple items #}
+    <!-- 
     {% if current_price.high or current_price.low %}
     {% if not triggered_info.is_all_items and not triggered_info.has_multiple_items %}
     <div class="detail-card price-card">
@@ -2326,6 +2327,7 @@
     </div>
     {% endif %}
     {% endif %}
+    -->
     
     <!-- Alert Triggered Data -->
     {% if triggered_info %}

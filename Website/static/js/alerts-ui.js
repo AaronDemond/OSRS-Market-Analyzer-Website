@@ -49,15 +49,37 @@
             // First, process incoming alerts and store them in active notifications cache
             if (triggeredAlerts && triggeredAlerts.length > 0) {
                 triggeredAlerts.forEach(alert => {
-                    // IMPORTANT: If the backend returns this alert with is_dismissed=False,
-                    // it means the alert data has changed and we should show it again.
-                    // Clear it from localStorage dismissed list to allow it to show.
-                    // What: Clear this alert from the localStorage dismissed list
-                    // Why: Backend sets is_dismissed=False when data changes, but localStorage still has it dismissed
-                    // How: Call clearDismissedNotification to remove from localStorage dismissed set
+                    // =============================================================================
+                    // DEBUG: Log each triggered alert being processed
+                    // =============================================================================
+                    console.log('[RENDER DEBUG] Processing triggered alert id=' + alert.id + ', type=' + alert.type);
+                    console.log('[RENDER DEBUG] isNotificationDismissed=' + AlertsState.isNotificationDismissed(alert.id));
+                    console.log('[RENDER DEBUG] isRecentlyDismissed=' + AlertsState.isRecentlyDismissed(alert.id));
+                    
+                    // =============================================================================
+                    // CHECK FOR RECENTLY DISMISSED - SKIP IF WITHIN COOLDOWN PERIOD
+                    // =============================================================================
+                    // What: Skip alerts that were dismissed within the cooldown period (race condition protection)
+                    // Why: When user dismisses, the API call may not complete before the next refresh.
+                    //      The server might still return the alert in triggered list.
+                    //      We use the cooldown to protect against this stale data.
+                    // How: Check isRecentlyDismissed which uses timestamp-based cooldown
+                    if (AlertsState.isRecentlyDismissed(alert.id)) {
+                        console.log('[RENDER DEBUG] Alert ' + alert.id + ' was recently dismissed (within cooldown), skipping');
+                        return;  // Skip this alert - it was just dismissed
+                    }
+                    
+                    // =============================================================================
+                    // CLEAR OLD DISMISSED STATUS IF SERVER RETURNS ALERT
+                    // =============================================================================
+                    // What: If alert is in localStorage dismissed list but NOT recently dismissed,
+                    //       clear the dismissed status so it can show again
+                    // Why: This handles the case where an alert legitimately re-triggers with new data.
+                    //      The backend sets is_dismissed=False and returns it in triggered list.
+                    //      Since it's not within the cooldown period, this is a real re-trigger.
+                    // How: Call clearDismissedNotification which will remove from localStorage
                     if (AlertsState.isNotificationDismissed(alert.id)) {
-                        // Backend says show it (is_dismissed=False), but localStorage says dismissed
-                        // Trust the backend - clear the localStorage entry so notification can show
+                        console.log('[RENDER DEBUG] Alert ' + alert.id + ' is dismissed but not recently - clearing dismissed status for re-trigger');
                         AlertsState.clearDismissedNotification(alert.id);
                     }
                     
