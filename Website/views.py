@@ -2866,17 +2866,10 @@ def update_alert(request):
                 
                 alert.is_all_items = is_all_items
                 
-                # items_were_added: Track if NEW items were added to the alert
-                # What: Boolean flag indicating if the user added new items to monitor
-                # Why: We need to distinguish between adding items (requires full triggered_data reset)
-                #      and removing items (only cleanup the removed items' triggered_data entries)
-                # How: Compare old_item_ids to new_item_ids; if new has IDs not in old, items were added
-                items_were_added = False
-                
-                # Handle item_ids for multi-item spread alerts
+                # Handle item_ids for multi-item alerts
                 # item_ids: Comma-separated string of item IDs from the frontend multi-item selector
-                # What: Stores multiple item IDs as JSON array for multi-item spread alerts
-                # Why: Allows spread alerts to monitor multiple specific items instead of all or one
+                # What: Stores multiple item IDs as JSON array for multi-item alerts
+                # Why: Allows alerts to monitor multiple specific items instead of all or one
                 # How: Parse comma-separated string, convert to JSON array, store in item_ids field
                 item_ids_str = data.get('item_ids')
                 
@@ -2884,8 +2877,6 @@ def update_alert(request):
                 # - None: field not provided (single item mode or unchanged)
                 # - '': empty string (all items removed, switch to single item mode)
                 # - '123,456': comma-separated IDs (multi-item mode)
-                print("DEBUG item_ids_str")
-                print(item_ids_str)
                 if item_ids_str is not None:
                     if item_ids_str == '':
                         # All items were removed - clear item_ids field
@@ -2895,46 +2886,6 @@ def update_alert(request):
                         item_ids_list = [int(x.strip()) for x in item_ids_str.split(',') if x.strip()]
                         if item_ids_list:
                             import json as json_module
-                            
-                            # Get the old item_ids to compare what was removed
-                            old_item_ids = set()
-                            if alert.item_ids:
-                                try:
-                                    old_item_ids_str = set(json_module.loads(alert.item_ids))
-                                    old_item_ids = set()
-                                    for i in old_item_ids_str:
-                                        old_item_ids.add(int(i))
-                                except (json_module.JSONDecodeError, TypeError):
-                                    pass
-                            
-                            new_item_ids = set(item_ids_list)
-                            removed_item_ids = old_item_ids - new_item_ids
-                            # added_item_ids: Items that are in the new set but not in the old set (user added them)
-                            # What: Set of item IDs that the user added to the alert
-                            # Why: When items are ADDED, we need to reset triggered_data entirely because
-                            #      the new items haven't been checked yet and need to start fresh
-                            # How: Compute set difference: new - old = items that were added
-                            added_item_ids = new_item_ids - old_item_ids
-                            
-                            # items_were_added: Update the flag if new items were added
-                            # Why: This flag is used later to determine whether to reset triggered_data
-                            # How: If there are any items in added_item_ids, set the flag to True
-                            if added_item_ids:
-                                items_were_added = True
-                            
-                            print("DEBUG removed item ids")
-                            print(removed_item_ids)
-                            print("DEBUG added item ids")
-                            print(added_item_ids)
-                            
-                            # Clean up triggered_data for removed items using the model method
-                            # What: Remove triggered_data entries for items that were removed from the alert
-                            # Why: Triggered data should only contain info for currently monitored items
-                            # How: Use the Alert model's cleanup_triggered_data_for_removed_items method
-                            # Note: This only runs when items are REMOVED; when items are ADDED, 
-                            #       the triggered_data is reset entirely in the final save block
-                            if removed_item_ids:
-                                alert.cleanup_triggered_data_for_removed_items(removed_item_ids)
                             
                             alert.item_ids = json_module.dumps(item_ids_list)
                             # Set first item as item_id for display/fallback purposes
@@ -3084,73 +3035,35 @@ def update_alert(request):
                 show_notification = data.get('show_notification', True)
                 alert.show_notification = show_notification
                 
-                # Conditionally reset triggered state when alert is edited
-                # What: Only reset triggered_data if items were ADDED or this is a brand new configuration
-                # Why: When user only REMOVES items from a multi-item alert, we want to preserve 
-                #      the triggered_data for items that are still being monitored (the cleanup_triggered_data
-                #      method handles removing data for the deleted items)
-                # How: Check items_were_added flag; if True, reset everything. If False, preserve
-                #      the triggered_data that was cleaned up by cleanup_triggered_data_for_removed_items
+                # =============================================================================
+                # RESET TRIGGERED STATE ON EVERY EDIT
+                # =============================================================================
+                # What: Clear all triggered state whenever an alert is edited
+                # Why: Simpler and cleaner than trying to selectively clean triggered_data.
+                #      The check_alerts script will correctly repopulate triggered_data on
+                #      the very next cycle, so this ensures clean, fresh data after any edit.
+                # How: Set is_triggered=False, is_dismissed=False, clear triggered_data and triggered_at
+                # Note: is_dismissed=False ensures the notification CAN show when it re-triggers
+                #       (unless show_notification is False, in which case it won't appear anyway)
                 
-                # is_dismissed: Set based on show_notification preference
-                # If show_notification is False, set is_dismissed=True to suppress notifications
-                alert.is_dismissed = not show_notification
+                # DEBUG: Log the reset operation
+                print(f"[UPDATE_ALERT DEBUG] Resetting triggered state for alert {alert.id}")
+                print(f"[UPDATE_ALERT DEBUG] BEFORE: is_triggered={alert.is_triggered}, is_dismissed={alert.is_dismissed}, triggered_data={alert.triggered_data is not None}")
+                
+                alert.is_triggered = False
+                alert.is_dismissed = False
+                alert.triggered_data = None
+                alert.triggered_at = None
                 alert.is_active = True
                 
-                # =============================================================================
-                # TRIGGERED STATE MANAGEMENT AFTER EDIT
-                # =============================================================================
-                # What: Determine whether the alert should remain triggered after an edit,
-                #       based on whether triggered_data still contains any entries after cleanup
-                # Why: When a user edits an alert, items may be added or removed. The cleanup
-                #      methods (cleanup_triggered_data_for_removed_items) have already run and
-                #      removed triggered data for items that were deleted from the alert.
-                #      We need to check the POST-CLEANUP state to decide the trigger status.
-                # How: Check if items were added (requires full reset) OR if triggered_data
-                #      is now empty after cleanup (requires reset). Otherwise, preserve trigger state.
-                # Note: This check happens AFTER cleanup methods have executed, so we're looking
-                #       at the cleaned-up version of triggered_data, not the original version.
-                
-                if items_were_added:
-                    # Items were added - full reset required because new items haven't been checked
-                    # What: Clear all triggered state and data when new items are added
-                    # Why: New items need to be checked fresh; mixing old triggered data with new items
-                    #      would be confusing and potentially incorrect
-                    # How: Set is_triggered=False, clear triggered_data and triggered_at
-                    alert.is_triggered = False
-                    alert.triggered_data = None
-                    alert.triggered_at = None
-                else:
-                    # Only items were removed (or no item changes) - check post-cleanup triggered_data
-                    # What: Examine the triggered_data field AFTER cleanup to determine trigger status
-                    # Why: If cleanup removed all triggered entries, the alert should no longer be
-                    #      considered triggered. But if some triggered data remains for items still
-                    #      being monitored, the alert should stay triggered.
-                    # How: Check if triggered_data is None or empty after cleanup:
-                    #      - If None/empty → set is_triggered=False, triggered_at=None
-                    #      - If still has data → set is_triggered=True, preserve triggered_at
-                    # Note: cleanup_triggered_data_for_removed_items() sets triggered_data=None
-                    #       when all triggered entries are removed
-                    
-                    if alert.triggered_data is None or alert.triggered_data == '':
-                        # All triggered data was removed - reset trigger state
-                        # What: Clear is_triggered and triggered_at because no triggered data remains
-                        # Why: An alert with no triggered data should not be marked as triggered
-                        # How: Set both fields to their default "not triggered" state
-                        alert.is_triggered = False
-                        alert.triggered_at = None
-                    else:
-                        # Some triggered data still exists - keep alert triggered
-                        # What: Set is_triggered=True because triggered_data still has entries
-                        # Why: The cleanup removed only the data for deleted items; data for items
-                        #      still being monitored remains, so the alert should stay triggered
-                        # How: Explicitly set is_triggered=True, preserve existing triggered_at timestamp
-                        # Note: We explicitly set True (rather than leaving as-is) to ensure consistency
-                        #       in case the field was somehow in an incorrect state
-                        alert.is_triggered = True
-                        # triggered_at is preserved - no change needed, keep the original timestamp
+                print(f"[UPDATE_ALERT DEBUG] AFTER: is_triggered={alert.is_triggered}, is_dismissed={alert.is_dismissed}, triggered_data={alert.triggered_data}")
                 
                 alert.save()
+                
+                # DEBUG: Verify the save worked by re-fetching
+                saved_alert = Alert.objects.get(id=alert.id)
+                print(f"[UPDATE_ALERT DEBUG] VERIFIED: is_triggered={saved_alert.is_triggered}, is_dismissed={saved_alert.is_dismissed}")
+                
     return JsonResponse({'success': True})
 
 
@@ -3642,19 +3555,13 @@ def update_single_alert(request, alert_id):
                 # removed_item_ids: Items that were in the old set but not in the new set (user removed them)
                 removed_item_ids = old_item_ids - new_item_ids
                 
-                # Clean up triggered_data for removed items using the model method
-                # What: Remove triggered_data entries for items that were removed from the alert
-                # Why: Triggered data should only contain info for currently monitored items
-                # How: Use the Alert model's cleanup_triggered_data_for_removed_items method
-                #      passing the REMOVED item IDs (not the new ones)
-                if removed_item_ids:
-                    alert.cleanup_triggered_data_for_removed_items(removed_item_ids)
-                    # Also clean up reference_prices for threshold alerts
-                    # What: Remove baseline prices for items that were removed from the alert
-                    # Why: Reference prices should only exist for items currently being monitored
-                    # How: Use the Alert model's cleanup_reference_prices_for_removed_items method
-                    if alert.type == 'threshold':
-                        alert.cleanup_reference_prices_for_removed_items(removed_item_ids)
+                # Clean up reference_prices for threshold alerts when items are removed
+                # What: Remove baseline prices for items that were removed from the alert
+                # Why: Reference prices should only exist for items currently being monitored
+                # How: Use the Alert model's cleanup_reference_prices_for_removed_items method
+                # Note: triggered_data cleanup is not needed here - we do a full reset at the end
+                if removed_item_ids and alert.type == 'threshold':
+                    alert.cleanup_reference_prices_for_removed_items(removed_item_ids)
                 
                 # For threshold alerts, capture reference prices for newly added items
                 # What: When items are added to an existing threshold alert, capture their baseline prices
@@ -3766,14 +3673,37 @@ def update_single_alert(request, alert_id):
     reference = data.get('reference')
     alert.reference = reference if reference else None
     
+    # =============================================================================
+    # HANDLE DIRECTION FOR SPIKE, SUSTAINED, AND COLLECTIVE_MOVE ALERTS
+    # =============================================================================
+    # What: Set the direction field for alert types that support it
+    # Why: Spike, sustained, and collective_move alerts can filter by price direction
+    # How: Validate direction value and store it, default to 'both' if invalid
     direction = data.get('direction')
-    if alert.type == 'spike':
+    if alert.type in ['spike', 'sustained', 'collective_move']:
         direction_value = (direction or '').lower() if isinstance(direction, str) else ''
         if direction_value not in ['up', 'down', 'both']:
             direction_value = 'both'
         alert.direction = direction_value
     else:
         alert.direction = None
+    
+    # =============================================================================
+    # HANDLE CALCULATION_METHOD FOR COLLECTIVE_MOVE ALERTS
+    # =============================================================================
+    # What: Set the calculation method (simple vs weighted) for collective_move alerts
+    # Why: Users can choose how the average is computed:
+    #      - 'simple': Arithmetic mean - each item counts equally
+    #      - 'weighted': Value-weighted mean - expensive items count more
+    # How: Get calculation_method from request data, validate, default to 'simple'
+    if alert.type == 'collective_move':
+        calculation_method = data.get('calculation_method')
+        if calculation_method in ['simple', 'weighted']:
+            alert.calculation_method = calculation_method
+        else:
+            alert.calculation_method = 'simple'
+    else:
+        alert.calculation_method = None
     
     # =============================================================================
     # HANDLE PERCENTAGE/TARGET_PRICE BASED ON ALERT TYPE AND THRESHOLD_TYPE
@@ -3946,41 +3876,32 @@ def update_single_alert(request, alert_id):
             alert.groups.add(group)
     
     # =============================================================================
-    # TRIGGERED STATE MANAGEMENT AFTER EDIT
+    # RESET TRIGGERED STATE ON EVERY EDIT
     # =============================================================================
-    # What: Determine whether the alert should remain triggered after an edit,
-    #       based on whether triggered_data still contains any entries after cleanup
-    # Why: When a user edits an alert via this API endpoint, items may be removed.
-    #      The cleanup methods (cleanup_triggered_data_for_removed_items) have already
-    #      run and removed triggered data for items that were deleted from the alert.
-    #      We need to check the POST-CLEANUP state to decide the trigger status.
-    # How: Check if triggered_data is None or empty after all cleanup operations:
-    #      - If None/empty → set is_triggered=False, triggered_at=None
-    #      - If still has data → set is_triggered=True, preserve triggered_at
-    # Note: This logic mirrors the update_alert() function to ensure consistent behavior
-    #       across both update endpoints
+    # What: Clear all triggered state whenever an alert is edited
+    # Why: Simpler and cleaner than trying to selectively clean triggered_data.
+    #      The check_alerts script will correctly repopulate triggered_data on
+    #      the very next cycle, so this ensures clean, fresh data after any edit.
+    # How: Set is_triggered=False, is_dismissed=False, clear triggered_data and triggered_at
+    # Note: is_dismissed=False ensures the notification CAN show when it re-triggers
+    #       (unless show_notification is False, in which case it won't appear anyway)
     
-    if alert.triggered_data is None or alert.triggered_data == '':
-        # All triggered data was removed - reset trigger state
-        # What: Clear is_triggered and triggered_at because no triggered data remains
-        # Why: An alert with no triggered data should not be marked as triggered
-        # How: Set both fields to their default "not triggered" state
-        alert.is_triggered = False
-        alert.triggered_at = None
-    else:
-        # Some triggered data still exists - keep alert triggered
-        # What: Set is_triggered=True because triggered_data still has entries
-        # Why: The cleanup removed only the data for deleted items; data for items
-        #      still being monitored remains, so the alert should stay triggered
-        # How: Explicitly set is_triggered=True, preserve existing triggered_at timestamp
-        # Note: We explicitly set True (rather than leaving as-is) to ensure consistency
-        #       in case the field was somehow in an incorrect state
-        alert.is_triggered = True
-        # triggered_at is preserved - no change needed, keep the original timestamp
+    # DEBUG: Log the reset operation
+    print(f"[UPDATE_SINGLE_ALERT DEBUG] Resetting triggered state for alert {alert.id}")
+    print(f"[UPDATE_SINGLE_ALERT DEBUG] BEFORE: is_triggered={alert.is_triggered}, is_dismissed={alert.is_dismissed}")
     
-    alert.is_dismissed = not alert.show_notification if alert.show_notification is not None else False
+    alert.is_triggered = False
+    alert.is_dismissed = False
+    alert.triggered_data = None
+    alert.triggered_at = None
+    
+    print(f"[UPDATE_SINGLE_ALERT DEBUG] AFTER: is_triggered={alert.is_triggered}, is_dismissed={alert.is_dismissed}")
     
     alert.save()
+    
+    # DEBUG: Verify the save worked
+    saved_alert = Alert.objects.get(id=alert.id)
+    print(f"[UPDATE_SINGLE_ALERT DEBUG] VERIFIED: is_triggered={saved_alert.is_triggered}, is_dismissed={saved_alert.is_dismissed}")
     
     return JsonResponse({'success': True})
 
