@@ -218,6 +218,14 @@
         color: #0F766E;
     }
 
+    /* Collective move alert badge - uses a rose/pink color scheme to distinguish from other
+       alert types. Chosen to contrast with the existing spread (indigo), spike (amber),
+       sustained (purple), and threshold (teal) badges so each type is visually unique. */
+    .alert-type-badge.collective {
+        background: #FFE4E6;
+        color: #9F1239;
+    }
+
     .alert-help-section .subtitle {
         font-size: 15px;
         color: var(--text-muted);
