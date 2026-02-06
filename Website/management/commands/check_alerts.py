@@ -2268,7 +2268,11 @@ class Command(BaseCommand):
         eval_interval = alert.confidence_eval_interval or 0
         # min_spread_pct: Minimum spread percentage to consider an item
         min_spread_pct = alert.confidence_min_spread_pct
-        # min_vol: Minimum total volume across the lookback window
+        # min_vol: Minimum total GP volume across the lookback window
+        # What: The gold-piece threshold below which items are filtered out
+        # Why: GP-based volume is more meaningful than raw trade counts since it
+        #      normalises across price tiers (cheap vs expensive items)
+        # How: Compared against sum of (qty * price) for all buys and sells
         min_vol = alert.confidence_min_volume
 
         # Build custom weights dict if any are set, otherwise None for defaults
@@ -2447,14 +2451,25 @@ class Command(BaseCommand):
                 continue
 
             # =============================================================================
-            # PRE-FILTER: Check minimum volume across the lookback window
+            # PRE-FILTER: Check minimum GP volume across the lookback window
             # =============================================================================
+            # What: Computes the total gold-piece value of all trades in the lookback
+            #       window and skips items that fall below the user's threshold
+            # Why: GP volume is a better activity proxy than raw trade count because it
+            #      normalises across price tiers — 500 trades of a 10gp item (5,000 GP)
+            #      is negligible, while 500 trades of a 10M item (5B GP) is massive.
+            # How: For each timeseries bucket, multiply trade count by average price:
+            #        gp_vol = SUM(highPriceVolume * avgHighPrice + lowPriceVolume * avgLowPrice)
+            #      If the total is below min_vol, the item is skipped entirely.
             if min_vol is not None and min_vol > 0:
-                total_vol = sum(
-                    (p.get('highPriceVolume') or 0) + (p.get('lowPriceVolume') or 0)
+                # total_gp_vol: The sum of (quantity * price) for every buy and sell
+                #               across all timeseries buckets in the lookback window
+                total_gp_vol = sum(
+                    (p.get('highPriceVolume') or 0) * (p.get('avgHighPrice') or 0)
+                    + (p.get('lowPriceVolume') or 0) * (p.get('avgLowPrice') or 0)
                     for p in timeseries_data
                 )
-                if total_vol < min_vol:
+                if total_gp_vol < min_vol:
                     item_state['last_eval'] = now_ts
                     item_state['consecutive'] = 0
                     last_scores[item_id_str] = item_state

@@ -1639,7 +1639,7 @@ def create_alert(request):
         confidence_trigger_rule = request.POST.get('confidence_trigger_rule', 'crosses_above')
         # confidence_min_spread_pct: Minimum spread % before evaluating
         confidence_min_spread_pct = request.POST.get('confidence_min_spread_pct', '')
-        # confidence_min_volume: Minimum total volume across lookback window
+        # confidence_min_volume: Minimum total GP volume (price * quantity) across lookback window
         confidence_min_volume_val = request.POST.get('confidence_min_volume', '')
         # confidence_cooldown: Minutes between re-alerts on same item
         confidence_cooldown = request.POST.get('confidence_cooldown', '')
