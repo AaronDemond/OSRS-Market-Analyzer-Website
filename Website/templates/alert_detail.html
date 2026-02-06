@@ -2789,11 +2789,25 @@
                         ============================================================================= -->
                         
                         {% if triggered_info.threshold_type == 'value' %}
-                            <!-- VALUE-BASED THRESHOLD: Show Target Price instead of Reference -->
+                            <!-- VALUE-BASED THRESHOLD: Show Target Price, Baseline, and Current Price -->
+                            <!-- What: Displays triggered data for value-based threshold alerts -->
+                            <!-- Why: Users need to see target price, where the price started (baseline), -->
+                            <!--      direction, and current price to understand the full picture -->
+                            <!-- How: Baseline price comes from reference_prices captured at alert creation -->
+                            <!--      and may be absent for alerts created before this feature was added -->
                             <div class="triggered-info-item">
                                 <span class="detail-label">Target Price</span>
                                 <span class="detail-value price">{% if triggered_info.threshold_target_price %}{{ triggered_info.threshold_target_price|intcomma }}{% elif alert.target_price %}{{ alert.target_price|intcomma }}{% else %}N/A{% endif %}</span>
                             </div>
+                            {% if triggered_info.threshold_baseline_price %}
+                            <!-- Baseline Price: The item's price at the time the alert was created. -->
+                            <!-- Why: Gives context — users can see where the price started relative to -->
+                            <!--      the target and current prices. E.g., "started at 12M, target 15M, now 15.2M" -->
+                            <div class="triggered-info-item">
+                                <span class="detail-label">Baseline Price (At Creation)</span>
+                                <span class="detail-value price">{{ triggered_info.threshold_baseline_price|intcomma }}</span>
+                            </div>
+                            {% endif %}
                             <div class="triggered-info-item">
                                 <span class="detail-label">Direction</span>
                                 <span class="detail-value">{% if triggered_info.threshold_direction %}{{ triggered_info.threshold_direction|title }}{% elif alert.direction %}{{ alert.direction|title }}{% else %}N/A{% endif %}</span>

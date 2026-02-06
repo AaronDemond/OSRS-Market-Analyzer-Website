@@ -579,14 +579,27 @@ class Command(BaseCommand):
                 # =============================================================================
                 # What: Create a JSON-serializable dict with all trigger details
                 # Why: The alert_detail view and triggered_text() method need this data to
-                #      display what triggered the alert (target price, current price, direction)
-                # How: Build dict with relevant fields for value-based threshold display
-                # Note: This was previously missing - value-based alerts only returned True/False
-                #       without storing any triggered_data, causing display issues
+                #      display what triggered the alert (target price, current price, direction,
+                #      and baseline price at alert creation time)
+                # How: Build dict with relevant fields for value-based threshold display.
+                #      Includes reference_price (baseline) from alert.reference_prices if available,
+                #      so users can see what the price was when the alert was first created.
                 # =============================================================================
                 item_mapping = self.get_item_mapping()
                 # item_name: Human-readable name of the item for display
                 item_name = item_mapping.get(item_id_str, alert.item_name or f'Item {item_id_str}')
+                
+                # reference_price: The baseline price at alert creation time, retrieved from
+                # the alert's reference_prices JSON field. This is stored at creation for context —
+                # it lets users see where the price started relative to the target.
+                # For example: "Price was 12M at creation, target was 15M, now it's at 15.2M"
+                reference_price = None
+                if alert.reference_prices:
+                    try:
+                        ref_prices = json.loads(alert.reference_prices)
+                        reference_price = ref_prices.get(item_id_str)
+                    except (json.JSONDecodeError, TypeError):
+                        pass
                 
                 # triggered_item: Dict containing all information about the triggered alert
                 triggered_item = {
@@ -594,6 +607,7 @@ class Command(BaseCommand):
                     'item_name': item_name,
                     'target_price': target,
                     'current_price': current_price,
+                    'reference_price': reference_price,
                     'direction': direction,
                     'threshold_type': 'value'
                 }

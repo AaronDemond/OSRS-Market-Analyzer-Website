@@ -1996,10 +1996,45 @@ def create_alert(request):
                 alert.save()
             
             if threshold_type == 'value':
-                # Value-based threshold: target_price already set in create(), just clear reference_prices
-                # What: Ensure reference_prices is None for value-based alerts
-                # Why: Value-based alerts use target_price, not reference_prices
-                alert.reference_prices = None
+                # =============================================================================
+                # VALUE-BASED THRESHOLD: CAPTURE BASELINE REFERENCE PRICE
+                # =============================================================================
+                # What: Capture the current market price as a baseline for value-based threshold alerts
+                # Why: Even though value-based thresholds compare against a user-defined target_price,
+                #      users want to see what the item's price was at the time the alert was created.
+                #      This "baseline price" provides context — e.g., "I set a target of 15M when the
+                #      item was at 12M, and now it hit 15M". Without the baseline, users only see the
+                #      target and current price but not where the price started from.
+                # How: Fetch current prices from the API and store the baseline in reference_prices
+                #      JSON dict (same field used by percentage-based thresholds). The check_alerts
+                #      command will include this baseline in triggered_data when the alert fires.
+                # Note: Previously this was set to None. Now we capture it for display purposes only —
+                #       the trigger logic itself still compares current_price vs target_price.
+                # =============================================================================
+                all_prices = get_all_current_prices()
+                if all_prices and final_item_id:
+                    item_id_str = str(final_item_id)
+                    price_data = all_prices.get(item_id_str)
+                    if price_data:
+                        # baseline_price: The item's current price at alert creation time,
+                        # using the user's chosen reference type (high/low/average)
+                        if reference_value == 'low':
+                            baseline_price = price_data.get('low')
+                        elif reference_value == 'average':
+                            high = price_data.get('high')
+                            low = price_data.get('low')
+                            baseline_price = (high + low) // 2 if high and low else None
+                        else:
+                            baseline_price = price_data.get('high')
+                        
+                        if baseline_price:
+                            alert.reference_prices = json_module.dumps({item_id_str: baseline_price})
+                        else:
+                            alert.reference_prices = None
+                    else:
+                        alert.reference_prices = None
+                else:
+                    alert.reference_prices = None
                 alert.save()
             else:
                 # Percentage-based threshold: Capture reference prices for all monitored items
@@ -3316,6 +3351,9 @@ def alert_detail(request, alert_id):
                             triggered_info['threshold_target_price'] = parsed_data.get('target_price')
                             triggered_info['threshold_current_price'] = parsed_data.get('current_price')
                             triggered_info['threshold_direction'] = parsed_data.get('direction')
+                            # threshold_baseline_price: The item's price at alert creation time
+                            # Why: Provides context for value-based alerts (may be None for older alerts)
+                            triggered_info['threshold_baseline_price'] = parsed_data.get('reference_price')
                         else:
                             # Percentage-based threshold
                             triggered_info['threshold_reference_price'] = parsed_data.get('reference_price')
@@ -3384,7 +3422,7 @@ def alert_detail(request, alert_id):
                     #       - For percentage-based: item_id, item_name, reference_price, current_price, 
                     #         change_percent, threshold, direction
                     #       - For value-based: item_id, item_name, target_price, current_price, 
-                    #         direction, threshold_type
+                    #         reference_price (baseline at creation), direction, threshold_type
                     # =============================================================================
                     triggered_data_parsed = False
                     
@@ -3401,7 +3439,11 @@ def alert_detail(request, alert_id):
                                     triggered_info['threshold_target_price'] = triggered_data_dict.get('target_price')
                                     triggered_info['threshold_current_price'] = triggered_data_dict.get('current_price')
                                     triggered_info['threshold_direction'] = triggered_data_dict.get('direction')
-                                    # For value-based, we don't have change_percent - price just crossed target
+                                    # threshold_baseline_price: The item's price at alert creation time.
+                                    # Why: Provides context by showing where the price started relative
+                                    #      to the target and current prices. May be None for alerts
+                                    #      created before this feature was added (backwards compatibility).
+                                    triggered_info['threshold_baseline_price'] = triggered_data_dict.get('reference_price')
                                 else:
                                     # Percentage-based threshold
                                     triggered_info['threshold_reference_price'] = triggered_data_dict.get('reference_price')
@@ -3422,7 +3464,14 @@ def alert_detail(request, alert_id):
                         if alert.reference_prices and alert.item_id:
                             try:
                                 ref_prices = json.loads(alert.reference_prices)
-                                triggered_info['threshold_reference_price'] = ref_prices.get(str(alert.item_id))
+                                # baseline_ref: The baseline price at alert creation time
+                                baseline_ref = ref_prices.get(str(alert.item_id))
+                                triggered_info['threshold_reference_price'] = baseline_ref
+                                # For value-based thresholds, also populate the baseline price field
+                                # Why: Value-based thresholds now display baseline price in the template
+                                # How: Use the same reference_prices data that percentage-based alerts use
+                                if alert.threshold_type == 'value' and baseline_ref:
+                                    triggered_info['threshold_baseline_price'] = baseline_ref
                             except json.JSONDecodeError:
                                 pass
                         
