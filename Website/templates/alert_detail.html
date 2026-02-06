@@ -4733,6 +4733,11 @@ async function saveGroups() {
     }
 }
 
+// What: Variable to store selected groups for unlinking
+// Why: Prevents race condition where selection changes between modal open and confirm
+// How: Set when modal opens, used when executeUnlink is called
+let groupsToUnlink = [];
+
 async function unlinkSelectedGroups() {
     const selectedGroups = getSelectedCurrentGroupPills();
     
@@ -4741,18 +4746,22 @@ async function unlinkSelectedGroups() {
         return;
     }
     
+    // Store the selected groups before showing modal
+    groupsToUnlink = selectedGroups;
+    
     // Show the unlink confirmation modal instead of using confirm()
     showUnlinkConfirmModal();
 }
 
 // What: Executes the unlink operation after user confirms in modal
 // Why: Separates the confirmation UI from the actual unlink logic
-// How: Called by the modal's confirm button, performs the API call
+// How: Called by the modal's confirm button, performs the API call using stored groupsToUnlink
 async function executeUnlink() {
     // Close the modal first
     closeUnlinkConfirmModal();
     
-    const selectedGroups = getSelectedCurrentGroupPills();
+    // Use the stored groups that were selected when modal was opened
+    const selectedGroups = groupsToUnlink;
     
     try {
         const response = await fetch('/api/alerts/unlink-groups/', {
@@ -5030,7 +5039,7 @@ function showUnlinkConfirmModal() {
 /**
  * Closes the unlink confirmation modal.
  * What: Hides the unlink group confirmation dialog
- * Why: Allow user to cancel or dismiss after unlinking
+ * Why: Allows user to cancel or close the modal
  * How: Sets display style to none on the modal element
  */
 function closeUnlinkConfirmModal() {
