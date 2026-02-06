@@ -2769,6 +2769,36 @@
         </div>
     </div>
 </div>
+
+<!-- =============================================================================
+     UNLINK GROUP CONFIRMATION MODAL
+     What: Modal dialog for confirming group unlink action
+     Why: Provides a styled confirmation dialog instead of browser's confirm()
+     How: Overlay with confirmation message, Unlink/Cancel buttons
+     When: Shown when user clicks unlink button for selected groups
+============================================================================= -->
+<div id="unlink-confirm-modal" class="modal" style="display: none;">
+    <div class="modal-content unlink-confirm-modal-content">
+        <div class="modal-header unlink-confirm-modal-header">
+            <h2>Confirm Unlink</h2>
+            <button class="modal-close" onclick="closeUnlinkConfirmModal()">&times;</button>
+        </div>
+        <div class="modal-body unlink-confirm-modal-body">
+            <div class="unlink-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                        d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                </svg>
+            </div>
+            <p id="unlink-confirm-message">Unlink this alert from the selected group(s)?</p>
+            <p class="unlink-warning">The alert will no longer be associated with these groups.</p>
+        </div>
+        <div class="modal-footer unlink-confirm-modal-footer">
+            <button type="button" class="btn-cancel" onclick="closeUnlinkConfirmModal()">Cancel</button>
+            <button type="button" class="btn-confirm-unlink" onclick="executeUnlink()">Unlink</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -4711,9 +4741,18 @@ async function unlinkSelectedGroups() {
         return;
     }
     
-    if (!confirm('Unlink this alert from the selected group(s)?')) {
-        return;
-    }
+    // Show the unlink confirmation modal instead of using confirm()
+    showUnlinkConfirmModal();
+}
+
+// What: Executes the unlink operation after user confirms in modal
+// Why: Separates the confirmation UI from the actual unlink logic
+// How: Called by the modal's confirm button, performs the API call
+async function executeUnlink() {
+    // Close the modal first
+    closeUnlinkConfirmModal();
+    
+    const selectedGroups = getSelectedCurrentGroupPills();
     
     try {
         const response = await fetch('/api/alerts/unlink-groups/', {
@@ -4977,11 +5016,38 @@ function closeErrorModal() {
     if (modal) modal.classList.remove('active');
 }
 
+/**
+ * Shows the unlink confirmation modal.
+ * What: Displays the unlink group confirmation dialog
+ * Why: Provides a styled confirmation instead of browser's confirm()
+ * How: Sets display style to flex on the modal element
+ */
+function showUnlinkConfirmModal() {
+    const modal = document.getElementById('unlink-confirm-modal');
+    if (modal) modal.style.display = 'flex';
+}
+
+/**
+ * Closes the unlink confirmation modal.
+ * What: Hides the unlink group confirmation dialog
+ * Why: Allow user to cancel or dismiss after unlinking
+ * How: Sets display style to none on the modal element
+ */
+function closeUnlinkConfirmModal() {
+    const modal = document.getElementById('unlink-confirm-modal');
+    if (modal) modal.style.display = 'none';
+}
+
 // Close modal when clicking outside content
 document.addEventListener('click', function(e) {
-    const modal = document.getElementById('error-modal');
-    if (e.target === modal) {
+    const errorModal = document.getElementById('error-modal');
+    if (e.target === errorModal) {
         closeErrorModal();
+    }
+    
+    const unlinkModal = document.getElementById('unlink-confirm-modal');
+    if (e.target === unlinkModal) {
+        closeUnlinkConfirmModal();
     }
 });
 
@@ -4989,6 +5055,7 @@ document.addEventListener('click', function(e) {
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         closeErrorModal();
+        closeUnlinkConfirmModal();
     }
 });
 

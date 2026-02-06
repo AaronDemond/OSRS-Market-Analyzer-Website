@@ -791,6 +791,119 @@
         transform: translateY(-1px);
     }
 
+    /* Unlink Group Confirmation Modal 
+       What: Styles for the unlink group confirmation modal
+       Why: Provides a styled confirmation dialog for unlinking groups
+       How: Similar to delete-confirm-modal but with orange theme
+    */
+    .unlink-confirm-modal-content {
+        max-width: 400px;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .unlink-confirm-modal-header {
+        background: linear-gradient(135deg, #F97316 0%, #EA580C 100%);
+        color: white;
+        padding: 16px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .unlink-confirm-modal-header h2 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+
+    .unlink-confirm-modal-header .modal-close {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 24px;
+        cursor: pointer;
+        opacity: 0.8;
+        line-height: 1;
+    }
+
+    .unlink-confirm-modal-header .modal-close:hover {
+        opacity: 1;
+    }
+
+    .unlink-confirm-modal-body {
+        padding: 24px;
+        text-align: center;
+    }
+
+    .unlink-confirm-modal-body .unlink-icon {
+        width: 64px;
+        height: 64px;
+        background: #FED7AA;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 16px;
+    }
+
+    .unlink-confirm-modal-body .unlink-icon svg {
+        width: 32px;
+        height: 32px;
+        color: #F97316;
+    }
+
+    .unlink-confirm-modal-body p {
+        color: var(--text);
+        margin: 0 0 8px 0;
+    }
+
+    .unlink-confirm-modal-body .unlink-warning {
+        color: var(--muted);
+        font-size: 13px;
+        margin-top: 8px;
+    }
+
+    .unlink-confirm-modal-footer {
+        padding: 16px 24px;
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        border-top: 1px solid var(--border);
+    }
+
+    .unlink-confirm-modal-footer .btn-cancel {
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        color: var(--text);
+        padding: 10px 24px;
+        border-radius: 8px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+    .unlink-confirm-modal-footer .btn-cancel:hover {
+        background: var(--surface);
+        border-color: var(--muted);
+    }
+
+    .unlink-confirm-modal-footer .btn-confirm-unlink {
+        background: linear-gradient(135deg, #F97316 0%, #EA580C 100%);
+        border: none;
+        color: white;
+        padding: 10px 24px;
+        border-radius: 8px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+    .unlink-confirm-modal-footer .btn-confirm-unlink:hover {
+        background: linear-gradient(135deg, #EA580C 0%, #C2410C 100%);
+        transform: translateY(-1px);
+    }
+
     /* Success notifications */
     .triggered-notification {
         background: linear-gradient(135deg, #22C55E 0%, #16A34A 100%);
