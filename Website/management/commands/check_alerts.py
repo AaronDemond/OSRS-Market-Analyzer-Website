@@ -35,13 +35,6 @@ class Command(BaseCommand):
         self.item_mapping = None
         self.price_history = defaultdict(list)  # key: itemId:reference, value: list[(ts, price)]
         
-        # debug_log_path: Path to the debug.md file in the project root directory.
-        # What: File path for writing spread volume filter debug information.
-        # Why: Helps diagnose why spread alerts may not be filtering by volume correctly.
-        # How: Resolves to the project root (3 parent directories up from this file),
-        #      then appends 'debug.md'. Written to by self._debug_log() method.
-        self.debug_log_path = Path(__file__).resolve().parents[3] / 'debug.md'
-        
         # Sustained move tracking state - keyed by alert_id
         # Each entry contains: {
         #   'last_price': float,           # Last observed average price
@@ -52,27 +45,6 @@ class Command(BaseCommand):
         #   'volatility_buffer': list,     # Rolling buffer of absolute moves
         # }
         self.sustained_state = {}
-
-    def _debug_log(self, message):
-        """
-        Append a debug message to the debug.md file in the project root.
-
-        What: Writes a timestamped debug message to debug.md for diagnosing issues.
-        Why: Console output from the check_alerts management command can be hard to
-             review after the fact. Writing to a file provides a persistent log that
-             can be inspected at any time.
-        How: Opens the file in append mode ('a') and writes the message with a
-             timestamp prefix. Creates the file if it doesn't exist. Each message
-             is written on its own line.
-
-        Args:
-            message: The debug string to log (will be prefixed with a timestamp)
-        """
-        from datetime import datetime
-        # timestamp: Current date/time string for log entry identification
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        with open(self.debug_log_path, 'a', encoding='utf-8') as f:
-            f.write(f"[{timestamp}] {message}\n")
 
     def get_item_mapping(self):
         """Fetch and cache item ID to name mapping"""
@@ -177,13 +149,8 @@ class Command(BaseCommand):
                     # volume: The most recent hourly trading volume in GP for this item,
                     #         or None if no volume data exists in the database yet
                     volume = self.get_volume_from_timeseries(item_id_str, 0)
-                    self._debug_log(f"  [MULTI-ITEM VOLUME] item_id={item_id_str}, min_volume={alert.min_volume}, actual_volume={volume}, passes={volume is not None and volume >= alert.min_volume}")
                     if volume is None or volume < alert.min_volume:
-                        self._debug_log(f"    ✗ FILTERED OUT by volume")
                         continue
-                    self._debug_log(f"    ✓ Passed volume check")
-                else:
-                    self._debug_log(f"  [MULTI-ITEM] item_id={item_id_str}, spread={spread}%, no volume filter set")
 
                 # item_name: Human-readable name for display, defaults to "Item {id}" if not found
                 item_name = item_mapping.get(item_id_str, f'Item {item_id}')
@@ -1391,12 +1358,10 @@ class Command(BaseCommand):
             latest_volume = HourlyItemVolume.objects.filter(item_id=int(item_id)).first()
             if latest_volume:
                 return latest_volume.volume
-            print(f"  [DEBUG DB] No HourlyItemVolume record found for item_id={item_id}")
             return None
         except Exception as e:
             # Catch any unexpected DB errors (connection issues, etc.) gracefully.
             # Return None so the alert check can continue without volume data.
-            print(f"  [DEBUG DB] Exception querying HourlyItemVolume for item_id={item_id}: {e}")
             return None
 
 
@@ -1538,7 +1503,6 @@ class Command(BaseCommand):
                 'streak_start_price': current_price,
                 'volatility_buffer': []
             }
-            print(f"  [DEBUG SUSTAINED] item_id={item_id}: Initializing state (first check, need baseline)")
             return None  # Need at least one previous price to compare
 
         
@@ -1547,7 +1511,6 @@ class Command(BaseCommand):
         
         if last_price == 0:
             state['last_price'] = current_price
-            print(f"  [DEBUG SUSTAINED] item_id={item_id}: last_price was 0, setting to {current_price}")
             return None
         
         price_change_pct = ((current_price - last_price) / last_price) * 100
@@ -1583,22 +1546,15 @@ class Command(BaseCommand):
                 state['streak_start_time'] = now
                 state['streak_start_price'] = last_price
         
-        # Debug: Log current streak state
-        print(f"  [DEBUG SUSTAINED] item_id={item_id}: price={current_price}, change={price_change_pct:.4f}%, "
-              f"abs_change={abs_change:.4f}%, min_move_pct={min_move_pct}, "
-              f"streak={state['streak_count']}/{min_moves}, dir={state['streak_direction']}, "
-              f"vol_buffer_len={len(state['volatility_buffer'])}")
         
         # Check time window
         streak_duration = now - state['streak_start_time']
         if streak_duration > (time_window_minutes * 60):
             state['streak_count'] = 0
             state['streak_direction'] = None
-            print(f"  [DEBUG SUSTAINED] item_id={item_id}: FAILED — streak exceeded time window ({streak_duration:.0f}s > {time_window_minutes * 60}s)")
             return None
         
         if state['streak_count'] < min_moves:
-            print(f"  [DEBUG SUSTAINED] item_id={item_id}: WAITING — streak {state['streak_count']} < {min_moves} required")
             return None
         
         if direction != 'both' and state['streak_direction'] != direction:
@@ -1795,26 +1751,7 @@ class Command(BaseCommand):
         # Handle spread alerts
         if alert.type == 'spread':
             if alert.percentage is None:
-                self._debug_log(f"## Spread Alert #{alert.id} — SKIP: percentage is None")
                 return False
-            
-            # =============================================================================
-            # DEBUG: Log spread alert entry point with full configuration
-            # What: Logs the alert's key configuration values when entering spread check
-            # Why: Helps diagnose whether min_volume is actually set on the alert object
-            # How: Writes alert ID, mode, min_volume, percentage, and price filters to debug.md
-            # =============================================================================
-            self._debug_log(f"## Spread Alert #{alert.id}")
-            self._debug_log(f"  - Mode: {'all_items' if alert.is_all_items else 'multi_item' if alert.item_ids else 'single_item'}")
-            self._debug_log(f"  - min_volume (raw): {repr(alert.min_volume)}")
-            self._debug_log(f"  - min_volume type: {type(alert.min_volume).__name__}")
-            self._debug_log(f"  - min_volume truthy: {bool(alert.min_volume)}")
-            self._debug_log(f"  - percentage: {alert.percentage}")
-            self._debug_log(f"  - min_price: {alert.minimum_price}, max_price: {alert.maximum_price}")
-            if alert.item_ids:
-                self._debug_log(f"  - item_ids: {alert.item_ids}")
-            if alert.item_id:
-                self._debug_log(f"  - item_id: {alert.item_id}")
             
             if alert.is_all_items:
                 # All items spread check - scan entire market
@@ -1822,11 +1759,6 @@ class Command(BaseCommand):
                 item_mapping = self.get_item_mapping()
                 # matching_items: list of items that meet the spread threshold
                 matching_items = []
-                
-                # items_passed_spread: Counter for items that passed the spread threshold
-                # items_filtered_by_volume: Counter for items skipped due to volume filter
-                items_passed_spread = 0
-                items_filtered_by_volume = 0
                 
                 for item_id, price_data in all_prices.items():
                     high = price_data.get('high')
@@ -1842,7 +1774,6 @@ class Command(BaseCommand):
                     
                     spread = self.calculate_spread(high, low)
                     if spread is not None and spread >= alert.percentage:
-                        items_passed_spread += 1
                         # =========================================================================
                         # VOLUME FILTER FOR ALL-ITEMS SPREAD ALERTS
                         # What: Skip items whose hourly volume (GP) is below the user's min_volume
@@ -1857,7 +1788,6 @@ class Command(BaseCommand):
                             #         or None if no volume data exists in the database yet
                             volume = self.get_volume_from_timeseries(item_id, 0)
                             if volume is None or volume < alert.min_volume:
-                                items_filtered_by_volume += 1
                                 continue
 
                         item_name = item_mapping.get(item_id, f'Item {item_id}')
@@ -1869,15 +1799,9 @@ class Command(BaseCommand):
                             'spread': round(spread, 2)
                         })
                 
-                # DEBUG: Log summary of all-items spread check results
-                self._debug_log(f"  [ALL-ITEMS RESULT] passed_spread={items_passed_spread}, filtered_by_volume={items_filtered_by_volume}, final_matches={len(matching_items)}")
-                
                 if matching_items:
                     # Sort by spread descending
                     matching_items.sort(key=lambda x: x['spread'], reverse=True)
-                    # DEBUG: Log first few matching items
-                    for item in matching_items[:5]:
-                        self._debug_log(f"    ✓ {item['item_name']} (id={item['item_id']}): spread={item['spread']}%")
                     return matching_items
                 
                 return False
@@ -1887,7 +1811,6 @@ class Command(BaseCommand):
                 # What: Check spread for each item in item_ids JSON array
                 # Why: Allows users to monitor specific items instead of all or just one
                 # How: Parse item_ids, check each item's spread, build triggered_data
-                self._debug_log(f"  → Dispatching to _check_spread_for_item_ids()")
                 return self._check_spread_for_item_ids(alert, all_prices)
             
             else:
@@ -1898,16 +1821,13 @@ class Command(BaseCommand):
                 # How: Get price data, calculate spread, check threshold, then optionally
                 #      verify hourly volume meets minimum before triggering.
                 if not alert.item_id:
-                    self._debug_log(f"  [SINGLE-ITEM] No item_id set — returning False")
                     return False
                 price_data = all_prices.get(str(alert.item_id))
                 if not price_data:
-                    self._debug_log(f"  [SINGLE-ITEM] No price data for item_id={alert.item_id}")
                     return False
                 high = price_data.get('high')
                 low = price_data.get('low')
                 spread = self.calculate_spread(high, low)
-                self._debug_log(f"  [SINGLE-ITEM] item_id={alert.item_id}, high={high}, low={low}, spread={spread}, threshold={alert.percentage}")
                 if spread is not None and spread >= alert.percentage:
                     # =========================================================================
                     # VOLUME FILTER FOR SINGLE-ITEM SPREAD ALERTS
@@ -1921,15 +1841,9 @@ class Command(BaseCommand):
                         # volume: The most recent hourly trading volume in GP for this item,
                         #         or None if no volume data exists in the database yet
                         volume = self.get_volume_from_timeseries(str(alert.item_id), 0)
-                        self._debug_log(f"  [SINGLE-ITEM VOLUME CHECK] min_volume={alert.min_volume}, actual_volume={volume}, passes={volume is not None and volume >= alert.min_volume}")
                         if volume is None or volume < alert.min_volume:
-                            self._debug_log(f"  [SINGLE-ITEM] FILTERED OUT by volume — returning False")
                             return False
-                    else:
-                        self._debug_log(f"  [SINGLE-ITEM] No min_volume set — skipping volume check")
-                    self._debug_log(f"  [SINGLE-ITEM] TRIGGERED — spread {spread}% >= threshold {alert.percentage}%")
                     return True
-                self._debug_log(f"  [SINGLE-ITEM] Not triggered — spread below threshold")
                 return False
         
         # =============================================================================
@@ -2273,20 +2187,6 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS('Starting alert checker...'))
         
         while True:
-            # =============================================================================
-            # DEBUG: Reset debug.md at the start of each check cycle
-            # What: Clears the debug.md file and writes a new header for this cycle
-            # Why: Prevents the debug file from growing indefinitely across cycles.
-            #      Each cycle overwrites the previous debug output so only the most
-            #      recent cycle's data is visible.
-            # How: Opens the file in write mode ('w') which truncates existing content,
-            #      then writes a markdown header with the current timestamp.
-            # =============================================================================
-            from datetime import datetime
-            with open(self.debug_log_path, 'w', encoding='utf-8') as f:
-                f.write(f"# Spread Volume Debug Log\n")
-                f.write(f"**Cycle started:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-            
             # Get all active alerts (include triggered all_items spread alerts for re-check)
             active_alerts = Alert.objects.filter(is_active=True)
             # alerts_to_check: Filter to non-triggered OR alerts that can re-trigger

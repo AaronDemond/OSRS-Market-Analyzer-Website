@@ -44,7 +44,6 @@ from Website.models import HourlyItemVolume
 # MAX_WORKERS: Number of parallel API requests to make at once.
 # 15 workers for aggressive parallel fetching — acceptable for a one-time backfill.
 # Higher than update_volumes.py's 6 workers since this only runs once.
-MAX_WORKERS = 15
 
 # API_HEADERS: Required User-Agent header for RuneScape Wiki API.
 # The Wiki API requires a descriptive User-Agent to identify the application.
@@ -63,7 +62,7 @@ BULK_INSERT_BATCH_SIZE = 500
 
 
 MAX_WORKERS = 25
-CHUNK_SIZE = 200  # number of ids per batch (tune this)
+CHUNK_SIZE = 500  # number of ids per batch (tune this)
 
 def load_item_mapping():
     """
@@ -135,6 +134,9 @@ async def fetch_many(item_ids: List[int], timestep: str = "1h", concurrency: int
         return results
 
 def get_all_volume(ids: List[int], timestep: str = "1h") -> List[Dict[str, Any]]:
+    return asyncio.run(fetch_many(ids, timestep=timestep, concurrency=MAX_WORKERS))
+
+def get_all_volume_5m(ids: List[int], timestep: str = "1h") -> List[Dict[str, Any]]:
     return asyncio.run(fetch_many(ids, timestep=timestep, concurrency=MAX_WORKERS))
 
 
@@ -209,7 +211,7 @@ def make_volume_objects(result_item, lookup):
     objs = []
 
     for x in result_item.get("data", []):
-        ts = datetime.fromtimestamp(x["timestamp"], tz=timezone.utc)
+        ts = x["timestamp"]
 
         avg_high = x["avgHighPrice"] or 0
         avg_low = x["avgLowPrice"] or 0
@@ -250,7 +252,7 @@ def getData2():
 
 
 
-lookup = build_id_to_name(load_item_mapping())  
+
 
 
 def fetch_latest_volume_snapshot():
@@ -313,7 +315,7 @@ def fetch_latest_volume_snapshot():
         latest = data_points[-1]
 
         # timestamp: UTC datetime of the most recent hourly snapshot.
-        timestamp = datetime.fromtimestamp(latest['timestamp'], tz=timezone.utc)
+        timestamp = latest['timestamp']
 
         # avg_high / avg_low: Average prices for the hour, defaulting to 0 if None
         # (None means no trades occurred at that price point during the hour).
@@ -332,7 +334,7 @@ def fetch_latest_volume_snapshot():
         item_name = name_from_id(item_id, lookup) or ""
 
         # Print each new entry to the terminal so the user can monitor progress.
-        print(f"  + {item_name} (id={item_id}) | timestamp={timestamp.strftime('%Y-%m-%d %H:%M UTC')} | volume={volume_gp:,} GP")
+        print(f"  + {item_name} (id={item_id}) | timestamp={timestamp} | volume={volume_gp:,} GP")
 
         new_records.append(HourlyItemVolume(
             item_id=item_id,
@@ -356,5 +358,18 @@ def fetch_latest_volume_snapshot():
 
 
 
+
+
+lookup = build_id_to_name(load_item_mapping())  
+# use this to get all.
+#getdata2()
+import time
+
+hours = 1
+minutes = 5
+while True:
+    fetch_latest_volume_snapshot()
+    print("Sleeping for 1 hour and 5 minutes...")
+    time.sleep(hours * 3600 + minutes * 60)
 
 
