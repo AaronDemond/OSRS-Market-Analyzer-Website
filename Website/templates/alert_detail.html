@@ -9,6 +9,16 @@
 <link rel="stylesheet" href="{% static 'css/group-selector.css' %}">
 
 <style>
+
+@media (min-width: 900px) {
+    #view-weights-toggle-btn, #edit-weights-toggle-group .btn-weights-toggle {
+        margin-top: 5px !important;
+        width: auto; /* prevents full‑width stretching */
+        max-width: 170px; padding: 4px 10px;/* reduce horizontal padding */
+        display: inline-block; white-space: nowrap;
+        padding-top: 8px; padding-bottom: 8px
+    }
+}
 #alert-delete-btn {
     vertical-align: inherit;
 }
@@ -1921,6 +1931,109 @@
             transform: translateY(-20px);
         }
     }
+
+    /* ==========================================================================
+       CONFIDENCE WEIGHTS TOGGLE BUTTON & PANELS
+       ==========================================================================
+       What: Styles for the "Scoring Weights" toggle button and the collapsible
+             panels used in both VIEW and EDIT modes on the alert detail page
+       Why: Keeps the weights section compact and hidden by default, since most
+            users don't need to see/edit them
+       How: A styled button triggers JS toggle; panels use flex grid for layout
+    ========================================================================== */
+
+    /* btn-weights-toggle: The toggle button that shows/hides the weights panel
+       What: Compact button with a gear icon and "Scoring Weights" label
+       Why: Consistent with the "Advanced Scoring Weights" button on the create form
+       How: Styled as a subtle outlined button with hover state */
+    /* btn-weights-toggle: Button to show/hide scoring weight fields
+       What: Styled identically to the "Create Alert" button on the alerts page
+       Why: Consistent visual language across the app for action buttons
+       How: Uses the same gradient (teal→green), border-radius, font styling,
+            and hover effects as .btn-create-alert in alerts-form.css.
+            Horizontal padding reduced to keep the button compact. */
+    .btn-weights-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        color: white;
+        border: none;
+        padding: 12px 14px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 15px;
+        font-weight: 600;
+        transition: all 0.15s;
+    }
+    .btn-weights-toggle:hover {
+        background: linear-gradient(135deg, #0e8377 0%, #2dd36f 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(17, 153, 142, 0.3);
+    }
+
+
+
+    /* weights-panel: View-mode container for weight values
+       What: A padded box showing the 5 weights in a row
+       How: Uses the weights-grid child for flex layout */
+    .weights-panel {
+        padding: 8px 0;
+    }
+
+    /* weights-grid / edit-weights-grid: Flex row of weight items
+       What: Lays out 5 weight items side-by-side with wrapping
+       Why: Compact display that fits all 5 on one line on desktop
+       How: display:flex with wrap and gap */
+    .weights-grid,
+    .edit-weights-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 16px;
+    }
+
+    /* weight-item: A single weight label+value pair in view mode
+       What: Shows "Trend: 0.35" in a compact cell
+       How: Fixed width so they line up in a row */
+    .weight-item {
+        display: flex;
+        flex-direction: column;
+        min-width: 80px;
+    }
+    .weight-item .detail-label {
+        font-size: 11px;
+        margin-bottom: 2px;
+        color: #1cb154;
+
+    }
+    .weight-item .detail-value {
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    /* edit-weight-field: A single weight input in edit mode
+       What: Narrow form-group for number inputs (0.00-1.00)
+       Why: Keeps all 5 on one row like the create form (140px each)
+       How: Fixed width with no bottom margin (parent gap handles spacing) */
+    .edit-weight-field {
+        width: 110px;
+        flex-shrink: 0;
+        margin-bottom: 0 !important;
+    }
+    .edit-weight-field label {
+        font-size: 12px !important;
+        margin-bottom: 3px !important;
+        color: #166534;
+    }
+    .edit-weight-field input {
+        padding: 6px 8px !important;
+        font-size: 13px !important;
+    }
+
+    /* Reuse the same weight-sum color classes from alerts-form.css */
+    .weight-sum-valid { color: #22c55e; }
+    .weight-sum-invalid { color: #ef4444; }
+    .weight-sum-empty { color: var(--muted); }
 </style>
 {% endblock %}
 
@@ -2284,8 +2397,70 @@
                     </div>
                     {% endif %}
                     {% endif %}
+
+                    <!-- =============================================================
+                         SCORING WEIGHTS TOGGLE (View Mode)
+                         =============================================================
+                         What: Collapsible section showing the 5 scoring weights
+                         Why: Users want to verify what weights are active without
+                              cluttering the main configuration view
+                         How: A button toggles a hidden div containing weight values.
+                              If no custom weights are set, shows "Using defaults"
+                    ============================================================= -->
+                    <div class="detail-item" style="flex-basis: 100%;">
+                        <button type="button"
+                                class="btn-weights-toggle"
+                                onclick="toggleViewWeights()"
+                                id="view-weights-toggle-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
+                                 fill="currentColor" width="14" height="14">
+                                <path fill-rule="evenodd"
+                                      d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
+                                      clip-rule="evenodd"/>
+                            </svg>
+                            Scoring Weights
+                        </button>
+                    </div>
+                    <div id="view-weights-panel" class="weights-panel" style="display: none; flex-basis: 100%;">
+                        {% if alert.confidence_weight_trend is not None or alert.confidence_weight_pressure is not None or alert.confidence_weight_spread is not None or alert.confidence_weight_volume is not None or alert.confidence_weight_stability is not None %}
+                        <div class="weights-grid">
+                            <div class="weight-item">
+                                <span class="detail-label">Trend</span>
+                                <span class="detail-value">{{ alert.confidence_weight_trend|default:"0.35" }}</span>
+                            </div>
+                            <div class="weight-item">
+                                <span class="detail-label">Pressure</span>
+                                <span class="detail-value">{{ alert.confidence_weight_pressure|default:"0.25" }}</span>
+                            </div>
+                            <div class="weight-item">
+                                <span class="detail-label">Spread</span>
+                                <span class="detail-value">{{ alert.confidence_weight_spread|default:"0.20" }}</span>
+                            </div>
+                            <div class="weight-item">
+                                <span class="detail-label">Volume</span>
+                                <span class="detail-value">{{ alert.confidence_weight_volume|default:"0.10" }}</span>
+                            </div>
+                            <div class="weight-item">
+                                <span class="detail-label">Stability</span>
+                                <span class="detail-value">{{ alert.confidence_weight_stability|default:"0.10" }}</span>
+                            </div>
+                        </div>
+                        {% else %}
+                        <span class="form-hint">Using default weights (Trend: 0.35, Pressure: 0.25, Spread: 0.20, Volume: 0.10, Stability: 0.10)</span>
+                        {% endif %}
+                    </div>
+
                     {% endif %}
                     
+                    <!-- =============================================================================
+                         SHARED FIELDS: Direction, Threshold Type, Percentage, Reference
+                         What: These fields are common to spread/spike/sustained/threshold/collective_move
+                              but NOT applicable to flip_confidence alerts
+                         Why: flip_confidence uses its own dedicated fields (timestep, lookback,
+                              trigger_rule, etc.) — showing "Threshold Type = Percentage" is misleading
+                         How: Wrap in a type check that excludes flip_confidence
+                    ============================================================================= -->
+                    {% if alert.type != 'flip_confidence' %}
                     <div class="detail-item">
                         <!-- What: Displays the direction setting for threshold alerts
                              Why: Users need to see whether the alert triggers when price goes above or below threshold
@@ -2321,7 +2496,13 @@
                             {% else %}Average{% endif %}
                         </span>
                     </div>
+                    {% endif %}
                     
+                    <!-- What: Min/Max Price Filters for non-confidence alert types
+                         Why: flip_confidence already shows these in its own config section above;
+                              showing them again here would create duplicates
+                         How: Exclude flip_confidence from this shared block -->
+                    {% if alert.type != 'flip_confidence' %}
                     {% if alert.is_all_items %}
                     <div class="detail-item">
                         <span class="detail-label">Minimum Price Filter</span>
@@ -2331,6 +2512,7 @@
                         <span class="detail-label">Maximum Price Filter</span>
                         <span class="detail-value price">{% if alert.maximum_price %}{{ alert.maximum_price|intcomma }}{% else %}None{% endif %}</span>
                     </div>
+                    {% endif %}
                     {% endif %}
                     
                     {% if alert.type == 'threshold' and alert.min_volume %}
@@ -2408,6 +2590,7 @@
                             <option value="sustained" {% if alert.type == 'sustained' %}selected{% endif %}>Sustained Move</option>
                             <option value="threshold" {% if alert.type == 'threshold' %}selected{% endif %}>Threshold</option>
                             <option value="collective_move" {% if alert.type == 'collective_move' %}selected{% endif %}>Collective Move</option>
+                            <option value="flip_confidence" {% if alert.type == 'flip_confidence' %}selected{% endif %}>Flip Confidence</option>
                         </select>
                         <small class="form-hint">The condition that triggers this alert</small>
                     </div>
@@ -2633,6 +2816,163 @@
                         <label for="edit-volatility-multiplier">Volatility Multiplier (K)</label>
                         <input type="number" id="edit-volatility-multiplier" value="{{ alert.volatility_multiplier|default:'' }}" min="0.1" step="0.1" placeholder="e.g. 1.5">
                         <small class="form-hint">Streak must move ≥ K × avg volatility</small>
+                    </div>
+                    
+                    <!-- =============================================================================
+                         FLIP CONFIDENCE EDIT FIELDS
+                         =============================================================================
+                         What: All editable configuration fields specific to flip_confidence alerts
+                         Why: Users need to adjust confidence scoring parameters (timestep, lookback,
+                              threshold, trigger rule, filters, cooldown, etc.) from the detail page
+                         How: Hidden by default (display:none), shown by handleTypeChange() when
+                              the selected type is 'flip_confidence'
+                    ============================================================================= -->
+                    
+                    <!-- Confidence: Timestep -->
+                    <div class="form-group" id="confidence-timestep-group" style="display: none;">
+                        <label for="edit-confidence-timestep">Timestep</label>
+                        <select id="edit-confidence-timestep">
+                            <option value="5m" {% if alert.confidence_timestep == '5m' %}selected{% endif %}>5 minutes</option>
+                            <option value="1h" {% if alert.confidence_timestep == '1h' or not alert.confidence_timestep %}selected{% endif %}>1 hour</option>
+                            <option value="6h" {% if alert.confidence_timestep == '6h' %}selected{% endif %}>6 hours</option>
+                            <option value="24h" {% if alert.confidence_timestep == '24h' %}selected{% endif %}>24 hours</option>
+                        </select>
+                        <small class="form-hint">Time bucket granularity for timeseries data</small>
+                    </div>
+                    
+                    <!-- Confidence: Lookback Periods -->
+                    <div class="form-group" id="confidence-lookback-group" style="display: none;">
+                        <label for="edit-confidence-lookback">Lookback Periods</label>
+                        <input type="number" id="edit-confidence-lookback"
+                               value="{{ alert.confidence_lookback|default:'24' }}"
+                               min="3" step="1" placeholder="e.g. 24">
+                        <small class="form-hint">Number of time buckets to analyze</small>
+                    </div>
+                    
+                    <!-- Confidence: Score Threshold -->
+                    <div class="form-group" id="confidence-threshold-group" style="display: none;">
+                        <label for="edit-confidence-threshold">Score Threshold</label>
+                        <input type="number" id="edit-confidence-threshold"
+                               value="{% if alert.confidence_threshold is not None %}{{ alert.confidence_threshold }}{% endif %}"
+                               min="0" max="1" step="0.01" placeholder="e.g. 0.65">
+                        <small class="form-hint">Minimum confidence score to trigger (0.0 - 1.0)</small>
+                    </div>
+                    
+                    <!-- Confidence: Trigger Rule -->
+                    <div class="form-group" id="confidence-trigger-rule-group" style="display: none;">
+                        <label for="edit-confidence-trigger-rule">Trigger Rule</label>
+                        <select id="edit-confidence-trigger-rule">
+                            <option value="crosses_above" {% if alert.confidence_trigger_rule == 'crosses_above' or not alert.confidence_trigger_rule %}selected{% endif %}>Crosses Above</option>
+                            <option value="delta_increase" {% if alert.confidence_trigger_rule == 'delta_increase' %}selected{% endif %}>Delta Increase</option>
+                        </select>
+                        <small class="form-hint">How to compare score against threshold</small>
+                    </div>
+                    
+                    <!-- Confidence: Min Spread % -->
+                    <div class="form-group" id="confidence-min-spread-group" style="display: none;">
+                        <label for="edit-confidence-min-spread">Min Spread %</label>
+                        <input type="number" id="edit-confidence-min-spread"
+                               value="{% if alert.confidence_min_spread_pct is not None %}{{ alert.confidence_min_spread_pct }}{% endif %}"
+                               min="0" step="0.1" placeholder="e.g. 1.5">
+                        <small class="form-hint">Minimum buy/sell spread percentage (optional)</small>
+                    </div>
+                    
+                    <!-- Confidence: Min Total Volume (GP) -->
+                    <div class="form-group" id="confidence-min-volume-group" style="display: none;">
+                        <label for="edit-confidence-min-volume">Min Total Volume (GP)</label>
+                        <input type="number" id="edit-confidence-min-volume"
+                               value="{% if alert.confidence_min_volume is not None %}{{ alert.confidence_min_volume }}{% endif %}"
+                               min="0" step="1" placeholder="">
+                        <small class="form-hint">Minimum total GP traded across lookback window (optional)</small>
+                    </div>
+                    
+                    <!-- Confidence: Cooldown -->
+                    <div class="form-group" id="confidence-cooldown-group" style="display: none;">
+                        <label for="edit-confidence-cooldown">Cooldown (minutes)</label>
+                        <input type="number" id="edit-confidence-cooldown"
+                               value="{% if alert.confidence_cooldown is not None %}{{ alert.confidence_cooldown }}{% endif %}"
+                               min="0" step="1" placeholder="e.g. 60">
+                        <small class="form-hint">Minutes to wait before re-alerting same item (optional)</small>
+                    </div>
+                    
+                    <!-- Confidence: Eval Interval -->
+                    <div class="form-group" id="confidence-eval-interval-group" style="display: none;">
+                        <label for="edit-confidence-eval-interval">Eval Interval (minutes)</label>
+                        <input type="number" id="edit-confidence-eval-interval"
+                               value="{% if alert.confidence_eval_interval is not None %}{{ alert.confidence_eval_interval }}{% endif %}"
+                               min="0" step="1" placeholder="e.g. 15">
+                        <small class="form-hint">How often to re-evaluate (optional, default: every cycle)</small>
+                    </div>
+                    
+                    <!-- Confidence: Sustained Count -->
+                    <div class="form-group" id="confidence-sustained-count-group" style="display: none;">
+                        <label for="edit-confidence-sustained-count">Sustained Count</label>
+                        <input type="number" id="edit-confidence-sustained-count"
+                               value="{% if alert.confidence_sustained_count is not None %}{{ alert.confidence_sustained_count }}{% endif %}"
+                               min="1" step="1" placeholder="e.g. 1">
+                        <small class="form-hint">Consecutive evaluations required before triggering</small>
+                    </div>
+                    
+                    <!-- ===================================================================
+                         CONFIDENCE: ADVANCED SCORING WEIGHTS (Edit Mode)
+                         ===================================================================
+                         What: Toggle button + collapsible panel for the 5 scoring weights
+                         Why: Power users may want to tweak weights during editing;
+                              the toggle keeps the form clean for most users
+                         How: Button calls toggleEditWeights() which shows/hides the panel.
+                              Each weight input has an 'input' event listener for the live sum.
+                    =================================================================== -->
+                    <div class="form-group" id="edit-weights-toggle-group" style="display: none; flex-basis: 100%;">
+                        <button type="button"
+                                class="btn-weights-toggle"
+                                onclick="toggleEditWeights()">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
+                                 fill="currentColor" width="14" height="14">
+                                <path fill-rule="evenodd"
+                                      d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
+                                      clip-rule="evenodd"/>
+                            </svg>
+                            Scoring Weights
+                        </button>
+                    </div>
+                    <div id="edit-weights-panel" style="display: none; flex-basis: 100%;">
+                        <div class="edit-weights-grid">
+                            <div class="form-group edit-weight-field">
+                                <label for="edit-weight-trend">Trend</label>
+                                <input type="number" id="edit-weight-trend"
+                                       value="{% if alert.confidence_weight_trend is not None %}{{ alert.confidence_weight_trend }}{% endif %}"
+                                       step="0.01" min="0" max="1" placeholder="0.35">
+                            </div>
+                            <div class="form-group edit-weight-field">
+                                <label for="edit-weight-pressure">Pressure</label>
+                                <input type="number" id="edit-weight-pressure"
+                                       value="{% if alert.confidence_weight_pressure is not None %}{{ alert.confidence_weight_pressure }}{% endif %}"
+                                       step="0.01" min="0" max="1" placeholder="0.25">
+                            </div>
+                            <div class="form-group edit-weight-field">
+                                <label for="edit-weight-spread">Spread</label>
+                                <input type="number" id="edit-weight-spread"
+                                       value="{% if alert.confidence_weight_spread is not None %}{{ alert.confidence_weight_spread }}{% endif %}"
+                                       step="0.01" min="0" max="1" placeholder="0.20">
+                            </div>
+                            <div class="form-group edit-weight-field">
+                                <label for="edit-weight-volume">Volume</label>
+                                <input type="number" id="edit-weight-volume"
+                                       value="{% if alert.confidence_weight_volume is not None %}{{ alert.confidence_weight_volume }}{% endif %}"
+                                       step="0.01" min="0" max="1" placeholder="0.10">
+                            </div>
+                            <div class="form-group edit-weight-field">
+                                <label for="edit-weight-stability">Stability</label>
+                                <input type="number" id="edit-weight-stability"
+                                       value="{% if alert.confidence_weight_stability is not None %}{{ alert.confidence_weight_stability }}{% endif %}"
+                                       step="0.01" min="0" max="1" placeholder="0.10">
+                            </div>
+                        </div>
+                        <small class="form-hint">Leave all empty to use defaults. Weights must sum to 1.0.</small>
+                        <div id="edit-weight-sum-indicator" class="weight-sum-empty"
+                             style="font-size: 13px; font-weight: 600; padding: 6px 0 0 0;">
+                            Total: &mdash; / 1.00 (using defaults)
+                        </div>
                     </div>
                     
                     <!-- ======================= TOGGLE BUTTONS SECTION ======================= -->
@@ -4304,7 +4644,21 @@ function handleTypeChange() {
         thresholdDirection: document.getElementById('threshold-direction-group'),
         thresholdType: document.getElementById('threshold-type-group'),
         targetPrice: document.getElementById('target-price-group'),
-        referencePrices: document.getElementById('reference-prices-group')
+        referencePrices: document.getElementById('reference-prices-group'),
+        // Flip confidence-specific groups
+        // What: References to all confidence edit form containers
+        // Why: handleTypeChange() needs to show/hide these when switching to/from flip_confidence
+        confidenceTimestep: document.getElementById('confidence-timestep-group'),
+        confidenceLookback: document.getElementById('confidence-lookback-group'),
+        confidenceThreshold: document.getElementById('confidence-threshold-group'),
+        confidenceTriggerRule: document.getElementById('confidence-trigger-rule-group'),
+        confidenceMinSpread: document.getElementById('confidence-min-spread-group'),
+        confidenceMinVolume: document.getElementById('confidence-min-volume-group'),
+        confidenceCooldown: document.getElementById('confidence-cooldown-group'),
+        confidenceEvalInterval: document.getElementById('confidence-eval-interval-group'),
+        confidenceSustainedCount: document.getElementById('confidence-sustained-count-group'),
+        confidenceWeightsToggle: document.getElementById('edit-weights-toggle-group'),
+        confidenceWeightsPanel: document.getElementById('edit-weights-panel')
     };
     
     // minVolumeInput: The input element for the minimum hourly volume value
@@ -4340,6 +4694,25 @@ function handleTypeChange() {
         if (groups.referencePrices) groups.referencePrices.style.display = 'none';
     };
     
+    // Helper to hide all flip_confidence-specific fields
+    // What: Hides all form fields specific to flip_confidence alerts
+    // Why: When switching away from flip_confidence type, these fields should be hidden
+    // How: Sets display to 'none' for each confidence-specific field group and the
+    //      weights toggle/panel
+    const hideConfidenceFields = () => {
+        if (groups.confidenceTimestep) groups.confidenceTimestep.style.display = 'none';
+        if (groups.confidenceLookback) groups.confidenceLookback.style.display = 'none';
+        if (groups.confidenceThreshold) groups.confidenceThreshold.style.display = 'none';
+        if (groups.confidenceTriggerRule) groups.confidenceTriggerRule.style.display = 'none';
+        if (groups.confidenceMinSpread) groups.confidenceMinSpread.style.display = 'none';
+        if (groups.confidenceMinVolume) groups.confidenceMinVolume.style.display = 'none';
+        if (groups.confidenceCooldown) groups.confidenceCooldown.style.display = 'none';
+        if (groups.confidenceEvalInterval) groups.confidenceEvalInterval.style.display = 'none';
+        if (groups.confidenceSustainedCount) groups.confidenceSustainedCount.style.display = 'none';
+        if (groups.confidenceWeightsToggle) groups.confidenceWeightsToggle.style.display = 'none';
+        if (groups.confidenceWeightsPanel) groups.confidenceWeightsPanel.style.display = 'none';
+    };
+    
     if (alertType === 'spread') {
         // Spread: show all items toggle, percentage, and min volume filter
         // What: Configure edit form fields for spread alert editing
@@ -4353,6 +4726,7 @@ function handleTypeChange() {
         groups.direction.style.display = 'none';
         hideSustainedFields();
         hideThresholdFields();
+        hideConfidenceFields();
         // What: Show min volume field for spread alerts in edit mode
         // Why: Users can filter spread alerts by minimum hourly trading volume (GP)
         //      to exclude low-volume items with artificially inflated spreads
@@ -4375,6 +4749,7 @@ function handleTypeChange() {
         groups.direction.style.display = 'block';
         hideSustainedFields();
         hideThresholdFields();
+        hideConfidenceFields();
         // What: Show and require min volume for spike alerts in edit mode
         // Why: Spike alerts must enforce a minimum hourly volume threshold
         // How: Display the min-volume group and mark the input as required
@@ -4395,6 +4770,7 @@ function handleTypeChange() {
         groups.timeFrame.style.display = 'block';
         groups.direction.style.display = 'block';
         hideThresholdFields();
+        hideConfidenceFields();
         
         // Show sustained-specific fields
         if (groups.minConsecutiveMoves) groups.minConsecutiveMoves.style.display = 'block';
@@ -4427,6 +4803,7 @@ function handleTypeChange() {
         groups.direction.style.display = 'none';  // Using threshold-specific direction
         groups.timeFrame.style.display = 'none';
         hideSustainedFields();
+        hideConfidenceFields();
         
         // Show threshold-specific fields
         if (groups.thresholdDirection) groups.thresholdDirection.style.display = 'block';
@@ -4469,6 +4846,7 @@ function handleTypeChange() {
         
         hideSustainedFields();
         hideThresholdFields();
+        hideConfidenceFields();
         
         // Ensure is_all_items is always false for collective move
         document.getElementById('edit-is-all-items').value = 'false';
@@ -4477,6 +4855,45 @@ function handleTypeChange() {
         // Show the multi-item selector for collective move
         const multiItemGroup = document.getElementById('multi-item-group');
         if (multiItemGroup) multiItemGroup.style.display = 'block';
+    } else if (alertType === 'flip_confidence') {
+        // =============================================================================
+        // FLIP CONFIDENCE ALERT TYPE HANDLING
+        // =============================================================================
+        // What: Shows all flip_confidence-specific fields and hides fields from other types
+        // Why: Flip confidence alerts have their own unique configuration (timestep, lookback,
+        //      threshold, trigger rule, min spread, min GP volume, cooldown, eval interval,
+        //      sustained count, and scoring weights)
+        // How: Hide all shared fields, show confidence-specific fields, and handle scope
+        //      (all items vs specific items) for item/price filter visibility
+        // =============================================================================
+        
+        // Show all-items toggle (confidence supports all items mode)
+        groups.allItems.style.display = 'block';
+        
+        // Hide all shared fields that don't apply to flip_confidence
+        groups.price.style.display = 'none';
+        groups.reference.style.display = 'none';
+        groups.percentage.style.display = 'none';
+        groups.timeFrame.style.display = 'none';
+        groups.direction.style.display = 'none';
+        hideSustainedFields();
+        hideThresholdFields();
+        
+        // Show all confidence-specific fields
+        if (groups.confidenceTimestep) groups.confidenceTimestep.style.display = 'block';
+        if (groups.confidenceLookback) groups.confidenceLookback.style.display = 'block';
+        if (groups.confidenceThreshold) groups.confidenceThreshold.style.display = 'block';
+        if (groups.confidenceTriggerRule) groups.confidenceTriggerRule.style.display = 'block';
+        if (groups.confidenceMinSpread) groups.confidenceMinSpread.style.display = 'block';
+        if (groups.confidenceMinVolume) groups.confidenceMinVolume.style.display = 'block';
+        if (groups.confidenceCooldown) groups.confidenceCooldown.style.display = 'block';
+        if (groups.confidenceEvalInterval) groups.confidenceEvalInterval.style.display = 'block';
+        if (groups.confidenceSustainedCount) groups.confidenceSustainedCount.style.display = 'block';
+        if (groups.confidenceWeightsToggle) groups.confidenceWeightsToggle.style.display = 'block';
+        // Note: weights panel stays hidden until user clicks the toggle button
+        
+        // Let scope change handler determine item/min-max price visibility
+        handleScopeChange();
     } else {
         // NOTE: Above/Below Threshold alerts were removed.
         //
@@ -4494,12 +4911,107 @@ function handleTypeChange() {
         groups.maxPrice.style.display = 'none';
         hideSustainedFields();
         hideThresholdFields();
-        
-        // Reset is_all_items
+        hideConfidenceFields();
         document.getElementById('edit-is-all-items').value = 'false';
         document.getElementById('edit-all-items').checked = false;
     }
 }
+
+// =============================================================================
+// CONFIDENCE WEIGHTS TOGGLE FUNCTIONS (View + Edit modes)
+// =============================================================================
+// What: Toggle visibility of the scoring weights panel in view and edit modes
+// Why: Weights are an advanced detail that most users don't need to see;
+//      keeping them behind a toggle keeps the UI clean
+// How: Each function finds its panel element and toggles display between
+//      'none' and 'block'
+// =============================================================================
+
+/**
+ * toggleViewWeights()
+ * What: Toggles the view-mode weights panel visibility
+ * Why: Users on the detail view page want to check/hide weights without editing
+ * How: Finds #view-weights-panel and toggles between display:none and display:block
+ */
+function toggleViewWeights() {
+    const panel = document.getElementById('view-weights-panel');
+    if (!panel) return;
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+
+/**
+ * toggleEditWeights()
+ * What: Toggles the edit-mode weights panel visibility and triggers sum recalc
+ * Why: Users editing a confidence alert want to show/hide the weight inputs
+ * How: Finds #edit-weights-panel, toggles display, and recalculates the live sum
+ *      indicator if the panel is being shown
+ */
+function toggleEditWeights() {
+    const panel = document.getElementById('edit-weights-panel');
+    if (!panel) return;
+    const isVisible = panel.style.display !== 'none';
+    panel.style.display = isVisible ? 'none' : 'block';
+    // Recalculate sum indicator when panel is shown
+    if (!isVisible) updateEditWeightSum();
+}
+
+/**
+ * updateEditWeightSum()
+ * What: Recalculates and displays the current sum of all 5 edit-mode weight inputs
+ * Why: Provides real-time validation feedback identical to the create form's indicator
+ * How: Reads the 5 edit weight inputs, sums them, and updates the indicator div
+ *      with the total and a color-coded class (valid/invalid/empty)
+ */
+function updateEditWeightSum() {
+    const indicator = document.getElementById('edit-weight-sum-indicator');
+    if (!indicator) return;
+
+    // editWeightIds: Array of the 5 edit-mode weight input element IDs
+    const editWeightIds = [
+        'edit-weight-trend',
+        'edit-weight-pressure',
+        'edit-weight-spread',
+        'edit-weight-volume',
+        'edit-weight-stability',
+    ];
+
+    let hasAnyValue = false;
+    let sum = 0;
+
+    editWeightIds.forEach(id => {
+        const input = document.getElementById(id);
+        if (!input) return;
+        const val = input.value.trim();
+        if (val !== '') {
+            hasAnyValue = true;
+            sum += parseFloat(val) || 0;
+        }
+    });
+
+    indicator.classList.remove('weight-sum-valid', 'weight-sum-invalid', 'weight-sum-empty');
+
+    if (!hasAnyValue) {
+        indicator.textContent = 'Total: \u2014 / 1.00 (using defaults)';
+        indicator.classList.add('weight-sum-empty');
+    } else {
+        // WEIGHT_SUM_TOLERANCE: ±0.001 for floating-point rounding tolerance
+        const isValid = Math.abs(sum - 1.0) <= 0.001;
+        indicator.textContent = 'Total: ' + sum.toFixed(2) + ' / 1.00';
+        indicator.classList.add(isValid ? 'weight-sum-valid' : 'weight-sum-invalid');
+    }
+}
+
+// Attach live-update listeners to all 5 edit-mode weight inputs
+// What: Adds 'input' event listeners so the sum indicator updates on every keystroke
+// Why: Immediate feedback is better than discovering errors at save time
+// How: 'input' event fires on every character change including paste/delete
+document.addEventListener('DOMContentLoaded', function () {
+    ['edit-weight-trend', 'edit-weight-pressure', 'edit-weight-spread',
+     'edit-weight-volume', 'edit-weight-stability'].forEach(id => {
+        const input = document.getElementById(id);
+        if (input) input.addEventListener('input', updateEditWeightSum);
+    });
+});
 
 function handleScopeChange() {
     const isAllItems = document.getElementById('edit-all-items').checked;
@@ -5144,6 +5656,109 @@ async function saveChanges() {
         // Why: Collective move alerts require a time window to compute baseline changes
         // How: Read from the shared edit-time-frame input used for time-frame alert types
         data.time_frame = document.getElementById('edit-time-frame').value || null;
+    } else if (alertType === 'flip_confidence') {
+        // =============================================================================
+        // FLIP CONFIDENCE ALERT SAVE DATA
+        // =============================================================================
+        // What: Collect all flip_confidence-specific field values for saving
+        // Why: Flip confidence alerts have 9 config fields + 5 optional weight fields
+        //      that need to be sent to the backend
+        // How: Read each confidence-specific input by its 'edit-confidence-*' ID,
+        //      collect weights separately (only if user has set any), then validate
+        //      that weights sum to 1.0 if any are provided
+        // =============================================================================
+        
+        // confidence_timestep: The timeseries resolution (e.g. '5m', '1h')
+        data.confidence_timestep = document.getElementById('edit-confidence-timestep').value || '5m';
+        
+        // confidence_lookback: Number of data points to analyze
+        data.confidence_lookback = document.getElementById('edit-confidence-lookback').value || null;
+        
+        // confidence_threshold: Minimum confidence score (0-100) to trigger
+        data.confidence_threshold = document.getElementById('edit-confidence-threshold').value || null;
+        
+        // confidence_trigger_rule: 'any' = any single check, 'sustained' = N consecutive checks
+        data.confidence_trigger_rule = document.getElementById('edit-confidence-trigger-rule').value || 'any';
+        
+        // confidence_min_spread_pct: Minimum buy/sell spread percentage to qualify
+        data.confidence_min_spread_pct = document.getElementById('edit-confidence-min-spread').value || null;
+        
+        // confidence_min_volume: Minimum total GP volume across the lookback window
+        data.confidence_min_volume = document.getElementById('edit-confidence-min-volume').value || null;
+        
+        // confidence_cooldown: Minutes to wait after triggering before re-triggering
+        data.confidence_cooldown = document.getElementById('edit-confidence-cooldown').value || null;
+        
+        // confidence_eval_interval: Minutes between evaluation cycles
+        data.confidence_eval_interval = document.getElementById('edit-confidence-eval-interval').value || null;
+        
+        // confidence_sustained_count: Number of consecutive above-threshold checks for 'sustained' rule
+        data.confidence_sustained_count = document.getElementById('edit-confidence-sustained-count').value || null;
+        
+        // =========================================================================
+        // WEIGHT COLLECTION AND VALIDATION
+        // =========================================================================
+        // What: Collect the 5 scoring weight values (trend, pressure, spread, volume, stability)
+        // Why: Weights are optional — if any are set, ALL 5 must be set and must sum to 1.0
+        // How: Read each weight input, apply all-or-nothing validation,
+        //      then validate sum ±0.001 tolerance
+        // =========================================================================
+        
+        // weightInputIds: Maps each weight field name to its edit input element ID
+        const weightInputIds = {
+            confidence_weight_trend: 'edit-weight-trend',
+            confidence_weight_pressure: 'edit-weight-pressure',
+            confidence_weight_spread: 'edit-weight-spread',
+            confidence_weight_volume: 'edit-weight-volume',
+            confidence_weight_stability: 'edit-weight-stability',
+        };
+        
+        // weightValues: Object collecting each weight's parsed value (null if input is empty)
+        const weightValues = {};
+        // filledCount: Number of weight inputs that have a non-empty value
+        let filledCount = 0;
+        // weightSum: Running sum of all filled weight values for validation
+        let weightSum = 0;
+        
+        for (const [fieldName, inputId] of Object.entries(weightInputIds)) {
+            const el = document.getElementById(inputId);
+            const val = el ? el.value.trim() : '';
+            if (val !== '') {
+                weightValues[fieldName] = parseFloat(val);
+                weightSum += weightValues[fieldName];
+                filledCount++;
+            } else {
+                weightValues[fieldName] = null;
+            }
+        }
+        
+        // All-or-nothing validation: partial weights (some filled, some empty) are invalid
+        if (filledCount > 0 && filledCount < 5) {
+            showValidationError(
+                'All 5 scoring weights must be filled in, or leave all blank for defaults.'
+            );
+            return;
+        }
+        
+        // Sum validation: if all 5 are filled, they must sum to 1.0 within tolerance
+        if (filledCount === 5) {
+            // WEIGHT_SUM_TOLERANCE: ±0.001 floating-point rounding tolerance
+            if (Math.abs(weightSum - 1.0) > 0.001) {
+                showValidationError(
+                    'Scoring weights must sum to 1.0. Current total: ' + weightSum.toFixed(3)
+                );
+                return;
+            }
+            // Include weights in the save payload
+            Object.assign(data, weightValues);
+        }
+        // If filledCount === 0, we don't send weight fields → backend keeps existing values
+        
+        // Min/max price for all-items mode
+        if (isAllItems) {
+            data.minimum_price = document.getElementById('edit-minimum-price').value || null;
+            data.maximum_price = document.getElementById('edit-maximum-price').value || null;
+        }
     }
     
     try {
