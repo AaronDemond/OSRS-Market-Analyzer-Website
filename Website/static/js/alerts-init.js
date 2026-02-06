@@ -874,6 +874,77 @@
                 }
 
                 // =============================================================================
+                // CONFIDENCE WEIGHT SUM VALIDATION
+                // =============================================================================
+                // What: Validates that the 5 confidence scoring weights sum to exactly 1.0
+                //       (within a small floating-point tolerance) when the user has entered
+                //       custom values
+                // Why: The confidence scoring algorithm normalizes using the sum of weights.
+                //       If the sum is not 1.0, the scores would be skewed and meaningless.
+                //       We only validate when at least ONE weight has been filled in — if all
+                //       are empty, the backend uses the default weights automatically.
+                // How: 
+                //   1. Only run this block when the alert type is 'flip_confidence'
+                //   2. Read all 5 weight input values
+                //   3. If ANY has a value, require ALL to have values (partial fill = error)
+                //   4. Sum the values and check within ±0.001 of 1.0
+                //   5. Push a descriptive error message if validation fails
+                // =============================================================================
+                if (alertType === 'flip_confidence') {
+                    // confidenceWeightIds: The 5 input element IDs for the weight fields
+                    const confidenceWeightIds = [
+                        'confidence-weight-trend',
+                        'confidence-weight-pressure',
+                        'confidence-weight-spread',
+                        'confidence-weight-volume',
+                        'confidence-weight-stability',
+                    ];
+
+                    // confidenceWeightValues: Array of raw string values from each weight input
+                    const confidenceWeightValues = confidenceWeightIds.map(id => {
+                        const el = document.getElementById(id);
+                        return el ? el.value.trim() : '';
+                    });
+
+                    // filledCount: How many of the 5 weight fields have a non-empty value
+                    // Why: We need to distinguish "no customization" (0 filled) from
+                    //      "partial customization" (1-4 filled) from "full" (5 filled)
+                    const filledCount = confidenceWeightValues.filter(v => v !== '').length;
+
+                    if (filledCount > 0) {
+                        // At least one weight was entered — enforce all-or-nothing
+                        if (filledCount < 5) {
+                            // partialFillError: Error when user fills some but not all weights
+                            // What: Tells user they must fill all 5 or leave all empty
+                            // Why: Partial weight sets have no valid interpretation
+                            errors.push(
+                                'All 5 confidence weights must be filled in when customizing weights (' +
+                                filledCount + ' of 5 provided)'
+                            );
+                        } else {
+                            // All 5 are filled — check the sum
+                            // weightSum: The arithmetic sum of all 5 parsed weight values
+                            const weightSum = confidenceWeightValues.reduce(
+                                (acc, v) => acc + (parseFloat(v) || 0), 0
+                            );
+
+                            // WEIGHT_SUM_TOLERANCE: Allowed rounding error for floating-point sum
+                            // Why: 0.35+0.25+0.20+0.10+0.10 can equal 0.9999... in JS
+                            const WEIGHT_SUM_TOLERANCE = 0.001;
+
+                            if (Math.abs(weightSum - 1.0) > WEIGHT_SUM_TOLERANCE) {
+                                // sumError: Error message showing the actual sum vs required 1.0
+                                errors.push(
+                                    'Confidence weights must sum to 1.0 (currently ' +
+                                    weightSum.toFixed(2) + ')'
+                                );
+                            }
+                        }
+                    }
+                    // If filledCount === 0, all empty => use defaults => no validation needed
+                }
+
+                // =============================================================================
                 // ALL ITEMS MIN/MAX PRICE VALIDATION
                 // =============================================================================
                 // What: Validates that both minimum and maximum price fields have values when
@@ -976,6 +1047,171 @@
     function handleCollectiveScopeChange() {
         FormManager.handleCollectiveScopeChange('create');
     }
+
+    /**
+     * Global wrapper for handling flip confidence scope dropdown changes.
+     * 
+     * What: Calls FormManager.handleConfidenceScopeChange when user changes "All Items" vs "Specific Items"
+     * Why: HTML onchange attributes can only call global functions, not module-scoped ones
+     * How: Delegates to FormManager which shows/hides the item selector and min/max price fields
+     */
+    function handleConfidenceScopeChange() {
+        FormManager.handleConfidenceScopeChange('create');
+    }
+
+    /**
+     * Global wrapper for toggling the advanced scoring weights panel.
+     * 
+     * What: Shows/hides the advanced weight configuration fields for flip confidence alerts
+     * Why: HTML onclick attributes can only call global functions
+     * How: Toggles the display of the advanced panel and its child form groups
+     */
+    function toggleConfidenceAdvanced() {
+        const panel = document.getElementById('confidence-advanced-panel');
+        const groups = AlertsConfig.selectors.create.groups;
+        if (!panel) return;
+
+        const isVisible = panel.style.display !== 'none';
+        // What: Toggle the panel between hidden and flex layout
+        // Why: The panel needs to be a flex container (not block) so the weight
+        //      input groups lay out in a row — the CSS sets flex-wrap: wrap + gap
+        // How: 'none' hides; 'flex' shows and activates the flex layout
+        panel.style.display = isVisible ? 'none' : 'flex';
+
+        // Show/hide the weight form groups inside the panel
+        const weightGroups = [
+            groups.confidenceWeightTrend,
+            groups.confidenceWeightPressure,
+            groups.confidenceWeightSpread,
+            groups.confidenceWeightVolume,
+            groups.confidenceWeightStability,
+        ];
+
+        weightGroups.forEach(selector => {
+            const el = document.querySelector(selector);
+            if (el) el.style.display = isVisible ? 'none' : 'block';
+        });
+
+        // What: Show/hide the live weight sum indicator when the panel toggles
+        // Why: The sum indicator is only meaningful when the advanced panel is open
+        // How: Find the indicator div and match its visibility to the panel state
+        const sumIndicator = document.getElementById('confidence-weight-sum-indicator');
+        if (sumIndicator) {
+            sumIndicator.style.display = isVisible ? 'none' : 'block';
+            // Trigger an immediate recalculation so the indicator shows current totals
+            if (!isVisible) updateConfidenceWeightSum();
+        }
+    }
+
+    // =============================================================================
+    // LIVE CONFIDENCE WEIGHT SUM INDICATOR
+    // =============================================================================
+    // What: Recalculates and displays the current sum of all 5 confidence weight
+    //       inputs in real time as the user types
+    // Why: Users need instant feedback on whether their weights sum to 1.0 without
+    //       having to submit the form to find out
+    // How: Reads the 5 weight input values, sums them, and updates the indicator
+    //       div with the total and a color-coded class (valid/invalid/empty)
+    // =============================================================================
+
+    /**
+     * updateConfidenceWeightSum()
+     *
+     * What: Reads all 5 confidence weight inputs, sums them, and updates the
+     *       live sum indicator element with the result
+     * Why: Provides real-time validation feedback so the user knows immediately
+     *       if their weights sum to exactly 1.0
+     * How:
+     *   1. Collect values from the 5 weight <input> elements
+     *   2. Determine if any field has a value (to distinguish "empty" from "invalid")
+     *   3. Sum the values, display "Total: X.XX / 1.00"
+     *   4. Apply CSS class: weight-sum-valid (green), weight-sum-invalid (red),
+     *      or weight-sum-empty (muted) based on the result
+     */
+    function updateConfidenceWeightSum() {
+        // sumIndicator: The DOM element that shows the live weight total
+        const sumIndicator = document.getElementById('confidence-weight-sum-indicator');
+        if (!sumIndicator) return;
+
+        // weightInputIds: Array of the 5 weight input element IDs
+        // These correspond to the 5 scoring dimensions in the confidence model:
+        //   trend, pressure, spread, volume, stability
+        const weightInputIds = [
+            'confidence-weight-trend',
+            'confidence-weight-pressure',
+            'confidence-weight-spread',
+            'confidence-weight-volume',
+            'confidence-weight-stability',
+        ];
+
+        // hasAnyValue: Tracks whether the user has typed into ANY weight field
+        // Why: If all fields are empty, we show a neutral "using defaults" message
+        //      instead of a red "invalid" warning
+        let hasAnyValue = false;
+
+        // sum: Running total of all parsed weight values
+        let sum = 0;
+
+        weightInputIds.forEach(id => {
+            const input = document.getElementById(id);
+            if (!input) return;
+            const val = input.value.trim();
+            if (val !== '') {
+                hasAnyValue = true;
+                sum += parseFloat(val) || 0;
+            }
+        });
+
+        // Remove all state classes so we can re-apply the correct one
+        sumIndicator.classList.remove('weight-sum-valid', 'weight-sum-invalid', 'weight-sum-empty');
+
+        if (!hasAnyValue) {
+            // No values entered — show a neutral hint
+            sumIndicator.textContent = 'Total: — / 1.00 (using defaults)';
+            sumIndicator.classList.add('weight-sum-empty');
+        } else {
+            // WEIGHT_SUM_TOLERANCE: Allowed floating-point rounding tolerance
+            // Why: JavaScript floating point arithmetic can produce results like
+            //      0.35 + 0.25 + 0.20 + 0.10 + 0.10 = 0.9999999... instead of 1.0
+            // How: We accept any sum within ±0.001 of 1.0 as valid
+            const WEIGHT_SUM_TOLERANCE = 0.001;
+
+            // isValid: True when the sum is within tolerance of 1.0
+            const isValid = Math.abs(sum - 1.0) <= WEIGHT_SUM_TOLERANCE;
+
+            // Display the sum rounded to 2 decimal places
+            sumIndicator.textContent = 'Total: ' + sum.toFixed(2) + ' / 1.00';
+            sumIndicator.classList.add(isValid ? 'weight-sum-valid' : 'weight-sum-invalid');
+        }
+    }
+
+    /**
+     * Attach live-update listeners to all 5 confidence weight inputs.
+     *
+     * What: Adds 'input' event listeners to each weight input field
+     * Why: Every keystroke should immediately update the sum indicator
+     * How: Uses 'input' event (fires on every character change, including paste/delete)
+     *      wrapped in DOMContentLoaded to ensure inputs exist in the DOM
+     */
+    document.addEventListener('DOMContentLoaded', function () {
+        const weightInputIds = [
+            'confidence-weight-trend',
+            'confidence-weight-pressure',
+            'confidence-weight-spread',
+            'confidence-weight-volume',
+            'confidence-weight-stability',
+        ];
+
+        weightInputIds.forEach(id => {
+            const input = document.getElementById(id);
+            if (input) {
+                // What: Listen for any change in the input value
+                // Why: 'input' fires on every keystroke, paste, and programmatic change
+                // How: Calls updateConfidenceWeightSum to recalculate the live total
+                input.addEventListener('input', updateConfidenceWeightSum);
+            }
+        });
+    });
 
     // Modal handlers
     function closeSpreadModal() {
@@ -1345,6 +1581,7 @@
                 SpikeMultiItemSelector.init();
                 ThresholdMultiItemSelector.init();
                 CollectiveMoveMultiItemSelector.init();
+                ConfidenceMultiItemSelector.init();
             }
         };
         
