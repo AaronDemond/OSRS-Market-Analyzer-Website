@@ -3435,6 +3435,10 @@ def alert_detail(request, alert_id):
         elif alert_type == 'threshold':
             # For threshold alerts, sort by change_percent (descending - positive changes first)
             return sorted(items, key=lambda x: x.get('change_percent', 0), reverse=True)
+        elif alert_type == 'flip_confidence':
+            # For flip confidence alerts, sort by confidence_score (descending - highest scores first)
+            # Why: Users want to see items with the highest flip confidence at the top of the list
+            return sorted(items, key=lambda x: x.get('confidence_score', 0), reverse=True)
         else:
             # Unknown alert type - return unsorted
             return items
@@ -3541,6 +3545,70 @@ def alert_detail(request, alert_id):
                     triggered_info['collective_data'] = None
             else:
                 triggered_info['collective_data'] = None
+
+        # =============================================================================
+        # FLIP CONFIDENCE ALERT TRIGGERED INFO
+        # What: Populate triggered_info with flip_confidence data for template display
+        # Why: Flip confidence alerts have a unique triggered_data structure containing
+        #       confidence scores, trigger rules, and thresholds per item. The template
+        #       needs this data extracted into a predictable format for rendering.
+        # How: Parse triggered_data JSON which can be either:
+        #       - A list of item dicts (multi-item/all-items mode): each with item_id,
+        #         item_name, confidence_score, previous_score, trigger_rule, threshold,
+        #         consecutive_passes
+        #       - A single dict (single-item mode): same fields but as a single object
+        #       For single-item mode, individual fields are extracted into triggered_info
+        #       for the single-item grid display. For multi-item, the list is stored in
+        #       triggered_info['items'] and sorted by confidence_score descending.
+        # =============================================================================
+        if alert.type == 'flip_confidence':
+            if alert.triggered_data:
+                try:
+                    # confidence_data: The raw parsed JSON from triggered_data, which can
+                    # be either a list (multi/all-items) or a dict (single-item)
+                    confidence_data = json.loads(alert.triggered_data)
+
+                    if isinstance(confidence_data, list):
+                        # Multi-item or all-items mode: store sorted items list
+                        # Sort by confidence_score descending so highest-scoring items
+                        # appear at the top of the triggered items list
+                        triggered_info['items'] = sort_triggered_items(confidence_data, 'flip_confidence')
+                        triggered_info['confidence_data'] = confidence_data
+
+                        # For backwards compatibility, also populate individual fields
+                        # from the first (highest-scoring) item. This allows the template
+                        # to show a summary even when rendering in single-item style.
+                        if confidence_data:
+                            # first_item: The highest-scoring item from the sorted list,
+                            # used to populate single-item display fields as a fallback
+                            first_item = triggered_info['items'][0] if triggered_info['items'] else confidence_data[0]
+                            triggered_info['confidence_score'] = first_item.get('confidence_score')
+                            triggered_info['confidence_previous_score'] = first_item.get('previous_score')
+                            triggered_info['confidence_trigger_rule'] = first_item.get('trigger_rule')
+                            triggered_info['confidence_threshold'] = first_item.get('threshold')
+                            triggered_info['confidence_consecutive'] = first_item.get('consecutive_passes')
+                    else:
+                        # Single-item mode: confidence_data is a dict with score details
+                        # confidence_data: Dict containing confidence_score, previous_score,
+                        # trigger_rule, threshold, consecutive_passes for one item
+                        triggered_info['confidence_data'] = confidence_data
+                        # confidence_score: The computed flip confidence score (0-100)
+                        triggered_info['confidence_score'] = confidence_data.get('confidence_score')
+                        # confidence_previous_score: The score from the previous evaluation
+                        # cycle, used to show score direction/change
+                        triggered_info['confidence_previous_score'] = confidence_data.get('previous_score')
+                        # confidence_trigger_rule: How the score was compared to the threshold
+                        # ('crosses_above' = score >= threshold, 'delta_increase' = score increased by >= threshold)
+                        triggered_info['confidence_trigger_rule'] = confidence_data.get('trigger_rule')
+                        # confidence_threshold: The user's configured threshold value
+                        triggered_info['confidence_threshold'] = confidence_data.get('threshold')
+                        # confidence_consecutive: Number of consecutive evaluations that passed
+                        # the trigger condition before the alert fired
+                        triggered_info['confidence_consecutive'] = confidence_data.get('consecutive_passes')
+                except json.JSONDecodeError:
+                    triggered_info['confidence_data'] = None
+            else:
+                triggered_info['confidence_data'] = None
 
         
         # has_multiple_items: Boolean indicating if this alert monitors multiple specific items

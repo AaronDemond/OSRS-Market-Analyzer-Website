@@ -35,7 +35,7 @@ import django
 django.setup()
 
 # Now we can safely import Django models
-from Website.models import HourlyItemVolume
+from Website.models import HourlyItemVolume, FiveMinTimeSeries
 
 # =============================================================================
 # CONFIGURATION
@@ -58,10 +58,10 @@ ITEM_MAPPING_FILE = PROJECT_ROOT / 'Website' / 'static' / 'item-mapping.json'
 
 # BULK_INSERT_BATCH_SIZE: Number of records to insert per bulk_create call.
 # 500 is safe for SQLite's variable limit (default max 999 variables per query).
-BULK_INSERT_BATCH_SIZE = 500
+BULK_INSERT_BATCH_SIZE = 100
 
 
-MAX_WORKERS = 25
+MAX_WORKERS = 50
 CHUNK_SIZE = 500  # number of ids per batch (tune this)
 
 def load_item_mapping():
@@ -151,6 +151,13 @@ def getData():
     result = get_all_volume(ids)
     for r in result:
         make_volume_objects([r])
+
+def getAllTimeSeries():
+    mapping = load_item_mapping()
+    ids = [x['id'] for x in mapping]
+    result = get_all_volume(ids)
+    for r in result:
+        make_timeseries_objects([r])
     #with open("output.txt", "w", encoding="utf-8") as f:
         #print(result, file=f)
 
@@ -205,6 +212,31 @@ from datetime import datetime, timezone
 
 BULK_INSERT_BATCH_SIZE = 500
 
+
+def make_5m_timeseries_objects(result_item, lookup):
+    item_id = result_item["id"]
+    item_name = name_from_id(item_id, lookup) or ""
+    objs = []
+
+    for x in result_item.get("data", []):
+        ts = x["timestamp"]
+        avg_high = x["avgHighPrice"] or 0
+        avg_low = x["avgLowPrice"] or 0
+        high_vol = x["highPriceVolume"] or 0
+        low_vol = x["lowPriceVolume"] or 0
+
+
+        objs.append(FiveMinTimeSeries(
+            item_id=item_id,
+            item_name=item_name,
+            avg_low_price=avg_low,
+            avg_high_price=avg_high,
+            high_price_volume=high_vol,
+            low_price_volume=low_vol,
+            timestamp=ts
+        ))
+    return objs
+
 def make_volume_objects(result_item, lookup):
     item_id = result_item["id"]
     item_name = name_from_id(item_id, lookup) or ""
@@ -226,12 +258,11 @@ def make_volume_objects(result_item, lookup):
             volume=volume_gp,
             timestamp=ts
         ))
-        print("Appended first batch")
     return objs
 
 def getData2():
     mapping = load_item_mapping()
-    ids = [x["id"] for x in mapping][:100]
+    ids = [x["id"] for x in mapping]
 
     result = get_all_volume(ids)
 
@@ -249,6 +280,28 @@ def getData2():
         )
 
     print("done")
+
+def getDataTimeSeries():
+    mapping = load_item_mapping()
+    ids = [x["id"] for x in mapping]
+
+    result = get_all_volume(ids)
+
+    all_objects = []
+    for r in result:
+        all_objects.extend(make_5m_timeseries_objects(r, lookup))
+
+    print(f"prepared {len(all_objects)} rows, inserting...")
+
+    with transaction.atomic():
+        FiveMinTimeSeries.objects.bulk_create(
+            all_objects,
+            batch_size=BULK_INSERT_BATCH_SIZE,
+            # ignore_conflicts=True,  # optional if you want to skip duplicates
+        )
+
+    print("done")
+
 
 
 
@@ -354,6 +407,106 @@ def fetch_latest_volume_snapshot():
 
     return len(new_records)
 
+def fetch_latest_five_min_snapshot():
+    """
+    Fetch the most recent hourly volume datapoint for every item and insert it into the database.
+
+    What: For each item in the item mapping, fetches the 1h timeseries from the OSRS Wiki API,
+          extracts ONLY the newest (most recent) datapoint, calculates GP volume, and inserts
+          a single HourlyItemVolume row per item into the database.
+
+    Why: Provides a quick way to get a fresh volume snapshot for all items without storing
+         the full history. Useful for on-demand refreshes — e.g., before running spread alert
+         checks that filter by volume, or after the DB has gone stale.
+
+    How:
+        1. Loads all item IDs from the item mapping file.
+        2. Uses the existing async fetch_many() to request timeseries data for every item
+           with 25 concurrent workers.
+        3. For each item's response, takes ONLY the LAST entry in the 'data' array
+           (the API returns data sorted chronologically, so the last entry is the newest).
+        4. Calculates GP volume as: (avgHighPrice * highPriceVolume) + (avgLowPrice * lowPriceVolume).
+        5. Creates an HourlyItemVolume object and collects them all into a list.
+        6. Prints the item name and timestamp to the terminal for every new database entry.
+        7. Bulk-inserts all objects in a single atomic transaction for performance.
+
+    Returns:
+        int: The number of HourlyItemVolume records inserted into the database.
+    """
+    # mapping: Full list of item dicts from item-mapping.json, each with 'id' and 'name' keys.
+    mapping = load_item_mapping()
+    if not mapping:
+        print("ERROR: Could not load item mapping. Aborting.")
+        return 0
+
+    # ids: List of all item IDs to fetch timeseries data for.
+    ids = [x['id'] for x in mapping]
+    print(f"Fetching latest volume for {len(ids)} items...")
+
+    # raw_results: List of dicts [{'id': int, 'data': [...]}, ...] from the async API fetcher.
+    # Each entry contains the full timeseries response for one item.
+    raw_results = get_all_volume(ids)
+    print(f"Received responses for {len(raw_results)} items. Extracting latest datapoints...")
+
+    # new_records: List of HourlyItemVolume model instances to bulk-insert.
+    # Only the single most recent datapoint per item is included.
+    new_records = []
+
+    for result in raw_results:
+        # item_id: The OSRS item ID from the API response.
+        item_id = result['id']
+
+        # data_points: The chronologically-sorted list of hourly snapshots from the API.
+        # The last element is the most recent hour's data.
+        data_points = result.get('data', [])
+        if not data_points:
+            continue
+
+        # latest: The newest datapoint dict — last element in the chronological array.
+        # Contains keys: timestamp, avgHighPrice, avgLowPrice, highPriceVolume, lowPriceVolume.
+        latest = data_points[-1]
+
+        # timestamp: UTC datetime of the most recent hourly snapshot.
+        timestamp = latest['timestamp']
+
+        # avg_high / avg_low: Average prices for the hour, defaulting to 0 if None
+        # (None means no trades occurred at that price point during the hour).
+        avg_high = latest['avgHighPrice'] or 0
+        avg_low = latest['avgLowPrice'] or 0
+
+        # high_vol / low_vol: Number of units traded at high/low price, defaulting to 0 if None.
+        high_vol = latest['highPriceVolume'] or 0
+        low_vol = latest['lowPriceVolume'] or 0
+
+        # volume_gp: Total GP traded in the most recent hour.
+        # Calculated as (units sold at high price * high price) + (units sold at low price * low price).
+        volume_gp = (avg_high * high_vol) + (avg_low * low_vol)
+
+        # item_name: Human-readable item name from the lookup dict, or empty string if not found.
+        item_name = name_from_id(item_id, lookup) or ""
+
+
+        new_records.append(FiveMinTimeSeries(
+            item_id=item_id,
+            item_name=item_name,
+            avg_low_price=avg_low,
+            avg_high_price=avg_high,
+            high_price_volume=high_vol,
+            low_price_volume=low_vol
+        ))
+
+    # Bulk-insert all records in a single atomic transaction for performance.
+    # batch_size=500 stays within SQLite's variable limit (default max 999 per query).
+    if new_records:
+        with transaction.atomic():
+            FiveMinTimeSeries.objects.bulk_create(new_records, batch_size=BULK_INSERT_BATCH_SIZE)
+        print(f"\nInserted {len(new_records)} records into FiveMinTimeSeries.")
+    else:
+        print("\nNo records to insert.")
+
+    return len(new_records)
+
+
 
 
 
@@ -362,14 +515,16 @@ def fetch_latest_volume_snapshot():
 
 lookup = build_id_to_name(load_item_mapping())  
 # use this to get all.
-#getdata2()
+#getDataTimeSeries()
 import time
-
 hours = 1
 minutes = 5
 while True:
-    fetch_latest_volume_snapshot()
-    print("Sleeping for 1 hour and 5 minutes...")
-    time.sleep(hours * 3600 + minutes * 60)
+    #time.sleep(hours * 3600 + minutes * 60)
+    #fetch_latest_volume_snapshot()
+    fetch_latest_five_min_snapshot()
+    print("Sleeping for 5 minutes...")
+    time.sleep(minutes * 60)
+    print("Fetching again...")
 
 

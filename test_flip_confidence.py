@@ -345,7 +345,7 @@ class FlipConfidenceAlertTests(TestCase):
         }
 
         with patch.object(
-            command, 'fetch_timeseries_data',
+            command, 'fetch_timeseries_from_db',
             return_value=self._mock_timeseries_high_score()
         ), patch.object(command, 'get_item_mapping', return_value={
             str(self.item_id): 'Abyssal whip'
@@ -370,7 +370,7 @@ class FlipConfidenceAlertTests(TestCase):
         }
 
         with patch.object(
-            command, 'fetch_timeseries_data',
+            command, 'fetch_timeseries_from_db',
             return_value=self._mock_timeseries_low_score()
         ), patch.object(command, 'get_item_mapping', return_value={
             str(self.item_id): 'Abyssal whip'
@@ -399,7 +399,7 @@ class FlipConfidenceAlertTests(TestCase):
         }
 
         with patch.object(
-            command, 'fetch_timeseries_data',
+            command, 'fetch_timeseries_from_db',
             return_value=self._mock_timeseries_high_score()
         ), patch.object(command, 'get_item_mapping', return_value={
             str(self.item_id): 'Abyssal whip'
@@ -415,7 +415,7 @@ class FlipConfidenceAlertTests(TestCase):
         What: Validates the minimum data requirement in check_flip_confidence_alert.
         Why: compute_flip_confidence returns 0.0 with < 3 points, but the check method
              itself should also skip items with insufficient data.
-        How: Mock fetch_timeseries_data to return only 2 points and verify both:
+        How: Mock fetch_timeseries_from_db to return only 2 points and verify both:
              1. compute_flip_confidence returns 0.0 for the data
              2. check_flip_confidence_alert returns False
         """
@@ -436,7 +436,7 @@ class FlipConfidenceAlertTests(TestCase):
         }
 
         with patch.object(
-            command, 'fetch_timeseries_data',
+            command, 'fetch_timeseries_from_db',
             return_value=insufficient_data
         ), patch.object(command, 'get_item_mapping', return_value={
             str(self.item_id): 'Abyssal whip'

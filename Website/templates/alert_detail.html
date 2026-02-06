@@ -1959,6 +1959,12 @@
                 {% elif alert.type == 'threshold' %}
                     <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 2a8 8 0 100 16 8 8 0 000-16zM8.5 5.5a1 1 0 112 0v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3h-3a1 1 0 110-2h3v-3z" clip-rule="evenodd"/></svg>
                     Threshold
+                {% elif alert.type == 'flip_confidence' %}
+                    {# What: Badge icon and label for flip confidence alerts #}
+                    {# Why: Users need a visual indicator of the alert type at a glance #}
+                    {# How: Uses a chart/analytics-style SVG icon to represent confidence scoring #}
+                    <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 0l-2 2a1 1 0 101.414 1.414L8 10.414l1.293 1.293a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                    Flip Confidence
                 {% else %}
                     {{ alert.type|title }}
                 {% endif %}
@@ -2024,11 +2030,12 @@
                             {% elif alert.type == 'spike' %}Spike
                             {% elif alert.type == 'threshold' %}Threshold
                             {% elif alert.type == 'sustained' %}Sustained Move
+                            {% elif alert.type == 'flip_confidence' %}Flip Confidence
                             {% else %}{{ alert.type|title }}{% endif %}
                         </span>
                     </div>
                     
-                    {% if alert.type == 'spread' or alert.type == 'spike' or alert.type == 'threshold' or alert.type == 'sustained' %}
+                    {% if alert.type == 'spread' or alert.type == 'spike' or alert.type == 'threshold' or alert.type == 'sustained' or alert.type == 'flip_confidence' %}
                     <div class="detail-item">
                         <span class="detail-label">All Items</span>
                         <span class="detail-value">{% if alert.is_all_items %}Yes{% else %}No{% endif %}</span>
@@ -2190,6 +2197,91 @@
                         <span class="detail-label">Time Frame</span>
                         <span class="detail-value">{% if alert.time_frame %}{{ alert.time_frame }} minutes{% else %}Not Set{% endif %}</span>
                     </div>
+                    {% endif %}
+                    
+                    <!-- =============================================================================
+                         FLIP CONFIDENCE ALERT DISPLAY FIELDS
+                         What: Shows flip confidence-specific configuration when viewing (not editing)
+                         Why: Users need to see timestep, lookback, threshold, trigger rule, and
+                              optional filters (min spread, min volume, cooldown, eval interval,
+                              sustained count) to understand how their confidence alert is configured
+                         How: Conditional display based on alert.type == 'flip_confidence'
+                              Reads from alert model fields: confidence_timestep, confidence_lookback,
+                              confidence_threshold, confidence_trigger_rule, confidence_min_spread_pct,
+                              confidence_min_volume, confidence_cooldown, confidence_eval_interval,
+                              confidence_sustained_count
+                    ============================================================================= -->
+                    {% if alert.type == 'flip_confidence' %}
+                    <div class="detail-item">
+                        <!-- What: The time bucket granularity for timeseries data (5m, 1h, 6h, 24h) -->
+                        <span class="detail-label">Timestep</span>
+                        <span class="detail-value">{{ alert.confidence_timestep|default:"1h" }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <!-- What: Number of time buckets analyzed to compute the confidence score -->
+                        <span class="detail-label">Lookback</span>
+                        <span class="detail-value">{{ alert.confidence_lookback|default:"24" }} periods</span>
+                    </div>
+                    <div class="detail-item">
+                        <!-- What: The confidence score threshold that must be met for triggering -->
+                        <span class="detail-label">Threshold</span>
+                        <span class="detail-value highlight">{% if alert.confidence_threshold is not None %}{{ alert.confidence_threshold }}{% else %}Not Set{% endif %}</span>
+                    </div>
+                    <div class="detail-item">
+                        <!-- What: How the score is compared to the threshold -->
+                        <!-- crosses_above = score >= threshold, delta_increase = score increased by >= threshold -->
+                        <span class="detail-label">Trigger Rule</span>
+                        <span class="detail-value">{% if alert.confidence_trigger_rule == 'delta_increase' %}Delta Increase{% else %}Crosses Above{% endif %}</span>
+                    </div>
+                    {% if alert.confidence_min_spread_pct %}
+                    <div class="detail-item">
+                        <!-- What: Minimum current spread % to consider an item worth evaluating -->
+                        <span class="detail-label">Min Spread</span>
+                        <span class="detail-value">{{ alert.confidence_min_spread_pct }}%</span>
+                    </div>
+                    {% endif %}
+                    {% if alert.confidence_min_volume %}
+                    <div class="detail-item">
+                        <!-- What: Minimum total trade volume across the lookback window -->
+                        <span class="detail-label">Min Volume</span>
+                        <span class="detail-value">{{ alert.confidence_min_volume|intcomma }}</span>
+                    </div>
+                    {% endif %}
+                    {% if alert.confidence_cooldown %}
+                    <div class="detail-item">
+                        <!-- What: Minutes to wait before re-alerting on the same item after it triggers -->
+                        <span class="detail-label">Cooldown</span>
+                        <span class="detail-value">{{ alert.confidence_cooldown }} minutes</span>
+                    </div>
+                    {% endif %}
+                    {% if alert.confidence_eval_interval %}
+                    <div class="detail-item">
+                        <!-- What: Minutes between evaluations of each item -->
+                        <span class="detail-label">Eval Interval</span>
+                        <span class="detail-value">{{ alert.confidence_eval_interval }} minutes</span>
+                    </div>
+                    {% endif %}
+                    {% if alert.confidence_sustained_count and alert.confidence_sustained_count > 1 %}
+                    <div class="detail-item">
+                        <!-- What: How many consecutive evaluations must pass before triggering -->
+                        <span class="detail-label">Sustained Count</span>
+                        <span class="detail-value">{{ alert.confidence_sustained_count }} consecutive</span>
+                    </div>
+                    {% endif %}
+                    {% if alert.is_all_items %}
+                    {% if alert.minimum_price %}
+                    <div class="detail-item">
+                        <span class="detail-label">Min Price Filter</span>
+                        <span class="detail-value price">{{ alert.minimum_price|intcomma }}</span>
+                    </div>
+                    {% endif %}
+                    {% if alert.maximum_price %}
+                    <div class="detail-item">
+                        <span class="detail-label">Max Price Filter</span>
+                        <span class="detail-value price">{{ alert.maximum_price|intcomma }}</span>
+                    </div>
+                    {% endif %}
+                    {% endif %}
                     {% endif %}
                     
                     <div class="detail-item">
@@ -2717,6 +2809,17 @@
                                         Ref: {{ item.reference_price|intcomma }} → Current: {{ item.current_price|intcomma }} | Threshold: {{ item.threshold }}%
                                     {% endif %}
                                 </div>
+                                {% elif triggered_info.alert_type == 'flip_confidence' %}
+                                <!-- =============================================================================
+                                     FLIP CONFIDENCE TRIGGERED ITEM DETAILS (Multi-item list view)
+                                     What: Shows confidence score details for each triggered item in the list
+                                     Why: Users need to see the score, threshold, and trigger rule at a glance
+                                     How: Displays threshold and previous score (if available) on the detail line.
+                                          The confidence score itself is shown on the right side of the row.
+                                ============================================================================= -->
+                                <div class="triggered-item-details">
+                                    Threshold: {{ item.threshold }} | {% if item.previous_score is not None %}Prev: {{ item.previous_score }}{% else %}Prev: N/A{% endif %} | {% if item.trigger_rule == 'delta_increase' %}Delta Increase{% else %}Crosses Above{% endif %}
+                                </div>
                                 {% endif %}
                             </div>
                             {% if triggered_info.alert_type == 'spread' %}
@@ -2731,10 +2834,15 @@
                             <!-- Why: Indicates how much the price has moved from baseline or if it crossed target -->
                             <!-- How: For percentage: show change%. For value: show checkmark/crossed indicator -->
                             {% if triggered_info.threshold_type == 'value' %}
-                            <span class="triggered-item-percentage">✓</span>
+                            <span class="triggered-item-percentage">&#10003;</span>
                             {% else %}
                             <span class="triggered-item-percentage {% if item.change_percent < 0 %}negative-change{% endif %}">{{ item.change_percent }}%</span>
                             {% endif %}
+                            {% elif triggered_info.alert_type == 'flip_confidence' %}
+                            <!-- What: Shows the confidence score as the right-side value for each item row -->
+                            <!-- Why: The score is the primary metric users care about for flip confidence -->
+                            <!-- How: Displays the score rounded to 1 decimal, always positive so no negative class -->
+                            <span class="triggered-item-percentage">{{ item.confidence_score }}</span>
                             {% endif %}
                         </li>
                     {% endfor %}
@@ -2866,6 +2974,57 @@
                             </div>
                         {% endif %}
                     
+                    {% elif triggered_info.alert_type == 'flip_confidence' %}
+                        <!-- =============================================================================
+                             FLIP CONFIDENCE ALERT SINGLE ITEM TRIGGERED DATA DISPLAY
+                             What: Displays triggered data for single-item flip confidence alerts
+                             Why: Users need to see the confidence score, previous score, trigger rule,
+                                  threshold, and how many consecutive passes occurred before triggering
+                             How: Grid layout showing all confidence-specific trigger information.
+                                  Also used as a summary for multi-item alerts when they display
+                                  in single-item mode (e.g., when only 1 item is configured).
+                        ============================================================================= -->
+                        
+                        {% if triggered_info.confidence_data %}
+                            <div class="triggered-info-item">
+                                <!-- What: The computed flip confidence score at the time of triggering -->
+                                <span class="detail-label">Confidence Score</span>
+                                <span class="detail-value highlight">{% if triggered_info.confidence_score is not None %}{{ triggered_info.confidence_score }}{% else %}N/A{% endif %}</span>
+                            </div>
+                            <div class="triggered-info-item">
+                                <!-- What: The confidence score from the previous evaluation cycle -->
+                                <!-- Why: Shows the user how the score changed between evaluations -->
+                                <span class="detail-label">Previous Score</span>
+                                <span class="detail-value">{% if triggered_info.confidence_previous_score is not None %}{{ triggered_info.confidence_previous_score }}{% else %}N/A{% endif %}</span>
+                            </div>
+                            <div class="triggered-info-item">
+                                <!-- What: How the score was compared against the threshold -->
+                                <!-- 'crosses_above' means score >= threshold; 'delta_increase' means -->
+                                <!-- the score INCREASED by at least threshold since the last check -->
+                                <span class="detail-label">Trigger Rule</span>
+                                <span class="detail-value">{% if triggered_info.confidence_trigger_rule == 'delta_increase' %}Delta Increase{% else %}Crosses Above{% endif %}</span>
+                            </div>
+                            <div class="triggered-info-item">
+                                <!-- What: The threshold value the user configured for triggering -->
+                                <span class="detail-label">Threshold</span>
+                                <span class="detail-value">{% if triggered_info.confidence_threshold is not None %}{{ triggered_info.confidence_threshold }}{% else %}N/A{% endif %}</span>
+                            </div>
+                            {% if triggered_info.confidence_consecutive %}
+                            <div class="triggered-info-item">
+                                <!-- What: Number of consecutive evaluations that passed before triggering -->
+                                <!-- Why: If the alert has a sustained_count > 1, this shows how many -->
+                                <!--      consecutive passes occurred before the alert actually fired -->
+                                <span class="detail-label">Consecutive Passes</span>
+                                <span class="detail-value">{{ triggered_info.confidence_consecutive }}</span>
+                            </div>
+                            {% endif %}
+                        {% else %}
+                            <div class="triggered-info-item">
+                                <span class="detail-label">Status</span>
+                                <span class="detail-value">Triggered data not available</span>
+                            </div>
+                        {% endif %}
+
                     {% elif triggered_info.alert_type == 'collective_move' %}
                         <!-- =============================================================================
                              COLLECTIVE MOVE ALERT TRIGGERED DATA DISPLAY
