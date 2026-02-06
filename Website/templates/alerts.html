@@ -235,6 +235,7 @@
                     <option value="sustained">Sustained Move</option>
                     <option value="threshold" selected>Threshold</option>
                     <option value="collective_move">Collective Move</option>
+                    <option value="flip_confidence">Flip Confidence</option>
                 </select>
                 <button type="button" class="alert-help-btn" onclick="openAlertHelpModal()" tabindex="2">
                     <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
@@ -854,6 +855,177 @@
                 <small class="form-hint">The average percentage change that triggers the alert (e.g., 5 for 5%)</small>
             </div>
             
+            <!-- =================================================================================
+                 FLIP CONFIDENCE ALERT SPECIFIC FIELDS
+                 =================================================================================
+                 What: Form fields for configuring flip confidence alerts
+                 Why: Users need to set data source (timestep/lookback), trigger conditions,
+                      and optional filters for the confidence scoring algorithm
+                 How: These fields are shown/hidden by JS when alert type is 'flip_confidence'
+                 ================================================================================= -->
+
+            <!-- Scope: All Items vs Specific Items -->
+            <div class="form-group" id="confidence-scope-group" style="display: none;">
+                <label for="confidence-scope">Apply To</label>
+                <select name="confidence_scope" id="confidence-scope" onchange="handleConfidenceScopeChange()" tabindex="7">
+                    <option value="specific">Specific Item(s)</option>
+                    <option value="all">All Items</option>
+                </select>
+                <small class="form-hint">Choose to monitor specific items or all items in a price range</small>
+            </div>
+
+            <!-- Multi-item selector for flip confidence -->
+            <div class="form-group" id="confidence-items-group" style="display: none;">
+                <div class="label-with-notification">
+                    <label for="confidence-item-input">Item(s)</label>
+                    <button type="button" class="btn-buy-limit" onclick="ItemCollectionManager.open('flip_confidence')" title="Apply a saved item collection">
+                        <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/></svg>
+                        Collection
+                    </button>
+                    <span id="confidence-item-notification" class="item-notification"></span>
+                </div>
+                <div class="multi-item-selector">
+                    <div class="multi-item-selector-box">
+                        <input type="text" id="confidence-item-input" placeholder="Search for item to add..." autocomplete="off" tabindex="8">
+                        <button type="button" class="multi-item-dropdown-toggle" id="confidence-multi-item-toggle" title="Show selected items" tabindex="9">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                        <input type="hidden" name="confidence_item_ids" id="confidence-item-ids" value="">
+                        <div id="confidence-item-suggestions" class="multi-item-suggestions-dropdown"></div>
+                        <div id="confidence-selected-items-dropdown" class="multi-item-selected-dropdown">
+                            <div class="selected-items-list" id="confidence-selected-items-list"></div>
+                            <div class="no-items-message" id="confidence-no-items-message">No items selected</div>
+                        </div>
+                    </div>
+                </div>
+                <small class="form-hint">Add one or more items to monitor for flip confidence</small>
+            </div>
+
+            <!-- Timestep: Time bucket granularity -->
+            <div class="form-group" id="confidence-timestep-group" style="display: none;">
+                <label for="confidence-timestep">Timestep</label>
+                <select name="confidence_timestep" id="confidence-timestep" tabindex="10">
+                    <option value="5m">5 Minutes</option>
+                    <option value="1h" selected>1 Hour</option>
+                    <option value="6h">6 Hours</option>
+                    <option value="24h">24 Hours</option>
+                </select>
+                <small class="form-hint">Time bucket size for price data (smaller = more recent, larger = broader view)</small>
+            </div>
+
+            <!-- Lookback: Number of data buckets -->
+            <div class="form-group" id="confidence-lookback-group" style="display: none;">
+                <label for="confidence-lookback">Lookback Buckets</label>
+                <input type="number" name="confidence_lookback" id="confidence-lookback" min="3" max="300" value="24" step="1" tabindex="11">
+                <small class="form-hint">Number of time buckets to analyze (min 3). E.g., 1h × 24 = last 24 hours</small>
+            </div>
+
+            <!-- Trigger Rule -->
+            <div class="form-group" id="confidence-trigger-rule-group" style="display: none;">
+                <label for="confidence-trigger-rule">Trigger Rule</label>
+                <select name="confidence_trigger_rule" id="confidence-trigger-rule" tabindex="12">
+                    <option value="crosses_above" selected>Score Crosses Above Threshold</option>
+                    <option value="delta_increase">Score Increases By ≥ Threshold</option>
+                </select>
+                <small class="form-hint">"Crosses above" fires when score ≥ threshold; "Increases by" fires when score jumps by ≥ threshold since last check</small>
+            </div>
+
+            <!-- Confidence Threshold -->
+            <div class="form-group" id="confidence-threshold-group" style="display: none;">
+                <label for="confidence-threshold">Confidence Threshold</label>
+                <input type="number" name="confidence_threshold" id="confidence-threshold" step="0.1" min="0" max="100" placeholder="e.g. 70" tabindex="13">
+                <small class="form-hint">The confidence score (0-100) required to trigger the alert</small>
+            </div>
+
+            <!-- Minimum Spread % -->
+            <div class="form-group" id="confidence-min-spread-group" style="display: none;">
+                <label for="confidence-min-spread-pct">Min Spread (%)</label>
+                <input type="number" name="confidence_min_spread_pct" id="confidence-min-spread-pct" step="0.1" min="0" placeholder="e.g. 1.5" tabindex="14">
+                <small class="form-hint">Minimum buy/sell spread percentage (optional, filters low-margin items)</small>
+            </div>
+
+            <!-- Minimum Total Volume -->
+            <div class="form-group" id="confidence-min-volume-group" style="display: none;">
+                <label for="confidence-min-volume">Min Total Volume</label>
+                <input type="number" name="confidence_min_volume" id="confidence-min-volume" min="0" step="1" placeholder="e.g. 500" tabindex="15">
+                <small class="form-hint">Minimum total trade volume across lookback window (optional)</small>
+            </div>
+
+            <!-- Evaluation Interval -->
+            <div class="form-group" id="confidence-eval-interval-group" style="display: none;">
+                <label for="confidence-eval-interval">Evaluation Interval (minutes)</label>
+                <input type="number" name="confidence_eval_interval" id="confidence-eval-interval" min="0" step="1" placeholder="e.g. 15" tabindex="16">
+                <small class="form-hint">How often to re-evaluate (in minutes). Leave empty for every check cycle.</small>
+            </div>
+
+            <!-- Cooldown -->
+            <div class="form-group" id="confidence-cooldown-group" style="display: none;">
+                <label for="confidence-cooldown">Cooldown (minutes)</label>
+                <input type="number" name="confidence_cooldown" id="confidence-cooldown" min="0" step="1" placeholder="e.g. 30" tabindex="17">
+                <small class="form-hint">Don't re-alert for this many minutes after triggering (optional)</small>
+            </div>
+
+            <!-- Sustained Condition -->
+            <div class="form-group" id="confidence-sustained-group" style="display: none;">
+                <label for="confidence-sustained-count">Sustained Evaluations</label>
+                <input type="number" name="confidence_sustained_count" id="confidence-sustained-count" min="1" step="1" placeholder="e.g. 3" tabindex="18">
+                <small class="form-hint">Require score to meet threshold for N consecutive evaluations before triggering (optional)</small>
+            </div>
+
+            <!-- =================================================================================
+                 ADVANCED SETTINGS TOGGLE (Flip Confidence)
+                 =================================================================================
+                 What: Toggle panel for advanced weight tuning parameters
+                 Why: Power users may want to customize the scoring weights; most users won't need this
+                 How: Hidden by default, shown when user clicks the toggle button
+                 ================================================================================= -->
+            <div class="form-group" id="confidence-advanced-toggle-group" style="display: none;">
+                <button type="button" class="btn-buy-limit" id="confidence-advanced-toggle" onclick="toggleConfidenceAdvanced()" tabindex="19">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
+                        <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/>
+                    </svg>
+                    Advanced Scoring Weights
+                </button>
+            </div>
+
+            <div id="confidence-advanced-panel" style="display: none;">
+                <small class="form-hint" style="margin-bottom: 10px; display: block;">
+                    Customize how the confidence score is calculated. Weights must sum to 1.0.
+                    Leave empty to use defaults.
+                </small>
+
+                <div class="form-group" id="confidence-weight-trend-group" style="display: none;">
+                    <label for="confidence-weight-trend">Trend Weight</label>
+                    <input type="number" name="confidence_weight_trend" id="confidence-weight-trend" step="0.01" min="0" max="1" placeholder="0.35" tabindex="20">
+                    <small class="form-hint">Weight for price trend (default: 0.35)</small>
+                </div>
+
+                <div class="form-group" id="confidence-weight-pressure-group" style="display: none;">
+                    <label for="confidence-weight-pressure">Pressure Weight</label>
+                    <input type="number" name="confidence_weight_pressure" id="confidence-weight-pressure" step="0.01" min="0" max="1" placeholder="0.25" tabindex="21">
+                    <small class="form-hint">Weight for buy/sell pressure (default: 0.25)</small>
+                </div>
+
+                <div class="form-group" id="confidence-weight-spread-group" style="display: none;">
+                    <label for="confidence-weight-spread">Spread Weight</label>
+                    <input type="number" name="confidence_weight_spread" id="confidence-weight-spread" step="0.01" min="0" max="1" placeholder="0.20" tabindex="22">
+                    <small class="form-hint">Weight for spread health (default: 0.20)</small>
+                </div>
+
+                <div class="form-group" id="confidence-weight-volume-group" style="display: none;">
+                    <label for="confidence-weight-volume">Volume Weight</label>
+                    <input type="number" name="confidence_weight_volume" id="confidence-weight-volume" step="0.01" min="0" max="1" placeholder="0.10" tabindex="23">
+                    <small class="form-hint">Weight for volume sufficiency (default: 0.10)</small>
+                </div>
+
+                <div class="form-group" id="confidence-weight-stability-group" style="display: none;">
+                    <label for="confidence-weight-stability">Stability Weight</label>
+                    <input type="number" name="confidence_weight_stability" id="confidence-weight-stability" step="0.01" min="0" max="1" placeholder="0.10" tabindex="24">
+                    <small class="form-hint">Weight for price stability (default: 0.10)</small>
+                </div>
+            </div>
 
             <!-- =====================================================================================
                  NOTIFICATION OPTIONS (ALWAYS LAST)
@@ -1320,6 +1492,7 @@
                 <button class="alert-help-tab" data-help-tab="sustained">Sustained</button>
                 <button class="alert-help-tab" data-help-tab="threshold">Threshold</button>
                 <button class="alert-help-tab" data-help-tab="collective_move">Collective</button>
+                <button class="alert-help-tab" data-help-tab="flip_confidence">Confidence</button>
             </div>
             <div class="alert-help-content">
                 <!-- Spread Alert -->
@@ -1967,6 +2140,105 @@
                             <div class="recommended-value">
                                 <div class="label">Reference Price</div>
                                 <div class="value">Average (for general tracking)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- =============================================================================
+                     FLIP CONFIDENCE ALERT HELP SECTION
+                     What: Help documentation for the Flip Confidence alert type
+                     Why: Users need to understand how the confidence scoring algorithm works
+                     How: Explains the five sub-scores and configurable parameters
+                ============================================================================= -->
+                <div class="alert-help-section" data-help-section="flip_confidence">
+                    <div class="alert-help-header">
+                        <span class="alert-type-badge confidence">Confidence Score</span>
+                        <p>Flip Confidence alerts compute a multi-factor score (0-100) for items based on market data
+                            and notify you when the score indicates a promising flip opportunity.</p>
+                    </div>
+
+                    <div class="how-it-works">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+                                <path fill-rule="evenodd"
+                                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                            How It Works
+                        </h4>
+                        <p>The confidence score is calculated from five market signals, each normalized to 0-1:</p>
+                        <ul>
+                            <li><strong>Trend (35%):</strong> Volume-weighted price trend direction. Uptrend = high score.</li>
+                            <li><strong>Buy/Sell Pressure (25%):</strong> Ratio of high-volume to total volume. More buying = higher score.</li>
+                            <li><strong>Spread Health (20%):</strong> Percentage spread between high and low prices. ≥3% = max score.</li>
+                            <li><strong>Volume Sufficiency (10%):</strong> Whether total volume meets a dynamic threshold based on price tier.</li>
+                            <li><strong>Price Stability (10%):</strong> Low price volatility = high stability score.</li>
+                        </ul>
+                    </div>
+
+                    <div class="configuration-details">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+                                <path fill-rule="evenodd"
+                                    d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                            Configuration
+                        </h4>
+                        <ul>
+                            <li><strong>Timestep:</strong> Time bucket size for data (5m, 1h, 6h, 24h). Smaller = more recent data.</li>
+                            <li><strong>Lookback Buckets:</strong> Number of data points to analyze (min 3). E.g., 1h × 24 = 24 hours of data.</li>
+                            <li><strong>Trigger Rule:</strong> "Crosses Above" fires when score ≥ threshold. "Increases By" fires when score jumps by ≥ threshold.</li>
+                            <li><strong>Confidence Threshold:</strong> The score (0-100) required to trigger. Higher = more selective.</li>
+                            <li><strong>Min Spread %:</strong> Minimum buy/sell spread before evaluating (filters low-margin items).</li>
+                            <li><strong>Min Total Volume:</strong> Minimum total trade count across the lookback window.</li>
+                            <li><strong>Evaluation Interval:</strong> Minutes between re-evaluations (reduces noise).</li>
+                            <li><strong>Cooldown:</strong> Minutes before re-alerting after a trigger (prevents spam).</li>
+                            <li><strong>Sustained Evaluations:</strong> Require N consecutive passes before triggering.</li>
+                        </ul>
+                    </div>
+
+                    <div class="example-scenario">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+                                <path
+                                    d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" />
+                            </svg>
+                            Example Scenario
+                        </h4>
+                        <p>You want to find profitable flip opportunities among high-value items. Add items like
+                            Twisted Bow, Scythe of Vitur, and Ancestral Hat to a flip confidence alert. Set timestep
+                            to 1 Hour, lookback to 24 (last 24 hours), and threshold to 70. When any of these items
+                            shows strong upward trend, healthy spread, good volume, and stable pricing, you'll be
+                            notified with a confidence score so you can decide whether to flip.</p>
+                    </div>
+
+                    <div class="recommended-values">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+                                <path fill-rule="evenodd"
+                                    d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                            Recommended Starting Values
+                        </h4>
+                        <div class="value-grid">
+                            <div class="recommended-value">
+                                <div class="label">Timestep</div>
+                                <div class="value">1 Hour (balanced view)</div>
+                            </div>
+                            <div class="recommended-value">
+                                <div class="label">Lookback</div>
+                                <div class="value">24 buckets (last 24 hours)</div>
+                            </div>
+                            <div class="recommended-value">
+                                <div class="label">Threshold</div>
+                                <div class="value">65-75 (moderate selectivity)</div>
+                            </div>
+                            <div class="recommended-value">
+                                <div class="label">Min Spread</div>
+                                <div class="value">1.5% (ensures profit margin)</div>
                             </div>
                         </div>
                     </div>

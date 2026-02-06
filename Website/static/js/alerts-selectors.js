@@ -1988,6 +1988,254 @@
         }
     };
 
+    // =============================================================================
+    // FLIP CONFIDENCE MULTI-ITEM SELECTOR
+    // =============================================================================
+    // What: Multi-item selector for flip_confidence alerts (same pattern as other selectors)
+    // Why: Flip confidence alerts can monitor multiple specific items
+    // How: Uses the same autocomplete, dropdown, and item management pattern as other selectors
+    const ConfidenceMultiItemSelector = {
+        selectedItems: [],
+        selectedIndex: -1,
+        notificationTimeout: null,
+        dropdownOpen: false,
+
+        init() {
+            const input = document.querySelector(AlertsConfig.selectors.create.confidenceItemInput);
+            const dropdown = document.querySelector(AlertsConfig.selectors.create.confidenceItemSuggestions);
+            const hiddenInput = document.querySelector(AlertsConfig.selectors.create.confidenceItemIds);
+            const selectedDropdown = document.querySelector(AlertsConfig.selectors.create.confidenceSelectedItemsDropdown);
+            const selectedList = document.querySelector(AlertsConfig.selectors.create.confidenceSelectedItemsList);
+            const noItemsMsg = document.querySelector(AlertsConfig.selectors.create.confidenceNoItemsMessage);
+            const toggleBtn = document.querySelector(AlertsConfig.selectors.create.confidenceMultiItemToggle);
+            const selectorBox = input ? input.closest('.multi-item-selector-box') : null;
+
+            if (!input || !dropdown || !hiddenInput || !selectedDropdown) return;
+
+            const self = this;
+            this.selectedItems = [];
+            this.selectedIndex = -1;
+            this.dropdownOpen = false;
+
+            const updateHiddenInput = () => {
+                hiddenInput.value = this.selectedItems.map(item => item.id).join(',');
+            };
+
+            const updateSelection = () => {
+                const items = dropdown.querySelectorAll('.suggestion-item');
+                items.forEach((item, index) => {
+                    if (index === this.selectedIndex) {
+                        item.classList.add('selected');
+                        item.scrollIntoView({block: 'nearest'});
+                    } else {
+                        item.classList.remove('selected');
+                    }
+                });
+            };
+
+            const addItem = (id, name) => {
+                if (this.selectedItems.some(item => String(item.id) === String(id))) {
+                    this.showNotification(`${name} is already selected`, 'error');
+                    return;
+                }
+                this.selectedItems.push({id, name});
+                updateHiddenInput();
+                this.renderSelectedItems();
+                input.value = '';
+                dropdown.style.display = 'none';
+                this.selectedIndex = -1;
+                this.showNotification(`${name} added`, 'success');
+            };
+
+            const removeItem = (id) => {
+                const itemToRemove = this.selectedItems.find(item => String(item.id) === String(id));
+                const itemName = itemToRemove ? itemToRemove.name : 'Item';
+                this.selectedItems = this.selectedItems.filter(item => String(item.id) !== String(id));
+                updateHiddenInput();
+                this.renderSelectedItems();
+                this.showNotification(`${itemName} removed`, 'success');
+            };
+
+            if (selectedList) {
+                selectedList.addEventListener('click', function(e) {
+                    const removeBtn = e.target.closest('.remove-item-btn');
+                    if (removeBtn) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const id = removeBtn.dataset.id;
+                        if (id) removeItem(id);
+                    }
+                });
+            }
+
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    if (self.dropdownOpen) {
+                        selectedDropdown.classList.remove('show');
+                        self.dropdownOpen = false;
+                        toggleBtn.classList.remove('open');
+                    } else {
+                        selectedDropdown.classList.add('show');
+                        self.dropdownOpen = true;
+                        toggleBtn.classList.add('open');
+                        dropdown.style.display = 'none';
+                    }
+                });
+            }
+
+            input.addEventListener('input', async function(e) {
+                const query = e.target.value.trim();
+                self.selectedIndex = -1;
+                if (self.dropdownOpen) {
+                    selectedDropdown.classList.remove('show');
+                    self.dropdownOpen = false;
+                    if (toggleBtn) toggleBtn.classList.remove('open');
+                }
+                if (query.length < AlertsConfig.timing.minSearchLength) {
+                    dropdown.style.display = 'none';
+                    return;
+                }
+                const items = await AlertsAPI.searchItems(query);
+                const filteredItems = items.filter(item =>
+                    !self.selectedItems.some(selected => String(selected.id) === String(item.id))
+                );
+                if (filteredItems.length > 0) {
+                    dropdown.innerHTML = filteredItems.map(item =>
+                        `<div class="suggestion-item" data-id="${item.id}" data-name="${item.name}">${item.name}</div>`
+                    ).join('');
+                } else if (items.length > 0) {
+                    dropdown.innerHTML = '<div class="suggestion-item no-results">All matching items already selected</div>';
+                } else {
+                    dropdown.innerHTML = '<div class="suggestion-item no-results">No items found</div>';
+                }
+                dropdown.style.display = 'block';
+            });
+
+            input.addEventListener('keydown', function(e) {
+                const items = dropdown.querySelectorAll('.suggestion-item:not(.no-results)');
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    self.selectedIndex = (self.selectedIndex + 1) % items.length;
+                    updateSelection();
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    self.selectedIndex = self.selectedIndex <= 0 ? items.length - 1 : self.selectedIndex - 1;
+                    updateSelection();
+                } else if (e.key === 'Tab') {
+                    e.preventDefault();
+                    if (e.shiftKey) {
+                        self.selectedIndex = self.selectedIndex <= 0 ? items.length - 1 : self.selectedIndex - 1;
+                    } else {
+                        self.selectedIndex = (self.selectedIndex + 1) % items.length;
+                    }
+                    updateSelection();
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (self.selectedIndex >= 0 && items[self.selectedIndex]) {
+                        const selectedItem = items[self.selectedIndex];
+                        addItem(selectedItem.dataset.id, selectedItem.dataset.name);
+                    } else if (items.length === 1) {
+                        addItem(items[0].dataset.id, items[0].dataset.name);
+                    }
+                } else if (e.key === 'Escape') {
+                    dropdown.style.display = 'none';
+                    self.selectedIndex = -1;
+                }
+            });
+
+            dropdown.addEventListener('click', function(e) {
+                const item = e.target.closest('.suggestion-item');
+                if (item && !item.classList.contains('no-results')) {
+                    addItem(item.dataset.id, item.dataset.name);
+                }
+            });
+
+            dropdown.addEventListener('mouseover', function(e) {
+                if (e.target.classList.contains('suggestion-item') && !e.target.classList.contains('no-results')) {
+                    const items = dropdown.querySelectorAll('.suggestion-item:not(.no-results)');
+                    items.forEach((item, index) => {
+                        if (item === e.target) self.selectedIndex = index;
+                    });
+                    updateSelection();
+                }
+            });
+
+            document.addEventListener('click', function(e) {
+                if (selectorBox && !selectorBox.contains(e.target)) {
+                    dropdown.style.display = 'none';
+                    if (self.dropdownOpen) {
+                        selectedDropdown.classList.remove('show');
+                        self.dropdownOpen = false;
+                        if (toggleBtn) toggleBtn.classList.remove('open');
+                    }
+                }
+            });
+
+            input.addEventListener('focus', function() {
+                if (self.dropdownOpen) {
+                    selectedDropdown.classList.remove('show');
+                    self.dropdownOpen = false;
+                    if (toggleBtn) toggleBtn.classList.remove('open');
+                }
+            });
+        },
+
+        showNotification(message, type = 'success') {
+            const notification = document.querySelector(AlertsConfig.selectors.create.confidenceItemNotification);
+            if (!notification) return;
+            if (this.notificationTimeout) clearTimeout(this.notificationTimeout);
+            const normalizedType = type === 'error' ? 'error' : 'success';
+            notification.textContent = normalizedType;
+            notification.className = 'item-notification';
+            notification.classList.add(normalizedType);
+            notification.classList.add('show');
+            this.notificationTimeout = setTimeout(() => {
+                notification.classList.remove('show');
+                notification.textContent = '';
+            }, 2000);
+        },
+
+        renderSelectedItems() {
+            const selectedList = document.querySelector(AlertsConfig.selectors.create.confidenceSelectedItemsList);
+            const noItemsMsg = document.querySelector(AlertsConfig.selectors.create.confidenceNoItemsMessage);
+            const selectedDropdown = document.querySelector(AlertsConfig.selectors.create.confidenceSelectedItemsDropdown);
+            const toggleBtn = document.querySelector(AlertsConfig.selectors.create.confidenceMultiItemToggle);
+            if (!selectedList || !noItemsMsg) return;
+            if (this.selectedItems.length === 0) {
+                selectedList.innerHTML = '';
+                noItemsMsg.classList.add('show');
+                if (selectedDropdown && this.dropdownOpen) {
+                    selectedDropdown.classList.remove('show');
+                    this.dropdownOpen = false;
+                    if (toggleBtn) toggleBtn.classList.remove('open');
+                }
+            } else {
+                noItemsMsg.classList.remove('show');
+                selectedList.innerHTML = this.selectedItems.map(item => `
+                    <div class="selected-item-row">
+                        <span class="item-name">${item.name}</span>
+                        <button type="button" class="remove-item-btn" data-id="${item.id}" title="Remove ${item.name}">×</button>
+                    </div>
+                `).join('');
+            }
+        },
+
+        clear() {
+            this.selectedItems = [];
+            const selectedList = document.querySelector(AlertsConfig.selectors.create.confidenceSelectedItemsList);
+            const noItemsMsg = document.querySelector(AlertsConfig.selectors.create.confidenceNoItemsMessage);
+            const hiddenInput = document.querySelector(AlertsConfig.selectors.create.confidenceItemIds);
+            if (selectedList) selectedList.innerHTML = '';
+            if (noItemsMsg) noItemsMsg.classList.add('show');
+            if (hiddenInput) hiddenInput.value = '';
+        },
+
+        getSelectedIds() {
+            return this.selectedItems.map(item => item.id);
+        }
+    };
+
 
     // =============================================================================
     // ALERTS REFRESH

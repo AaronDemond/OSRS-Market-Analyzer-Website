@@ -1108,6 +1108,17 @@ const ItemCollectionManager = {
                 selectedList: '#collective-selected-items-list',
                 noItemsMsg: '#collective-no-items-message',
                 notification: '#collective-item-notification'
+            },
+            'flip_confidence': {
+                // ConfidenceMultiItemSelector: Selector for flip confidence alert type
+                // What: Maps flip_confidence alert type to its multi-item selector
+                // Why: Allows applying item collections to flip confidence alerts
+                // How: References the ConfidenceMultiItemSelector object defined in alerts-selectors.js
+                selector: typeof ConfidenceMultiItemSelector !== 'undefined' ? ConfidenceMultiItemSelector : null,
+                hiddenInput: '#confidence-item-ids',
+                selectedList: '#confidence-selected-items-list',
+                noItemsMsg: '#confidence-no-items-message',
+                notification: '#confidence-item-notification'
             }
         };
         
