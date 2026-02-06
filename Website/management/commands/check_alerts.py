@@ -4,7 +4,7 @@ import time
 import json
 from collections import defaultdict
 from pathlib import Path
-from datetime import timedelta
+from datetime import timedelta, timezone as dt_tz
 
 import requests
 from django.core.management.base import BaseCommand
@@ -1454,7 +1454,7 @@ class Command(BaseCommand):
                 try:
                     parsed_volume_timestamp = timezone.datetime.fromtimestamp(
                         float(latest_volume_timestamp),
-                        tz=timezone.utc,
+                        tz=dt_tz.utc,
                     )
                 except (TypeError, ValueError, OverflowError):
                     # What: Fall back to ISO-8601 parsing for test fixtures or legacy data.
@@ -1464,7 +1464,7 @@ class Command(BaseCommand):
                     if parsed_volume_timestamp and timezone.is_naive(parsed_volume_timestamp):
                         parsed_volume_timestamp = timezone.make_aware(
                             parsed_volume_timestamp,
-                            timezone.utc,
+                            dt_tz.utc,
                         )
                 # volume_recency_cutoff: Oldest timestamp allowed for volume to be considered current.
                 # What: Defines the freshness threshold for hourly volume data.
