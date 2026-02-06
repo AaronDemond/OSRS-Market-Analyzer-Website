@@ -1616,6 +1616,44 @@ def create_alert(request):
         # collective_reference: Which price to monitor - 'high', 'low', or 'average'
         collective_reference = request.POST.get('collective_reference', 'average')
         
+        # =============================================================================
+        # FLIP CONFIDENCE ALERT SPECIFIC FIELDS
+        # =============================================================================
+        # What: Extract form data specific to flip_confidence alerts
+        # Why: Flip confidence alerts compute a multi-factor score using timeseries data
+        #      and fire when the score meets the user's trigger conditions
+        # How: Parse scope, item IDs, timestep, lookback, threshold, trigger rule,
+        #      min filters, cooldown, sustained count, eval interval, and advanced weights
+        
+        # confidence_scope: 'all' for monitoring all items, 'specific' for selected items
+        confidence_scope = request.POST.get('confidence_scope', 'specific')
+        # confidence_item_ids_str: Comma-separated list of item IDs from the multi-item selector
+        confidence_item_ids_str = request.POST.get('confidence_item_ids', '')
+        # confidence_timestep: Time bucket size for the OSRS Wiki timeseries API
+        confidence_timestep = request.POST.get('confidence_timestep', '1h')
+        # confidence_lookback: Number of time buckets to analyze
+        confidence_lookback = request.POST.get('confidence_lookback', '24')
+        # confidence_threshold: Score threshold for triggering the alert
+        confidence_threshold_val = request.POST.get('confidence_threshold', '')
+        # confidence_trigger_rule: How to compare score against threshold
+        confidence_trigger_rule = request.POST.get('confidence_trigger_rule', 'crosses_above')
+        # confidence_min_spread_pct: Minimum spread % before evaluating
+        confidence_min_spread_pct = request.POST.get('confidence_min_spread_pct', '')
+        # confidence_min_volume: Minimum total GP volume (price * quantity) across lookback window
+        confidence_min_volume_val = request.POST.get('confidence_min_volume', '')
+        # confidence_cooldown: Minutes between re-alerts on same item
+        confidence_cooldown = request.POST.get('confidence_cooldown', '')
+        # confidence_sustained_count: Consecutive evaluations required
+        confidence_sustained_count = request.POST.get('confidence_sustained_count', '')
+        # confidence_eval_interval: Minutes between evaluations
+        confidence_eval_interval = request.POST.get('confidence_eval_interval', '')
+        # Advanced weight fields (from "Advanced" toggle panel)
+        confidence_weight_trend = request.POST.get('confidence_weight_trend', '')
+        confidence_weight_pressure = request.POST.get('confidence_weight_pressure', '')
+        confidence_weight_spread = request.POST.get('confidence_weight_spread', '')
+        confidence_weight_volume = request.POST.get('confidence_weight_volume', '')
+        confidence_weight_stability = request.POST.get('confidence_weight_stability', '')
+        
         direction_value = None
         if alert_type in ['spike', 'sustained']:
             direction_value = (direction or '').lower()
@@ -1646,6 +1684,9 @@ def create_alert(request):
         # For collective_move alerts, use the collective_scope field to determine all-items flag
         elif alert_type == 'collective_move':
             is_all_items = (collective_scope == 'all')
+        # For flip_confidence alerts, use the confidence_scope field to determine all-items flag
+        elif alert_type == 'flip_confidence':
+            is_all_items = (confidence_scope == 'all')
         
         # Handle sustained move multi-item selection
         sustained_item_ids_json = None
@@ -1742,6 +1783,26 @@ def create_alert(request):
                         collective_item_name = item['name']
                         break
         
+        # =============================================================================
+        # HANDLE FLIP CONFIDENCE MULTI-ITEM SELECTION
+        # =============================================================================
+        # What: Process confidence_item_ids when user selects "Specific Item(s)" for flip_confidence alerts
+        # Why: Flip confidence alerts can monitor multiple specific items
+        # How: Parse comma-separated IDs, convert to JSON array, get first item name for display
+        confidence_item_ids_json = None
+        confidence_item_name = None
+        if alert_type == 'flip_confidence' and confidence_scope == 'specific' and confidence_item_ids_str:
+            # Parse comma-separated item IDs from the multi-item selector
+            item_ids = [int(x) for x in confidence_item_ids_str.split(',') if x.strip()]
+            if item_ids:
+                confidence_item_ids_json = json_module.dumps(item_ids)
+                # Get first item name for display purposes in alert list
+                mapping = get_item_mapping()
+                for name, item in mapping.items():
+                    if item['id'] == item_ids[0]:
+                        confidence_item_name = item['name']
+                        break
+        
         # Look up item ID from name if not provided (for non-sustained alerts)
         if not item_id and item_name and alert_type != 'sustained':
             mapping = get_item_mapping()
@@ -1787,6 +1848,9 @@ def create_alert(request):
         elif alert_type == 'collective_move' and collective_item_name:
             # For collective_move alerts with specific items, use first item name
             final_item_name = collective_item_name
+        elif alert_type == 'flip_confidence' and confidence_item_name:
+            # For flip_confidence alerts with specific items, use first item name
+            final_item_name = confidence_item_name
         elif not is_all_items:
             final_item_name = item_name
         
@@ -1809,6 +1873,10 @@ def create_alert(request):
         elif alert_type == 'collective_move' and collective_item_ids_json:
             # Store first item ID for backwards compatibility
             item_ids = json_module.loads(collective_item_ids_json)
+            final_item_id = item_ids[0] if item_ids else None
+        elif alert_type == 'flip_confidence' and confidence_item_ids_json:
+            # Store first item ID for backwards compatibility
+            item_ids = json_module.loads(confidence_item_ids_json)
             final_item_id = item_ids[0] if item_ids else None
         elif item_id and not is_all_items:
             final_item_id = int(item_id)
@@ -1876,6 +1944,8 @@ def create_alert(request):
             item_ids_json = spike_item_ids_json
         elif alert_type == 'collective_move' and collective_item_ids_json:
             item_ids_json = collective_item_ids_json
+        elif alert_type == 'flip_confidence' and confidence_item_ids_json:
+            item_ids_json = confidence_item_ids_json
         
         alert = Alert.objects.create(
             user=user,
@@ -1932,7 +2002,28 @@ def create_alert(request):
             # What: Determines how average is calculated (arithmetic mean vs value-weighted mean)
             # Why: Users may want expensive items to count more in the average
             # How: 'simple' = sum(changes)/count, 'weighted' = sum(change*value)/sum(values)
-            calculation_method=collective_calculation_method if alert_type == 'collective_move' else None
+            calculation_method=collective_calculation_method if alert_type == 'collective_move' else None,
+            # =============================================================================
+            # FLIP CONFIDENCE ALERT FIELDS
+            # =============================================================================
+            # What: Set flip confidence specific configuration fields on the alert
+            # Why: These fields control the confidence score calculation and trigger behavior
+            # How: Only set for flip_confidence alerts; all other types get None
+            confidence_timestep=confidence_timestep if alert_type == 'flip_confidence' else None,
+            confidence_lookback=int(confidence_lookback) if alert_type == 'flip_confidence' and confidence_lookback else None,
+            confidence_threshold=float(confidence_threshold_val) if alert_type == 'flip_confidence' and confidence_threshold_val else None,
+            confidence_trigger_rule=confidence_trigger_rule if alert_type == 'flip_confidence' else None,
+            confidence_min_spread_pct=float(confidence_min_spread_pct) if alert_type == 'flip_confidence' and confidence_min_spread_pct and str(confidence_min_spread_pct).strip() else None,
+            confidence_min_volume=int(confidence_min_volume_val) if alert_type == 'flip_confidence' and confidence_min_volume_val and str(confidence_min_volume_val).strip() else None,
+            confidence_cooldown=int(confidence_cooldown) if alert_type == 'flip_confidence' and confidence_cooldown and str(confidence_cooldown).strip() else None,
+            confidence_sustained_count=int(confidence_sustained_count) if alert_type == 'flip_confidence' and confidence_sustained_count and str(confidence_sustained_count).strip() else None,
+            confidence_eval_interval=int(confidence_eval_interval) if alert_type == 'flip_confidence' and confidence_eval_interval and str(confidence_eval_interval).strip() else None,
+            # Advanced weight overrides (only set if user provides values)
+            confidence_weight_trend=float(confidence_weight_trend) if alert_type == 'flip_confidence' and confidence_weight_trend and str(confidence_weight_trend).strip() else None,
+            confidence_weight_pressure=float(confidence_weight_pressure) if alert_type == 'flip_confidence' and confidence_weight_pressure and str(confidence_weight_pressure).strip() else None,
+            confidence_weight_spread=float(confidence_weight_spread) if alert_type == 'flip_confidence' and confidence_weight_spread and str(confidence_weight_spread).strip() else None,
+            confidence_weight_volume=float(confidence_weight_volume) if alert_type == 'flip_confidence' and confidence_weight_volume and str(confidence_weight_volume).strip() else None,
+            confidence_weight_stability=float(confidence_weight_stability) if alert_type == 'flip_confidence' and confidence_weight_stability and str(confidence_weight_stability).strip() else None,
         )
         
         # =============================================================================
@@ -2405,7 +2496,22 @@ def alerts_api(request):
             # What: Returns the item_ids field if present, used to determine if alert tracks multiple items
             # Why: Frontend needs to know if this is a multi-item alert to show appropriate UI
             #      (e.g., threshold distance is only calculable for single-item alerts)
-            'item_ids': alert.item_ids
+            'item_ids': alert.item_ids,
+            # =============================================================================
+            # FLIP CONFIDENCE SPECIFIC FIELDS
+            # =============================================================================
+            # What: Include flip_confidence configuration in the API response
+            # Why: Frontend needs to display confidence alert settings and current score
+            # How: Only include these fields for flip_confidence alerts to keep response lean
+            'confidence_timestep': alert.confidence_timestep if alert.type == 'flip_confidence' else None,
+            'confidence_lookback': alert.confidence_lookback if alert.type == 'flip_confidence' else None,
+            'confidence_threshold': alert.confidence_threshold if alert.type == 'flip_confidence' else None,
+            'confidence_trigger_rule': alert.confidence_trigger_rule if alert.type == 'flip_confidence' else None,
+            'confidence_min_spread_pct': alert.confidence_min_spread_pct if alert.type == 'flip_confidence' else None,
+            'confidence_min_volume': alert.confidence_min_volume if alert.type == 'flip_confidence' else None,
+            'confidence_cooldown': alert.confidence_cooldown if alert.type == 'flip_confidence' else None,
+            'confidence_sustained_count': alert.confidence_sustained_count if alert.type == 'flip_confidence' else None,
+            'confidence_eval_interval': alert.confidence_eval_interval if alert.type == 'flip_confidence' else None,
         }
 
         for g in alert_dict['groups']:
@@ -3329,6 +3435,10 @@ def alert_detail(request, alert_id):
         elif alert_type == 'threshold':
             # For threshold alerts, sort by change_percent (descending - positive changes first)
             return sorted(items, key=lambda x: x.get('change_percent', 0), reverse=True)
+        elif alert_type == 'flip_confidence':
+            # For flip confidence alerts, sort by confidence_score (descending - highest scores first)
+            # Why: Users want to see items with the highest flip confidence at the top of the list
+            return sorted(items, key=lambda x: x.get('confidence_score', 0), reverse=True)
         else:
             # Unknown alert type - return unsorted
             return items
@@ -3435,6 +3545,70 @@ def alert_detail(request, alert_id):
                     triggered_info['collective_data'] = None
             else:
                 triggered_info['collective_data'] = None
+
+        # =============================================================================
+        # FLIP CONFIDENCE ALERT TRIGGERED INFO
+        # What: Populate triggered_info with flip_confidence data for template display
+        # Why: Flip confidence alerts have a unique triggered_data structure containing
+        #       confidence scores, trigger rules, and thresholds per item. The template
+        #       needs this data extracted into a predictable format for rendering.
+        # How: Parse triggered_data JSON which can be either:
+        #       - A list of item dicts (multi-item/all-items mode): each with item_id,
+        #         item_name, confidence_score, previous_score, trigger_rule, threshold,
+        #         consecutive_passes
+        #       - A single dict (single-item mode): same fields but as a single object
+        #       For single-item mode, individual fields are extracted into triggered_info
+        #       for the single-item grid display. For multi-item, the list is stored in
+        #       triggered_info['items'] and sorted by confidence_score descending.
+        # =============================================================================
+        if alert.type == 'flip_confidence':
+            if alert.triggered_data:
+                try:
+                    # confidence_data: The raw parsed JSON from triggered_data, which can
+                    # be either a list (multi/all-items) or a dict (single-item)
+                    confidence_data = json.loads(alert.triggered_data)
+
+                    if isinstance(confidence_data, list):
+                        # Multi-item or all-items mode: store sorted items list
+                        # Sort by confidence_score descending so highest-scoring items
+                        # appear at the top of the triggered items list
+                        triggered_info['items'] = sort_triggered_items(confidence_data, 'flip_confidence')
+                        triggered_info['confidence_data'] = confidence_data
+
+                        # For backwards compatibility, also populate individual fields
+                        # from the first (highest-scoring) item. This allows the template
+                        # to show a summary even when rendering in single-item style.
+                        if confidence_data:
+                            # first_item: The highest-scoring item from the sorted list,
+                            # used to populate single-item display fields as a fallback
+                            first_item = triggered_info['items'][0] if triggered_info['items'] else confidence_data[0]
+                            triggered_info['confidence_score'] = first_item.get('confidence_score')
+                            triggered_info['confidence_previous_score'] = first_item.get('previous_score')
+                            triggered_info['confidence_trigger_rule'] = first_item.get('trigger_rule')
+                            triggered_info['confidence_threshold'] = first_item.get('threshold')
+                            triggered_info['confidence_consecutive'] = first_item.get('consecutive_passes')
+                    else:
+                        # Single-item mode: confidence_data is a dict with score details
+                        # confidence_data: Dict containing confidence_score, previous_score,
+                        # trigger_rule, threshold, consecutive_passes for one item
+                        triggered_info['confidence_data'] = confidence_data
+                        # confidence_score: The computed flip confidence score (0-100)
+                        triggered_info['confidence_score'] = confidence_data.get('confidence_score')
+                        # confidence_previous_score: The score from the previous evaluation
+                        # cycle, used to show score direction/change
+                        triggered_info['confidence_previous_score'] = confidence_data.get('previous_score')
+                        # confidence_trigger_rule: How the score was compared to the threshold
+                        # ('crosses_above' = score >= threshold, 'delta_increase' = score increased by >= threshold)
+                        triggered_info['confidence_trigger_rule'] = confidence_data.get('trigger_rule')
+                        # confidence_threshold: The user's configured threshold value
+                        triggered_info['confidence_threshold'] = confidence_data.get('threshold')
+                        # confidence_consecutive: Number of consecutive evaluations that passed
+                        # the trigger condition before the alert fired
+                        triggered_info['confidence_consecutive'] = confidence_data.get('consecutive_passes')
+                except json.JSONDecodeError:
+                    triggered_info['confidence_data'] = None
+            else:
+                triggered_info['confidence_data'] = None
 
         
         # has_multiple_items: Boolean indicating if this alert monitors multiple specific items
@@ -3972,6 +4146,12 @@ def update_single_alert(request, alert_id):
                 alert.item_name = item_data['name']
     
     # Handle price/reference for alerts
+    # What: Set price and time_frame based on alert type
+    # Why: Different alert types store time-related data in different fields:
+    #      - spike: uses alert.price for time frame (legacy design)
+    #      - collective_move/sustained: uses alert.time_frame
+    #      - flip_confidence: uses neither (has its own config fields)
+    # How: Type-based branching to set the correct field(s)
     if alert.type == 'spike':
         time_frame = data.get('time_frame') or data.get('price')
         alert.price = int(time_frame) if time_frame else None
@@ -3984,13 +4164,24 @@ def update_single_alert(request, alert_id):
         time_frame = data.get('time_frame')
         alert.time_frame = int(time_frame) if time_frame else None
         alert.price = None
+    elif alert.type == 'flip_confidence':
+        # flip_confidence alerts don't use price/time_frame — they have their own fields
+        # What: Clear shared price/time_frame fields for confidence alerts
+        # Why: Prevents stale data from a previous alert type persisting
+        alert.price = None
+        alert.time_frame = None
     else:
         price = data.get('price')
         alert.price = int(price) if price else None
         alert.time_frame = None
     
+    # reference: Which price point (high/low/average) to compare against
+    # What: Set the reference price type for alert types that use it
+    # Why: flip_confidence alerts don't use the shared reference field — they have their own config
+    # How: Only set reference for non-confidence alert types
     reference = data.get('reference')
-    alert.reference = reference if reference else None
+    if alert.type != 'flip_confidence':
+        alert.reference = reference if reference else None
     
     # =============================================================================
     # HANDLE DIRECTION FOR SPIKE, SUSTAINED, AND COLLECTIVE_MOVE ALERTS
@@ -4167,6 +4358,106 @@ def update_single_alert(request, alert_id):
             if target_price is not None:
                 alert.target_price = int(float(target_price)) if target_price else None
     
+    # =============================================================================
+    # HANDLE FLIP CONFIDENCE ALERT-SPECIFIC FIELDS
+    # =============================================================================
+    # What: Save all confidence-specific configuration fields when editing a flip_confidence alert
+    # Why: Flip confidence alerts have 9 config fields + 5 optional weight fields that are
+    #      completely separate from all other alert types' shared fields
+    # How: Check if alert type is flip_confidence, then read each confidence_* field from
+    #      the request data and persist it. Weights use all-or-nothing logic: either all 5
+    #      are provided (and must sum to 1.0 — already validated client-side), or none are
+    #      provided (keeping existing values or model defaults).
+    # =============================================================================
+    if alert.type == 'flip_confidence':
+        # confidence_timestep: Timeseries resolution (e.g. '5m', '1h', '6h')
+        # What: Determines which timeseries table to query for price data
+        confidence_timestep = data.get('confidence_timestep')
+        if confidence_timestep:
+            alert.confidence_timestep = confidence_timestep
+        
+        # confidence_lookback: Number of data points to analyze within the timestep
+        # What: Controls how far back in time the scoring engine looks
+        confidence_lookback = data.get('confidence_lookback')
+        if confidence_lookback is not None:
+            alert.confidence_lookback = int(confidence_lookback) if confidence_lookback else None
+        
+        # confidence_threshold: Minimum confidence score (0-100) required to trigger
+        # What: The score cutoff — items scoring below this are not flagged
+        confidence_threshold = data.get('confidence_threshold')
+        if confidence_threshold is not None:
+            alert.confidence_threshold = float(confidence_threshold) if confidence_threshold else None
+        
+        # confidence_trigger_rule: 'any' or 'sustained'
+        # What: 'any' triggers on a single above-threshold score; 'sustained' requires N consecutive
+        confidence_trigger_rule = data.get('confidence_trigger_rule')
+        if confidence_trigger_rule:
+            alert.confidence_trigger_rule = confidence_trigger_rule
+        
+        # confidence_min_spread_pct: Minimum buy/sell spread percentage to qualify
+        # What: Filters out items with thin margins (spread < this %)
+        confidence_min_spread_pct = data.get('confidence_min_spread_pct')
+        if confidence_min_spread_pct is not None:
+            alert.confidence_min_spread_pct = float(confidence_min_spread_pct) if confidence_min_spread_pct else None
+        
+        # confidence_min_volume: Minimum total GP volume across the lookback window
+        # What: Filters out items with insufficient trading activity (measured in GP)
+        confidence_min_volume = data.get('confidence_min_volume')
+        if confidence_min_volume is not None:
+            alert.confidence_min_volume = int(confidence_min_volume) if confidence_min_volume else None
+        
+        # confidence_cooldown: Minutes to wait after triggering before re-triggering
+        # What: Prevents rapid-fire re-triggers on the same item
+        confidence_cooldown = data.get('confidence_cooldown')
+        if confidence_cooldown is not None:
+            alert.confidence_cooldown = int(confidence_cooldown) if confidence_cooldown else None
+        
+        # confidence_eval_interval: Minutes between evaluation cycles
+        # What: Controls how often the scoring engine runs for this alert
+        confidence_eval_interval = data.get('confidence_eval_interval')
+        if confidence_eval_interval is not None:
+            alert.confidence_eval_interval = int(confidence_eval_interval) if confidence_eval_interval else None
+        
+        # confidence_sustained_count: Required consecutive above-threshold checks (for 'sustained' rule)
+        # What: Number of back-to-back evaluations that must exceed the threshold
+        confidence_sustained_count = data.get('confidence_sustained_count')
+        if confidence_sustained_count is not None:
+            alert.confidence_sustained_count = int(confidence_sustained_count) if confidence_sustained_count else None
+        
+        # =====================================================================
+        # SCORING WEIGHTS (optional — all-or-nothing)
+        # =====================================================================
+        # What: The 5 scoring component weights that control how the confidence score
+        #       is composed (trend, pressure, spread, volume, stability)
+        # Why: If ANY weight is sent, we expect ALL 5 (client-side validates sum=1.0)
+        #      If NONE are sent, we leave existing weights unchanged (or model defaults)
+        # How: Check if any weight key is present in data; if so, save all 5
+        # =====================================================================
+        weight_fields = [
+            'confidence_weight_trend',
+            'confidence_weight_pressure',
+            'confidence_weight_spread',
+            'confidence_weight_volume',
+            'confidence_weight_stability',
+        ]
+        # has_any_weight: True if the client sent at least one weight field
+        has_any_weight = any(field in data for field in weight_fields)
+        
+        if has_any_weight:
+            for field in weight_fields:
+                val = data.get(field)
+                if val is not None:
+                    setattr(alert, field, float(val))
+        
+        # Clear shared fields that don't apply to confidence alerts
+        # What: Ensure no stale data from a previous alert type lingers
+        # Why: If this alert was previously a spike/sustained/threshold, those fields
+        #      would still have values that are meaningless for flip_confidence
+        alert.percentage = None
+        alert.direction = None
+        alert.reference = None
+        alert.min_volume = None  # Confidence uses confidence_min_volume instead
+    
     # Handle min/max price
     minimum_price = data.get('minimum_price')
     alert.minimum_price = int(minimum_price) if minimum_price else None
@@ -4181,18 +4472,20 @@ def update_single_alert(request, alert_id):
     # Why: Threshold, sustained, and spread alerts rely on min_volume to ignore low-activity items
     # How: Apply min_volume only for supported alert types; clear it for other types
     # =============================================================================
-    if alert.type in ['sustained', 'spread', 'threshold']:
+    if alert.type in ['sustained', 'spread', 'threshold', 'spike']:
         # min_volume: The requested minimum hourly volume (GP) value from the edit form
         # What: Numeric threshold for the minimum activity level required to trigger
-        # Why: Used to enforce the liquidity filter for threshold/sustained/spread alerts
+        # Why: Used to enforce the liquidity filter for threshold/sustained/spread/spike alerts
         # How: Convert to int when present; store None when blank
         min_volume = data.get('min_volume')
         alert.min_volume = int(min_volume) if min_volume else None
-    else:
+    elif alert.type != 'flip_confidence':
         # min_volume: Clear the volume filter for alert types that do not support it
         # What: Ensures unsupported alert types don't retain stale min_volume values
-        # Why: Prevents confusion if an alert changes type away from threshold/sustained/spread
+        # Why: Prevents confusion if an alert changes type away from supported types
         # How: Explicitly set min_volume to None
+        # Note: flip_confidence is excluded because it uses confidence_min_volume (separate field)
+        #       and we already set min_volume=None in the confidence handler above
         alert.min_volume = None
     
     # Handle email notification

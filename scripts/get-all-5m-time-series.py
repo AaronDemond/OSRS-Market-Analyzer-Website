@@ -521,10 +521,11 @@ hours = 1
 minutes = 5
 #time.sleep(1000)
 while True:
+    #time.sleep(hours * 3600 + minutes * 60)
+    #fetch_latest_volume_snapshot()
     print("Sleeping for 5 minutes...")
-    time.sleep((hours * 60 * 60) + (60 * 5))
+    time.sleep((minutes * 60) + 60)
     print("Fetching again...")
-    fetch_latest_volume_snapshot()
-    #fetch_latest_five_min_snapshot()
+    fetch_latest_five_min_snapshot()
 
 

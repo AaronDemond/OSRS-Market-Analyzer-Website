@@ -158,6 +158,7 @@ class Alert(models.Model):
         ('sustained', 'Sustained Move'),
         ('threshold', 'Threshold'),  # Percentage or value-based threshold from reference price
         ('collective_move', 'Collective Move'),  # Average percentage change across multiple items
+        ('flip_confidence', 'Flip Confidence'),  # Confidence score for flipping items (0-100)
     ]
     
     # THRESHOLD_TYPE_CHOICES: Options for how threshold alerts calculate their trigger condition
@@ -283,6 +284,159 @@ class Alert(models.Model):
     ]
     min_pressure_strength = models.CharField(max_length=10, choices=PRESSURE_STRENGTH_CHOICES, blank=True, null=True, default=None)
     min_pressure_spread_pct = models.FloatField(blank=True, null=True, default=None)  # Minimum spread % for pressure check
+    
+    # =============================================================================
+    # FLIP CONFIDENCE ALERT SPECIFIC FIELDS
+    # =============================================================================
+    # What: Fields that configure the flip confidence scoring algorithm
+    # Why: The flip confidence alert uses time-series data from the OSRS Wiki API to compute
+    #      a 0-100 "flip confidence" score based on trend, buy/sell pressure, spread health,
+    #      volume sufficiency, and price stability. Users need to configure the data source
+    #      (timestep/lookback), the trigger condition (threshold/direction/delta), and
+    #      optionally tune the scoring weights.
+    # How: These fields are stored on the Alert model and read by check_alerts.py when
+    #      evaluating flip_confidence alerts.
+    
+    # =============================================================================
+    # TIMESTEP CHOICES: The time bucket size for the OSRS Wiki timeseries endpoint
+    # What: Defines available timestep options for fetching price history data
+    # Why: Different timesteps provide different granularity of market data;
+    #      5m gives very recent fine-grained data, 24h gives longer historical view
+    # How: Maps to the OSRS Wiki API 'timestep' parameter (in seconds)
+    # =============================================================================
+    CONFIDENCE_TIMESTEP_CHOICES = [
+        ('5m', '5 Minutes'),
+        ('1h', '1 Hour'),
+        ('6h', '6 Hours'),
+        ('24h', '24 Hours'),
+    ]
+    
+    # confidence_timestep: The time bucket size for fetching OSRS Wiki timeseries data
+    # What: Controls the granularity of price data used in the confidence calculation
+    # Why: Smaller timesteps (5m) capture recent micro-trends; larger ones (24h) capture macro-trends
+    # How: Passed to the OSRS Wiki timeseries API as the 'timestep' parameter
+    # Note: Default '1h' provides a good balance between granularity and data coverage
+    confidence_timestep = models.CharField(
+        max_length=5,
+        choices=CONFIDENCE_TIMESTEP_CHOICES,
+        blank=True,
+        null=True,
+        default=None
+    )
+    
+    # confidence_lookback: Number of data buckets to include in the confidence calculation
+    # What: How many time buckets (of size confidence_timestep) to fetch and analyze
+    # Why: More buckets = more historical context but may dilute recent signals;
+    #      fewer buckets = more responsive but potentially noisy. Must be >= 3 because
+    #      the compute_flip_confidence function returns 0.0 with fewer than 3 data points.
+    # How: Used to set the time range when querying the OSRS Wiki timeseries API
+    # Note: Examples: 5m + 24 points = last 2 hours; 1h + 48 points = last 2 days
+    confidence_lookback = models.IntegerField(blank=True, null=True, default=None)
+    
+    # confidence_threshold: The confidence score (0-100) that triggers the alert
+    # What: The minimum flip confidence score required for the alert to fire
+    # Why: Users want to be notified when an item's flip confidence exceeds their chosen level
+    # How: After computing the score via compute_flip_confidence(), compare against this value
+    # Note: Typical values might be 60-80; higher = more selective
+    confidence_threshold = models.FloatField(blank=True, null=True, default=None)
+    
+    # =============================================================================
+    # TRIGGER RULE CHOICES: How the confidence score is evaluated to fire the alert
+    # What: Defines the comparison method for checking confidence against threshold
+    # Why: Users may want different trigger behaviors:
+    #      - 'crosses_above': Alert when score rises above threshold (standard)
+    #      - 'delta_increase': Alert when score increases by >= threshold over last N checks
+    # How: Used in check_alerts.py to select the appropriate comparison logic
+    # =============================================================================
+    CONFIDENCE_TRIGGER_CHOICES = [
+        ('crosses_above', 'Score Crosses Above Threshold'),
+        ('delta_increase', 'Score Increases By Threshold'),
+    ]
+    
+    # confidence_trigger_rule: How the confidence score comparison is performed
+    # What: Determines whether to alert on absolute score level or rate of change
+    # Why: 'crosses_above' is intuitive for most users; 'delta_increase' catches momentum
+    # How: 'crosses_above' fires when score >= threshold; 'delta_increase' fires when
+    #      current_score - previous_score >= threshold
+    confidence_trigger_rule = models.CharField(
+        max_length=15,
+        choices=CONFIDENCE_TRIGGER_CHOICES,
+        blank=True,
+        null=True,
+        default=None
+    )
+    
+    # confidence_min_spread_pct: Minimum spread percentage required before alert can fire
+    # What: A floor on the spread (high-low)/low percentage to filter out low-margin items
+    # Why: Even if confidence score is high, a tiny spread means no profit opportunity;
+    #      this prevents false positives on items with good trend/volume but negligible margin
+    # How: Checked before evaluating confidence; if current spread < this value, skip the item
+    confidence_min_spread_pct = models.FloatField(blank=True, null=True, default=None)
+    
+    # confidence_min_volume: Minimum total GP volume across the lookback window
+    # What: The minimum gold-piece value of all trades (buys + sells) across all
+    #        timeseries buckets within the lookback window
+    # Why: Raw trade counts are misleading — 500 trades of a 10gp item is negligible
+    #      market activity, while 500 trades of a 10M item is enormous.  GP volume
+    #      normalises across price tiers so the filter is meaningful for any item.
+    # How: After fetching timeseries data, compute:
+    #        GP volume = SUM(highPriceVolume * avgHighPrice) + SUM(lowPriceVolume * avgLowPrice)
+    #      If the result is below this threshold, the item is skipped.
+    # Note: BigIntegerField is required because GP volumes can easily exceed 2.1B
+    #       (the max of a 32-bit int) for actively traded expensive items.
+    confidence_min_volume = models.BigIntegerField(blank=True, null=True, default=None)
+    
+    # confidence_cooldown: Minutes to wait before re-alerting on the same item
+    # What: Cooldown period (in minutes) after an alert fires before it can fire again
+    # Why: Prevents notification spam when an item stays above the threshold for a while
+    # How: After triggering, store triggered_at timestamp; skip re-evaluation until
+    #      current_time - triggered_at >= cooldown minutes
+    confidence_cooldown = models.IntegerField(blank=True, null=True, default=None)
+    
+    # confidence_sustained_count: Number of consecutive evaluations the condition must hold
+    # What: Require the confidence score to be >= threshold for N consecutive checks
+    # Why: Filters out transient spikes in confidence that may not represent real opportunities
+    # How: Track a counter of consecutive passing evaluations; only trigger when counter >= this
+    confidence_sustained_count = models.IntegerField(blank=True, null=True, default=None)
+    
+    # confidence_eval_interval: How often (in minutes) to re-evaluate this alert
+    # What: The interval between confidence score recalculations
+    # Why: Users may want less frequent checks to reduce noise; must be >= timestep
+    # How: In check_alerts.py, track last evaluation time; skip if interval hasn't elapsed
+    confidence_eval_interval = models.IntegerField(blank=True, null=True, default=None)
+    
+    # =============================================================================
+    # ADVANCED WEIGHT FIELDS (for power users)
+    # What: Allow users to override the default scoring weights used in compute_flip_confidence
+    # Why: Different trading strategies may value different signals differently;
+    #      e.g., a volume-focused trader may want to increase volume weight
+    # How: If set, these weights replace the defaults (0.35, 0.25, 0.20, 0.10, 0.10)
+    #      in the confidence calculation. Must sum to 1.0.
+    # Note: These are shown under an "Advanced" toggle in the UI
+    # =============================================================================
+    
+    # confidence_weight_trend: Weight for the trend sub-score (default: 0.35)
+    confidence_weight_trend = models.FloatField(blank=True, null=True, default=None)
+    
+    # confidence_weight_pressure: Weight for the buy/sell pressure sub-score (default: 0.25)
+    confidence_weight_pressure = models.FloatField(blank=True, null=True, default=None)
+    
+    # confidence_weight_spread: Weight for the spread health sub-score (default: 0.20)
+    confidence_weight_spread = models.FloatField(blank=True, null=True, default=None)
+    
+    # confidence_weight_volume: Weight for the volume sufficiency sub-score (default: 0.10)
+    confidence_weight_volume = models.FloatField(blank=True, null=True, default=None)
+
+    # confidence_weight_stability: Weight for the stability sub-score (default: 0.10)
+    # Note: This is implicitly 1.0 - sum(other weights) but stored for explicitness
+    confidence_weight_stability = models.FloatField(blank=True, null=True, default=None)
+    
+    # confidence_last_scores: JSON dict storing per-item state for the confidence alert
+    # What: Tracks the last computed confidence score, consecutive pass count, and last eval time
+    # Why: Needed for delta_increase trigger rule (compare to previous score),
+    #      sustained_count (track consecutive passes), and eval_interval (skip if too soon)
+    # How: JSON like {"4151": {"score": 73.4, "consecutive": 3, "last_eval": 1706012400}, ...}
+    confidence_last_scores = models.TextField(blank=True, null=True, default=None)
     
     # =============================================================================
     # SPIKE ALERT BASELINE TRACKING FIELDS
@@ -443,6 +597,21 @@ class Alert(models.Model):
                 return f"{target} collective ≥{perc} in any direction ({method})"
             else:
                 return f"{target} collective {direction} ≥{perc} ({method})"
+        
+        # =========================================================================
+        # FLIP CONFIDENCE ALERTS: "[target] confidence ≥[threshold] ([timestep])"
+        # =========================================================================
+        # What: Display format for flip_confidence alerts showing the key configuration
+        # Why: Users need to quickly understand what the alert monitors at a glance
+        # How: Shows target items, confidence threshold, and timestep setting
+        if self.type == 'flip_confidence':
+            target = get_target()
+            threshold = self.confidence_threshold if self.confidence_threshold is not None else "N/A"
+            timestep = self.confidence_timestep or '1h'
+            trigger = self.confidence_trigger_rule or 'crosses_above'
+            if trigger == 'delta_increase':
+                return f"{target} confidence Δ≥{threshold} ({timestep})"
+            return f"{target} confidence ≥{threshold} ({timestep})"
         
         # =========================================================================
         # FALLBACK: Generic format for unknown types
@@ -948,6 +1117,97 @@ class HourlyItemVolume(models.Model):
         from datetime import datetime, timezone
 
         return f"{self.item_name} - {self.volume}"
+
+
+class FiveMinTimeSeries(models.Model):
+    """
+    Stores hourly trading volume snapshots for OSRS items, measured in GP (gold pieces).
+
+    What: A single hourly volume snapshot for one item at a specific point in time.
+    Why: Sustained move alerts need volume data to filter out low-activity items. Previously,
+         volume was fetched via individual API calls to the RuneScape Wiki timeseries endpoint
+         during each alert check cycle. For "all items" alerts, this meant hundreds of HTTP
+         requests per cycle. This model pre-fetches and caches volume data in the database,
+         replacing those API calls with fast DB queries.
+    How: Populated by scripts/update_volumes.py every 1 hour 5 minutes. Each fetch cycle
+         creates a NEW row per item (historical data accumulates over time). The alert checker
+         queries the most recent row for each item to get its current hourly volume.
+
+    Volume Calculation:
+        volume_gp = (highPriceVolume + lowPriceVolume) × ((avgHighPrice + avgLowPrice) / 2)
+        This represents the total GP value of items traded in the most recent hour.
+        Example: 5,000 units traded × 500,000 GP average price = 2,500,000,000 GP volume.
+
+    Data Source:
+        - RuneScape Wiki API: /timeseries?timestep=1h&id={item_id}
+        - Uses the most recent 1h interval from the timeseries response
+
+    Usage:
+        - check_alerts.py queries: HourlyItemVolume.objects.filter(item_id=X).first()
+          (ordered by -timestamp via Meta.ordering, so .first() = most recent)
+        - Historical data can be used for volume trend analysis in the future
+    """
+
+    # item_id: The OSRS item ID from the Wiki API (e.g., 4151 for Abyssal whip)
+    # Indexed for fast lookups when the alert checker queries by item
+    item_id = models.IntegerField(db_index=True)
+
+    # item_name: Human-readable item name, denormalized from item mapping
+    # Why denormalized: Avoids needing a join/lookup when displaying volume data
+    item_name = models.CharField(max_length=255)
+    
+    avg_high_price = models.IntegerField(null=True, blank=True)
+    avg_low_price = models.IntegerField(null=True, blank=True)
+    high_price_volume = models.IntegerField(default=0)
+    low_price_volume = models.IntegerField(default=0)
+
+    timestamp = models.CharField(max_length=255)
+
+    class Meta:
+        # Default ordering: most recent first, so .first() always returns the latest snapshot
+        ordering = ['-timestamp']
+
+
+
+class OneHourTimeSeries(models.Model):
+    item_id = models.IntegerField(db_index=True)
+    item_name = models.CharField(max_length=255)
+    avg_high_price = models.IntegerField(null=True, blank=True)
+    avg_low_price = models.IntegerField(null=True, blank=True)
+    high_price_volume = models.IntegerField(default=0)
+    low_price_volume = models.IntegerField(default=0)
+    timestamp = models.CharField(max_length=255)
+
+    class Meta:
+        # Default ordering: most recent first, so .first() always returns the latest snapshot
+        ordering = ['-timestamp']
+
+class SixHourTimeSeries(models.Model):
+    item_id = models.IntegerField(db_index=True)
+    item_name = models.CharField(max_length=255)
+    avg_high_price = models.IntegerField(null=True, blank=True)
+    avg_low_price = models.IntegerField(null=True, blank=True)
+    high_price_volume = models.IntegerField(default=0)
+    low_price_volume = models.IntegerField(default=0)
+    timestamp = models.CharField(max_length=255)
+
+    class Meta:
+        # Default ordering: most recent first, so .first() always returns the latest snapshot
+        ordering = ['-timestamp']
+
+class TwentyFourHourTimeSeries(models.Model):
+    item_id = models.IntegerField(db_index=True)
+    item_name = models.CharField(max_length=255)
+    avg_high_price = models.IntegerField(null=True, blank=True)
+    avg_low_price = models.IntegerField(null=True, blank=True)
+    high_price_volume = models.IntegerField(default=0)
+    low_price_volume = models.IntegerField(default=0)
+    timestamp = models.CharField(max_length=255)
+
+    class Meta:
+        # Default ordering: most recent first, so .first() always returns the latest snapshot
+        ordering = ['-timestamp']
+
 
 
 

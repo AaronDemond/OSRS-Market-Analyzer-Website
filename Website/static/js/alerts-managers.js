@@ -516,7 +516,27 @@
                 collectiveReference: document.querySelector(groups.collectiveReference),
                 collectiveCalculationMethod: document.querySelector(groups.collectiveCalculationMethod),
                 collectiveDirection: document.querySelector(groups.collectiveDirection),
-                collectiveThreshold: document.querySelector(groups.collectiveThreshold)
+                collectiveThreshold: document.querySelector(groups.collectiveThreshold),
+                // Flip Confidence alert elements
+                // What: DOM elements for flip_confidence alert form field containers
+                // Why: Controls visibility and access to flip_confidence-specific form fields
+                confidenceScope: document.querySelector(groups.confidenceScope),
+                confidenceItems: document.querySelector(groups.confidenceItems),
+                confidenceTimestep: document.querySelector(groups.confidenceTimestep),
+                confidenceLookback: document.querySelector(groups.confidenceLookback),
+                confidenceTriggerRule: document.querySelector(groups.confidenceTriggerRule),
+                confidenceThreshold: document.querySelector(groups.confidenceThreshold),
+                confidenceMinSpread: document.querySelector(groups.confidenceMinSpread),
+                confidenceMinVolume: document.querySelector(groups.confidenceMinVolume),
+                confidenceEvalInterval: document.querySelector(groups.confidenceEvalInterval),
+                confidenceCooldown: document.querySelector(groups.confidenceCooldown),
+                confidenceSustained: document.querySelector(groups.confidenceSustained),
+                confidenceAdvancedToggle: document.querySelector(groups.confidenceAdvancedToggle),
+                confidenceWeightTrend: document.querySelector(groups.confidenceWeightTrend),
+                confidenceWeightPressure: document.querySelector(groups.confidenceWeightPressure),
+                confidenceWeightSpread: document.querySelector(groups.confidenceWeightSpread),
+                confidenceWeightVolume: document.querySelector(groups.confidenceWeightVolume),
+                confidenceWeightStability: document.querySelector(groups.confidenceWeightStability),
             };
             
             // minVolumeInput: The input element for the minimum hourly volume value
@@ -610,6 +630,39 @@
                 }
             };
 
+            /**
+             * Helper to hide all flip confidence alert specific fields
+             * What: Hides all form fields that are specific to flip_confidence alerts
+             * Why: When switching away from flip_confidence alert type, these fields should be hidden
+             * How: Sets display to 'none' for each flip_confidence-specific field group
+             */
+            const hideConfidenceFields = () => {
+                if (elements.confidenceScope) elements.confidenceScope.style.display = 'none';
+                if (elements.confidenceItems) elements.confidenceItems.style.display = 'none';
+                if (elements.confidenceTimestep) elements.confidenceTimestep.style.display = 'none';
+                if (elements.confidenceLookback) elements.confidenceLookback.style.display = 'none';
+                if (elements.confidenceTriggerRule) elements.confidenceTriggerRule.style.display = 'none';
+                if (elements.confidenceThreshold) elements.confidenceThreshold.style.display = 'none';
+                if (elements.confidenceMinSpread) elements.confidenceMinSpread.style.display = 'none';
+                if (elements.confidenceMinVolume) elements.confidenceMinVolume.style.display = 'none';
+                if (elements.confidenceEvalInterval) elements.confidenceEvalInterval.style.display = 'none';
+                if (elements.confidenceCooldown) elements.confidenceCooldown.style.display = 'none';
+                if (elements.confidenceSustained) elements.confidenceSustained.style.display = 'none';
+                if (elements.confidenceAdvancedToggle) elements.confidenceAdvancedToggle.style.display = 'none';
+                if (elements.confidenceWeightTrend) elements.confidenceWeightTrend.style.display = 'none';
+                if (elements.confidenceWeightPressure) elements.confidenceWeightPressure.style.display = 'none';
+                if (elements.confidenceWeightSpread) elements.confidenceWeightSpread.style.display = 'none';
+                if (elements.confidenceWeightVolume) elements.confidenceWeightVolume.style.display = 'none';
+                if (elements.confidenceWeightStability) elements.confidenceWeightStability.style.display = 'none';
+                // Hide the advanced panel container too
+                const advancedPanel = document.getElementById('confidence-advanced-panel');
+                if (advancedPanel) advancedPanel.style.display = 'none';
+                // Clear selected items when hiding
+                if (typeof ConfidenceMultiItemSelector !== 'undefined') {
+                    ConfidenceMultiItemSelector.clear();
+                }
+            };
+
             if (alertType === AlertsConfig.alertTypes.SPREAD) {
                 // Spread alerts: show spread-specific fields
                 elements.spreadScope.style.display = 'block';
@@ -623,6 +676,7 @@
                 hideThresholdFields();
                 hideSpikeFields();
                 hideCollectiveFields();
+                hideConfidenceFields();
                 // What: Show min volume field for spread alerts
                 // Why: Users can filter spread opportunities by minimum hourly trading volume (GP)
                 //      to avoid low-volume items with inflated spreads that are impractical to flip
@@ -643,6 +697,7 @@
                 // How: Show spike-specific fields and use handleSpikeScopeChange to manage item selector visibility
                 hideSpreadFields();  // Hide spread items to prevent duplicate item inputs
                 hideCollectiveFields();
+                hideConfidenceFields();
                 if (elements.spikeScope) elements.spikeScope.style.display = 'block';
                 // Note: itemName is hidden for spike alerts - we use the multi-item selector instead
                 elements.itemName.style.display = 'none';
@@ -668,6 +723,7 @@
                 hideSpreadFields();  // Hide spread items to prevent duplicate item inputs
                 hideSpikeFields();
                 hideCollectiveFields();
+                hideConfidenceFields();
                 elements.itemName.style.display = 'none';
                 elements.price.style.display = 'none';
                 elements.reference.style.display = 'block';  // Show reference selector for sustained alerts
@@ -707,6 +763,7 @@
                 hideSpikeFields();   // Hide spike items to prevent duplicate item inputs
                 hideSustainedFields();
                 hideCollectiveFields();
+                hideConfidenceFields();
                 if (elements.numberItems) elements.numberItems.style.display = 'none';
                 elements.itemName.style.display = 'none';  // Using threshold's own item selector
                 elements.price.style.display = 'none';  // Using threshold value instead
@@ -748,6 +805,7 @@
                 hideSpikeFields();
                 hideSustainedFields();
                 hideThresholdFields();
+                hideConfidenceFields();
                 if (elements.numberItems) elements.numberItems.style.display = 'none';
                 elements.itemName.style.display = 'none';  // Using collective's own item selector
                 elements.price.style.display = 'none';
@@ -769,6 +827,46 @@
 
                 // Collective move alerts must use specific items, not all items
                 document.querySelector(selectors.isAllItems).value = 'false';
+            } else if (alertType === AlertsConfig.alertTypes.FLIP_CONFIDENCE) {
+                /**
+                 * Flip Confidence alerts configuration
+                 * What: Shows flip_confidence-specific fields and hides other alert type fields
+                 * Why: Flip confidence alerts use timeseries data to compute a multi-factor score
+                 * How: Hides other alert type fields, shows confidence fields
+                 */
+                hideSpreadFields();
+                hideSpikeFields();
+                hideSustainedFields();
+                hideThresholdFields();
+                hideCollectiveFields();
+                if (elements.numberItems) elements.numberItems.style.display = 'none';
+                elements.itemName.style.display = 'none';  // Using confidence's own item selector
+                elements.price.style.display = 'none';
+                elements.reference.style.display = 'none';
+                elements.percentage.style.display = 'none';
+                elements.timeFrame.style.display = 'none';
+                elements.direction.style.display = 'none';
+                elements.minPrice.style.display = 'none';
+                elements.maxPrice.style.display = 'none';
+
+                // Show confidence-specific fields
+                if (elements.confidenceScope) elements.confidenceScope.style.display = 'block';
+                if (elements.confidenceTimestep) elements.confidenceTimestep.style.display = 'block';
+                if (elements.confidenceLookback) elements.confidenceLookback.style.display = 'block';
+                if (elements.confidenceTriggerRule) elements.confidenceTriggerRule.style.display = 'block';
+                if (elements.confidenceThreshold) elements.confidenceThreshold.style.display = 'block';
+                if (elements.confidenceMinSpread) elements.confidenceMinSpread.style.display = 'block';
+                if (elements.confidenceMinVolume) elements.confidenceMinVolume.style.display = 'block';
+                if (elements.confidenceEvalInterval) elements.confidenceEvalInterval.style.display = 'block';
+                if (elements.confidenceCooldown) elements.confidenceCooldown.style.display = 'block';
+                if (elements.confidenceSustained) elements.confidenceSustained.style.display = 'block';
+                if (elements.confidenceAdvancedToggle) elements.confidenceAdvancedToggle.style.display = 'block';
+
+                // Let scope change handler determine item selector vs min/max price
+                this.handleConfidenceScopeChange(formType);
+
+                // Default to specific items
+                document.querySelector(selectors.isAllItems).value = 'false';
             } else {
                 // Above/Below alerts: show threshold fields
                 hideSpreadFields();  // Hide spread items to prevent duplicate item inputs
@@ -776,6 +874,7 @@
                 hideSustainedFields();
                 hideThresholdFields();
                 hideCollectiveFields();
+                hideConfidenceFields();
                 if (elements.numberItems) elements.numberItems.style.display = 'none';
                 elements.itemName.style.display = 'block';
                 elements.price.style.display = 'block';
@@ -843,6 +942,50 @@
                 
                 // Update tab indices for specific items mode
                 this.updateTabIndices('collective_move', false);
+            }
+        },
+
+        /**
+         * Handles changes to the flip_confidence alert "Scope" dropdown.
+         * 
+         * What: Shows/hides the item selector and min/max price based on scope selection
+         * Why: When "All Items" is selected, items selector is hidden and price filters are shown
+         *      When "Specific Items" is selected, items selector is shown and price filters hidden
+         * How: Toggles visibility of items group and price filters
+         * 
+         * @param {string} formType - 'create' for create form
+         */
+        handleConfidenceScopeChange(formType) {
+            const selectors = AlertsConfig.selectors[formType];
+            const groups = selectors.groups;
+            
+            // Get the scope selection
+            const confidenceScopeSelect = document.querySelector(selectors.confidenceScope);
+            const confidenceItemsGroup = document.querySelector(groups.confidenceItems);
+            const isAllItemsInput = document.querySelector(selectors.isAllItems);
+            const minPriceGroup = document.querySelector(groups.minPrice);
+            const maxPriceGroup = document.querySelector(groups.maxPrice);
+            
+            if (!confidenceScopeSelect) return;
+            
+            const selection = confidenceScopeSelect.value;
+            
+            if (selection === 'all') {
+                // All Items mode: hide item selector, show price filters
+                if (confidenceItemsGroup) confidenceItemsGroup.style.display = 'none';
+                if (minPriceGroup) minPriceGroup.style.display = 'block';
+                if (maxPriceGroup) maxPriceGroup.style.display = 'block';
+                
+                // Set is_all_items flag
+                if (isAllItemsInput) isAllItemsInput.value = 'true';
+            } else {
+                // Specific Items mode: show item selector, hide price filters
+                if (confidenceItemsGroup) confidenceItemsGroup.style.display = 'block';
+                if (minPriceGroup) minPriceGroup.style.display = 'none';
+                if (maxPriceGroup) maxPriceGroup.style.display = 'none';
+                
+                // Clear is_all_items flag
+                if (isAllItemsInput) isAllItemsInput.value = 'false';
             }
         },
 

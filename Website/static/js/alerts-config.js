@@ -226,6 +226,28 @@
                 collectiveDirection: '#collective-direction',
                 collectiveThreshold: '#collective-threshold',
                 alertGroup: '#alert-group',
+                // Flip Confidence alert selectors
+                // What: DOM selectors for flip_confidence alert's configuration UI
+                // Why: Enables the multi-item picker and parameter configuration for confidence alerts
+                // How: Similar pattern to other alert types with scope, items, and settings
+                confidenceScope: '#confidence-scope',
+                confidenceItemInput: '#confidence-item-input',
+                confidenceItemIds: '#confidence-item-ids',
+                confidenceItemSuggestions: '#confidence-item-suggestions',
+                confidenceSelectedItemsDropdown: '#confidence-selected-items-dropdown',
+                confidenceSelectedItemsList: '#confidence-selected-items-list',
+                confidenceNoItemsMessage: '#confidence-no-items-message',
+                confidenceMultiItemToggle: '#confidence-multi-item-toggle',
+                confidenceItemNotification: '#confidence-item-notification',
+                confidenceTimestep: '#confidence-timestep',
+                confidenceLookback: '#confidence-lookback',
+                confidenceTriggerRule: '#confidence-trigger-rule',
+                confidenceThreshold: '#confidence-threshold',
+                confidenceMinSpreadPct: '#confidence-min-spread-pct',
+                confidenceMinVolume: '#confidence-min-volume',
+                confidenceEvalInterval: '#confidence-eval-interval',
+                confidenceCooldown: '#confidence-cooldown',
+                confidenceSustainedCount: '#confidence-sustained-count',
                 groups: {
                     spreadScope: '#spread-scope-group',
                     spreadItems: '#spread-items-group',  // New group for spread multi-item selector
@@ -265,7 +287,27 @@
                     collectiveReference: '#collective-reference-group',
                     collectiveCalculationMethod: '#collective-calculation-method-group',
                     collectiveDirection: '#collective-direction-group',
-                    collectiveThreshold: '#collective-threshold-group'
+                    collectiveThreshold: '#collective-threshold-group',
+                    // Flip Confidence alert form groups
+                    // What: DOM selectors for flip_confidence alert form field containers
+                    // Why: Controls visibility of flip_confidence-specific form fields
+                    confidenceScope: '#confidence-scope-group',
+                    confidenceItems: '#confidence-items-group',
+                    confidenceTimestep: '#confidence-timestep-group',
+                    confidenceLookback: '#confidence-lookback-group',
+                    confidenceTriggerRule: '#confidence-trigger-rule-group',
+                    confidenceThreshold: '#confidence-threshold-group',
+                    confidenceMinSpread: '#confidence-min-spread-group',
+                    confidenceMinVolume: '#confidence-min-volume-group',
+                    confidenceEvalInterval: '#confidence-eval-interval-group',
+                    confidenceCooldown: '#confidence-cooldown-group',
+                    confidenceSustained: '#confidence-sustained-group',
+                    confidenceAdvancedToggle: '#confidence-advanced-toggle-group',
+                    confidenceWeightTrend: '#confidence-weight-trend-group',
+                    confidenceWeightPressure: '#confidence-weight-pressure-group',
+                    confidenceWeightSpread: '#confidence-weight-spread-group',
+                    confidenceWeightVolume: '#confidence-weight-volume-group',
+                    confidenceWeightStability: '#confidence-weight-stability-group'
                 }
             },
             // Other UI elements
@@ -289,7 +331,8 @@
             SPIKE: 'spike',
             SUSTAINED: 'sustained',
             THRESHOLD: 'threshold',
-            COLLECTIVE_MOVE: 'collective_move'
+            COLLECTIVE_MOVE: 'collective_move',
+            FLIP_CONFIDENCE: 'flip_confidence'
         },
 
         // CSRF token for Django POST requests
