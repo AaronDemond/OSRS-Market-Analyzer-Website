@@ -290,6 +290,183 @@ class FlipConfidenceAlertBase(TestCase):
         defaults.update(overrides)
         return Alert.objects.create(**defaults)
 
+    def _mock_timeseries_high_score(self):
+        """
+        Returns timeseries data that should produce a high confidence score.
+
+        What: Simulated data with upward trend, good spread, balanced volume, stability.
+        Why: Used to test that alerts trigger when the score is above threshold.
+        How: Generates 24 data points with gradually increasing prices and good volume.
+
+        Returns:
+            list: Timeseries data dicts.
+        """
+        # data: Container for the generated timeseries buckets
+        data = []
+        # i: Loop counter used to increment prices and volumes over time
+        for i in range(24):
+            # high_price: Increasing average high price for each bucket
+            high_price = 100000 + (i * 500)
+            # low_price: Derived low price to maintain a ~3% spread
+            low_price = int(high_price * 0.97)
+            # timestamp: Unix timestamp for each bucket (1-hour spacing)
+            timestamp = int(time.time()) - (24 - i) * 3600
+            # bucket_data: Single timeseries bucket with price/volume values
+            bucket_data = {
+                "avgHighPrice": high_price,
+                "avgLowPrice": low_price,
+                "highPriceVolume": 300 + i * 10,
+                "lowPriceVolume": 200 + i * 5,
+                "timestamp": timestamp,
+            }
+            data.append(bucket_data)
+        return data
+
+    def _mock_timeseries_low_score(self):
+        """
+        Returns timeseries data that should produce a low confidence score.
+
+        What: Simulated data with downward trend, tiny spread, low volume.
+        Why: Used to test that alerts do NOT trigger when the score is below threshold.
+        How: Generates 24 data points with declining prices and minimal volume.
+
+        Returns:
+            list: Timeseries data dicts.
+        """
+        # data: Container for the generated timeseries buckets
+        data = []
+        # i: Loop counter used to decrement prices over time
+        for i in range(24):
+            # high_price: Decreasing average high price for each bucket
+            high_price = 100000 - (i * 1000)
+            # low_price: Low price slightly below high_price to create a tiny spread
+            low_price = high_price - 100
+            # timestamp: Unix timestamp for each bucket (1-hour spacing)
+            timestamp = int(time.time()) - (24 - i) * 3600
+            # bucket_data: Single timeseries bucket with price/volume values
+            bucket_data = {
+                "avgHighPrice": high_price,
+                "avgLowPrice": low_price,
+                "highPriceVolume": 5,
+                "lowPriceVolume": 10,
+                "timestamp": timestamp,
+            }
+            data.append(bucket_data)
+        return data
+
+    def _announce_test(self, description):
+        """
+        Print a human-readable description of the scenario being tested.
+
+        What: Emits a standardized prefix + description to the test output.
+        Why: The requirement asks each test to state what it is validating.
+        How: Formats a message string and prints it immediately.
+
+        Args:
+            description: Summary of the scenario this test validates.
+        """
+        # message: Formatted log line describing the current test scenario
+        message = f"[FLIP CONFIDENCE TEST] {description}"
+        print(message)
+
+    def _make_timeseries_fetcher(self, timeseries_by_item):
+        """
+        Create a fetch_timeseries_from_db replacement that returns per-item data.
+
+        What: Provides a callable that mimics Command.fetch_timeseries_from_db.
+        Why: Each scenario needs deterministic timeseries data per item ID.
+        How: Looks up the item ID in the provided dictionary and returns the data.
+
+        Args:
+            timeseries_by_item: Dict mapping item_id (str) -> timeseries list.
+
+        Returns:
+            callable: Function with the same signature as fetch_timeseries_from_db.
+        """
+        # per_item_series: Local reference to the item->timeseries mapping
+        per_item_series = timeseries_by_item
+
+        def _fetch_timeseries(item_id_str, timestep, lookback):
+            """
+            Fetch stubbed timeseries data for a given item ID.
+
+            What: Returns the test-provided timeseries list for this item.
+            Why: Ensures check_flip_confidence_alert uses the correct mock data.
+            How: Converts the item ID to string and retrieves the mapping entry.
+            """
+            # normalized_item_id: String item ID used for dictionary lookups
+            normalized_item_id = str(item_id_str)
+            return per_item_series.get(normalized_item_id, [])
+
+        return _fetch_timeseries
+
+    def _assert_triggered_item_ids(self, triggered_items, expected_ids, scenario):
+        """
+        Assert that the triggered item list matches the expected item IDs.
+
+        What: Compares actual triggered item IDs to the expected list.
+        Why: Scenario tests need explicit validation of which items triggered.
+        How: Extracts item_id values, prints failure details if mismatched, then
+             uses assertEqual with a descriptive message.
+
+        Args:
+            triggered_items: List of triggered item dicts returned by the alert check.
+            expected_ids: List of expected item IDs (strings or ints).
+            scenario: Scenario description used for error context.
+        """
+        # actual_ids: Ordered list of item IDs returned by the alert evaluation
+        actual_ids = []
+        # item: Triggered item dictionary from the alert evaluation result set
+        for item in triggered_items:
+            # item_id_value: Item ID extracted from the triggered item dictionary
+            item_id_value = item['item_id']
+            actual_ids.append(item_id_value)
+
+        # normalized_expected_ids: Expected item IDs normalized to strings
+        normalized_expected_ids = []
+        # expected_id: Raw expected item ID (may be int or str)
+        for expected_id in expected_ids:
+            # expected_id_str: Expected item ID coerced to string form
+            expected_id_str = str(expected_id)
+            normalized_expected_ids.append(expected_id_str)
+
+        if actual_ids != normalized_expected_ids:
+            print(
+                "[TEST FAILURE] Scenario mismatch: "
+                f"{scenario}. Expected {normalized_expected_ids}, got {actual_ids}."
+            )
+
+        self.assertEqual(
+            actual_ids,
+            normalized_expected_ids,
+            f"{scenario} expected triggered IDs {normalized_expected_ids} but got {actual_ids}."
+        )
+
+    def _assert_triggered_flag(self, triggered_flag, expected_flag, scenario):
+        """
+        Assert that a single-item alert returned the expected True/False result.
+
+        What: Validates boolean trigger outcomes for single-item alerts.
+        Why: Single-item alerts return booleans instead of item lists.
+        How: Prints a failure message on mismatch and uses assertEqual.
+
+        Args:
+            triggered_flag: Boolean returned by check_flip_confidence_alert.
+            expected_flag: Boolean expectation for this scenario.
+            scenario: Scenario description used for error context.
+        """
+        if triggered_flag != expected_flag:
+            print(
+                "[TEST FAILURE] Scenario mismatch: "
+                f"{scenario}. Expected {expected_flag}, got {triggered_flag}."
+            )
+
+        self.assertEqual(
+            triggered_flag,
+            expected_flag,
+            f"{scenario} expected trigger={expected_flag} but got {triggered_flag}."
+        )
+
 
 class FlipConfidenceAlertTests(FlipConfidenceAlertBase):
     """
@@ -300,56 +477,6 @@ class FlipConfidenceAlertTests(FlipConfidenceAlertBase):
     Why: Users rely on these alerts firing correctly when conditions are met.
     How: Creates Alert instances, mocks external API calls, and verifies trigger behavior.
     """
-
-    def _mock_timeseries_high_score(self):
-        """
-        Returns timeseries data that should produce a high confidence score.
-        
-        What: Simulated data with upward trend, good spread, balanced volume, stability.
-        Why: Used to test that alerts trigger when the score is above threshold.
-        How: Generates 24 data points with gradually increasing prices and good volume.
-        
-        Returns:
-            list: Timeseries data dicts.
-        """
-        data = []
-        for i in range(24):
-            # Gradually increasing prices with 3% spread and decent volume
-            high_price = 100000 + (i * 500)
-            low_price = int(high_price * 0.97)  # ~3% spread
-            data.append({
-                "avgHighPrice": high_price,
-                "avgLowPrice": low_price,
-                "highPriceVolume": 300 + i * 10,
-                "lowPriceVolume": 200 + i * 5,
-                "timestamp": int(time.time()) - (24 - i) * 3600,
-            })
-        return data
-
-    def _mock_timeseries_low_score(self):
-        """
-        Returns timeseries data that should produce a low confidence score.
-        
-        What: Simulated data with downward trend, tiny spread, low volume.
-        Why: Used to test that alerts do NOT trigger when the score is below threshold.
-        How: Generates 24 data points with declining prices and minimal volume.
-        
-        Returns:
-            list: Timeseries data dicts.
-        """
-        data = []
-        for i in range(24):
-            # Declining prices with tiny spread and low volume
-            high_price = 100000 - (i * 1000)
-            low_price = high_price - 100  # Very small spread
-            data.append({
-                "avgHighPrice": high_price,
-                "avgLowPrice": low_price,
-                "highPriceVolume": 5,
-                "lowPriceVolume": 10,
-                "timestamp": int(time.time()) - (24 - i) * 3600,
-            })
-        return data
 
     def test_single_item_alert_triggers(self):
         """
@@ -530,21 +657,6 @@ class FlipConfidenceAlertScenarioTests(FlipConfidenceAlertBase):
         # command.get_item_mapping: Stubbed mapping provider for display names in tests
         self.command.get_item_mapping = lambda: self.scenario_item_mapping
 
-    def _announce_test(self, description):
-        """
-        Print a human-readable description of the scenario being tested.
-
-        What: Emits a standardized prefix + description to the test output.
-        Why: The requirement asks each test to state what it is validating.
-        How: Formats a message string and prints it immediately.
-
-        Args:
-            description: Summary of the scenario this test validates.
-        """
-        # message: Formatted log line describing the current test scenario
-        message = f"[FLIP CONFIDENCE TEST] {description}"
-        print(message)
-
     def _build_timeseries_with_score_hint(
         self,
         score_hint,
@@ -592,37 +704,6 @@ class FlipConfidenceAlertScenarioTests(FlipConfidenceAlertBase):
             timeseries.append(bucket_data)
         return timeseries
 
-    def _make_timeseries_fetcher(self, timeseries_by_item):
-        """
-        Create a fetch_timeseries_from_db replacement that returns per-item data.
-
-        What: Provides a callable that mimics Command.fetch_timeseries_from_db.
-        Why: Each scenario needs deterministic timeseries data per item ID.
-        How: Looks up the item ID in the provided dictionary and returns the data.
-
-        Args:
-            timeseries_by_item: Dict mapping item_id (str) -> timeseries list.
-
-        Returns:
-            callable: Function with the same signature as fetch_timeseries_from_db.
-        """
-        # per_item_series: Local reference to the item->timeseries mapping
-        per_item_series = timeseries_by_item
-
-        def _fetch_timeseries(item_id_str, timestep, lookback):
-            """
-            Fetch stubbed timeseries data for a given item ID.
-
-            What: Returns the test-provided timeseries list for this item.
-            Why: Ensures check_flip_confidence_alert uses the correct mock data.
-            How: Converts the item ID to string and retrieves the mapping entry.
-            """
-            # normalized_item_id: String item ID used for dictionary lookups
-            normalized_item_id = str(item_id_str)
-            return per_item_series.get(normalized_item_id, [])
-
-        return _fetch_timeseries
-
     def _compute_from_score_hint(self, timeseries_data, weights=None):
         """
         Compute a score directly from the score_hint stored in timeseries data.
@@ -641,73 +722,6 @@ class FlipConfidenceAlertScenarioTests(FlipConfidenceAlertBase):
         # score_hint_value: Extracted score_hint from the first bucket
         score_hint_value = timeseries_data[0].get('score_hint', 0.0) if timeseries_data else 0.0
         return float(score_hint_value)
-
-    def _assert_triggered_item_ids(self, triggered_items, expected_ids, scenario):
-        """
-        Assert that the triggered item list matches the expected item IDs.
-
-        What: Compares actual triggered item IDs to the expected list.
-        Why: Scenario tests need explicit validation of which items triggered.
-        How: Extracts item_id values, prints failure details if mismatched, then
-             uses assertEqual with a descriptive message.
-
-        Args:
-            triggered_items: List of triggered item dicts returned by the alert check.
-            expected_ids: List of expected item IDs (strings or ints).
-            scenario: Scenario description used for error context.
-        """
-        # actual_ids: Ordered list of item IDs returned by the alert evaluation
-        actual_ids = []
-        # item: Triggered item dictionary from the alert evaluation result set
-        for item in triggered_items:
-            # item_id_value: Item ID extracted from the triggered item dictionary
-            item_id_value = item['item_id']
-            actual_ids.append(item_id_value)
-
-        # normalized_expected_ids: Expected item IDs normalized to strings
-        normalized_expected_ids = []
-        # expected_id: Raw expected item ID (may be int or str)
-        for expected_id in expected_ids:
-            # expected_id_str: Expected item ID coerced to string form
-            expected_id_str = str(expected_id)
-            normalized_expected_ids.append(expected_id_str)
-
-        if actual_ids != normalized_expected_ids:
-            print(
-                "[TEST FAILURE] Scenario mismatch: "
-                f"{scenario}. Expected {normalized_expected_ids}, got {actual_ids}."
-            )
-
-        self.assertEqual(
-            actual_ids,
-            normalized_expected_ids,
-            f"{scenario} expected triggered IDs {normalized_expected_ids} but got {actual_ids}."
-        )
-
-    def _assert_triggered_flag(self, triggered_flag, expected_flag, scenario):
-        """
-        Assert that a single-item alert returned the expected True/False result.
-
-        What: Validates boolean trigger outcomes for single-item alerts.
-        Why: Single-item alerts return booleans instead of item lists.
-        How: Prints a failure message on mismatch and uses assertEqual.
-
-        Args:
-            triggered_flag: Boolean returned by check_flip_confidence_alert.
-            expected_flag: Boolean expectation for this scenario.
-            scenario: Scenario description used for error context.
-        """
-        if triggered_flag != expected_flag:
-            print(
-                "[TEST FAILURE] Scenario mismatch: "
-                f"{scenario}. Expected {expected_flag}, got {triggered_flag}."
-            )
-
-        self.assertEqual(
-            triggered_flag,
-            expected_flag,
-            f"{scenario} expected trigger={expected_flag} but got {triggered_flag}."
-        )
 
     def test_multi_item_crosses_above_triggers_expected_items(self):
         """
@@ -1360,3 +1374,248 @@ class FlipConfidenceAlertScenarioTests(FlipConfidenceAlertBase):
             expected_weights,
             f"{scenario_description} expected weights {expected_weights} but got {captured_weights}."
         )
+
+
+# =============================================================================
+# END-TO-END FLIP CONFIDENCE INTEGRATION SCENARIOS (REAL SCORE COMPUTATION)
+# =============================================================================
+
+class FlipConfidenceAlertIntegrationTests(FlipConfidenceAlertBase):
+    """
+    Integration-style tests that use the real compute_flip_confidence algorithm.
+
+    What: Validates that full alert evaluation triggers (or does not trigger) when
+          real numeric timeseries data is scored end-to-end.
+    Why: Ensures alert logic remains correct even when the true scoring algorithm
+         is used, not just mocked score hints.
+    How: Patches only fetch_timeseries_from_db so check_flip_confidence_alert
+         consumes deterministic data and invokes the real compute function.
+    """
+
+    def setUp(self):
+        """
+        Set up shared fixtures for end-to-end integration scenarios.
+
+        What: Extends the base setup with a Command instance and item mapping.
+        Why: Integration tests need a consistent command object and item name lookup.
+        How: Calls the base setUp then creates a Command and mapping for test items.
+        """
+        super().setUp()
+
+        # integration_item_ids: Item IDs used in multi-item integration tests
+        self.integration_item_ids = ['901', '902']
+
+        # integration_item_mapping: Mapping of integration item IDs to readable names
+        self.integration_item_mapping = {
+            '901': 'Integration High Score Item',
+            '902': 'Integration Low Score Item',
+        }
+
+        # command: Command instance that runs the flip confidence alert evaluation
+        self.command = Command()
+
+        # command.get_item_mapping: Stubbed mapping provider for item display names
+        self.command.get_item_mapping = lambda: self.integration_item_mapping
+
+    def _assert_score_relation(self, left_score, right_score, relation, scenario):
+        """
+        Assert a numeric relationship between two computed scores.
+
+        What: Validates ordering (greater/less) between computed scores.
+        Why: Integration tests rely on score separation to choose thresholds.
+        How: Prints an explicit failure message and asserts the condition.
+
+        Args:
+            left_score: Score on the left side of the comparison.
+            right_score: Score on the right side of the comparison.
+            relation: String describing the expected relation ('>' or '<').
+            scenario: Scenario description used for error context.
+        """
+        # comparison_ok: Boolean representing whether the expected relation holds
+        if relation == '>':
+            comparison_ok = left_score > right_score
+        else:
+            comparison_ok = left_score < right_score
+
+        if not comparison_ok:
+            print(
+                "[TEST FAILURE] Scenario mismatch: "
+                f"{scenario}. Expected {left_score} {relation} {right_score}."
+            )
+
+        if relation == '>':
+            self.assertGreater(
+                left_score,
+                right_score,
+                f"{scenario} expected {left_score} > {right_score} but got the opposite."
+            )
+        else:
+            self.assertLess(
+                left_score,
+                right_score,
+                f"{scenario} expected {left_score} < {right_score} but got the opposite."
+            )
+
+    def test_end_to_end_high_score_triggers(self):
+        """
+        High-quality timeseries data should trigger an alert end-to-end.
+
+        What: Confirms a strong upward trend with healthy spread/volume triggers.
+        Why: Ensures the real compute algorithm yields a score that can fire alerts.
+        How: Computes the score from real data, sets a threshold below it, and checks.
+        """
+        # scenario_description: Summary of the high-score integration scenario
+        scenario_description = "End-to-end high-score data triggers with real compute"
+        self._announce_test(scenario_description)
+
+        # high_score_series: Timeseries data expected to produce a strong score
+        high_score_series = self._mock_timeseries_high_score()
+
+        # computed_score: Real confidence score produced by compute_flip_confidence
+        computed_score = compute_flip_confidence(high_score_series)
+
+        # threshold: Alert threshold set below the computed score to ensure triggering
+        threshold = max(0.0, computed_score - 5.0)
+
+        if computed_score < threshold:
+            print(
+                "[TEST FAILURE] Scenario mismatch: "
+                f"{scenario_description}. Computed score {computed_score} below threshold {threshold}."
+            )
+
+        self.assertGreaterEqual(
+            computed_score,
+            threshold,
+            f"{scenario_description} expected computed score {computed_score} >= threshold {threshold}."
+        )
+
+        # alert: Single-item alert configured to use the computed threshold
+        alert = self._create_alert(confidence_threshold=threshold)
+
+        # all_prices: Current prices used by the alert checker
+        all_prices = {str(self.item_id): {'high': 112000, 'low': 97000}}
+
+        with patch.object(
+            self.command,
+            'fetch_timeseries_from_db',
+            return_value=high_score_series
+        ):
+            # result: Boolean indicating whether the alert triggered
+            result = self.command.check_flip_confidence_alert(alert, all_prices)
+
+        # expected_trigger_flag: High scores should trigger the alert
+        expected_trigger_flag = True
+        self._assert_triggered_flag(result, expected_trigger_flag, scenario_description)
+
+    def test_end_to_end_low_score_does_not_trigger(self):
+        """
+        Low-quality timeseries data should not trigger an alert end-to-end.
+
+        What: Confirms poor trend/spread/volume yields a low score that does not trigger.
+        Why: Prevents false positives when market conditions are weak.
+        How: Computes the score from real data, sets a threshold above it, and checks.
+        """
+        # scenario_description: Summary of the low-score integration scenario
+        scenario_description = "End-to-end low-score data does not trigger with real compute"
+        self._announce_test(scenario_description)
+
+        # low_score_series: Timeseries data expected to produce a weak score
+        low_score_series = self._mock_timeseries_low_score()
+
+        # computed_score: Real confidence score produced by compute_flip_confidence
+        computed_score = compute_flip_confidence(low_score_series)
+
+        # threshold: Alert threshold set above the computed score to block triggers
+        threshold = min(100.0, computed_score + 5.0)
+
+        if computed_score >= threshold:
+            print(
+                "[TEST FAILURE] Scenario mismatch: "
+                f"{scenario_description}. Computed score {computed_score} not below threshold {threshold}."
+            )
+
+        self.assertLess(
+            computed_score,
+            threshold,
+            f"{scenario_description} expected computed score {computed_score} < threshold {threshold}."
+        )
+
+        # alert: Single-item alert configured with the higher threshold
+        alert = self._create_alert(confidence_threshold=threshold)
+
+        # all_prices: Current prices used by the alert checker
+        all_prices = {str(self.item_id): {'high': 100000, 'low': 99900}}
+
+        with patch.object(
+            self.command,
+            'fetch_timeseries_from_db',
+            return_value=low_score_series
+        ):
+            # result: Boolean indicating whether the alert triggered
+            result = self.command.check_flip_confidence_alert(alert, all_prices)
+
+        # expected_trigger_flag: Low scores should not trigger the alert
+        expected_trigger_flag = False
+        self._assert_triggered_flag(result, expected_trigger_flag, scenario_description)
+
+    def test_end_to_end_multi_item_filters_by_real_scores(self):
+        """
+        Multi-item alerts should filter items based on real computed scores.
+
+        What: Ensures high-score items trigger while low-score items are filtered out.
+        Why: Validates multi-item selection logic using true score computation.
+        How: Compute scores for two items, set a mid-threshold, and assert triggers.
+        """
+        # scenario_description: Summary of the multi-item integration scenario
+        scenario_description = "End-to-end multi-item filtering using real scores"
+        self._announce_test(scenario_description)
+
+        # high_score_series: Timeseries expected to produce a strong score
+        high_score_series = self._mock_timeseries_high_score()
+        # low_score_series: Timeseries expected to produce a weak score
+        low_score_series = self._mock_timeseries_low_score()
+
+        # high_score: Computed score for the high-quality series
+        high_score = compute_flip_confidence(high_score_series)
+        # low_score: Computed score for the low-quality series
+        low_score = compute_flip_confidence(low_score_series)
+
+        self._assert_score_relation(high_score, low_score, '>', scenario_description)
+
+        # threshold: Midpoint threshold that should include only the high-score item
+        threshold = (high_score + low_score) / 2
+
+        # alert: Multi-item alert configured with both items and midpoint threshold
+        alert = self._create_alert(
+            item_ids=json.dumps(self.integration_item_ids),
+            item_id=None,
+            is_all_items=False,
+            confidence_threshold=threshold,
+        )
+
+        # all_prices: Current prices used by the alert checker for each item
+        all_prices = {
+            '901': {'high': 112000, 'low': 97000},
+            '902': {'high': 100000, 'low': 99900},
+        }
+
+        # timeseries_by_item: Mapping of item IDs to real timeseries data
+        timeseries_by_item = {
+            '901': high_score_series,
+            '902': low_score_series,
+        }
+
+        # fetch_timeseries: Stubbed fetcher for per-item timeseries data
+        fetch_timeseries = self._make_timeseries_fetcher(timeseries_by_item)
+
+        with patch.object(
+            self.command,
+            'fetch_timeseries_from_db',
+            side_effect=fetch_timeseries
+        ):
+            # result: Triggered items list returned by the alert checker
+            result = self.command.check_flip_confidence_alert(alert, all_prices)
+
+        # expected_triggered_ids: Only the high-score item should trigger
+        expected_triggered_ids = ['901']
+        self._assert_triggered_item_ids(result, expected_triggered_ids, scenario_description)
