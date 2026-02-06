@@ -166,7 +166,7 @@ class SpikeTestMixin:
         Returns:
             HourlyItemVolume: The created database record
         """
-        # volume_timestamp: Recent timestamp inside the 2h10m freshness window.
+        # volume_timestamp: Recent timestamp inside the 130-minute (2h10m) freshness window.
         # What: Represents the "current" hour snapshot time for the volume record.
         # Why: The alert checker now rejects stale volume snapshots, so tests must
         #      ensure timestamps are fresh enough to pass the recency filter.
