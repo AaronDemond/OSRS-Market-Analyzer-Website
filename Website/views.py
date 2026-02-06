@@ -2174,11 +2174,12 @@ def create_alert(request):
         # Assign to group if specified
         if group_id:
             from Website.models import AlertGroup
-            try:
-                group = AlertGroup.objects.get(user=user, name=group_id)
-                alert.groups.add(group)
-            except AlertGroup.DoesNotExist:
-                pass  # Group doesn't exist, skip assignment
+            # Use get_or_create to create the group if it doesn't exist
+            # What: Creates the group if it's new, or retrieves it if it already exists
+            # Why: User may have typed a new group name in the modal - need to create it
+            # How: get_or_create returns (object, created_bool), we only need the object
+            group, created = AlertGroup.objects.get_or_create(user=user, name=group_id)
+            alert.groups.add(group)
         
         messages.success(request, 'Alert created')
         return redirect('alerts')
@@ -2601,6 +2602,19 @@ def alerts_api_minimal(request):
             'triggered_data': alert.triggered_data if alert.is_all_items else None,
         }
         triggered_data.append(triggered_dict)
+    
+    # =============================================================================
+    # INCLUDE ALL USER GROUPS (EVEN EMPTY ONES)
+    # =============================================================================
+    # What: Fetch all AlertGroup records for this user, not just those with alerts
+    # Why: Users may have created groups that don't have any alerts yet
+    #      The dropdown should show ALL available groups for assignment
+    # How: Query AlertGroup directly and merge with groups found from alerts
+    if user:
+        from Website.models import AlertGroup
+        all_user_groups = AlertGroup.objects.filter(user=user).values_list('name', flat=True)
+        for group_name in all_user_groups:
+            all_groups_set.add(group_name)
     
     all_groups = sorted(all_groups_set)
     return JsonResponse({'alerts': alerts_data, 'triggered': triggered_data, 'groups': all_groups})
@@ -3501,8 +3515,6 @@ def update_single_alert(request, alert_id):
     # How: Parse comma-separated string, convert to JSON array, store in appropriate field
     #      NOTE: Sustained alerts use sustained_item_ids field, all others use item_ids field
     item_ids_str = data.get('item_ids')
-    print("DEBUG")
-    print(item_ids_str)
     
     # is_sustained: Flag to determine which field to use for storing item IDs
     # What: Sustained alerts historically use a different field (sustained_item_ids)
@@ -3511,13 +3523,14 @@ def update_single_alert(request, alert_id):
     is_sustained = alert.type == 'sustained'
     
     if item_ids_str is not None:
-        if item_ids_str == '':
-            # All items were removed - delete the alert entirely
+        if item_ids_str == '' and not is_all_items:
+            # All items were removed AND not in "all items" mode - delete the alert
             # What: Deletes the alert when all tracked items have been removed
             # Why: An alert with no items to track has no purpose and would cause errors
             # How: Delete the alert and return a JSON response with redirect info
             #      The JavaScript handler will see the 'deleted' flag and redirect the user
             # Note: We return JSON (not a Django redirect) because this is an AJAX endpoint
+            # IMPORTANT: Only delete if NOT in "all items" mode - empty item_ids is valid for all-items alerts
             alert.delete()
             return JsonResponse({
                 'success': True,
