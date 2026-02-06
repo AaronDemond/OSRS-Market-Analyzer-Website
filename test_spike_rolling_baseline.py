@@ -267,18 +267,18 @@ class SingleItemRollingBaselineTests(RollingBaselineMixin, TestCase):
         Why: This is the first check after warmup — the baseline should be the
              price recorded [timeframe] ago.
         How:
-            1. Seed price_history with a data point from exactly 5 minutes + 30s ago
-               (passes warmup and survives cutoff pruning)
+            1. Seed price_history with a data point from exactly 5 minutes + 1s ago
+               (passes warmup and survives cutoff pruning with the 2-second buffer)
             2. Provide current prices showing a 20% spike
             3. Assert check_alert returns True and triggered_data has correct baseline
         """
         cmd = self._make_command()
         base_time = 1_000_000.0
 
-        # baseline_price: The price recorded at [timeframe + 30s] seconds ago
-        # Positioned 30s past warmup_threshold but within cutoff buffer
+        # baseline_price: The price recorded at [timeframe + 1s] seconds ago
+        # Positioned 1s past warmup_threshold but within the 2-second cutoff buffer
         baseline_price = 1000
-        baseline_ts = base_time - (self.TIME_FRAME_MINUTES * 60) - 30
+        baseline_ts = base_time - (self.TIME_FRAME_MINUTES * 60) - 1
 
         self._seed_history_at(cmd, '100', 'high', baseline_price, baseline_ts)
 
@@ -401,6 +401,8 @@ class SingleItemRollingBaselineTests(RollingBaselineMixin, TestCase):
              on a subsequent check. This test catches that scenario.
         How: Simulate 4 consecutive post-warmup checks and verify each has a
              different baseline that matches the price from [timeframe] ago.
+             Each check uses a price that is always 50% above the current
+             baseline to ensure triggering even after the baseline rolls up.
         """
         cmd = self._make_command()
         base_time = 1_000_000.0
@@ -413,27 +415,33 @@ class SingleItemRollingBaselineTests(RollingBaselineMixin, TestCase):
             ts = base_time + (i * check_interval)
             self._seed_history_at(cmd, '100', 'high', price, ts)
 
-        # expected_baselines: Maps check index → expected baseline price
-        # At check N, the baseline should be the price from check (N-1) because
-        # only the most recent entry within the window survives pruning when
-        # check_interval == timeframe.
-        #
-        # However, with the 60-second buffer in cutoff, the entry from (N-1)
-        # might survive one extra cycle. Let's trace precisely:
+        # With the 2-second buffer in cutoff:
         #
         # Check 9 (now = base_time + 2700):
-        #   cutoff = 2700 - 300 - 60 = 2340 → base_time + 2340
-        #   Entries surviving: P8(2400), current(2700) — P7(2100) < 2340 → pruned
+        #   cutoff = 2700 - 300 - 2 = 2398 → base_time + 2398
+        #   Entries surviving: P8(2400) survives (>= 2398), everything before pruned
         #   warmup: P8(2400) <= 2700-300=2400 → passes
         #   Baseline = P8 = 1800
+        #
+        # Check 10 (now = base_time + 3000):
+        #   cutoff = 3000 - 302 = 2698
+        #   P8(2400) < 2698 → pruned; P9(2700) >= 2698 → survives
+        #   Baseline = P9 (whatever price was recorded at check 9)
+        #
+        # Each check, the baseline shifts to the price from the previous check.
 
         # We'll run checks 9, 10, 11, 12 and verify baselines roll
         baselines_found = []
 
         for check_num in range(9, 13):
             now = base_time + (check_num * check_interval)
-            # current_high: Always high enough to trigger (massive spike)
-            current_high = 5000 + (check_num * 100)
+
+            # Compute what the baseline will be so we can set a price 50% above it
+            # On check 9: baseline = P8 = 1800
+            # On check 10+: baseline = previous check's recorded price
+            # Use exponential pricing so each check is always >10% above baseline:
+            # 1800 * (1.5 ^ (check_num - 8)) guarantees a 50% spike each cycle
+            current_high = int(1800 * (1.5 ** (check_num - 8)))
             all_prices = {'100': {'high': current_high, 'low': current_high - 100}}
 
             # Reset alert state for next check
@@ -536,8 +544,8 @@ class SingleItemRollingBaselineTests(RollingBaselineMixin, TestCase):
         base_time = 1_000_000.0
         check_interval = self.TIME_FRAME_MINUTES * 60
 
-        # Seed P0 at [timeframe + 30s] ago with price 1000
-        p0_ts = base_time - (self.TIME_FRAME_MINUTES * 60) - 30
+        # Seed P0 at [timeframe + 1s] ago with price 1000
+        p0_ts = base_time - (self.TIME_FRAME_MINUTES * 60) - 1
         self._seed_history_at(cmd, '100', 'high', 1000, p0_ts)
 
         # Check 0: Current = 1100 (10% above P0=1000 → triggers at exactly threshold)
