@@ -3292,9 +3292,14 @@
     </thead>
     <tbody id="flipsTableBody">
         <!-- Skeleton loading rows - shown while data loads -->
+        <!--
+            What: Left-aligns the initial "Loading flip data..." placeholder row and its spinner.
+            Why: Empty-state rows should visually align with table data so the placeholder text reads like a normal row.
+            How: Apply Bootstrap's text-start class and set the flex container to justify-content: flex-start.
+        -->
         <tr class="skeleton-row">
-            <td colspan="8" class="text-center" style="padding: 20px; color: var(--muted);">
-                <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+            <td colspan="8" class="text-start" style="padding: 20px; color: var(--muted);">
+                <div style="display: flex; align-items: center; justify-content: flex-start; gap: 10px;">
                     <div class="spinner-border spinner-border-sm" role="status" style="color: var(--primary);"></div>
                     <span>Loading flip data...</span>
                 </div>
@@ -3375,7 +3380,10 @@
             const tbody = document.getElementById('flipsTableBody');
 
             if (items.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="text-center">No flips recorded yet.</td></tr>';
+                // What: Render a left-aligned empty-state row when the user has no flips.
+                // Why: The table should keep consistent left alignment even when no data exists, matching the UI expectation.
+                // How: Inject a single-row tbody with Bootstrap's text-start class so the message anchors to the left.
+                tbody.innerHTML = '<tr><td colspan="8" class="text-start">No flips recorded yet.</td></tr>';
                 return;
             }
 
@@ -3473,8 +3481,11 @@
                 })
                 .catch(error => {
                     console.error('Error loading flips data:', error);
+                    // What: Show a left-aligned error row when live flip data fails to load.
+                    // Why: Error messaging should align with normal table text so users can scan it like other rows.
+                    // How: Inject a single table row using text-start so the error message anchors to the left.
                     document.getElementById('flipsTableBody').innerHTML =
-                        '<tr><td colspan="8" class="text-center text-danger">Error loading data. Please refresh the page.</td></tr>';
+                        '<tr><td colspan="8" class="text-start text-danger">Error loading data. Please refresh the page.</td></tr>';
                 });
         }
 
@@ -5378,10 +5389,13 @@
 
             // Show loading state
             const tableBody = document.getElementById('flipsTableBody');
+            // What: Display a left-aligned historical loading placeholder while historical data is fetched.
+            // Why: Historical mode has no rows initially, so the placeholder should align with standard table text.
+            // How: Use text-start on the cell and justify-content: flex-start to keep the spinner/text on the left.
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="8" class="text-center" style="padding: 20px; color: var(--muted);">
-                        <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+                    <td colspan="8" class="text-start" style="padding: 20px; color: var(--muted);">
+                        <div style="display: flex; align-items: center; justify-content: flex-start; gap: 10px;">
                             <div class="spinner-border spinner-border-sm" role="status" style="color: var(--info);"></div>
                             <span>Loading historical data for ${formatDateForDisplay(dateStr)}...</span>
                         </div>
@@ -5416,9 +5430,12 @@
 
             } catch (error) {
                 console.error('Error fetching historical data:', error);
+                // What: Render a left-aligned error row if historical data fails to load.
+                // Why: Error text should follow the same alignment rules as other empty-state rows for consistency.
+                // How: Inject a single row with text-start so the message anchors to the table's left edge.
                 tableBody.innerHTML = `
                     <tr>
-                        <td colspan="8" class="text-center text-danger" style="padding: 20px;">
+                        <td colspan="8" class="text-start text-danger" style="padding: 20px;">
                             Error loading historical data: ${error.message}. Please try again.
                         </td>
                     </tr>
