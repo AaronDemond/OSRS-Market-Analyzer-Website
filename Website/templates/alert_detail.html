@@ -2144,7 +2144,7 @@
                     {% endif %}
                     {% if alert.min_volume %}
                     <div class="detail-item">
-                        <span class="detail-label">Min Volume</span>
+                        <span class="detail-label">Min Hourly Volume (GP)</span>
                         <span class="detail-value">{{ alert.min_volume|intcomma }}</span>
                     </div>
                     {% endif %}
@@ -2413,11 +2413,11 @@
                         <small class="form-hint">Spread % threshold for pressure</small>
                     </div>
                     
-                    <!-- Min Volume (sustained) -->
+                    <!-- Min Hourly Volume (sustained) -->
                     <div class="form-group" id="min-volume-group" style="display: none;">
-                        <label for="edit-min-volume">Min Volume</label>
-                        <input type="number" id="edit-min-volume" value="{{ alert.min_volume|default:'' }}" min="0" step="1" placeholder="e.g. 10000">
-                        <small class="form-hint">Min trading volume</small>
+                        <label for="edit-min-volume">Min Hourly Volume (GP)</label>
+                        <input type="number" id="edit-min-volume" value="{{ alert.min_volume|default:'' }}" min="0" step="1" placeholder="e.g. 75000000">
+                        <small class="form-hint">Minimum hourly trading volume in GP</small>
                     </div>
                     
                     <!-- Minimum Price (all items only) -->
@@ -2773,7 +2773,7 @@
                         </div>
                         {% if triggered_info.sustained_volume %}
                         <div class="triggered-info-item">
-                            <span class="detail-label">Volume</span>
+                            <span class="detail-label">Hourly Volume (GP)</span>
                             <span class="detail-value">{{ triggered_info.sustained_volume|intcomma }}</span>
                         </div>
                         {% endif %}

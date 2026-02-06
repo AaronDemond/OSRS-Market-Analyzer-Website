@@ -558,9 +558,9 @@
                 <small class="form-hint">Min % change to count as move</small>
             </div>
             <div class="form-group" id="min-volume-group" style="display: none;">
-                <label for="min-volume">Min Volume</label>
-                <input type="number" name="min_volume" id="min-volume" min="0" step="1" placeholder="e.g. 10000" tabindex="15">
-                <small class="form-hint">Min trading volume</small>
+                <label for="min-volume">Min Hourly Volume (GP)</label>
+                <input type="number" name="min_volume" id="min-volume" min="0" step="1" placeholder="e.g. 75000000" tabindex="15">
+                <small class="form-hint">Minimum hourly trading volume in GP</small>
             </div>
             <div class="form-group" id="volatility-buffer-group" style="display: none;">
                 <label for="volatility-buffer-size">Volatility Buffer (N)</label>
@@ -1585,7 +1585,7 @@
                                         <li><em>Down</em> - Only alert when price is trending downward consistently.</li>
                                     </ul>
                                 </li>
-                                <li><strong>Min Volume:</strong> Only consider items with at least this many trades. Filters out low-activity items where price movements may be unreliable.</li>
+                                <li><strong>Min Hourly Volume (GP):</strong> Only consider items with at least this much GP traded per hour. Calculated as (units bought + units sold) × average item price. Filters out low-activity items where price movements may be unreliable. Example: 75,000,000 means 75M GP worth of trades per hour.</li>
                                 <li><strong>Volatility Buffer (N):</strong> The rolling buffer size used to calculate average volatility. A larger buffer (e.g., 20) means smoother volatility estimates over more data points.</li>
                                 <li><strong>Volatility Multiplier (K):</strong> The total sustained move must exceed K × average volatility to trigger. Higher values (e.g., 1.5-2.0) filter out normal market noise by requiring the trend to be significantly larger than typical price swings.</li>
                                 <li><strong>Market Pressure:</strong> Optional filter based on buy/sell pressure:
@@ -1655,8 +1655,8 @@
                                 <div class="value">Both (catch all trends)</div>
                             </div>
                             <div class="recommended-value">
-                                <div class="label">Min Volume</div>
-                                <div class="value">100+ (filters low-trade items)</div>
+                                <div class="label">Min Hourly Volume (GP)</div>
+                                <div class="value">75,000,000+ (filters low-activity items)</div>
                             </div>
                         </div>
                     </div>
