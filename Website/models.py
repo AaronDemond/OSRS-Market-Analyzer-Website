@@ -1170,47 +1170,38 @@ class FiveMinTimeSeries(models.Model):
 
 
 class OneHourTimeSeries(models.Model):
-    """
-    Stores hourly trading volume snapshots for OSRS items, measured in GP (gold pieces).
-
-    What: A single hourly volume snapshot for one item at a specific point in time.
-    Why: Sustained move alerts need volume data to filter out low-activity items. Previously,
-         volume was fetched via individual API calls to the RuneScape Wiki timeseries endpoint
-         during each alert check cycle. For "all items" alerts, this meant hundreds of HTTP
-         requests per cycle. This model pre-fetches and caches volume data in the database,
-         replacing those API calls with fast DB queries.
-    How: Populated by scripts/update_volumes.py every 1 hour 5 minutes. Each fetch cycle
-         creates a NEW row per item (historical data accumulates over time). The alert checker
-         queries the most recent row for each item to get its current hourly volume.
-
-    Volume Calculation:
-        volume_gp = (highPriceVolume + lowPriceVolume) × ((avgHighPrice + avgLowPrice) / 2)
-        This represents the total GP value of items traded in the most recent hour.
-        Example: 5,000 units traded × 500,000 GP average price = 2,500,000,000 GP volume.
-
-    Data Source:
-        - RuneScape Wiki API: /timeseries?timestep=1h&id={item_id}
-        - Uses the most recent 1h interval from the timeseries response
-
-    Usage:
-        - check_alerts.py queries: HourlyItemVolume.objects.filter(item_id=X).first()
-          (ordered by -timestamp via Meta.ordering, so .first() = most recent)
-        - Historical data can be used for volume trend analysis in the future
-    """
-
-    # item_id: The OSRS item ID from the Wiki API (e.g., 4151 for Abyssal whip)
-    # Indexed for fast lookups when the alert checker queries by item
     item_id = models.IntegerField(db_index=True)
-
-    # item_name: Human-readable item name, denormalized from item mapping
-    # Why denormalized: Avoids needing a join/lookup when displaying volume data
     item_name = models.CharField(max_length=255)
-    
     avg_high_price = models.IntegerField(null=True, blank=True)
     avg_low_price = models.IntegerField(null=True, blank=True)
     high_price_volume = models.IntegerField(default=0)
     low_price_volume = models.IntegerField(default=0)
+    timestamp = models.CharField(max_length=255)
 
+    class Meta:
+        # Default ordering: most recent first, so .first() always returns the latest snapshot
+        ordering = ['-timestamp']
+
+class SixHourTimeSeries(models.Model):
+    item_id = models.IntegerField(db_index=True)
+    item_name = models.CharField(max_length=255)
+    avg_high_price = models.IntegerField(null=True, blank=True)
+    avg_low_price = models.IntegerField(null=True, blank=True)
+    high_price_volume = models.IntegerField(default=0)
+    low_price_volume = models.IntegerField(default=0)
+    timestamp = models.CharField(max_length=255)
+
+    class Meta:
+        # Default ordering: most recent first, so .first() always returns the latest snapshot
+        ordering = ['-timestamp']
+
+class TwentyFourHourTimeSeries(models.Model):
+    item_id = models.IntegerField(db_index=True)
+    item_name = models.CharField(max_length=255)
+    avg_high_price = models.IntegerField(null=True, blank=True)
+    avg_low_price = models.IntegerField(null=True, blank=True)
+    high_price_volume = models.IntegerField(default=0)
+    low_price_volume = models.IntegerField(default=0)
     timestamp = models.CharField(max_length=255)
 
     class Meta:
