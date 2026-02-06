@@ -9,10 +9,12 @@ How: Uses Django TestCase, creates HourlyItemVolume snapshots, and calls the
 """
 
 import json
+from datetime import timedelta
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.test import TestCase
+from django.utils import timezone
 
 from Website.management.commands.check_alerts import Command
 from Website.models import Alert, HourlyItemVolume
@@ -103,6 +105,52 @@ class ThresholdMinVolumeTests(TestCase):
             }
         }
 
+    def _fresh_volume_timestamp(self):
+        """
+        Build a fresh timestamp string that passes the 2h10m recency window.
+
+        What: Provides a recent timestamp for HourlyItemVolume rows in tests.
+        Why: The volume recency filter should allow alerts when data is current.
+        How: Use timezone.now() minus 5 minutes, then serialize to ISO-8601.
+
+        Returns:
+            str: ISO-8601 timestamp string within the recency window.
+        """
+        # fresh_timestamp: Recent datetime within the allowed freshness window.
+        # What: Represents a "current" volume snapshot time for testing.
+        # Why: Ensures min_volume checks pass when volume data is recent.
+        # How: Subtract a small buffer from now to avoid boundary flakiness.
+        fresh_timestamp = timezone.now() - timedelta(minutes=5)
+        # fresh_timestamp_iso: ISO-8601 string to exercise parse_datetime behavior.
+        # What: Matches the string format used in previous tests.
+        # Why: Ensures ISO parsing is still supported by the new recency logic.
+        # How: Use datetime.isoformat() to produce a standard ISO string.
+        fresh_timestamp_iso = fresh_timestamp.isoformat()
+        return fresh_timestamp_iso
+
+    def _stale_volume_timestamp(self):
+        """
+        Build a stale timestamp string that fails the 2h10m recency window.
+
+        What: Provides an intentionally old timestamp for HourlyItemVolume rows.
+        Why: Validates that stale volume snapshots do NOT pass min_volume checks.
+        How: Use timezone.now() minus 131 minutes, then serialize to ISO-8601.
+
+        Returns:
+            str: ISO-8601 timestamp string outside the recency window.
+        """
+        # stale_timestamp: Datetime intentionally older than the recency cutoff.
+        # What: Represents a stale volume snapshot time for negative testing.
+        # Why: Ensures the recency filter rejects old volume data.
+        # How: Subtract 131 minutes to exceed the 130-minute cutoff safely.
+        stale_timestamp = timezone.now() - timedelta(minutes=131)
+        # stale_timestamp_iso: ISO-8601 string for the stale timestamp.
+        # What: Serialized timestamp used for HourlyItemVolume creation.
+        # Why: Keeps timestamp format consistent with other tests.
+        # How: Use datetime.isoformat() to produce a standard ISO string.
+        stale_timestamp_iso = stale_timestamp.isoformat()
+        return stale_timestamp_iso
+
     def test_threshold_min_volume_blocks_trigger(self):
         """
         Ensure threshold alerts do not trigger when volume is below min_volume.
@@ -121,7 +169,7 @@ class ThresholdMinVolumeTests(TestCase):
             item_id=self.item_id,
             item_name='Test Item',
             volume=below_volume,
-            timestamp='2026-02-06T00:00:00Z'
+            timestamp=self._fresh_volume_timestamp()
         )
 
         # all_prices: Price data that would otherwise trigger the threshold alert
@@ -159,7 +207,7 @@ class ThresholdMinVolumeTests(TestCase):
             item_id=self.item_id,
             item_name='Test Item',
             volume=above_volume,
-            timestamp='2026-02-06T00:00:00Z'
+            timestamp=self._fresh_volume_timestamp()
         )
 
         # all_prices: Price data that triggers the threshold alert
@@ -178,3 +226,41 @@ class ThresholdMinVolumeTests(TestCase):
             triggered = command.check_threshold_alert(self.threshold_alert, all_prices)
 
         self.assertTrue(triggered)
+
+    def test_threshold_min_volume_stale_volume_blocks_trigger(self):
+        """
+        Ensure threshold alerts do not trigger when volume data is stale.
+
+        What: Validates that stale HourlyItemVolume timestamps fail the recency gate.
+        Why: The min_volume filter must only pass when volume data is current.
+        How: Create a high-volume record with a stale timestamp and assert False.
+        """
+        # stale_volume: Hourly volume value above min_volume but intentionally stale.
+        # What: Represents a volume snapshot that should be rejected due to age.
+        # Why: Confirms the recency filter is enforced even when volume is high.
+        # How: Use a value above min_volume with a stale timestamp.
+        stale_volume = 5000
+
+        HourlyItemVolume.objects.create(
+            item_id=self.item_id,
+            item_name='Test Item',
+            volume=stale_volume,
+            timestamp=self._stale_volume_timestamp()
+        )
+
+        # all_prices: Price data that would otherwise trigger the threshold alert.
+        # What: Baseline 100, current average 120 => 20% increase > 5% threshold.
+        # Why: Ensures the price condition is satisfied so staleness is the deciding factor.
+        # How: Provide matching high/low values to yield average 120.
+        all_prices = self._build_prices(high_price=120, low_price=120)
+
+        # command: Command instance containing threshold evaluation logic.
+        # What: Provides access to check_threshold_alert for the stale-volume scenario.
+        # Why: We validate the real alert logic without running the full loop.
+        # How: Instantiate the management command class directly.
+        command = Command()
+
+        with patch.object(Command, 'get_item_mapping', return_value={str(self.item_id): 'Test Item'}):
+            triggered = command.check_threshold_alert(self.threshold_alert, all_prices)
+
+        self.assertFalse(triggered)
