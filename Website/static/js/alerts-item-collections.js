@@ -980,11 +980,12 @@ const ItemCollectionManager = {
     /**
      * Shows a notification in the create view.
      * 
-     * What: Displays success/error feedback for item add/remove
-     * Why: Immediate visual feedback without disruptive popups
-     * How: Updates notification span with text and class
+     * What: Displays a compact success/error label for item add/remove
+     * Why: Long item names can overflow adjacent form labels, so the label must stay short
+     * How: Ignores the detailed message for display and renders a fixed "success" or "error" label
+     *      while keeping the existing color classes and auto-hide timing intact
      * 
-     * @param {string} message - The notification message
+     * @param {string} message - Original message (retained for compatibility, not displayed)
      * @param {string} type - 'success' or 'error'
      */
     showCreateNotification(message, type) {
@@ -996,9 +997,19 @@ const ItemCollectionManager = {
             clearTimeout(this.notificationTimeout);
         }
         
-        // Set message and styling
-        notification.textContent = message;
-        notification.className = 'item-notification ' + type + ' show';
+        // Determine the compact label we will actually display in the UI
+        // What: Normalize the message to a fixed "success" or "error" label
+        // Why: Prevents long item names from spilling into adjacent form labels
+        // How: Treat any non-error type as "success" and preserve "error" for failures
+        // normalizedType: The final label used for both the text and CSS class
+        const normalizedType = type === 'error' ? 'error' : 'success';
+
+        // Set the compact label and styling
+        // What: Apply the normalized label and matching class to the notification
+        // Why: Keeps the UI short while preserving the existing color coding
+        // How: Use normalizedType for both textContent and className
+        notification.textContent = normalizedType;
+        notification.className = 'item-notification ' + normalizedType + ' show';
         
         // Auto-hide after delay
         this.notificationTimeout = setTimeout(() => {
@@ -1155,17 +1166,25 @@ const ItemCollectionManager = {
         }
         
         // CRITICAL: Update the selector's internal selectedItems array
-        // This ensures remove functionality works correctly after applying
-        // The selector's removeItem function uses this.selectedItems internally
+        // What: Synchronizes the selector's in-memory item list with the collection result
+        // Why: The selector's removeItem logic relies on selectedItems, and we need the
+        //      correct item count to drive threshold type locking/unlocking behavior
+        // How: Replace the selector's selectedItems array with the merged/replaced finalItems
+        // selector: The multi-item selector instance for the current alert type
         if (selector) {
             selector.selectedItems = [...finalItems];
         }
         
         // Update hidden input with final item IDs
+        // What: Stores the final item ID list for form submission
+        // Why: The backend expects a comma-separated list of IDs for the alert items
+        // How: Join the finalItems array IDs into a single comma-delimited string
+        // hiddenInput: The hidden field tied to the alert form for item IDs
         hiddenInput.value = finalItems.map(item => item.id).join(',');
         
         // Use the selector's renderSelectedItems method if available
         // This ensures the DOM is rendered consistently with how the selector does it
+        // selector: The selector instance that knows how to render its own item list UI
         if (selector && typeof selector.renderSelectedItems === 'function') {
             selector.renderSelectedItems();
         } else if (selectedList) {
@@ -1183,13 +1202,27 @@ const ItemCollectionManager = {
                 ).join('');
             }
         }
+
+        // =============================================================================
+        // THRESHOLD TYPE LOCK STATE SYNC (COLLECTION APPLY)
+        // =============================================================================
+        // What: Re-evaluate threshold type locking after applying a collection
+        // Why: Applying a collection can change the item count without using the normal
+        //      add/remove handlers, so we must re-run the lock/unlock logic to ensure
+        //      percentage-only mode is enforced for multiple items and unlocked for 0/1
+        // How: If the current alert type is threshold, call the existing FormManager
+        //      updateThresholdTypeState helper, which uses the selector item count
+        //      to enable/disable the dropdown and show/hide the 🚫 indicator + tooltip
+        if (this.currentAlertType === 'threshold' && typeof FormManager !== 'undefined') {
+            FormManager.updateThresholdTypeState();
+        }
         
         // Show success notification
+        // What: Display a compact success label after applying a collection
+        // Why: Prevents long messages from overflowing the form label area
+        // How: Use a fixed "success" label while keeping existing styling/timing
         if (notification) {
-            const count = newItems.length;
-            notification.textContent = mode === 'replace' 
-                ? `${count} item${count !== 1 ? 's' : ''} applied` 
-                : `${count} item${count !== 1 ? 's' : ''} merged`;
+            notification.textContent = 'success';
             notification.className = 'item-notification success show';
             setTimeout(() => notification.classList.remove('show'), 2000);
         }

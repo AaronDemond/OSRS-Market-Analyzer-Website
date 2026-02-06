@@ -329,11 +329,12 @@
         /**
          * Shows a small notification next to the "Items" label.
          * 
-         * What: Displays success/error feedback for item add/remove operations
-         * Why: Provides immediate visual feedback without disruptive popups
-         * How: Updates the notification span with text and appropriate class, auto-hides after delay
+         * What: Displays a compact success/error label for item add/remove operations
+         * Why: Long item names can overflow adjacent form labels, so the label must stay short
+         * How: Ignores the detailed message for display and renders a fixed "success" or "error" label
+         *      while keeping the existing color classes and auto-hide timing intact
          * 
-         * @param {string} message - The notification message to display
+         * @param {string} message - Original message (retained for compatibility, not displayed)
          * @param {string} type - 'success' for green (item added/removed) or 'error' for red (duplicate)
          */
         showNotification(message, type) {
@@ -345,9 +346,19 @@
                 clearTimeout(this.notificationTimeout);
             }
 
-            // Set the message and styling
-            notification.textContent = message;
-            notification.className = 'item-notification ' + type + ' show';
+            // Determine the compact label we will actually display in the UI
+            // What: Normalize the message to a fixed "success" or "error" label
+            // Why: Prevents long item names from spilling into adjacent form labels
+            // How: Treat any non-error type as "success" and preserve "error" for failures
+            // normalizedType: The final label used for both the text and CSS class
+            const normalizedType = type === 'error' ? 'error' : 'success';
+
+            // Set the compact label and styling
+            // What: Apply the normalized label and matching class to the notification
+            // Why: Keeps the UI short while preserving the existing color coding
+            // How: Use normalizedType for both textContent and className
+            notification.textContent = normalizedType;
+            notification.className = 'item-notification ' + normalizedType + ' show';
 
             // Auto-hide after 2.5 seconds
             this.notificationTimeout = setTimeout(() => {
@@ -718,11 +729,12 @@
         /**
          * Shows a small notification next to the "Items" label.
          * 
-         * What: Displays success/error feedback for item add/remove operations
-         * Why: Provides immediate visual feedback without disruptive popups
-         * How: Updates the notification span with text and appropriate class, auto-hides after delay
+         * What: Displays a compact success/error label for item add/remove operations
+         * Why: Long item names can overflow adjacent form labels, so the label must stay short
+         * How: Ignores the detailed message for display and renders a fixed "success" or "error" label
+         *      while keeping the existing color classes and auto-hide timing intact
          * 
-         * @param {string} message - The notification message to display
+         * @param {string} message - Original message (retained for compatibility, not displayed)
          * @param {string} type - 'success' for green (item added/removed) or 'error' for red (duplicate)
          */
         showNotification(message, type) {
@@ -734,9 +746,19 @@
                 clearTimeout(this.notificationTimeout);
             }
 
-            // Set the message and styling
-            notification.textContent = message;
-            notification.className = 'item-notification ' + type + ' show';
+            // Determine the compact label we will actually display in the UI
+            // What: Normalize the message to a fixed "success" or "error" label
+            // Why: Prevents long item names from spilling into adjacent form labels
+            // How: Treat any non-error type as "success" and preserve "error" for failures
+            // normalizedType: The final label used for both the text and CSS class
+            const normalizedType = type === 'error' ? 'error' : 'success';
+
+            // Set the compact label and styling
+            // What: Apply the normalized label and matching class to the notification
+            // Why: Keeps the UI short while preserving the existing color coding
+            // How: Use normalizedType for both textContent and className
+            notification.textContent = normalizedType;
+            notification.className = 'item-notification ' + normalizedType + ' show';
 
             // Auto-hide after 2.5 seconds
             this.notificationTimeout = setTimeout(() => {
@@ -1111,6 +1133,14 @@
 
         /**
          * Shows a small notification next to the "Items" label.
+         * 
+         * What: Displays a compact success/error label for item add/remove operations
+         * Why: Long item names can overflow adjacent form labels, so the label must stay short
+         * How: Ignores the detailed message for display and renders a fixed "success" or "error" label
+         *      while keeping the existing color classes and auto-hide timing intact
+         * 
+         * @param {string} message - Original message (retained for compatibility, not displayed)
+         * @param {string} type - 'success' for green (item added/removed) or 'error' for red (duplicate)
          */
         showNotification(message, type) {
             const notification = document.querySelector(AlertsConfig.selectors.create.spikeItemNotification);
@@ -1120,8 +1150,19 @@
                 clearTimeout(this.notificationTimeout);
             }
 
-            notification.textContent = message;
-            notification.className = 'item-notification ' + type + ' show';
+            // Determine the compact label we will actually display in the UI
+            // What: Normalize the message to a fixed "success" or "error" label
+            // Why: Prevents long item names from spilling into adjacent form labels
+            // How: Treat any non-error type as "success" and preserve "error" for failures
+            // normalizedType: The final label used for both the text and CSS class
+            const normalizedType = type === 'error' ? 'error' : 'success';
+
+            // Set the compact label and styling
+            // What: Apply the normalized label and matching class to the notification
+            // Why: Keeps the UI short while preserving the existing color coding
+            // How: Use normalizedType for both textContent and className
+            notification.textContent = normalizedType;
+            notification.className = 'item-notification ' + normalizedType + ' show';
 
             this.notificationTimeout = setTimeout(() => {
                 notification.classList.remove('show');
@@ -1516,11 +1557,12 @@
         /**
          * Shows a small notification next to the "Items" label.
          * 
-         * What: Displays success/error feedback for item add/remove operations
-         * Why: Provides immediate visual feedback without disruptive popups
-         * How: Updates the notification span with text and appropriate class, auto-hides after delay
+         * What: Displays a compact success/error label for item add/remove operations
+         * Why: Long item names can overflow adjacent form labels, so the label must stay short
+         * How: Ignores the detailed message for display and renders a fixed "success" or "error" label
+         *      while keeping the existing color classes and auto-hide timing intact
          * 
-         * @param {string} message - The notification message to display
+         * @param {string} message - Original message (retained for compatibility, not displayed)
          * @param {string} type - 'success' for green (item added/removed) or 'error' for red (duplicate)
          */
         showNotification(message, type) {
@@ -1532,9 +1574,19 @@
                 clearTimeout(this.notificationTimeout);
             }
 
-            // Set the message and styling
-            notification.textContent = message;
-            notification.className = 'item-notification ' + type + ' show';
+            // Determine the compact label we will actually display in the UI
+            // What: Normalize the message to a fixed "success" or "error" label
+            // Why: Prevents long item names from spilling into adjacent form labels
+            // How: Treat any non-error type as "success" and preserve "error" for failures
+            // normalizedType: The final label used for both the text and CSS class
+            const normalizedType = type === 'error' ? 'error' : 'success';
+
+            // Set the compact label and styling
+            // What: Apply the normalized label and matching class to the notification
+            // Why: Keeps the UI short while preserving the existing color coding
+            // How: Use normalizedType for both textContent and className
+            notification.textContent = normalizedType;
+            notification.className = 'item-notification ' + normalizedType + ' show';
 
             // Auto-hide after 2.5 seconds
             this.notificationTimeout = setTimeout(() => {
@@ -1843,6 +1895,14 @@
 
         /**
          * Shows a notification message.
+         * 
+         * What: Displays a compact success/error label for item add/remove operations
+         * Why: Long item names can overflow adjacent form labels, so the label must stay short
+         * How: Ignores the detailed message for display and renders a fixed "success" or "error" label
+         *      while keeping the existing color classes and auto-hide timing intact
+         * 
+         * @param {string} message - Original message (retained for compatibility, not displayed)
+         * @param {string} type - 'success' for green (item added/removed) or 'error' for red (duplicate)
          */
         showNotification(message, type = 'success') {
             const notification = document.querySelector(AlertsConfig.selectors.create.collectiveItemNotification);
@@ -1852,9 +1912,20 @@
                 clearTimeout(this.notificationTimeout);
             }
 
-            notification.textContent = message;
+            // Determine the compact label we will actually display in the UI
+            // What: Normalize the message to a fixed "success" or "error" label
+            // Why: Prevents long item names from spilling into adjacent form labels
+            // How: Treat any non-error type as "success" and preserve "error" for failures
+            // normalizedType: The final label used for both the text and CSS class
+            const normalizedType = type === 'error' ? 'error' : 'success';
+
+            // Set the compact label and styling
+            // What: Apply the normalized label and matching class to the notification
+            // Why: Keeps the UI short while preserving the existing color coding
+            // How: Use normalizedType for both textContent and CSS class selection
+            notification.textContent = normalizedType;
             notification.className = 'item-notification';
-            notification.classList.add(type === 'success' ? 'success' : 'error');
+            notification.classList.add(normalizedType);
             notification.classList.add('show');  // Use 'show' class for visibility (CSS uses opacity)
 
             this.notificationTimeout = setTimeout(() => {
@@ -2107,5 +2178,4 @@
             }
         }
     };
-
 

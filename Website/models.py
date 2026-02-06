@@ -454,10 +454,22 @@ class Alert(models.Model):
         """
         Returns the notification text shown when an alert triggers.
         
-        What: Returns the alert's string representation for notification display.
-        Why: Simple, consistent notification text that matches how the alert is displayed elsewhere.
-        How: Uses the model's __str__() method which already formats alerts nicely.
+        What: Returns the alert's display text for notification banners.
+        Why: Users need to quickly identify which alert triggered.
+        How: If user set a custom name (not "Default"), use that name.
+             Otherwise, fall back to the auto-generated __str__() format.
+        
+        Examples:
+            Custom name:  "My Herb Alert"
+            Default:      "Abyssal whip spread ≥5%"
         """
+        # Check if user has set a custom name (not empty and not "Default")
+        # alert_name: User-defined custom name for the alert
+        # Why: Users may want a memorable name like "Herb Flipping" instead of auto-generated text
+        if self.alert_name and self.alert_name.strip() and self.alert_name.strip().lower() != 'default':
+            return self.alert_name.strip()
+        
+        # Fall back to auto-generated description
         return str(self)
 
     def cleanup_triggered_data_for_removed_items(self, removed_item_ids):
