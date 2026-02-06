@@ -9,6 +9,9 @@
 <link rel="stylesheet" href="{% static 'css/group-selector.css' %}">
 
 <style>
+#alert-delete-btn {
+    vertical-align: inherit;
+}
     .alert-detail-container {
         max-width: 900px;
         margin: 0 auto;
@@ -1559,6 +1562,147 @@
     }
     
     /* =============================================================================
+       CONFIRM MODAL STYLES
+       What: Styles for the reusable confirmation modal dialog
+       Why: Provides a nicely styled alternative to browser confirm() dialogs,
+            matching the look and feel of the existing error and new-group modals.
+            Designed to be reusable for any action that requires user confirmation
+            (e.g., unlinking groups, deleting alerts, deleting groups).
+       How: Fixed overlay with centered content box, show/hide via the 'active' class,
+            scale animation on open, Cancel and Confirm buttons in the footer.
+    ============================================================================= */
+
+    /* confirm-modal-overlay: Full-screen semi-transparent backdrop that covers the
+       entire page when the confirmation modal is visible. Centers the modal content
+       using flexbox. Hidden by default via opacity/visibility, toggled via .active. */
+    .confirm-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.2s ease;
+    }
+
+    /* confirm-modal-overlay.active: Makes the overlay visible with a smooth fade-in.
+       Paired with the scale transition on .confirm-modal-content to create a 
+       polished open animation. */
+    .confirm-modal-overlay.active {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    /* confirm-modal-content: The white card that holds the modal header, body, and
+       footer. Starts slightly scaled down (0.95) and scales to 1 when .active is
+       added to the overlay, creating a subtle "pop in" effect. */
+    .confirm-modal-content {
+        background: white;
+        border-radius: 12px;
+        width: 100%;
+        max-width: 420px;
+        margin: 20px;
+        transform: scale(0.95);
+        transition: transform 0.2s ease;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .confirm-modal-overlay.active .confirm-modal-content {
+        transform: scale(1);
+    }
+
+    /* confirm-modal-header: Top section of the modal containing the warning icon
+       and title text. Bottom border separates it from the body. */
+    .confirm-modal-header {
+        padding: 20px;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    /* confirm-modal-header .confirm-icon: Warning/caution SVG icon displayed next
+       to the title. Uses an amber/orange color to indicate a cautionary action. */
+    .confirm-modal-header .confirm-icon {
+        width: 28px;
+        height: 28px;
+        color: #f59e0b;
+    }
+
+    /* confirm-modal-header h3: Title text for the confirmation modal (e.g.,
+       "Unlink Groups"). Styled consistently with the error modal title. */
+    .confirm-modal-header h3 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #333;
+        margin: 0;
+    }
+
+    /* confirm-modal-body: Middle section containing the descriptive message that
+       explains what the user is about to confirm. */
+    .confirm-modal-body {
+        padding: 20px;
+        color: #555;
+        line-height: 1.6;
+    }
+
+    /* confirm-modal-footer: Bottom section containing the Cancel and Confirm action
+       buttons. Uses flexbox to right-align the buttons with a gap between them. */
+    .confirm-modal-footer {
+        padding: 16px 20px;
+        border-top: 1px solid #e5e7eb;
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+    }
+
+    /* confirm-modal-btn: Base styles shared by both Cancel and Confirm buttons.
+       Provides consistent padding, border-radius, font, and cursor. */
+    .confirm-modal-btn {
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border: none;
+        font-size: 0.9rem;
+    }
+
+    /* confirm-modal-btn.cancel: The Cancel button uses a light gray background
+       with dark text, allowing the user to back out without taking action. */
+    .confirm-modal-btn.cancel {
+        background: #f8f9fa;
+        color: #495057;
+        border: 1px solid #dee2e6;
+    }
+
+    /* confirm-modal-btn.cancel:hover: Slightly darker background on hover to
+       indicate interactivity. */
+    .confirm-modal-btn.cancel:hover {
+        background: #e9ecef;
+    }
+
+    /* confirm-modal-btn.confirm: The primary action button uses a gradient matching
+       the site's accent colors, drawing the user's attention to the confirm action. */
+    .confirm-modal-btn.confirm {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    /* confirm-modal-btn.confirm:hover: Elevates the button slightly and adds a
+       colored shadow on hover for a polished interactive feel. */
+    .confirm-modal-btn.confirm:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    /* =============================================================================
        ERROR NOTIFICATION STYLES
        ============================================================================= */
     /* What: Styles for inline error notification banners shown at the top of the page
@@ -1720,7 +1864,7 @@
                     Edit
                 </button>
                 <button class="btn-delete" onclick="deleteAlert()">
-                    <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                    <svg fill="currentColor" id="alert-delete-btn" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
                     Delete
                 </button>
             </div>
@@ -2766,6 +2910,38 @@
         <div class="new-group-modal-footer">
             <button type="button" class="new-group-modal-btn cancel" onclick="closeNewGroupModal()">Cancel</button>
             <button type="button" class="new-group-modal-btn create" id="create-group-btn" onclick="createNewGroup()">Create Group</button>
+        </div>
+    </div>
+</div>
+
+<!-- =============================================================================
+     CONFIRM MODAL
+     What: Reusable confirmation modal dialog for actions that require user consent
+     Why: Replaces browser confirm() dialogs with a styled, consistent modal that
+          matches the look and feel of the rest of the application. Designed to be
+          reusable — any action needing confirmation can call showConfirmModal() with
+          a title, message, and callback function.
+     How: Hidden by default. JavaScript sets the title, message, and onConfirm
+          callback, then adds the 'active' class to show. Cancel dismisses, Confirm
+          runs the callback and then dismisses.
+============================================================================= -->
+<div id="confirm-modal" class="confirm-modal-overlay">
+    <div class="confirm-modal-content">
+        <div class="confirm-modal-header">
+            <!-- Warning/caution triangle icon to visually indicate a cautionary action -->
+            <svg class="confirm-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.999L13.732 4.001c-.77-1.333-2.694-1.333-3.464 0L3.34 16.001C2.57 17.334 3.532 19 5.072 19z"/>
+            </svg>
+            <h3 id="confirm-modal-title">Are you sure?</h3>
+        </div>
+        <div class="confirm-modal-body">
+            <p id="confirm-modal-message">This action cannot be undone.</p>
+        </div>
+        <div class="confirm-modal-footer">
+            <!-- Cancel button: dismisses the modal without taking action -->
+            <button class="confirm-modal-btn cancel" onclick="closeConfirmModal()">Cancel</button>
+            <!-- Confirm button: executes the stored onConfirm callback, then dismisses -->
+            <button class="confirm-modal-btn confirm" id="confirm-modal-action-btn" onclick="executeConfirmAction()">Confirm</button>
         </div>
     </div>
 </div>
@@ -4704,41 +4880,56 @@ async function saveGroups() {
 }
 
 async function unlinkSelectedGroups() {
+    /* Get all group pills the user has selected in the "This Alert's Group(s)" list.
+       These are the groups the user wants to unlink from the current alert. */
     const selectedGroups = getSelectedCurrentGroupPills();
     
+    /* Validate that the user has actually selected at least one group before
+       proceeding. Without this check, we'd send an empty request to the API. */
     if (selectedGroups.length === 0) {
         alert('Please select at least one group from "This Alert\'s Group(s)" to unlink.');
         return;
     }
     
-    if (!confirm('Unlink this alert from the selected group(s)?')) {
-        return;
-    }
-    
-    try {
-        const response = await fetch('/api/alerts/unlink-groups/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
-            },
-            body: JSON.stringify({
-                alert_id: alertId,
-                groups: selectedGroups
-            })
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            window.location.reload();
-        } else {
-            alert('Error unlinking groups: ' + (result.error || 'Unknown error'));
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        alert('Error unlinking groups. Please try again.');
-    }
+    /* Show the styled confirmation modal instead of the browser's native confirm()
+       dialog. The third argument is the callback function that will be executed
+       only if the user clicks the "Unlink" button. The fourth argument customizes
+       the confirm button label to "Unlink" for clarity. */
+    showConfirmModal(
+        'Unlink Groups',
+        'Unlink this alert from the selected group(s)?',
+        async function() {
+            try {
+                /* Send POST request to the unlink-groups API endpoint with the
+                   current alert ID and the list of selected group names */
+                const response = await fetch('/api/alerts/unlink-groups/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        alert_id: alertId,
+                        groups: selectedGroups
+                    })
+                });
+                
+                const result = await response.json();
+                
+                /* On success, reload the page to reflect the updated group
+                   assignments. On failure, show the error to the user. */
+                if (result.success) {
+                    window.location.reload();
+                } else {
+                    alert('Error unlinking groups: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error unlinking groups. Please try again.');
+            }
+        },
+        'Unlink'
+    );
 }
 
 async function deleteSelectedGroups() {
@@ -4983,14 +5174,111 @@ document.addEventListener('click', function(e) {
     if (e.target === modal) {
         closeErrorModal();
     }
+    /* Also close the confirm modal when clicking outside its content area.
+       This gives users an intuitive way to dismiss the confirmation dialog
+       without explicitly pressing Cancel. */
+    const confirmModal = document.getElementById('confirm-modal');
+    if (e.target === confirmModal) {
+        closeConfirmModal();
+    }
 });
 
 // Close modal with Escape key
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         closeErrorModal();
+        /* Also close the confirm modal on Escape. This is the standard keyboard
+           shortcut for dismissing dialogs and matches user expectations. */
+        closeConfirmModal();
     }
 });
+
+/* =============================================================================
+   CONFIRM MODAL FUNCTIONS
+   What: Functions for showing and hiding the reusable confirmation modal, and
+         executing the confirmed action via a stored callback.
+   Why: Replaces native browser confirm() dialogs with a styled modal that is
+        consistent with the rest of the application's UI. Using a callback-based
+        approach (storing the onConfirm function) makes this modal fully reusable
+        for any future confirmation needs (e.g., deleting alerts, deleting groups).
+   How: showConfirmModal() stores the callback, sets title/message, and shows the
+        modal. executeConfirmAction() runs the stored callback and closes the modal.
+        closeConfirmModal() hides the modal and clears the stored callback.
+============================================================================= */
+
+/* _confirmModalCallback: Private variable that holds the function to execute
+   when the user clicks the "Confirm" button. Set by showConfirmModal() and
+   cleared by closeConfirmModal(). Using a module-level variable allows the
+   modal HTML's onclick to call executeConfirmAction() without needing to
+   know what specific action is being confirmed. */
+let _confirmModalCallback = null;
+
+/**
+ * Shows the confirmation modal with a custom title, message, and action.
+ * What: Displays the confirm modal overlay with the provided content
+ * Why: Provides a reusable way to ask the user for confirmation before any
+ *      destructive or significant action, without relying on browser dialogs
+ * How: Sets the title and message text content, stores the onConfirm callback,
+ *      optionally customizes the confirm button label, and adds the 'active'
+ *      class to make the modal visible with its CSS transition.
+ *
+ * @param {string} title - The heading text shown in the modal header (e.g., "Unlink Groups")
+ * @param {string} message - The descriptive text shown in the modal body
+ * @param {Function} onConfirm - Callback function to execute when the user clicks Confirm
+ * @param {string} [confirmLabel='Confirm'] - Optional custom label for the confirm button
+ */
+function showConfirmModal(title, message, onConfirm, confirmLabel = 'Confirm') {
+    const modal = document.getElementById('confirm-modal');
+    const titleEl = document.getElementById('confirm-modal-title');
+    const messageEl = document.getElementById('confirm-modal-message');
+    const actionBtn = document.getElementById('confirm-modal-action-btn');
+
+    /* Set the modal's title and message to the caller-provided values */
+    if (titleEl) titleEl.textContent = title;
+    if (messageEl) messageEl.textContent = message;
+
+    /* Allow callers to customize the confirm button text (e.g., "Unlink" instead
+       of the default "Confirm") for clearer action labeling */
+    if (actionBtn) actionBtn.textContent = confirmLabel;
+
+    /* Store the callback so executeConfirmAction() can invoke it later */
+    _confirmModalCallback = onConfirm;
+
+    /* Add the 'active' class to trigger the CSS opacity/visibility transition,
+       making the modal fade in with the scale animation */
+    if (modal) modal.classList.add('active');
+}
+
+/**
+ * Closes the confirmation modal without executing the action.
+ * What: Hides the confirm modal and clears the stored callback
+ * Why: Allows the user to back out of a confirmation without side effects
+ * How: Removes the 'active' class (triggering the CSS fade-out transition)
+ *      and nullifies the stored callback to prevent stale references
+ */
+function closeConfirmModal() {
+    const modal = document.getElementById('confirm-modal');
+    if (modal) modal.classList.remove('active');
+
+    /* Clear the stored callback to avoid accidentally executing a stale action
+       if showConfirmModal() is called again later */
+    _confirmModalCallback = null;
+}
+
+/**
+ * Executes the stored confirm action and closes the modal.
+ * What: Runs the onConfirm callback that was passed to showConfirmModal()
+ * Why: Separates the "execute" logic from the modal UI, so the HTML button's
+ *      onclick can simply call this function without knowing the specific action
+ * How: Checks that the callback exists and is a function, executes it, then
+ *      closes the modal. The callback is cleared inside closeConfirmModal().
+ */
+function executeConfirmAction() {
+    if (_confirmModalCallback && typeof _confirmModalCallback === 'function') {
+        _confirmModalCallback();
+    }
+    closeConfirmModal();
+}
 
 // Initialize autocomplete when page loads
 ItemAutocomplete.init();
