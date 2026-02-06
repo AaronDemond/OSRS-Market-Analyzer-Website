@@ -580,6 +580,24 @@ class Command(BaseCommand):
             current_price = self._get_price_by_reference(price_data, reference_type)
             if current_price is None:
                 return False
+
+            # =============================================================================
+            # VOLUME FILTER FOR VALUE-BASED THRESHOLD ALERTS
+            # =============================================================================
+            # What: Skip triggering if the item's hourly trading volume (GP) is below min_volume
+            # Why: Users may want threshold alerts to only fire for actively traded items,
+            #      avoiding noisy alerts on illiquid items with unreliable prices
+            # How: Query the HourlyItemVolume table for the latest volume snapshot and
+            #      return False early if the volume is missing or below the threshold
+            # =============================================================================
+            if alert.min_volume:
+                # volume: The most recent hourly trading volume (in GP) for this item
+                # What: Volume value used to enforce the minimum activity requirement
+                # Why: Ensures alerts only trigger for items meeting the user's liquidity filter
+                # How: Retrieved from get_volume_from_timeseries, which reads HourlyItemVolume
+                volume = self.get_volume_from_timeseries(item_id_str, 0)
+                if volume is None or volume < alert.min_volume:
+                    return False
             
             # target: The target price the user wants to be alerted at
             target = alert.target_price
@@ -695,6 +713,22 @@ class Command(BaseCommand):
                 )
                 
                 if threshold_crossed:
+                    # =========================================================================
+                    # VOLUME FILTER FOR ALL-ITEMS THRESHOLD ALERTS
+                    # =========================================================================
+                    # What: Skip items whose hourly volume (GP) is below the user's min_volume
+                    # Why: Ensures threshold alerts only surface items with sufficient liquidity
+                    # How: Query the HourlyItemVolume table for the latest snapshot and
+                    #      skip adding the item if volume is missing or below threshold
+                    # =========================================================================
+                    if alert.min_volume:
+                        # volume: The most recent hourly trading volume (in GP) for this item
+                        # What: Activity metric used to enforce the minimum volume filter
+                        # Why: Avoids triggering alerts on low-liquidity items
+                        # How: Retrieved via get_volume_from_timeseries (DB-backed lookup)
+                        volume = self.get_volume_from_timeseries(item_id_str, 0)
+                        if volume is None or volume < alert.min_volume:
+                            continue
                     item_name = item_mapping.get(item_id_str, f'Item {item_id_str}')
                     triggered_items.append({
                         'item_id': item_id_str,
@@ -749,6 +783,22 @@ class Command(BaseCommand):
                 )
                 
                 if threshold_crossed:
+                    # =========================================================================
+                    # VOLUME FILTER FOR MULTI-ITEM THRESHOLD ALERTS
+                    # =========================================================================
+                    # What: Skip items whose hourly volume (GP) is below the user's min_volume
+                    # Why: Prevents threshold alerts from triggering on low-activity items
+                    # How: Query HourlyItemVolume for the latest snapshot and skip if
+                    #      volume is missing or below the configured minimum
+                    # =========================================================================
+                    if alert.min_volume:
+                        # volume: Most recent hourly trading volume (GP) for this item
+                        # What: Used to validate liquidity before triggering
+                        # Why: Enforces the user's minimum activity requirement
+                        # How: Retrieved through get_volume_from_timeseries (DB-backed)
+                        volume = self.get_volume_from_timeseries(item_id_str, 0)
+                        if volume is None or volume < alert.min_volume:
+                            continue
                     item_name = item_mapping.get(item_id_str, f'Item {item_id_str}')
                     triggered_items.append({
                         'item_id': item_id_str,
@@ -815,6 +865,22 @@ class Command(BaseCommand):
             threshold_crossed = self._check_threshold_crossed(change_percent, threshold_value, direction)
             
             if threshold_crossed:
+                # =========================================================================
+                # VOLUME FILTER FOR SINGLE-ITEM THRESHOLD ALERTS
+                # =========================================================================
+                # What: Skip triggering if the item's hourly volume (GP) is below min_volume
+                # Why: Ensures single-item threshold alerts respect the liquidity filter
+                # How: Query the HourlyItemVolume table for the latest snapshot and
+                #      return False if volume is missing or below the minimum
+                # =========================================================================
+                if alert.min_volume:
+                    # volume: The most recent hourly trading volume (GP) for this item
+                    # What: Activity metric used to enforce min_volume
+                    # Why: Prevents triggering alerts for low-liquidity items
+                    # How: Retrieved via get_volume_from_timeseries (DB-backed lookup)
+                    volume = self.get_volume_from_timeseries(item_id_str, 0)
+                    if volume is None or volume < alert.min_volume:
+                        return False
                 # =============================================================================
                 # BUILD TRIGGERED_DATA FOR SINGLE-ITEM THRESHOLD ALERT
                 # =============================================================================
