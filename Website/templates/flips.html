@@ -4960,6 +4960,65 @@
                     activeElement.showPicker();
                 }
             }
+            
+            // =============================================================================
+            // BUY LIMIT BUTTON KEYBOARD ACCESSIBILITY
+            // =============================================================================
+            // What: Allows Enter or Space key to trigger the Buy Limit button when it has focus
+            // Why: Standard keyboard accessibility pattern - buttons should respond to both
+            //      Enter and Space keys for users who navigate via keyboard, meeting WCAG
+            //      2.1 guidelines for keyboard operation (2.1.1) and ensuring equal access
+            //      for users who cannot or prefer not to use a mouse
+            // How: Checks if the currently focused element (document.activeElement) is the
+            //      Buy Limit button, and if Enter or Space was pressed. If both conditions
+            //      are true, programmatically triggers a click event on the button, which
+            //      executes the existing click handler logic (API call to fetch buy limit).
+            //      preventDefault() stops the default action (form submission for Enter,
+            //      page scroll for Space).
+            
+            // Get reference to the currently focused element in the document
+            // activeElement: The DOM element that currently has keyboard focus
+            // Why: Need to check if focus is on the Buy Limit button before handling keys
+            const activeElement = document.activeElement;
+            
+            // Check if Enter key was pressed
+            // Why: Enter is the standard activation key for buttons in keyboard navigation
+            if (e.key === 'Enter') {
+                // Check if the Buy Limit button currently has focus
+                // Why: Only trigger button action when user is specifically focused on it
+                if (activeElement.id === 'btnBuyLimit') {
+                    // Prevent default Enter behavior (would submit form)
+                    // Why: We want to trigger the button's click handler, not submit the form
+                    e.preventDefault();
+                    
+                    // Programmatically trigger a click event on the Buy Limit button
+                    // Why: This executes the existing click event handler that fetches the
+                    //      buy limit from the API and populates the quantity field
+                    // How: Browser dispatches the click event as if the button was actually
+                    //      clicked with a mouse, maintaining consistent behavior
+                    btnBuyLimit.click();
+                }
+            }
+            
+            // Check if Space key was pressed (represented as ' ' in key property)
+            // Why: Space is the other standard activation key for buttons per HTML spec
+            //      and ARIA practices - both Enter and Space should activate buttons
+            if (e.key === ' ') {
+                // Check if the Buy Limit button currently has focus
+                // Why: Only trigger button action when user is specifically focused on it
+                if (activeElement.id === 'btnBuyLimit') {
+                    // Prevent default Space behavior (would scroll the page down)
+                    // Why: We want to activate the button, not scroll the viewport
+                    e.preventDefault();
+                    
+                    // Programmatically trigger a click event on the Buy Limit button
+                    // Why: This executes the existing click event handler that fetches the
+                    //      buy limit from the API and populates the quantity field
+                    // How: Browser dispatches the click event as if the button was actually
+                    //      clicked with a mouse, maintaining consistent behavior
+                    btnBuyLimit.click();
+                }
+            }
         });
 
         // Table sorting
