@@ -1313,6 +1313,7 @@
                 <button class="alert-help-tab" data-help-tab="spike">Spike</button>
                 <button class="alert-help-tab" data-help-tab="sustained">Sustained</button>
                 <button class="alert-help-tab" data-help-tab="threshold">Threshold</button>
+                <button class="alert-help-tab" data-help-tab="collective_move">Collective</button>
             </div>
             <div class="alert-help-content">
                 <!-- Spread Alert -->
@@ -1797,6 +1798,162 @@
                             <div class="recommended-value">
                                 <div class="label">Reference Price</div>
                                 <div class="value">High for selling, Low for buying</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Collective Move Alert -->
+                <div class="alert-help-section" data-help-section="collective_move">
+                    <h3>
+                        Collective Move Alert
+                        <span class="alert-type-badge collective">Market Average</span>
+                    </h3>
+                    <p class="subtitle">Get notified when the <strong>average</strong> price change across a group of items
+                        exceeds a threshold. Monitor market-wide movements or track how a curated basket of items is
+                        performing collectively.</p>
+
+                    <div class="alert-help-card">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+                                <path fill-rule="evenodd"
+                                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                            How It Works
+                        </h4>
+                        <p>Collective move alerts calculate the <strong>average percentage change</strong> across all the
+                            items you're monitoring. Instead of tracking each item individually, the alert looks at how
+                            the group is moving <em>as a whole</em>. When the average change crosses your threshold, you
+                            get notified.</p>
+                        <p style="margin-top: 12px;">Each item's percentage change is calculated from its
+                            <strong>baseline price</strong> (captured when the alert is created or when a time frame is
+                            set). These individual changes are then combined into a single average using your chosen
+                            calculation method.</p>
+                        <p style="margin-top: 12px;"><strong>Formula (Simple):</strong> Average Change % = sum of each
+                            item's % change ÷ number of items</p>
+                        <p style="margin-top: 4px;"><strong>Formula (Weighted):</strong> Average Change % = sum of (each
+                            item's % change × item value) ÷ sum of all item values</p>
+
+                        <div class="input-fields-guide" style="margin-top: 16px;">
+                            <h5 style="font-size: 13px; font-weight: 600; margin-bottom: 10px; color: var(--text);">📝 Input Fields Explained:</h5>
+                            <ul>
+                                <li><strong>Apply To:</strong> Choose what items to monitor:
+                                    <ul style="margin-top: 4px; margin-left: 16px;">
+                                        <li><em>Specific Item(s)</em> - Select a curated list of items to track as a group. Great for monitoring an item category (e.g., all herbs, all ores, all Godswords).</li>
+                                        <li><em>All Items</em> - Track the average across the entire Grand Exchange. Useful for detecting broad market-wide movements. Use with price filters to focus on relevant items.</li>
+                                    </ul>
+                                </li>
+                                <li><strong>Items</strong> (when Specific Item(s) selected): Type to search for items. Click to add. Click the dropdown arrow to see/remove selected items. You can also apply saved Item Collections for quick setup.</li>
+                                <li><strong>Reference Price:</strong> Which price to use for baseline and comparison:
+                                    <ul style="margin-top: 4px; margin-left: 16px;">
+                                        <li><em>High (Instant Buy)</em> - Uses the instant buy price. Best for tracking buying cost changes.</li>
+                                        <li><em>Low (Instant Sell)</em> - Uses the instant sell price. Best for tracking selling value changes.</li>
+                                        <li><em>Average</em> - Uses the midpoint of high and low. Best for general market movement tracking.</li>
+                                    </ul>
+                                </li>
+                                <li><strong>Calculation Method:</strong> How to combine the individual item changes into one average:
+                                    <ul style="margin-top: 4px; margin-left: 16px;">
+                                        <li><em>Non Weighted (Equal Items)</em> - Simple arithmetic mean. Every item counts equally regardless of its price. A 10% change in a 1K item counts the same as a 10% change in a 100M item.</li>
+                                        <li><em>Weighted by Value</em> - Value-weighted mean. Expensive items have more influence on the average. A 10% change in a 100M item counts far more than a 10% change in a 1K item. Better for tracking portfolio value.</li>
+                                    </ul>
+                                </li>
+                                <li><strong>Direction:</strong> Which collective movements to track:
+                                    <ul style="margin-top: 4px; margin-left: 16px;">
+                                        <li><em>Up (Collective Increase)</em> - Only alert when the average change is positive and exceeds the threshold.</li>
+                                        <li><em>Down (Collective Decrease)</em> - Only alert when the average change is negative and exceeds the threshold.</li>
+                                        <li><em>Both (Any Direction)</em> - Alert when the absolute average change exceeds the threshold in either direction.</li>
+                                    </ul>
+                                </li>
+                                <li><strong>Threshold (%):</strong> The average percentage change required to trigger the alert. For example, entering "5" means the collective average must move 5% or more. This is the average across all items, not any single item.</li>
+                                <li><strong>Time Frame (minutes):</strong> Optional rolling time window. If set, compares current prices against prices from this many minutes ago instead of the fixed baseline. For example, "60" compares against prices from 1 hour ago. If not set, baselines are captured at alert creation time.</li>
+                            </ul>
+                        </div>
+
+                        <div class="alert-help-note" style="margin-top: 12px; padding: 10px; background: rgba(255, 193, 7, 0.1); border-radius: 6px; border-left: 3px solid #ffc107;">
+                            <strong>📊 Simple vs Weighted:</strong> Use <em>Simple</em> when you want each item to have
+                            equal say (e.g., "are herbs in general going up?"). Use <em>Weighted</em> when expensive items
+                            matter more to you (e.g., "is my portfolio value increasing?"). Weighted averages prevent
+                            cheap items from skewing the result.
+                        </div>
+                    </div>
+
+                    <div class="alert-help-card">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+                                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                                <path fill-rule="evenodd"
+                                    d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                            When To Use
+                        </h4>
+                        <ul>
+                            <li>Monitoring a category of items as a group (e.g., all herbs, all ores, all rune items)</li>
+                            <li>Detecting market-wide trends — is the GE overall going up or down?</li>
+                            <li>Tracking your portfolio's collective performance over time</li>
+                            <li>Spotting sector-wide movements that individual alerts would miss</li>
+                            <li>Identifying broad post-update market reactions across many items at once</li>
+                        </ul>
+                    </div>
+
+                    <div class="alert-help-card">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+                                <path fill-rule="evenodd"
+                                    d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                            Collective vs Other Alert Types
+                        </h4>
+                        <p>Understanding when collective move is the right choice:</p>
+                        <ul>
+                            <li><strong>Collective Move:</strong> Looks at the <em>average</em> across many items. One item spiking won't trigger it unless the group average moves. Best for "is this market sector moving?"</li>
+                            <li><strong>Spike:</strong> Looks at <em>individual</em> items in a rolling time window. Any single item exceeding the threshold triggers it. Best for "did any single item just spike?"</li>
+                            <li><strong>Threshold:</strong> Looks at <em>individual</em> items against a fixed baseline. Best for "has this specific item changed by X% since I started watching?"</li>
+                        </ul>
+                    </div>
+
+                    <div class="example-scenario">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+                                <path
+                                    d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" />
+                            </svg>
+                            Example Scenario
+                        </h4>
+                        <p>You want to know when the herb market is collectively rising. Add Ranarr weed, Snapdragon,
+                            Torstol, Dwarf weed, and Lantadyme to a collective move alert. Set the calculation method to
+                            "Non Weighted", direction to "Up", and threshold to 3%. When herbs as a group rise by an
+                            average of 3%, you'll be notified — even if some individual herbs haven't moved much. This
+                            helps you spot category-wide trends that individual alerts would miss!</p>
+                    </div>
+
+                    <div class="recommended-values">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+                                <path fill-rule="evenodd"
+                                    d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                            Recommended Starting Values
+                        </h4>
+                        <div class="value-grid">
+                            <div class="recommended-value">
+                                <div class="label">Threshold</div>
+                                <div class="value">3-5% for item categories</div>
+                            </div>
+                            <div class="recommended-value">
+                                <div class="label">Calculation Method</div>
+                                <div class="value">Non Weighted (for equal tracking)</div>
+                            </div>
+                            <div class="recommended-value">
+                                <div class="label">Direction</div>
+                                <div class="value">Both (catch all movements)</div>
+                            </div>
+                            <div class="recommended-value">
+                                <div class="label">Reference Price</div>
+                                <div class="value">Average (for general tracking)</div>
                             </div>
                         </div>
                     </div>
