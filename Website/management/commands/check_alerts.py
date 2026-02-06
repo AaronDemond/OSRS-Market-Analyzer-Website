@@ -1871,6 +1871,15 @@ class Command(BaseCommand):
             if alert.percentage is None or not alert.price:
                 return False
             
+            # =============================================================================
+            # SPIKE ALERT VALIDATION: MIN HOURLY VOLUME REQUIRED
+            # =============================================================================
+            # What: Ensure spike alerts always have a min_volume configured
+            # Why: The requirement mandates spike alerts must filter by hourly GP volume
+            # How: If min_volume is missing (None), treat the alert as invalid and skip
+            if alert.min_volume is None:
+                return False
+            
             # Get reference type, defaulting to 'average' for spike alerts
             # reference_type: Which price to monitor (high/low/average)
             spike_reference = alert.reference or 'average'
@@ -1973,6 +1982,21 @@ class Command(BaseCommand):
                         should_trigger = abs(percent_change) >= alert.percentage
 
                     if should_trigger:
+                        # =========================================================================
+                        # VOLUME FILTER FOR ALL-ITEMS SPIKE ALERTS
+                        # What: Skip items whose hourly volume (GP) is below the user's min_volume
+                        # Why: Spike alerts must only trigger on actively-traded items to avoid
+                        #      noisy alerts from low-volume items with volatile prices
+                        # How: Query the HourlyItemVolume table for the latest volume snapshot.
+                        #      If the volume is below the threshold, skip this item entirely.
+                        # =========================================================================
+                        if alert.min_volume:
+                            # volume: The most recent hourly trading volume in GP for this item,
+                            #         or None if no volume data exists in the database yet
+                            volume = self.get_volume_from_timeseries(item_id, 0)
+                            if volume is None or volume < alert.min_volume:
+                                continue
+                        
                         matches.append({
                             'item_id': item_id,
                             'item_name': item_mapping.get(item_id, f'Item {item_id}'),
@@ -2089,6 +2113,21 @@ class Command(BaseCommand):
                         exceeds_threshold = abs(percent_change) >= alert.percentage
                     
                     if exceeds_threshold:
+                        # =========================================================================
+                        # VOLUME FILTER FOR MULTI-ITEM SPIKE ALERTS
+                        # What: Skip items whose hourly volume (GP) is below the user's min_volume
+                        # Why: Spike alerts must only trigger on actively-traded items to avoid
+                        #      noisy alerts from low-volume items with volatile prices
+                        # How: Query the HourlyItemVolume table for the latest volume snapshot.
+                        #      If the volume is below the threshold, skip this item entirely.
+                        # =========================================================================
+                        if alert.min_volume:
+                            # volume: The most recent hourly trading volume in GP for this item,
+                            #         or None if no volume data exists in the database yet
+                            volume = self.get_volume_from_timeseries(item_id_str, 0)
+                            if volume is None or volume < alert.min_volume:
+                                continue
+                        
                         all_within_threshold = False
                         matches.append({
                             'item_id': item_id_str,
@@ -2164,6 +2203,21 @@ class Command(BaseCommand):
                 should_trigger = abs(percent_change) >= alert.percentage
 
             if should_trigger:
+                # =========================================================================
+                # VOLUME FILTER FOR SINGLE-ITEM SPIKE ALERTS
+                # What: Skip triggering if the item's hourly volume (GP) is below min_volume
+                # Why: Spike alerts must only trigger on actively-traded items to avoid
+                #      noisy alerts from low-volume items with volatile prices
+                # How: Query the HourlyItemVolume table for the latest volume snapshot.
+                #      If the volume is below the threshold, don't trigger the alert.
+                # =========================================================================
+                if alert.min_volume:
+                    # volume: The most recent hourly trading volume in GP for this item,
+                    #         or None if no volume data exists in the database yet
+                    volume = self.get_volume_from_timeseries(str(alert.item_id), 0)
+                    if volume is None or volume < alert.min_volume:
+                        return False
+                
                 alert.triggered_data = json.dumps({
                     'baseline': baseline_price,
                     'current': current_price,
