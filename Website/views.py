@@ -1908,7 +1908,14 @@ def create_alert(request):
             volatility_buffer_size=int(volatility_buffer_size) if volatility_buffer_size else None,
             volatility_multiplier=float(volatility_multiplier) if volatility_multiplier else None,
             # min_volume: Use the validated integer for spike alerts; parse for other alert types if provided
-            min_volume=min_volume_value if min_volume_value is not None else (int(min_volume) if min_volume else None),
+            # What: Avoid parsing empty strings for non-spike alerts
+            # Why: Non-spike alerts may omit min_volume entirely, so we guard against empty values
+            # How: Only cast to int when min_volume is present and non-empty after trimming
+            min_volume=(
+                min_volume_value
+                if min_volume_value is not None
+                else (int(min_volume) if min_volume and str(min_volume).strip() else None)
+            ),
             sustained_item_ids=sustained_item_ids_json,
             min_pressure_strength=min_pressure_strength,
             min_pressure_spread_pct=float(min_pressure_spread_pct) if min_pressure_spread_pct else None,
@@ -3183,14 +3190,9 @@ def update_alert(request):
                     # SPIKE ALERT MIN VOLUME HANDLING
                     # What: Save the required min_volume field when editing a spike alert
                     # Why: Spike alerts now enforce a minimum hourly volume (GP) threshold
-                    # How: Read min_volume from the request data and save it. Clear sustained-only
-                    #      fields that don't apply to spike alerts.
+                    # How: Reuse the validated min_volume_int from the earlier validation block
+                    #      and clear sustained-only fields that don't apply to spike alerts.
                     # =============================================================================
-                    min_volume = data.get('min_volume')
-                    # min_volume: Raw string value submitted from the edit form
-                    # What: Holds the user-entered minimum hourly volume in GP
-                    # Why: We need to convert it to an integer for storage in the model
-                    # How: Cast to int now that validation has guaranteed a numeric value
                     # min_volume_int: Parsed integer value from earlier validation
                     # What: Reuse the validated integer instead of re-parsing the string
                     # Why: Keeps validation and persistence consistent for spike alerts
