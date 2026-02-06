@@ -425,7 +425,7 @@
                 // Why: Users need logical tab flow through collective move configuration
                 // How: Groups related fields together for efficient form completion
                 collective_move: {
-                    // Specific Items: Apply To → Items → Reference → Calculation Method → Direction → Threshold
+                    // Specific Items: Apply To → Items → Reference → Calculation Method → Direction → Threshold → Time Frame
                     specific: {
                         'collective-scope': 7,
                         'collective-item-input': 8,
@@ -433,9 +433,10 @@
                         'collective-reference': 10,
                         'collective-calculation-method': 11,
                         'collective-direction': 12,
-                        'collective-threshold': 13
+                        'collective-threshold': 13,
+                        'time-frame': 14
                     },
-                    // All Items: Apply To → Max Price → Min Price → Reference → Calculation Method → Direction → Threshold
+                    // All Items: Apply To → Max Price → Min Price → Reference → Calculation Method → Direction → Threshold → Time Frame
                     all: {
                         'collective-scope': 7,
                         'maximum-price': 8,
@@ -443,7 +444,8 @@
                         'collective-reference': 10,
                         'collective-calculation-method': 11,
                         'collective-direction': 12,
-                        'collective-threshold': 13
+                        'collective-threshold': 13,
+                        'time-frame': 14
                     }
                 }
             };
@@ -717,7 +719,7 @@
                 elements.price.style.display = 'none';
                 elements.reference.style.display = 'none';  // Using collective reference instead
                 elements.percentage.style.display = 'none';  // Using collective threshold instead
-                elements.timeFrame.style.display = 'none';
+                elements.timeFrame.style.display = 'block';
                 elements.direction.style.display = 'none';  // Using collective direction instead
                 elements.minPrice.style.display = 'none';
                 elements.maxPrice.style.display = 'none';
@@ -1175,5 +1177,4 @@
             if (modal) modal.style.display = 'none';
         }
     };
-
 

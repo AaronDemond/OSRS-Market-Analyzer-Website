@@ -449,11 +449,11 @@
                 <small class="form-hint">Target percentage your alert must hit</small>
             </div>
 
-            <!-- Time frame field (shown for spike only) -->
+            <!-- Time frame field (shown for spike/sustained/collective move) -->
             <div class="form-group" id="time-frame-group" style="display: none;">
                 <label for="time-frame">Time Frame (minutes)</label>
                 <input type="number" name="time_frame" id="time-frame" min="1" step="1" placeholder="e.g. 10" tabindex="17">
-                <small class="form-hint">Time frame your alert must trigger within.</small>
+                <small class="form-hint">Time window the alert must trigger within</small>
             </div>
 
             <!-- Direction field (shown for spike only) -->
@@ -847,6 +847,7 @@
                 <input type="number" name="collective_threshold" id="collective-threshold" step="0.01" min="0.01" placeholder="e.g. 5" tabindex="13">
                 <small class="form-hint">The average percentage change that triggers the alert (e.g., 5 for 5%)</small>
             </div>
+            
 
             <!-- =====================================================================================
                  NOTIFICATION OPTIONS (ALWAYS LAST)

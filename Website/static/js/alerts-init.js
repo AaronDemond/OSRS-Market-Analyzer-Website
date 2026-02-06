@@ -801,6 +801,7 @@
                     const collectiveCalculationValue = document.getElementById('collective-calculation-method').value;
                     const collectiveDirectionValue = document.getElementById('collective-direction').value;
                     const collectiveThresholdValue = document.getElementById('collective-threshold').value;
+                    const collectiveTimeFrameValue = document.getElementById('time-frame').value;
                     
                     // collectiveItemIds: Comma-separated IDs from the collective multi-item selector
                     // What: Tracks selected items for collective move alerts
@@ -840,6 +841,16 @@
                     // How: Mark missing if empty
                     if (isValueEmpty(collectiveThresholdValue)) {
                         markMissingRequired();
+                    }
+                    
+                    // collectiveTimeFrameValue: Time frame input for collective move alerts
+                    // What: Captures the time window (minutes) required for collective comparisons
+                    // Why: Collective move alerts must compare against price from X minutes ago
+                    // How: Mark missing if empty or invalid
+                    if (isValueEmpty(collectiveTimeFrameValue)) {
+                        markMissingRequired();
+                    } else if (collectiveTimeFrameValue <= 0) {
+                        errors.push('Time frame is required');
                     }
                 }
 

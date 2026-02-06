@@ -298,4 +298,3 @@
 
 console.log("Hello, world");
 console.log(window.CSRF_TOKEN);
-
