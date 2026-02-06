@@ -612,6 +612,12 @@
                 hideThresholdFields();
                 hideSpikeFields();
                 hideCollectiveFields();
+                // What: Show min volume field for spread alerts
+                // Why: Users can filter spread opportunities by minimum hourly trading volume (GP)
+                //      to avoid low-volume items with inflated spreads that are impractical to flip
+                // How: Override the hideSustainedFields() call above which hides minVolume,
+                //      and explicitly show it for spread alerts
+                if (elements.minVolume) elements.minVolume.style.display = 'block';
 
                 // Let scope change handler determine remaining visibility
                 this.handleSpreadScopeChange(formType);

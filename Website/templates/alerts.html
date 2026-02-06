@@ -559,7 +559,7 @@
             </div>
             <div class="form-group" id="min-volume-group" style="display: none;">
                 <label for="min-volume">Min Hourly Volume (GP)</label>
-                <input type="number" name="min_volume" id="min-volume" min="0" step="1" placeholder="e.g. 75000000" tabindex="15">
+                <input type="number" name="min_volume" id="min-volume" min="0" step="1" placeholder="e.g. 75000000" tabindex="10">
                 <small class="form-hint">Minimum hourly trading volume in GP</small>
             </div>
             <div class="form-group" id="volatility-buffer-group" style="display: none;">
@@ -1353,6 +1353,7 @@
                                 <li><strong>Percentage (%):</strong> The minimum spread percentage that will trigger the alert. For example, entering "5" means you'll be notified when an item has a 5%+ margin between buy and sell prices.</li>
                                 <li><strong>Minimum Price</strong> (when All Items selected): Only monitor items worth at least this much GP. Filters out low-value junk items. Enter raw number (e.g., 1000000 for 1M).</li>
                                 <li><strong>Maximum Price</strong> (when All Items selected): Only monitor items worth at most this much GP. Useful for staying within your cash stack limits.</li>
+                                <li><strong>Min Hourly Volume (GP)</strong> (optional): Only trigger on items with at least this much GP traded per hour. This filters out low-volume items that may have inflated spreads but are impractical to flip because there aren't enough buyers/sellers. For example, 50,000,000 means only items with 50M+ GP worth of hourly trading activity. Uses pre-fetched volume data from the database.</li>
                             </ul>
                         </div>
                     </div>
@@ -1382,9 +1383,10 @@
                             </svg>
                             Example Scenario
                         </h4>
-                        <p>Set an "All Items" spread alert for 5% with a minimum price of 1,000,000 gp. You'll be
-                            notified whenever any item worth 1M+ has a 5%+ margin - perfect for finding high-value
-                            flips!</p>
+                        <p>Set an "All Items" spread alert for 5% with a minimum price of 1,000,000 gp and
+                            a min hourly volume of 100,000,000 GP. You'll be notified whenever any actively-traded
+                            item worth 1M+ has a 5%+ margin - perfect for finding high-value flips with real
+                            trading activity!</p>
                     </div>
 
                     <div class="recommended-values">
@@ -1408,6 +1410,10 @@
                             <div class="recommended-value">
                                 <div class="label">Maximum Price</div>
                                 <div class="value">Based on your cash stack</div>
+                            </div>
+                            <div class="recommended-value">
+                                <div class="label">Min Hourly Volume (GP)</div>
+                                <div class="value">50,000,000 - 200,000,000 GP</div>
                             </div>
                         </div>
                     </div>

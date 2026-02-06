@@ -35,6 +35,13 @@ class Command(BaseCommand):
         self.item_mapping = None
         self.price_history = defaultdict(list)  # key: itemId:reference, value: list[(ts, price)]
         
+        # debug_log_path: Path to the debug.md file in the project root directory.
+        # What: File path for writing spread volume filter debug information.
+        # Why: Helps diagnose why spread alerts may not be filtering by volume correctly.
+        # How: Resolves to the project root (3 parent directories up from this file),
+        #      then appends 'debug.md'. Written to by self._debug_log() method.
+        self.debug_log_path = Path(__file__).resolve().parents[3] / 'debug.md'
+        
         # Sustained move tracking state - keyed by alert_id
         # Each entry contains: {
         #   'last_price': float,           # Last observed average price
@@ -45,6 +52,27 @@ class Command(BaseCommand):
         #   'volatility_buffer': list,     # Rolling buffer of absolute moves
         # }
         self.sustained_state = {}
+
+    def _debug_log(self, message):
+        """
+        Append a debug message to the debug.md file in the project root.
+
+        What: Writes a timestamped debug message to debug.md for diagnosing issues.
+        Why: Console output from the check_alerts management command can be hard to
+             review after the fact. Writing to a file provides a persistent log that
+             can be inspected at any time.
+        How: Opens the file in append mode ('a') and writes the message with a
+             timestamp prefix. Creates the file if it doesn't exist. Each message
+             is written on its own line.
+
+        Args:
+            message: The debug string to log (will be prefixed with a timestamp)
+        """
+        from datetime import datetime
+        # timestamp: Current date/time string for log entry identification
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        with open(self.debug_log_path, 'a', encoding='utf-8') as f:
+            f.write(f"[{timestamp}] {message}\n")
 
     def get_item_mapping(self):
         """Fetch and cache item ID to name mapping"""
@@ -87,12 +115,15 @@ class Command(BaseCommand):
         Check spread conditions for a multi-item spread alert (using item_ids field).
         
         What: Checks if specific items (stored in item_ids JSON) meet the spread threshold
-        Why: Allows users to monitor multiple specific items for spread alerts
+              AND optional minimum hourly volume requirement.
+        Why: Allows users to monitor multiple specific items for spread alerts, with an
+             optional volume filter to ensure only actively-traded items trigger alerts.
         How: 
             1. Parse item_ids JSON array to get list of items to check
             2. For each item, calculate spread and compare against threshold
-            3. Build triggered_data with items that meet the threshold
-            4. Return list of triggered items (empty list if none triggered)
+            3. If min_volume is set, check the item's latest HourlyItemVolume from the DB
+            4. Build triggered_data with items that meet ALL criteria
+            5. Return list of triggered items (empty list if none triggered)
         
         Args:
             alert: Alert model instance with item_ids set
@@ -133,6 +164,27 @@ class Command(BaseCommand):
             spread = self.calculate_spread(high, low)
             
             if spread is not None and spread >= alert.percentage:
+                # =========================================================================
+                # VOLUME FILTER FOR MULTI-ITEM SPREAD ALERTS
+                # What: Skip items whose hourly volume (GP) is below the user's min_volume
+                # Why: Users may only want to see spread opportunities on actively-traded
+                #      items. Low-volume items can have inflated spreads but are hard to
+                #      actually flip because there aren't enough buyers/sellers.
+                # How: Query the HourlyItemVolume table for the latest volume snapshot.
+                #      If the volume is below the threshold, skip this item entirely.
+                # =========================================================================
+                if alert.min_volume:
+                    # volume: The most recent hourly trading volume in GP for this item,
+                    #         or None if no volume data exists in the database yet
+                    volume = self.get_volume_from_timeseries(item_id_str, 0)
+                    self._debug_log(f"  [MULTI-ITEM VOLUME] item_id={item_id_str}, min_volume={alert.min_volume}, actual_volume={volume}, passes={volume is not None and volume >= alert.min_volume}")
+                    if volume is None or volume < alert.min_volume:
+                        self._debug_log(f"    ✗ FILTERED OUT by volume")
+                        continue
+                    self._debug_log(f"    ✓ Passed volume check")
+                else:
+                    self._debug_log(f"  [MULTI-ITEM] item_id={item_id_str}, spread={spread}%, no volume filter set")
+
                 # item_name: Human-readable name for display, defaults to "Item {id}" if not found
                 item_name = item_mapping.get(item_id_str, f'Item {item_id}')
                 triggered_items.append({
@@ -1743,7 +1795,26 @@ class Command(BaseCommand):
         # Handle spread alerts
         if alert.type == 'spread':
             if alert.percentage is None:
+                self._debug_log(f"## Spread Alert #{alert.id} — SKIP: percentage is None")
                 return False
+            
+            # =============================================================================
+            # DEBUG: Log spread alert entry point with full configuration
+            # What: Logs the alert's key configuration values when entering spread check
+            # Why: Helps diagnose whether min_volume is actually set on the alert object
+            # How: Writes alert ID, mode, min_volume, percentage, and price filters to debug.md
+            # =============================================================================
+            self._debug_log(f"## Spread Alert #{alert.id}")
+            self._debug_log(f"  - Mode: {'all_items' if alert.is_all_items else 'multi_item' if alert.item_ids else 'single_item'}")
+            self._debug_log(f"  - min_volume (raw): {repr(alert.min_volume)}")
+            self._debug_log(f"  - min_volume type: {type(alert.min_volume).__name__}")
+            self._debug_log(f"  - min_volume truthy: {bool(alert.min_volume)}")
+            self._debug_log(f"  - percentage: {alert.percentage}")
+            self._debug_log(f"  - min_price: {alert.minimum_price}, max_price: {alert.maximum_price}")
+            if alert.item_ids:
+                self._debug_log(f"  - item_ids: {alert.item_ids}")
+            if alert.item_id:
+                self._debug_log(f"  - item_id: {alert.item_id}")
             
             if alert.is_all_items:
                 # All items spread check - scan entire market
@@ -1751,6 +1822,11 @@ class Command(BaseCommand):
                 item_mapping = self.get_item_mapping()
                 # matching_items: list of items that meet the spread threshold
                 matching_items = []
+                
+                # items_passed_spread: Counter for items that passed the spread threshold
+                # items_filtered_by_volume: Counter for items skipped due to volume filter
+                items_passed_spread = 0
+                items_filtered_by_volume = 0
                 
                 for item_id, price_data in all_prices.items():
                     high = price_data.get('high')
@@ -1766,6 +1842,24 @@ class Command(BaseCommand):
                     
                     spread = self.calculate_spread(high, low)
                     if spread is not None and spread >= alert.percentage:
+                        items_passed_spread += 1
+                        # =========================================================================
+                        # VOLUME FILTER FOR ALL-ITEMS SPREAD ALERTS
+                        # What: Skip items whose hourly volume (GP) is below the user's min_volume
+                        # Why: When scanning the entire GE, many items have inflated spreads
+                        #      but extremely low trading volume, making them impractical to flip.
+                        #      Volume filtering ensures only actively-traded items appear.
+                        # How: Query the HourlyItemVolume table for the latest volume snapshot.
+                        #      If the volume is below the threshold, skip this item entirely.
+                        # =========================================================================
+                        if alert.min_volume:
+                            # volume: The most recent hourly trading volume in GP for this item,
+                            #         or None if no volume data exists in the database yet
+                            volume = self.get_volume_from_timeseries(item_id, 0)
+                            if volume is None or volume < alert.min_volume:
+                                items_filtered_by_volume += 1
+                                continue
+
                         item_name = item_mapping.get(item_id, f'Item {item_id}')
                         matching_items.append({
                             'item_id': item_id,
@@ -1775,9 +1869,15 @@ class Command(BaseCommand):
                             'spread': round(spread, 2)
                         })
                 
+                # DEBUG: Log summary of all-items spread check results
+                self._debug_log(f"  [ALL-ITEMS RESULT] passed_spread={items_passed_spread}, filtered_by_volume={items_filtered_by_volume}, final_matches={len(matching_items)}")
+                
                 if matching_items:
                     # Sort by spread descending
                     matching_items.sort(key=lambda x: x['spread'], reverse=True)
+                    # DEBUG: Log first few matching items
+                    for item in matching_items[:5]:
+                        self._debug_log(f"    ✓ {item['item_name']} (id={item['item_id']}): spread={item['spread']}%")
                     return matching_items
                 
                 return False
@@ -1787,20 +1887,49 @@ class Command(BaseCommand):
                 # What: Check spread for each item in item_ids JSON array
                 # Why: Allows users to monitor specific items instead of all or just one
                 # How: Parse item_ids, check each item's spread, build triggered_data
+                self._debug_log(f"  → Dispatching to _check_spread_for_item_ids()")
                 return self._check_spread_for_item_ids(alert, all_prices)
             
             else:
                 # Check specific single item for spread threshold
+                # What: Checks a single item's spread against the alert threshold and
+                #       optional min volume requirement.
+                # Why: Single-item spread alerts are the simplest mode — one item, one check.
+                # How: Get price data, calculate spread, check threshold, then optionally
+                #      verify hourly volume meets minimum before triggering.
                 if not alert.item_id:
+                    self._debug_log(f"  [SINGLE-ITEM] No item_id set — returning False")
                     return False
                 price_data = all_prices.get(str(alert.item_id))
                 if not price_data:
+                    self._debug_log(f"  [SINGLE-ITEM] No price data for item_id={alert.item_id}")
                     return False
                 high = price_data.get('high')
                 low = price_data.get('low')
                 spread = self.calculate_spread(high, low)
+                self._debug_log(f"  [SINGLE-ITEM] item_id={alert.item_id}, high={high}, low={low}, spread={spread}, threshold={alert.percentage}")
                 if spread is not None and spread >= alert.percentage:
+                    # =========================================================================
+                    # VOLUME FILTER FOR SINGLE-ITEM SPREAD ALERTS
+                    # What: Skip triggering if the item's hourly volume (GP) is below min_volume
+                    # Why: Even for a single item, users may want to ensure it's actively traded
+                    #      before being notified about spread opportunities.
+                    # How: Query the HourlyItemVolume table for the latest volume snapshot.
+                    #      If the volume is below the threshold, don't trigger the alert.
+                    # =========================================================================
+                    if alert.min_volume:
+                        # volume: The most recent hourly trading volume in GP for this item,
+                        #         or None if no volume data exists in the database yet
+                        volume = self.get_volume_from_timeseries(str(alert.item_id), 0)
+                        self._debug_log(f"  [SINGLE-ITEM VOLUME CHECK] min_volume={alert.min_volume}, actual_volume={volume}, passes={volume is not None and volume >= alert.min_volume}")
+                        if volume is None or volume < alert.min_volume:
+                            self._debug_log(f"  [SINGLE-ITEM] FILTERED OUT by volume — returning False")
+                            return False
+                    else:
+                        self._debug_log(f"  [SINGLE-ITEM] No min_volume set — skipping volume check")
+                    self._debug_log(f"  [SINGLE-ITEM] TRIGGERED — spread {spread}% >= threshold {alert.percentage}%")
                     return True
+                self._debug_log(f"  [SINGLE-ITEM] Not triggered — spread below threshold")
                 return False
         
         # =============================================================================
@@ -2144,6 +2273,20 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS('Starting alert checker...'))
         
         while True:
+            # =============================================================================
+            # DEBUG: Reset debug.md at the start of each check cycle
+            # What: Clears the debug.md file and writes a new header for this cycle
+            # Why: Prevents the debug file from growing indefinitely across cycles.
+            #      Each cycle overwrites the previous debug output so only the most
+            #      recent cycle's data is visible.
+            # How: Opens the file in write mode ('w') which truncates existing content,
+            #      then writes a markdown header with the current timestamp.
+            # =============================================================================
+            from datetime import datetime
+            with open(self.debug_log_path, 'w', encoding='utf-8') as f:
+                f.write(f"# Spread Volume Debug Log\n")
+                f.write(f"**Cycle started:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+            
             # Get all active alerts (include triggered all_items spread alerts for re-check)
             active_alerts = Alert.objects.filter(is_active=True)
             # alerts_to_check: Filter to non-triggered OR alerts that can re-trigger

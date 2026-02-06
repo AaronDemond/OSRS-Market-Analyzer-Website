@@ -125,22 +125,3 @@ def compute_flip_confidence(api_data):
     return round(score * 100, 1)
 
 
-
-
-import requests
-
-url = "https://prices.runescape.wiki/api/v1/osrs/timeseries?timestep=1h&id=3024"
-
-response = requests.get(
-    url,
-    headers={
-        "User-Agent": "OSRS-Market-Analyzer"
-    }
-)
-
-response.raise_for_status()  # raises error if request failed
-
-api_data = response.json()["data"]
-
-conf = compute_flip_confidence(api_data)
-print(f"Flip Confidence Score: {conf}/100")
