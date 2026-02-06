@@ -1522,6 +1522,15 @@ def create_alert(request):
             if not min_volume or not min_volume.strip():
                 messages.error(request, 'Min Hourly Volume (GP) is required for spike alerts')
                 return redirect('alerts')
+            
+            # What: Validate that the min_volume value is numeric
+            # Why: Non-numeric values would raise a ValueError when we cast to int for storage
+            # How: Attempt int conversion and handle failures with a user-facing error
+            try:
+                int(min_volume)
+            except (TypeError, ValueError):
+                messages.error(request, 'Min Hourly Volume (GP) must be a whole number')
+                return redirect('alerts')
         
         # show_notification: Controls whether a notification banner appears when alert triggers
         # What: Boolean flag from checkbox input
@@ -2958,6 +2967,18 @@ def update_alert(request):
                         return JsonResponse({
                             'status': 'error',
                             'error': 'Min Hourly Volume (GP) is required for spike alerts',
+                            'redirect': '/alerts/'
+                        }, status=400)
+                    
+                    # What: Validate that the min_volume value is numeric
+                    # Why: Non-numeric values would raise a ValueError when we cast to int for storage
+                    # How: Attempt int conversion and handle failures with a JSON error response
+                    try:
+                        int(min_volume_val)
+                    except (TypeError, ValueError):
+                        return JsonResponse({
+                            'status': 'error',
+                            'error': 'Min Hourly Volume (GP) must be a whole number',
                             'redirect': '/alerts/'
                         }, status=400)
                 
