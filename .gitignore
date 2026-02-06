@@ -1,6 +1,5 @@
 db.sqlite3
 venv/*
-manage.py
 Website/__pycache__/*
 *.swp
 *~
