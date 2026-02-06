@@ -2239,6 +2239,16 @@
                     </div>
                     {% endif %}
                     
+                    {% if alert.type == 'threshold' and alert.min_volume %}
+                    <!-- What: Displays the minimum hourly volume filter for threshold alerts -->
+                    <!-- Why: Users need to confirm the liquidity filter applied to their threshold alert -->
+                    <!-- How: Shows alert.min_volume formatted with intcomma for readability -->
+                    <div class="detail-item">
+                        <span class="detail-label">Min Hourly Volume (GP)</span>
+                        <span class="detail-value">{{ alert.min_volume|intcomma }}</span>
+                    </div>
+                    {% endif %}
+                    
                     <div class="detail-item">
                         <span class="detail-label">Show Alert Notification</span>
                         <span class="detail-value">{% if alert.show_notification %}Enabled{% else %}Disabled{% endif %}</span>
@@ -2427,11 +2437,10 @@
                         <small class="form-hint">Spread % threshold for pressure</small>
                     </div>
                     
-                    <!-- Min Hourly Volume (sustained and spread) -->
-                    <!-- What: Input field for minimum hourly trading volume in GP
-                         Why: Both sustained and spread alerts can use this to filter out
-                              low-volume items that may have unreliable prices or inflated spreads
-                         How: Shared form field displayed for both alert types -->
+                    <!-- Min Hourly Volume (sustained, spread, threshold) -->
+                    <!-- What: Input field for minimum hourly trading volume in GP -->
+                    <!-- Why: Sustained, spread, and threshold alerts use this to filter out low-volume items -->
+                    <!-- How: Shared form field reused across alert types; visibility controlled by JS -->
                     <div class="form-group" id="min-volume-group" style="display: none;">
                         <label for="edit-min-volume">Min Hourly Volume (GP)</label>
                         <input type="number" id="edit-min-volume" value="{{ alert.min_volume|default:'' }}" min="0" step="1" placeholder="e.g. 75000000">
@@ -4048,6 +4057,11 @@ function storeOriginalValues() {
         direction: document.getElementById('edit-direction').value,
         minimumPrice: document.getElementById('edit-minimum-price').value,
         maximumPrice: document.getElementById('edit-maximum-price').value,
+        // minVolume: Store the min hourly volume input value for cancel restoration
+        // What: Captures the current min_volume value from the edit form
+        // Why: Cancel should revert any edits to the volume filter for threshold/sustained/spread alerts
+        // How: Read directly from the edit-min-volume input field
+        minVolume: document.getElementById('edit-min-volume').value,
         emailNotification: document.getElementById('edit-email-notification').checked,
         isActive: document.getElementById('edit-is-active').checked,
         // group: Store the current group selection for cancel restoration
@@ -4082,6 +4096,10 @@ function cancelEdit() {
     document.getElementById('edit-direction').value = originalValues.direction;
     document.getElementById('edit-minimum-price').value = originalValues.minimumPrice;
     document.getElementById('edit-maximum-price').value = originalValues.maximumPrice;
+    // What: Restore the min hourly volume field to its original value on cancel
+    // Why: Users expect the volume filter to revert if they cancel their edits
+    // How: Set the edit-min-volume input back to originalValues.minVolume
+    document.getElementById('edit-min-volume').value = originalValues.minVolume;
     document.getElementById('edit-email-notification').checked = originalValues.emailNotification;
     document.getElementById('edit-is-active').checked = originalValues.isActive;
     
@@ -4227,6 +4245,10 @@ function handleTypeChange() {
         if (groups.thresholdType) groups.thresholdType.style.display = 'block';
         if (groups.reference) groups.reference.style.display = 'block';
         if (groups.referencePrices) groups.referencePrices.style.display = 'block';
+        // What: Show the min hourly volume field for threshold alerts in edit mode
+        // Why: Threshold alerts now support a minimum hourly GP volume filter
+        // How: Explicitly display the shared minVolume group that hideSustainedFields() hides
+        if (groups.minVolume) groups.minVolume.style.display = 'block';
         
         // Show percentage or target_price based on threshold_type
         handleThresholdTypeChange();
@@ -4848,6 +4870,11 @@ async function saveChanges() {
             data.minimum_price = document.getElementById('edit-minimum-price').value || null;
             data.maximum_price = document.getElementById('edit-maximum-price').value || null;
         }
+        
+        // What: Include minimum hourly volume for threshold alerts
+        // Why: Threshold alerts can filter out low-liquidity items using min_volume
+        // How: Read from the shared edit-min-volume input; send null if blank
+        data.min_volume = document.getElementById('edit-min-volume').value || null;
     } else if (alertType === 'collective_move') {
         // =============================================================================
         // COLLECTIVE MOVE ALERT SAVE DATA

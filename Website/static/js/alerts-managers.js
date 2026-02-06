@@ -699,6 +699,10 @@
                 if (elements.thresholdDirection) elements.thresholdDirection.style.display = 'block';
                 if (elements.thresholdValue) elements.thresholdValue.style.display = 'block';
                 if (elements.thresholdReference) elements.thresholdReference.style.display = 'block';
+                // What: Show the min hourly volume field for threshold alerts
+                // Why: Threshold alerts now support filtering by minimum hourly trading volume (GP)
+                // How: Explicitly display the shared minVolume form group that is otherwise hidden
+                if (elements.minVolume) elements.minVolume.style.display = 'block';
 
                 // Let items tracked change handler determine item selector visibility
                 this.handleThresholdItemsTrackedChange(formType);
@@ -1183,4 +1187,3 @@
             if (modal) modal.style.display = 'none';
         }
     };
-
