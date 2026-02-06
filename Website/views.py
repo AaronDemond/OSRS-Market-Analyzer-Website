@@ -3173,8 +3173,8 @@ def update_alert(request):
                     # min_volume: Raw string value submitted from the edit form
                     # What: Holds the user-entered minimum hourly volume in GP
                     # Why: We need to convert it to an integer for storage in the model
-                    # How: Cast to int when present; otherwise set to None
-                    alert.min_volume = int(min_volume) if min_volume else None
+                    # How: Cast to int now that validation has guaranteed a numeric value
+                    alert.min_volume = int(min_volume)
                     # Clear sustained-only fields that don't apply to spike alerts
                     alert.min_consecutive_moves = None
                     alert.min_move_percentage = None
