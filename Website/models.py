@@ -887,4 +887,70 @@ class ItemPriceSnapshot(models.Model):
         return high_gp + low_gp
 
 
+class HourlyItemVolume(models.Model):
+    """
+    Stores hourly trading volume snapshots for OSRS items, measured in GP (gold pieces).
+
+    What: A single hourly volume snapshot for one item at a specific point in time.
+    Why: Sustained move alerts need volume data to filter out low-activity items. Previously,
+         volume was fetched via individual API calls to the RuneScape Wiki timeseries endpoint
+         during each alert check cycle. For "all items" alerts, this meant hundreds of HTTP
+         requests per cycle. This model pre-fetches and caches volume data in the database,
+         replacing those API calls with fast DB queries.
+    How: Populated by scripts/update_volumes.py every 1 hour 5 minutes. Each fetch cycle
+         creates a NEW row per item (historical data accumulates over time). The alert checker
+         queries the most recent row for each item to get its current hourly volume.
+
+    Volume Calculation:
+        volume_gp = (highPriceVolume + lowPriceVolume) × ((avgHighPrice + avgLowPrice) / 2)
+        This represents the total GP value of items traded in the most recent hour.
+        Example: 5,000 units traded × 500,000 GP average price = 2,500,000,000 GP volume.
+
+    Data Source:
+        - RuneScape Wiki API: /timeseries?timestep=1h&id={item_id}
+        - Uses the most recent 1h interval from the timeseries response
+
+    Usage:
+        - check_alerts.py queries: HourlyItemVolume.objects.filter(item_id=X).first()
+          (ordered by -timestamp via Meta.ordering, so .first() = most recent)
+        - Historical data can be used for volume trend analysis in the future
+    """
+
+    # item_id: The OSRS item ID from the Wiki API (e.g., 4151 for Abyssal whip)
+    # Indexed for fast lookups when the alert checker queries by item
+    item_id = models.IntegerField(db_index=True)
+
+    # item_name: Human-readable item name, denormalized from item mapping
+    # Why denormalized: Avoids needing a join/lookup when displaying volume data
+    item_name = models.CharField(max_length=255)
+
+    # volume: Hourly trading volume measured in GP (gold pieces), NOT units traded
+    # Formula: (highPriceVolume + lowPriceVolume) × avg_price
+    # BigIntegerField because GP volume can easily exceed 2.1 billion for popular items
+    # (e.g., 5000 Twisted Bows traded × 1.2B GP each = 6 trillion GP)
+    volume = models.BigIntegerField()
+
+    # timestamp: When this volume data was gathered by the update_volumes.py script
+    # NOT the timestamp from the API response — this is when our script ran
+    # Indexed for fast ordering and time-range queries on historical data
+    timestamp = models.DateTimeField(db_index=True)
+
+    class Meta:
+        # Default ordering: most recent first, so .first() always returns the latest snapshot
+        ordering = ['-timestamp']
+        # Composite index for the most common query pattern:
+        # "Get the latest volume for item X" → filter(item_id=X).first()
+        indexes = [
+            models.Index(fields=['item_id', '-timestamp']),
+        ]
+
+    def __str__(self):
+        """
+        What: Human-readable string representation of this volume snapshot
+        Why: Useful in Django admin and debugging
+        How: Shows item name, formatted GP volume, and timestamp
+        """
+        return f"{self.item_name} - {self.volume:,} GP - {self.timestamp.strftime('%Y-%m-%d %H:%M')}"
+
+
 

@@ -21,7 +21,7 @@ if not os.environ.get('DJANGO_SETTINGS_MODULE'):
     import django
     django.setup()
 
-from Website.models import Alert
+from Website.models import Alert, HourlyItemVolume
 
 
 class Command(BaseCommand):
@@ -1307,40 +1307,54 @@ class Command(BaseCommand):
 
     def get_volume_from_timeseries(self, item_id, time_window_minutes):
         """
-        Fetch volume from timeseries API for a given item within a time window.
-        Uses 5-minute intervals (the most granular available).
-        Returns total volume or None if unavailable.
+        Get the most recent hourly volume (in GP) for an item from the database.
+
+        What: Queries the HourlyItemVolume table for the latest volume snapshot of a given item.
+        Why: Previously, this method made a live HTTP request to the RuneScape Wiki timeseries
+             API for every item being checked. For "all items" sustained alerts, this meant
+             hundreds of individual API calls per check cycle. Now, volume data is pre-fetched
+             by scripts/update_volumes.py every 1h5m and stored in the database, making this
+             a fast DB query instead of a slow HTTP request.
+        How: Queries HourlyItemVolume filtered by item_id. The model's Meta.ordering is
+             ['-timestamp'], so .first() returns the most recent snapshot. Returns the
+             volume field (in GP) or None if no data exists for this item.
+
+        Note: The time_window_minutes parameter is kept in the method signature for backwards
+              compatibility with existing callers, but is no longer used — we always return
+              the most recent hourly volume regardless of the time window.
+
+        Args:
+            item_id: The OSRS item ID to look up volume for
+            time_window_minutes: (Unused) Previously used to filter by time window.
+                                 Kept for API compatibility with existing callers.
+
+        Returns:
+            int: Hourly volume in GP from the most recent HourlyItemVolume record
+            None: If no volume data exists for this item (script hasn't run yet,
+                  or item was skipped due to missing price data)
         """
         try:
-            response = requests.get(
-                f'https://prices.runescape.wiki/api/v1/osrs/timeseries?timestep=5m&id={item_id}',
-                headers={'User-Agent': 'GE-Tools (not yet live) - demondsoftware@gmail.com'}
-            )
-            if response.status_code != 200:
-                return None
-            
-            data = response.json()
-            if 'data' not in data:
-                return None
-            
-            now = time.time()
-            cutoff = now - (time_window_minutes * 60)
-            total_volume = 0
-            
-            for entry in data['data']:
-                timestamp = entry.get('timestamp', 0)
-                if timestamp >= cutoff:
-                    high_vol = entry.get('highPriceVolume', 0) or 0
-                    low_vol = entry.get('lowPriceVolume', 0) or 0
-                    total_volume += high_vol + low_vol
-            
-            return total_volume
-        except requests.RequestException:
+            # latest_volume: The most recent HourlyItemVolume record for this item.
+            # Model ordering is ['-timestamp'] so .first() gives the newest entry.
+            latest_volume = HourlyItemVolume.objects.filter(item_id=int(item_id)).first()
+            if latest_volume:
+                return latest_volume.volume
+            print(f"  [DEBUG DB] No HourlyItemVolume record found for item_id={item_id}")
+            return None
+        except Exception as e:
+            # Catch any unexpected DB errors (connection issues, etc.) gracefully.
+            # Return None so the alert check can continue without volume data.
+            print(f"  [DEBUG DB] Exception querying HourlyItemVolume for item_id={item_id}: {e}")
             return None
 
 
     def check_sustained_alert(self, alert, all_prices):
-        print(alert)
+        print(f"\n[DEBUG SUSTAINED ALERT] Checking alert ID={alert.id}: "
+              f"type={alert.type}, item_id={alert.item_id}, is_all_items={alert.is_all_items}, "
+              f"time_frame={alert.time_frame}, min_moves={alert.min_consecutive_moves}, "
+              f"min_move_pct={alert.min_move_percentage}, vol_buffer={alert.volatility_buffer_size}, "
+              f"vol_mult={alert.volatility_multiplier}, min_volume={alert.min_volume}, "
+              f"direction={alert.direction}")
         """
         Check if a sustained move alert should be triggered.
         
@@ -1472,6 +1486,7 @@ class Command(BaseCommand):
                 'streak_start_price': current_price,
                 'volatility_buffer': []
             }
+            print(f"  [DEBUG SUSTAINED] item_id={item_id}: Initializing state (first check, need baseline)")
             return None  # Need at least one previous price to compare
 
         
@@ -1480,6 +1495,7 @@ class Command(BaseCommand):
         
         if last_price == 0:
             state['last_price'] = current_price
+            print(f"  [DEBUG SUSTAINED] item_id={item_id}: last_price was 0, setting to {current_price}")
             return None
         
         price_change_pct = ((current_price - last_price) / last_price) * 100
@@ -1515,30 +1531,55 @@ class Command(BaseCommand):
                 state['streak_start_time'] = now
                 state['streak_start_price'] = last_price
         
+        # Debug: Log current streak state
+        print(f"  [DEBUG SUSTAINED] item_id={item_id}: price={current_price}, change={price_change_pct:.4f}%, "
+              f"abs_change={abs_change:.4f}%, min_move_pct={min_move_pct}, "
+              f"streak={state['streak_count']}/{min_moves}, dir={state['streak_direction']}, "
+              f"vol_buffer_len={len(state['volatility_buffer'])}")
+        
         # Check time window
         streak_duration = now - state['streak_start_time']
         if streak_duration > (time_window_minutes * 60):
             state['streak_count'] = 0
             state['streak_direction'] = None
+            print(f"  [DEBUG SUSTAINED] item_id={item_id}: FAILED — streak exceeded time window ({streak_duration:.0f}s > {time_window_minutes * 60}s)")
             return None
         
         if state['streak_count'] < min_moves:
+            print(f"  [DEBUG SUSTAINED] item_id={item_id}: WAITING — streak {state['streak_count']} < {min_moves} required")
             return None
         
         if direction != 'both' and state['streak_direction'] != direction:
+            print(f"  [DEBUG SUSTAINED] item_id={item_id}: FAILED — direction mismatch ({state['streak_direction']} != {direction})")
             return None
         
         # Check volume
+        # =============================================================================
+        # DEBUG: Volume check diagnostics
+        # What: Log volume lookup details to diagnose sustained alert volume issues
+        # Why: After migrating from API-based volume (units) to DB-based volume (GP),
+        #      alerts may fail silently if min_volume thresholds are mismatched or
+        #      if no HourlyItemVolume records exist for the item
+        # =============================================================================
         volume = 0
         if min_volume:
             volume = self.get_volume_from_timeseries(item_id, time_window_minutes)
-            if volume is None or volume < min_volume:
+            print(f"  [DEBUG VOLUME] item_id={item_id}, min_volume={min_volume} (type={type(min_volume).__name__}), "
+                  f"db_volume={volume} (type={type(volume).__name__ if volume is not None else 'None'})")
+            if volume is None:
+                print(f"  [DEBUG VOLUME] FAILED: No volume data in DB for item {item_id} — returning None")
                 return None
+            if volume < min_volume:
+                print(f"  [DEBUG VOLUME] FAILED: volume {volume:,} < min_volume {min_volume:,} — returning None")
+                return None
+            print(f"  [DEBUG VOLUME] PASSED: volume {volume:,} >= min_volume {min_volume:,}")
         else:
             volume = self.get_volume_from_timeseries(item_id, time_window_minutes) or 0
+            print(f"  [DEBUG VOLUME] No min_volume set, fetched volume={volume:,} for item {item_id}")
         
         # Volatility check
         if len(state['volatility_buffer']) < 5:
+            print(f"  [DEBUG SUSTAINED] item_id={item_id}: FAILED — volatility buffer too small ({len(state['volatility_buffer'])} < 5)")
             return None
         
         avg_volatility = sum(state['volatility_buffer']) / len(state['volatility_buffer'])
@@ -1546,10 +1587,15 @@ class Command(BaseCommand):
         
         streak_start_price = state['streak_start_price']
         if streak_start_price == 0:
+            print(f"  [DEBUG SUSTAINED] item_id={item_id}: FAILED — streak_start_price is 0")
             return None
         total_move_pct = abs((current_price - streak_start_price) / streak_start_price * 100)
         
+        print(f"  [DEBUG SUSTAINED] item_id={item_id}: total_move={total_move_pct:.4f}%, "
+              f"required_move={required_move:.4f}% (avg_vol={avg_volatility:.4f} × multiplier={vol_multiplier})")
+        
         if total_move_pct < required_move:
+            print(f"  [DEBUG SUSTAINED] item_id={item_id}: FAILED — total move {total_move_pct:.4f}% < required {required_move:.4f}%")
             return None
         
         # Market pressure filter check
@@ -1598,9 +1644,14 @@ class Command(BaseCommand):
                 
                 # All pressure conditions must be met
                 if not (spread_ok and strength_ok and direction_match):
+                    print(f"  [DEBUG SUSTAINED] item_id={item_id}: FAILED — pressure check "
+                          f"(spread_ok={spread_ok}, strength_ok={strength_ok}, dir_match={direction_match})")
                     return None
         
         # TRIGGERED!
+        print(f"  [DEBUG SUSTAINED] item_id={item_id}: *** TRIGGERED! *** "
+              f"streak={state['streak_count']}, dir={state['streak_direction']}, "
+              f"total_move={total_move_pct:.4f}%, volume={volume:,}")
         item_mapping = self.get_item_mapping()
         item_name = item_mapping.get(str(item_id), f'Item {item_id}')
         
