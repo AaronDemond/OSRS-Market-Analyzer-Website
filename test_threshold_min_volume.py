@@ -107,7 +107,7 @@ class ThresholdMinVolumeTests(TestCase):
 
     def _fresh_volume_timestamp(self):
         """
-        Build a fresh timestamp string that passes the 2h10m recency window.
+        Build a fresh timestamp string that passes the 130-minute (2h10m) recency window.
 
         What: Provides a recent timestamp for HourlyItemVolume rows in tests.
         Why: The volume recency filter should allow alerts when data is current.
@@ -130,7 +130,7 @@ class ThresholdMinVolumeTests(TestCase):
 
     def _stale_volume_timestamp(self):
         """
-        Build a stale timestamp string that fails the 2h10m recency window.
+        Build a stale timestamp string that fails the 130-minute (2h10m) recency window.
 
         What: Provides an intentionally old timestamp for HourlyItemVolume rows.
         Why: Validates that stale volume snapshots do NOT pass min_volume checks.
