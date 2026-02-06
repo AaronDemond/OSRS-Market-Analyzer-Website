@@ -95,12 +95,13 @@
         transition: all 0.2s ease;
         max-height: 200px;
         overflow: hidden;
+        cursor: pointer;
     }
 
     .alert-item:hover {
-        transform: translateX(4px);
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
-        border-left-color: var(--primary-hover);
+        background: linear-gradient(135deg, rgba(234, 179, 140, 0.15), rgba(216, 155, 108, 0.12));
+        border-color: rgba(200, 140, 90, 0.4);
+        border-left-color: var(--hover-orange);
     }
 
     .alert-item.deleting {
