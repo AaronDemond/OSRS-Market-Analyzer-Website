@@ -1703,6 +1703,144 @@
     }
 
     /* =============================================================================
+       DELETE ALERT MODAL STYLES
+       What: Styles for the delete alert confirmation modal dialog
+       Why: Replaces the browser confirm() dialog for deleting an alert with a styled
+            modal that matches the deletion modals used across the application (e.g.,
+            item_detail.html, favorites.html). Uses a centered layout with a red
+            trash can icon to clearly communicate the destructive nature of the action.
+       How: Uses display:none / display:flex toggled via the .show class. The modal
+            content is centered on screen with a semi-transparent backdrop. The red
+            color scheme (icon background, delete button) follows the established
+            deletion modal pattern from other pages.
+    ============================================================================= */
+
+    /* delete-alert-modal-overlay: Full-screen backdrop that covers the entire page.
+       Hidden by default (display:none), shown via the .show class. Uses flexbox
+       to center the modal content vertically and horizontally. */
+    .delete-alert-modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 10000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* delete-alert-modal-overlay.show: Makes the overlay visible by switching
+       from display:none to display:flex, instantly centering the content. */
+    .delete-alert-modal-overlay.show {
+        display: flex;
+    }
+
+    /* delete-alert-modal-content: The white card containing the icon, title,
+       message, and action buttons. Centered text layout with rounded corners
+       and a prominent shadow to elevate it above the backdrop. */
+    .delete-alert-modal-content {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        width: 90%;
+        max-width: 400px;
+        text-align: center;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    /* delete-alert-modal-icon: Circular container for the trash can SVG icon.
+       Uses a light red background to visually reinforce the destructive nature
+       of the delete action, matching the pattern in item_detail.html. */
+    .delete-alert-modal-icon {
+        width: 48px;
+        height: 48px;
+        background: rgba(220, 38, 38, 0.1);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 16px;
+    }
+
+    /* delete-alert-modal-icon svg: The trash can icon itself, sized and colored
+       in red to match the danger/delete visual language. */
+    .delete-alert-modal-icon svg {
+        width: 24px;
+        height: 24px;
+        color: #DC2626;
+    }
+
+    /* delete-alert-modal-title: Bold heading that states the action being
+       confirmed (e.g., "Delete this alert?"). */
+    .delete-alert-modal-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #374151;
+        margin: 0 0 8px 0;
+    }
+
+    /* delete-alert-modal-message: Descriptive text beneath the title that warns
+       the user about the consequences of deleting (e.g., "This action cannot
+       be undone."). Uses a muted color to differentiate from the title. */
+    .delete-alert-modal-message {
+        color: #6B7280;
+        font-size: 0.9rem;
+        margin: 0 0 20px 0;
+    }
+
+    /* delete-alert-modal-buttons: Flex container for the Cancel and Delete
+       buttons, arranged side by side with a gap between them. */
+    .delete-alert-modal-buttons {
+        display: flex;
+        gap: 12px;
+    }
+
+    /* delete-alert-modal-btn: Base button styles shared by both Cancel and
+       Delete buttons. Each button takes equal width (flex:1) for a balanced
+       layout. Uses a subtle border and smooth hover transition. */
+    .delete-alert-modal-btn {
+        flex: 1;
+        padding: 10px 16px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+        border: 1px solid #E5E7EB;
+    }
+
+    /* delete-alert-modal-btn.cancel: The Cancel button uses a white background
+       with dark text, allowing the user to dismiss without taking action. */
+    .delete-alert-modal-btn.cancel {
+        background: white;
+        color: #374151;
+    }
+
+    /* delete-alert-modal-btn.cancel:hover: Slightly darker background on
+       hover to indicate interactivity. */
+    .delete-alert-modal-btn.cancel:hover {
+        background: #F5F6F8;
+    }
+
+    /* delete-alert-modal-btn.delete: The Delete button uses a solid red
+       background to clearly communicate the destructive action. The border
+       color matches the background for a clean look. */
+    .delete-alert-modal-btn.delete {
+        background: #DC2626;
+        color: white;
+        border-color: #DC2626;
+    }
+
+    /* delete-alert-modal-btn.delete:hover: Darker red on hover to indicate
+       interactivity, consistent with the deletion modals on other pages. */
+    .delete-alert-modal-btn.delete:hover {
+        background: #B91C1C;
+        border-color: #B91C1C;
+    }
+
+    /* =============================================================================
        ERROR NOTIFICATION STYLES
        ============================================================================= */
     /* What: Styles for inline error notification banners shown at the top of the page
@@ -2942,6 +3080,36 @@
             <button class="confirm-modal-btn cancel" onclick="closeConfirmModal()">Cancel</button>
             <!-- Confirm button: executes the stored onConfirm callback, then dismisses -->
             <button class="confirm-modal-btn confirm" id="confirm-modal-action-btn" onclick="executeConfirmAction()">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<!-- =============================================================================
+     DELETE ALERT MODAL
+     What: Confirmation modal shown when the user attempts to delete the current alert
+     Why: Replaces the browser's native confirm() dialog with a styled modal matching
+          the deletion modal pattern used across the application (item_detail.html,
+          favorites.html, alerts.html). The red trash icon and "Delete" button clearly
+          communicate the destructive and irreversible nature of the action.
+     How: Hidden by default (display:none). JavaScript adds the 'show' class when the
+          user clicks the delete button. Cancel or clicking outside removes 'show'.
+          The Delete button triggers the actual API call to delete the alert.
+============================================================================= -->
+<div class="delete-alert-modal-overlay" id="deleteAlertModal">
+    <div class="delete-alert-modal-content">
+        <!-- Red circular icon with trash can SVG to visually indicate deletion -->
+        <div class="delete-alert-modal-icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+        </div>
+        <h4 class="delete-alert-modal-title">Delete this alert?</h4>
+        <p class="delete-alert-modal-message">This action cannot be undone. The alert and all its settings will be permanently removed.</p>
+        <div class="delete-alert-modal-buttons">
+            <!-- Cancel button: closes the modal without deleting -->
+            <button type="button" class="delete-alert-modal-btn cancel" onclick="closeDeleteAlertModal()">Cancel</button>
+            <!-- Delete button: triggers the actual delete API call -->
+            <button type="button" class="delete-alert-modal-btn delete" onclick="confirmDeleteAlert()">Delete</button>
         </div>
     </div>
 </div>
@@ -4727,10 +4895,42 @@ async function saveChanges() {
     }
 }
 
-async function deleteAlert() {
-    if (!confirm('Are you sure you want to delete this alert? This action cannot be undone.')) {
-        return;
-    }
+/**
+ * Opens the delete alert confirmation modal.
+ * What: Shows the styled delete confirmation modal instead of a browser confirm() dialog
+ * Why: Provides a consistent, styled UI for destructive actions that matches the
+ *      deletion modal pattern used across the rest of the application
+ * How: Adds the 'show' class to the modal overlay, which switches it from
+ *      display:none to display:flex, making it visible with the centered layout
+ */
+function deleteAlert() {
+    const modal = document.getElementById('deleteAlertModal');
+    if (modal) modal.classList.add('show');
+}
+
+/**
+ * Closes the delete alert confirmation modal without deleting.
+ * What: Hides the delete alert modal, allowing the user to cancel the action
+ * Why: Users need a way to back out of a destructive action without consequences
+ * How: Removes the 'show' class from the modal overlay, returning it to display:none
+ */
+function closeDeleteAlertModal() {
+    const modal = document.getElementById('deleteAlertModal');
+    if (modal) modal.classList.remove('show');
+}
+
+/**
+ * Executes the actual alert deletion after the user confirms via the modal.
+ * What: Sends a POST request to the delete API endpoint and redirects on success
+ * Why: Separated from deleteAlert() so the modal's Delete button can trigger the
+ *      actual deletion only after the user has explicitly confirmed
+ * How: Closes the modal first, then sends the API request with the alert ID. On
+ *      success, redirects to the alerts list page. On failure, shows an error modal.
+ */
+async function confirmDeleteAlert() {
+    /* Close the confirmation modal immediately so the user sees the page
+       responding to their action while the API request is in flight */
+    closeDeleteAlertModal();
     
     try {
         const response = await fetch('/api/alerts/delete/', {
@@ -5181,6 +5381,13 @@ document.addEventListener('click', function(e) {
     if (e.target === confirmModal) {
         closeConfirmModal();
     }
+    /* Also close the delete alert modal when clicking outside its content area.
+       Clicking the overlay backdrop (not the modal card) dismisses the modal,
+       matching the standard UX pattern for all modals in this application. */
+    const deleteAlertModal = document.getElementById('deleteAlertModal');
+    if (e.target === deleteAlertModal) {
+        closeDeleteAlertModal();
+    }
 });
 
 // Close modal with Escape key
@@ -5190,6 +5397,9 @@ document.addEventListener('keydown', function(e) {
         /* Also close the confirm modal on Escape. This is the standard keyboard
            shortcut for dismissing dialogs and matches user expectations. */
         closeConfirmModal();
+        /* Also close the delete alert modal on Escape, consistent with all
+           other modal dismiss behaviors in this template. */
+        closeDeleteAlertModal();
     }
 });
 
