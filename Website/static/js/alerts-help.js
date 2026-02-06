@@ -175,6 +175,20 @@
         
         // Close the modal
         closeNewGroupModal();
+        
+        // Return keyboard focus to the group dropdown after modal closes
+        // What: Calls .focus() on the #alert-group select element after successful group creation
+        // Why: Accessibility best practice - when a modal closes, focus should return to the 
+        //      triggering element or a logical next element. The group dropdown is the logical
+        //      location since the user just created a group and that group is now selected.
+        // How: Query for #alert-group element, verify it exists (defensive null check to avoid
+        //      runtime errors), then call .focus() to move keyboard focus to the dropdown
+        // Note: This ensures keyboard-only users can continue their workflow without having to
+        //       manually navigate back to the form controls
+        const groupDropdown = document.getElementById('alert-group');
+        if (groupDropdown) {
+            groupDropdown.focus();
+        }
     }
     
     // Close new group modal on overlay click
