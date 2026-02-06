@@ -4712,6 +4712,12 @@ async function saveChanges() {
     const alertType = document.getElementById('edit-type').value;
     const isAllItems = document.getElementById('edit-is-all-items').value === 'true';
     
+    // minVolumeVal: Normalized min-volume value for spike alerts (trimmed string)
+    // What: Holds the validated min hourly volume input after trimming whitespace
+    // Why: Allows reuse later when building the spike alert payload
+    // How: Initialized to null and populated during spike validation
+    let minVolumeVal = null;
+    
     // =============================================================================
     // CLIENT-SIDE VALIDATION: ALL ITEMS REQUIRES MIN/MAX PRICE
     // =============================================================================
@@ -4752,16 +4758,27 @@ async function saveChanges() {
         // minVolumeVal: Current value from the min hourly volume input field
         // What: Captures the numeric value typed by the user
         // Why: Needed to verify the required spike alert field is not empty
-        // How: Read and trim the input value from edit-min-volume
-        const minVolumeVal = document.getElementById('edit-min-volume').value;
+        // How: Read the input value from edit-min-volume for trimming
+        minVolumeVal = document.getElementById('edit-min-volume').value;
+        
+        // trimmedMinVolumeVal: Whitespace-trimmed min volume input
+        // What: Normalized string value for validation and payload use
+        // Why: Ensures we treat whitespace-only inputs as empty
+        // How: Apply .trim() to the raw input value
+        const trimmedMinVolumeVal = minVolumeVal.trim();
         
         // What: Prevent save when min volume is missing for spike alerts
         // Why: The new requirement makes this field mandatory for spike alerts
         // How: Treat empty or whitespace-only values as invalid
-        if (!minVolumeVal || minVolumeVal.trim() === '') {
+        if (!trimmedMinVolumeVal) {
             showValidationError('Min Hourly Volume (GP) is required for spike alerts');
             return;  // Stop save operation - don't send request to server
         }
+        
+        // What: Store the trimmed value for reuse when building the spike payload
+        // Why: Avoids re-reading from the DOM and keeps validation consistent
+        // How: Assign the trimmed value back to minVolumeVal for later use
+        minVolumeVal = trimmedMinVolumeVal;
     }
     
     // Get item_ids from multi-item selector
@@ -4824,13 +4841,8 @@ async function saveChanges() {
         data.reference = document.getElementById('edit-reference').value || 'average';
         // What: Include min_volume in spike alert save data
         // Why: Spike alerts now require a minimum hourly volume threshold
-        // How: Read the value from the min-volume input field; null if empty after trimming
-        // minVolumeRaw: Raw string value from the min-volume input field
-        // What: Captures the user-entered value before trimming
-        // Why: Allows consistent handling of empty strings when building the payload
-        // How: Read directly from the edit-min-volume input element
-        const minVolumeRaw = document.getElementById('edit-min-volume').value;
-        data.min_volume = minVolumeRaw.trim() === '' ? null : minVolumeRaw;
+        // How: Use the validated, trimmed minVolumeVal from the spike validation block
+        data.min_volume = minVolumeVal;
         if (isAllItems) {
             data.minimum_price = document.getElementById('edit-minimum-price').value || null;
             data.maximum_price = document.getElementById('edit-maximum-price').value || null;
