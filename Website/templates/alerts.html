@@ -560,7 +560,10 @@
             <div class="form-group" id="min-volume-group" style="display: none;">
                 <label for="min-volume">Min Hourly Volume (GP)</label>
                 <input type="number" name="min_volume" id="min-volume" min="0" step="1" placeholder="e.g. 75000000" tabindex="10">
-                <small class="form-hint">Minimum hourly trading volume in GP</small>
+                <!-- What: Helper text for the min hourly volume input -->
+                <!-- Why: Spike alerts now require this value, while spread alerts keep it optional -->
+                <!-- How: Provide a concise hint explaining the requirement difference -->
+                <small class="form-hint">Minimum hourly trading volume in GP (required for spike/sustained alerts)</small>
             </div>
             <div class="form-group" id="volatility-buffer-group" style="display: none;">
                 <label for="volatility-buffer-size">Volatility Buffer (N)</label>
@@ -1462,6 +1465,7 @@
                                 </li>
                                 <li><strong>Minimum Price</strong> (when All Items selected): Only monitor items worth at least this much GP. Filters out cheap items that spike frequently due to low volume.</li>
                                 <li><strong>Maximum Price</strong> (when All Items selected): Only monitor items worth at most this much GP. Useful for filtering to your budget range.</li>
+                                <li><strong>Min Hourly Volume (GP)</strong> (required): Only trigger on items with at least this much GP traded per hour. This prevents low-activity items from spamming spike alerts. Uses the HourlyItemVolume database snapshots (no API calls).</li>
                             </ul>
                         </div>
                         
