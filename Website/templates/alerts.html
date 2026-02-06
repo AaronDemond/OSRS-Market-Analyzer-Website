@@ -1024,7 +1024,14 @@
             <h3>Create New Group</h3>
         </div>
         <div class="new-group-modal-body">
-            <label for="new-group-name-input">Group Name</label>
+            <div class="label-with-notification">
+                <label for="new-group-name-input">Group Name</label>
+                <!-- Small inline error notification for duplicate group names -->
+                <!-- What: Red badge shown when a duplicate group name is entered -->
+                <!-- Why: Users need immediate, visible feedback when the name already exists -->
+                <!-- How: Uses existing item-notification error styling, shown/hidden via JS -->
+                <span id="new-group-name-error" class="item-notification error"></span>
+            </div>
             <input type="text" id="new-group-name-input" placeholder="Enter group name..." maxlength="100" autocomplete="off">
             <p class="form-hint">Choose a descriptive name for your alert group</p>
         </div>
