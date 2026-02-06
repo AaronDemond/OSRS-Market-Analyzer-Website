@@ -1366,12 +1366,6 @@ class Command(BaseCommand):
 
 
     def check_sustained_alert(self, alert, all_prices):
-        print(f"\n[DEBUG SUSTAINED ALERT] Checking alert ID={alert.id}: "
-              f"type={alert.type}, item_id={alert.item_id}, is_all_items={alert.is_all_items}, "
-              f"time_frame={alert.time_frame}, min_moves={alert.min_consecutive_moves}, "
-              f"min_move_pct={alert.min_move_percentage}, vol_buffer={alert.volatility_buffer_size}, "
-              f"vol_mult={alert.volatility_multiplier}, min_volume={alert.min_volume}, "
-              f"direction={alert.direction}")
         """
         Check if a sustained move alert should be triggered.
         
@@ -1558,7 +1552,6 @@ class Command(BaseCommand):
             return None
         
         if direction != 'both' and state['streak_direction'] != direction:
-            print(f"  [DEBUG SUSTAINED] item_id={item_id}: FAILED — direction mismatch ({state['streak_direction']} != {direction})")
             return None
         
         # Check volume
@@ -1572,22 +1565,15 @@ class Command(BaseCommand):
         volume = 0
         if min_volume:
             volume = self.get_volume_from_timeseries(item_id, time_window_minutes)
-            print(f"  [DEBUG VOLUME] item_id={item_id}, min_volume={min_volume} (type={type(min_volume).__name__}), "
-                  f"db_volume={volume} (type={type(volume).__name__ if volume is not None else 'None'})")
             if volume is None:
-                print(f"  [DEBUG VOLUME] FAILED: No volume data in DB for item {item_id} — returning None")
                 return None
             if volume < min_volume:
-                print(f"  [DEBUG VOLUME] FAILED: volume {volume:,} < min_volume {min_volume:,} — returning None")
                 return None
-            print(f"  [DEBUG VOLUME] PASSED: volume {volume:,} >= min_volume {min_volume:,}")
         else:
             volume = self.get_volume_from_timeseries(item_id, time_window_minutes) or 0
-            print(f"  [DEBUG VOLUME] No min_volume set, fetched volume={volume:,} for item {item_id}")
         
         # Volatility check
         if len(state['volatility_buffer']) < 5:
-            print(f"  [DEBUG SUSTAINED] item_id={item_id}: FAILED — volatility buffer too small ({len(state['volatility_buffer'])} < 5)")
             return None
         
         avg_volatility = sum(state['volatility_buffer']) / len(state['volatility_buffer'])
@@ -1595,15 +1581,11 @@ class Command(BaseCommand):
         
         streak_start_price = state['streak_start_price']
         if streak_start_price == 0:
-            print(f"  [DEBUG SUSTAINED] item_id={item_id}: FAILED — streak_start_price is 0")
             return None
         total_move_pct = abs((current_price - streak_start_price) / streak_start_price * 100)
         
-        print(f"  [DEBUG SUSTAINED] item_id={item_id}: total_move={total_move_pct:.4f}%, "
-              f"required_move={required_move:.4f}% (avg_vol={avg_volatility:.4f} × multiplier={vol_multiplier})")
         
         if total_move_pct < required_move:
-            print(f"  [DEBUG SUSTAINED] item_id={item_id}: FAILED — total move {total_move_pct:.4f}% < required {required_move:.4f}%")
             return None
         
         # Market pressure filter check
@@ -1652,14 +1634,9 @@ class Command(BaseCommand):
                 
                 # All pressure conditions must be met
                 if not (spread_ok and strength_ok and direction_match):
-                    print(f"  [DEBUG SUSTAINED] item_id={item_id}: FAILED — pressure check "
-                          f"(spread_ok={spread_ok}, strength_ok={strength_ok}, dir_match={direction_match})")
                     return None
         
         # TRIGGERED!
-        print(f"  [DEBUG SUSTAINED] item_id={item_id}: *** TRIGGERED! *** "
-              f"streak={state['streak_count']}, dir={state['streak_direction']}, "
-              f"total_move={total_move_pct:.4f}%, volume={volume:,}")
         item_mapping = self.get_item_mapping()
         item_name = item_mapping.get(str(item_id), f'Item {item_id}')
         
@@ -1998,7 +1975,14 @@ class Command(BaseCommand):
                         # volume: The most recent hourly trading volume in GP for this item,
                         #         or None if no volume data exists in the database yet
                         volume = self.get_volume_from_timeseries(item_id, 0)
+                        # item_name_debug: Human-readable name for debug output, falls back to
+                        #                  "Item {id}" if the item isn't in our mapping
+                        item_name_debug = item_mapping.get(item_id, f'Item {item_id}')
                         if volume is None or volume < min_volume_threshold:
+                            # What: Log that this item was filtered out by the volume check
+                            # Why: Provides visibility into which spiking items are being
+                            #      excluded due to insufficient trading volume
+                            # How: Print the item details and the reason for filtering
                             continue
                         
                         matches.append({
@@ -2118,20 +2102,48 @@ class Command(BaseCommand):
                     
                     if exceeds_threshold:
                         # =========================================================================
+                        # MULTI-ITEM SPIKE: MARK AS NOT WITHIN THRESHOLD (BEFORE VOLUME CHECK)
+                        # What: Set all_within_threshold to False as soon as we know the item
+                        #       has exceeded the spike percentage threshold
+                        # Why: The volume filter should only control whether the item appears
+                        #      in the triggered matches list, NOT whether the alert considers
+                        #      "all items within threshold" for deactivation logic. An item
+                        #      that spiked but has low volume still spiked — the alert should
+                        #      remain active because a real price movement occurred.
+                        # How: Move this flag BEFORE the volume check so that volume-filtered
+                        #      items still prevent premature deactivation of the alert.
+                        # BUG FIX: Previously, all_within_threshold was set AFTER the volume
+                        #          check, meaning items that spiked but had low volume were
+                        #          treated as "within threshold," which could incorrectly
+                        #          signal that all items are within bounds and affect alert
+                        #          deactivation logic.
+                        # =========================================================================
+                        all_within_threshold = False
+                        
+                        # =========================================================================
                         # VOLUME FILTER FOR MULTI-ITEM SPIKE ALERTS
                         # What: Skip items whose hourly volume (GP) is below the user's min_volume
                         # Why: Spike alerts must only trigger on actively-traded items to avoid
                         #      noisy alerts from low-volume items with volatile prices
                         # How: Query the HourlyItemVolume table for the latest volume snapshot.
-                        #      If the volume is below the threshold, skip this item entirely.
+                        #      If the volume is below the threshold, skip this item entirely
+                        #      from the matches list (but keep all_within_threshold = False).
                         # =========================================================================
                         # volume: The most recent hourly trading volume in GP for this item,
                         #         or None if no volume data exists in the database yet
                         volume = self.get_volume_from_timeseries(item_id_str, 0)
+                        # item_name_debug: Human-readable name for debug output, falls back to
+                        #                  "Item {id}" if the item isn't in our mapping
+                        item_name_debug = item_mapping.get(item_id_str, f'Item {item_id_str}')
                         if volume is None or volume < min_volume_threshold:
+                            # What: Log that this item was filtered out by the volume check
+                            # Why: Provides visibility into which spiking items are being
+                            #      excluded due to insufficient trading volume
+                            # How: Print the item details and the reason for filtering
+                            #      Note: all_within_threshold is already False (set above)
+                            #      so this item still prevents premature deactivation
                             continue
                         
-                        all_within_threshold = False
                         matches.append({
                             'item_id': item_id_str,
                             'item_name': item_mapping.get(item_id_str, f'Item {item_id_str}'),
@@ -2218,6 +2230,9 @@ class Command(BaseCommand):
                 #         or None if no volume data exists in the database yet
                 volume = self.get_volume_from_timeseries(str(alert.item_id), 0)
                 if volume is None or volume < min_volume_threshold:
+                    # What: Log that this item was filtered out by the volume check
+                    # Why: Provides visibility into why a spiking item did not trigger
+                    # How: Print the item details and the reason for filtering
                     return False
                 
                 alert.triggered_data = json.dumps({
