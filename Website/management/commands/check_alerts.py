@@ -1879,6 +1879,12 @@ class Command(BaseCommand):
             if alert.min_volume is None:
                 return False
             
+            # min_volume_threshold: Validated minimum hourly volume for spike alerts
+            # What: Stores the required min_volume value after validation
+            # Why: Makes it explicit that spike alert logic assumes a non-None volume threshold
+            # How: Assign from alert.min_volume after the required-field check above
+            min_volume_threshold = alert.min_volume
+            
             # Get reference type, defaulting to 'average' for spike alerts
             # reference_type: Which price to monitor (high/low/average)
             spike_reference = alert.reference or 'average'
@@ -1992,7 +1998,7 @@ class Command(BaseCommand):
                         # volume: The most recent hourly trading volume in GP for this item,
                         #         or None if no volume data exists in the database yet
                         volume = self.get_volume_from_timeseries(item_id, 0)
-                        if volume is None or volume < alert.min_volume:
+                        if volume is None or volume < min_volume_threshold:
                             continue
                         
                         matches.append({
@@ -2122,7 +2128,7 @@ class Command(BaseCommand):
                         # volume: The most recent hourly trading volume in GP for this item,
                         #         or None if no volume data exists in the database yet
                         volume = self.get_volume_from_timeseries(item_id_str, 0)
-                        if volume is None or volume < alert.min_volume:
+                        if volume is None or volume < min_volume_threshold:
                             continue
                         
                         all_within_threshold = False
@@ -2211,7 +2217,7 @@ class Command(BaseCommand):
                 # volume: The most recent hourly trading volume in GP for this item,
                 #         or None if no volume data exists in the database yet
                 volume = self.get_volume_from_timeseries(str(alert.item_id), 0)
-                if volume is None or volume < alert.min_volume:
+                if volume is None or volume < min_volume_threshold:
                     return False
                 
                 alert.triggered_data = json.dumps({

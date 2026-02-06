@@ -628,16 +628,16 @@
                     // How: Get the group by ID so we can check its visibility
                     const minVolumeGroup = document.getElementById('min-volume-group');
                     
-                    // minVolumeValue: User-entered minimum hourly volume in GP
+                    // minVolumeVal: User-entered minimum hourly volume in GP
                     // What: Captures the numeric value typed into the min-volume input
                     // Why: Spike alerts are required to enforce a minimum hourly volume threshold
                     // How: Read the value from the min-volume input field
-                    const minVolumeValue = document.getElementById('min-volume').value;
+                    const minVolumeVal = document.getElementById('min-volume').value;
                     
                     // What: Validate that min volume is provided for spike alerts
                     // Why: The requirement states this field is mandatory for spike alerts
                     // How: If the group is visible and the value is empty, mark as missing
-                    if (isElementVisible(minVolumeGroup) && isValueEmpty(minVolumeValue)) {
+                    if (isElementVisible(minVolumeGroup) && isValueEmpty(minVolumeVal)) {
                         markMissingRequired();
                     }
                 }
