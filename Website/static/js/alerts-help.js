@@ -104,7 +104,17 @@
      */
     function createNewGroup() {
         const input = document.getElementById('new-group-name-input');
+        const errorBadge = document.getElementById('new-group-name-error');
         const groupName = input.value.trim();
+        
+        // Hide any previous error badge before validating
+        // What: Clears the inline error message on each attempt
+        // Why: Ensures old errors don't linger when user retries
+        // How: Remove the "show" class and clear text content
+        if (errorBadge) {
+            errorBadge.classList.remove('show');
+            errorBadge.textContent = '';
+        }
         
         // Validate input
         // What: Ensure the group name is not empty
@@ -124,6 +134,24 @@
         if (isDuplicate) {
             // Show error - group already exists
             input.style.borderColor = '#dc3545';
+            
+            // Show inline duplicate error badge
+            // What: Displays a red inline message stating the group already exists
+            // Why: User requested a clear, specific message when a duplicate is entered
+            // How: Reuse item-notification error styling and auto-hide after delay
+            if (errorBadge) {
+                errorBadge.textContent = 'Error: group already exists';
+                errorBadge.classList.add('show');
+                setTimeout(() => {
+                    errorBadge.classList.remove('show');
+                    errorBadge.textContent = '';
+                }, 2500);
+            }
+            
+            // Reset input border after a short delay
+            // What: Clears the red border used to indicate an error
+            // Why: Avoids leaving the input in a permanent error state
+            // How: Restore original border color after timeout
             setTimeout(() => {
                 input.style.borderColor = '';
             }, 2000);
