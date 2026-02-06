@@ -22,7 +22,12 @@ if not os.environ.get('DJANGO_SETTINGS_MODULE'):
     import django
     django.setup()
 
-from Website.models import Alert, HourlyItemVolume
+# What: Import Django models used by the alert checker
+# Why: Alert is the core model for all alert types; HourlyItemVolume provides volume data
+#       for spike alert filtering; FiveMinTimeSeries provides cached timeseries data for
+#       flip confidence alerts (replacing per-item HTTP API calls with fast DB queries).
+# How: These models are imported from the Website app's models.py module.
+from Website.models import Alert, HourlyItemVolume, FiveMinTimeSeries
 
 # =============================================================================
 # FLIP CONFIDENCE SCORING FUNCTIONS
@@ -1999,6 +2004,158 @@ class Command(BaseCommand):
         '24h': 86400,
     }
 
+    # TIMESTEP_TO_MODEL: Maps timestep labels to the Django model that stores cached
+    # timeseries data for that resolution.
+    # What: Lookup table from timestep string -> Django ORM model class
+    # Why: The flip confidence alert originally made individual HTTP requests to the
+    #       OSRS Wiki API for every item being checked. For "all items" alerts, this meant
+    #       ~4,400 HTTP requests per check cycle (~37 minutes). By caching timeseries data
+    #       in the database (populated by scripts/get-all-volume.py), we replace those HTTP
+    #       calls with fast DB queries. This dict maps each timestep to the correct model.
+    # How: Each timestep key ('5m', '1h', '6h', '24h') maps to a model class that has the
+    #       same schema: item_id, item_name, avg_high_price, avg_low_price, high_price_volume,
+    #       low_price_volume, timestamp. Models that don't exist yet are set to None, which
+    #       triggers a fallback to the HTTP API in fetch_timeseries_from_db().
+    # Note: Currently only FiveMinTimeSeries exists (despite its name, it stores 1h data).
+    #        When OneHourTimeSeries, SixHourTimeSeries, TwentyFourHourTimeSeries are created,
+    #        update this mapping to point to the correct model classes.
+    TIMESTEP_TO_MODEL = {
+        '5m': FiveMinTimeSeries,   # Currently stores 1h data (used as the default model)
+        '1h': FiveMinTimeSeries,   # Same model — 1h data is what's actually cached here
+        '6h': None,                # Not yet created — will fall back to HTTP API
+        '24h': None,               # Not yet created — will fall back to HTTP API
+    }
+
+    def fetch_timeseries_from_db(self, item_id, timestep, lookback_count):
+        """
+        Fetch timeseries data from the local database instead of the OSRS Wiki HTTP API.
+
+        What: Retrieves price history (avgHighPrice, avgLowPrice, highPriceVolume,
+              lowPriceVolume) for a given item from the cached timeseries tables in the
+              database, formatted identically to the OSRS Wiki API response so that
+              compute_flip_confidence() can consume it without modification.
+
+        Why: The original fetch_timeseries_data() made individual HTTP requests to the
+             OSRS Wiki API for every item. For "all items" flip confidence alerts (~4,400
+             items), this took ~37 minutes per check cycle, causing the entire alert loop
+             to hang. By reading from pre-cached database tables (populated by
+             scripts/get-all-volume.py), we reduce this to fast SQL queries that complete
+             in milliseconds per item.
+
+        How:
+            1. Looks up the correct Django model for the given timestep via TIMESTEP_TO_MODEL
+            2. If no model exists for that timestep, falls back to the HTTP API method
+            3. Queries the model for all rows matching the item_id, ordered by timestamp
+               descending (newest first), limited to lookback_count rows
+            4. Deduplicates by timestamp — if the same item has multiple rows with the same
+               timestamp (e.g., from duplicate script runs), only the first (most recent by
+               insertion order) is kept
+            5. Converts Django model field names (snake_case) to the camelCase format that
+               compute_flip_confidence() expects (e.g., avg_high_price -> avgHighPrice)
+            6. Reverses the list to chronological order (oldest first) to match the API format
+            7. For '24h' timestep, samples every 4th point from 6h data (same as the API method)
+
+        Args:
+            item_id: The OSRS item ID to fetch data for (int or string).
+            timestep: The time bucket size ('5m', '1h', '6h', '24h').
+            lookback_count: Number of unique time buckets to return.
+
+        Returns:
+            list: List of dicts with keys avgHighPrice, avgLowPrice, highPriceVolume,
+                  lowPriceVolume, timestamp. Ordered chronologically (oldest first).
+                  Empty list if no data is found or the model doesn't exist and API
+                  fallback also fails.
+        """
+        # model_class: The Django ORM model that stores timeseries data for this timestep.
+        # None means no model exists yet for this resolution, so we fall back to HTTP API.
+        model_class = self.TIMESTEP_TO_MODEL.get(timestep)
+
+        if model_class is None:
+            # No DB model for this timestep — fall back to HTTP API
+            # This ensures the system still works for timesteps where we haven't yet
+            # created a database table (e.g., 6h, 24h).
+            print(f"[FLIP CONFIDENCE DB] No DB model for timestep '{timestep}', "
+                  f"falling back to HTTP API for item {item_id}")
+            return self.fetch_timeseries_data(item_id, timestep, lookback_count)
+
+        try:
+            # effective_lookback: How many rows to fetch from the DB.
+            # For '24h' timestep, we need 4x more rows because we'll sample every 4th
+            # point to simulate daily data from 6h-resolution data (matching the API method).
+            effective_lookback = lookback_count * 4 if timestep == '24h' else lookback_count
+
+            # db_rows: QuerySet of timeseries rows for this item, ordered newest-first
+            # (via Meta.ordering = ['-timestamp']), limited to the effective lookback count.
+            # We fetch more rows than needed to account for deduplication removing some.
+            # The extra 20% buffer (int(... * 1.2) + 5) ensures we have enough unique
+            # timestamps even if there are scattered duplicates.
+            fetch_limit = int(effective_lookback * 1.2) + 5
+            db_rows = model_class.objects.filter(
+                item_id=int(item_id)
+            )[:fetch_limit]
+
+            # seen_timestamps: Set used to track which timestamps we've already included,
+            # ensuring each time bucket appears only once in the result.
+            # Why: The user confirmed that duplicate timestamps can occur (e.g., from
+            #       overlapping script runs), and we should only use one entry per timestamp.
+            seen_timestamps = set()
+
+            # result: List of data dicts in the format compute_flip_confidence() expects,
+            # built by converting Django model fields (snake_case) to API-style camelCase.
+            # Accumulated in reverse-chronological order (newest first) then reversed.
+            result = []
+
+            for row in db_rows:
+                # ts: The timestamp string for this row, used as the deduplication key
+                ts = row.timestamp
+
+                # Skip duplicate timestamps — only use the first occurrence (newest by
+                # insertion order) for each unique timestamp
+                if ts in seen_timestamps:
+                    continue
+                seen_timestamps.add(ts)
+
+                # Convert Django model field names to the camelCase format that
+                # compute_flip_confidence() expects. This mapping matches the OSRS Wiki
+                # API response format exactly:
+                #   avg_high_price  -> avgHighPrice  (average instant-buy price)
+                #   avg_low_price   -> avgLowPrice   (average instant-sell price)
+                #   high_price_volume -> highPriceVolume (instant-buy trade count)
+                #   low_price_volume  -> lowPriceVolume  (instant-sell trade count)
+                result.append({
+                    'avgHighPrice': row.avg_high_price,
+                    'avgLowPrice': row.avg_low_price,
+                    'highPriceVolume': row.high_price_volume,
+                    'lowPriceVolume': row.low_price_volume,
+                    'timestamp': ts,
+                })
+
+                # Stop once we have enough unique data points
+                if len(result) >= effective_lookback:
+                    break
+
+            # Reverse to chronological order (oldest first) — this matches the format
+            # returned by the OSRS Wiki API and expected by compute_flip_confidence().
+            result.reverse()
+
+            # For '24h' timestep, sample every 4th point from the data to simulate
+            # daily resolution from hourly data. This matches the behavior of the
+            # original HTTP API method (which used 6h API data sampled every 4th point).
+            if timestep == '24h':
+                result = result[::4]
+
+            # Trim to exactly lookback_count points (the sampling or dedup buffer
+            # may have produced slightly more or fewer than needed)
+            result = result[-lookback_count:]
+
+            return result
+
+        except Exception as e:
+            # On any DB error, fall back to the HTTP API as a safety net
+            print(f"[FLIP CONFIDENCE DB] Error querying DB for item {item_id}: {e}, "
+                  f"falling back to HTTP API")
+            return self.fetch_timeseries_data(item_id, timestep, lookback_count)
+
     def fetch_timeseries_data(self, item_id, timestep, lookback_count):
         """
         Fetch timeseries data from the OSRS Wiki API for a single item.
@@ -2150,6 +2307,9 @@ class Command(BaseCommand):
 
         if alert.is_all_items:
             # All items mode: check every item in the market (with price filters)
+            # pre_filter_count: Tracks how many items were filtered out during pre-filtering,
+            # used for debug output to show the effectiveness of pre-filters.
+            pre_filter_count = 0
             for item_id_str, price_data in all_prices.items():
                 high = price_data.get('high')
                 low = price_data.get('low')
@@ -2157,10 +2317,35 @@ class Command(BaseCommand):
                     continue
                 # Apply min/max price filters if configured
                 if alert.minimum_price is not None and (high < alert.minimum_price or low < alert.minimum_price):
+                    pre_filter_count += 1
                     continue
                 if alert.maximum_price is not None and (high > alert.maximum_price or low > alert.maximum_price):
+                    pre_filter_count += 1
                     continue
+
+                # =============================================================================
+                # EARLY SPREAD PRE-FILTER (for is_all_items mode only)
+                # =============================================================================
+                # What: Skips items whose current spread is below the minimum threshold
+                #        BEFORE making any DB queries or computing confidence scores.
+                # Why: For "all items" alerts, there can be ~4,400 items. Many will have
+                #       tiny spreads that would fail the per-item spread check later anyway.
+                #       By filtering here using already-available all_prices data, we avoid
+                #       unnecessary DB queries and confidence score computations.
+                # How: Calculates current_spread = ((high - low) / low) * 100 and compares
+                #       against min_spread_pct. Items below the threshold are skipped.
+                if min_spread_pct is not None and min_spread_pct > 0 and low > 0:
+                    current_spread = ((high - low) / low) * 100
+                    if current_spread < min_spread_pct:
+                        pre_filter_count += 1
+                        continue
+
                 items_to_check.append(item_id_str)
+
+            # Debug output showing the pre-filter effectiveness for all-items mode
+            print(f"[FLIP CONFIDENCE] is_all_items pre-filter: "
+                  f"{len(items_to_check)} items passed, {pre_filter_count} filtered out "
+                  f"(from {len(all_prices)} total)")
         elif alert.item_ids:
             # Multi-item mode: check specific list of items
             try:
@@ -2181,6 +2366,18 @@ class Command(BaseCommand):
         # state_changed: Whether we need to save updated last_scores
         state_changed = False
 
+        # loop_start_time: Timestamp when the per-item loop begins, used for debug
+        # output showing total processing time for all items.
+        loop_start_time = time.time()
+        # items_processed: Counter for how many items were actually evaluated (not skipped
+        # by cooldown/interval checks), used for debug output.
+        items_processed = 0
+        # items_skipped: Counter for items skipped due to cooldown or eval interval
+        items_skipped = 0
+
+        print(f"[FLIP CONFIDENCE] Starting per-item evaluation for {len(items_to_check)} items "
+              f"(alert #{alert.id}, timestep={timestep}, lookback={lookback}, threshold={threshold})")
+
         for item_id_str in items_to_check:
             # =============================================================================
             # PER-ITEM STATE: Load previous score, consecutive count, and last eval time
@@ -2199,6 +2396,7 @@ class Command(BaseCommand):
             if eval_interval > 0 and last_eval > 0:
                 elapsed_minutes = (now_ts - last_eval) / 60
                 if elapsed_minutes < eval_interval:
+                    items_skipped += 1
                     continue  # Too soon, skip this item
 
             # =============================================================================
@@ -2209,6 +2407,7 @@ class Command(BaseCommand):
             if cooldown_minutes > 0 and last_triggered_ts > 0:
                 elapsed_since_trigger = (now_ts - last_triggered_ts) / 60
                 if elapsed_since_trigger < cooldown_minutes:
+                    items_skipped += 1
                     continue  # Still in cooldown, skip
 
             # =============================================================================
@@ -2230,9 +2429,15 @@ class Command(BaseCommand):
                             continue
 
             # =============================================================================
-            # FETCH TIMESERIES DATA FROM OSRS WIKI API
+            # FETCH TIMESERIES DATA FROM LOCAL DATABASE (with HTTP API fallback)
             # =============================================================================
-            timeseries_data = self.fetch_timeseries_data(item_id_str, timestep, lookback)
+            # What: Retrieves price history from the local DB instead of the OSRS Wiki API.
+            # Why: The original HTTP API approach made individual requests per item (~4,400
+            #       for "all items" alerts), taking ~37 minutes. DB queries are near-instant.
+            # How: fetch_timeseries_from_db() queries the appropriate timeseries model,
+            #       deduplicates by timestamp, converts field names to API format, and
+            #       falls back to the HTTP API if no DB model exists for the timestep.
+            timeseries_data = self.fetch_timeseries_from_db(item_id_str, timestep, lookback)
             if not timeseries_data or len(timeseries_data) < 3:
                 # Not enough data points; reset consecutive counter
                 item_state['last_eval'] = now_ts
@@ -2260,6 +2465,7 @@ class Command(BaseCommand):
             # COMPUTE FLIP CONFIDENCE SCORE
             # =============================================================================
             score = compute_flip_confidence(timeseries_data, weights=weights)
+            items_processed += 1
 
             # =============================================================================
             # APPLY TRIGGER RULE
@@ -2309,6 +2515,15 @@ class Command(BaseCommand):
 
             last_scores[item_id_str] = item_state
             state_changed = True
+
+        # =============================================================================
+        # DEBUG: Per-item loop timing summary
+        # =============================================================================
+        # loop_elapsed: Total seconds spent in the per-item evaluation loop
+        loop_elapsed = time.time() - loop_start_time
+        print(f"[FLIP CONFIDENCE] Evaluation complete for alert #{alert.id}: "
+              f"{items_processed} items scored, {items_skipped} skipped (cooldown/interval), "
+              f"{len(triggered_items)} triggered, took {loop_elapsed:.2f}s")
 
         # =============================================================================
         # SAVE UPDATED STATE
@@ -3011,9 +3226,13 @@ class Command(BaseCommand):
                                 alert.triggered_at = timezone.now()
                                 alert.save()
                                 triggered_count = len(result) if isinstance(result, list) else 1
+                                # alert_str: String representation of the alert, with Unicode
+                                # characters replaced by ASCII equivalents to avoid cp1252
+                                # encoding errors on Windows consoles (e.g., ≥ -> >=)
+                                alert_str = str(alert).replace('\u2265', '>=').replace('\u0394', 'D')
                                 self.stdout.write(
                                     self.style.WARNING(
-                                        f'TRIGGERED (flip confidence): {triggered_count} item(s) for {alert}'
+                                        f'TRIGGERED (flip confidence): {triggered_count} item(s) for {alert_str}'
                                     )
                                 )
                                 # Send email notification if enabled, then disable to prevent spam
