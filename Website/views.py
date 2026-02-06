@@ -3063,7 +3063,7 @@ def update_alert(request):
                     min_move_percentage = data.get('min_move_percentage')
                     alert.min_move_percentage = float(min_move_percentage) if min_move_percentage else None
                     
-                    # min_volume is handled below for both sustained and spread alerts
+                    # min_volume is handled below for sustained, spread, and threshold alerts
                     min_volume = data.get('min_volume')
                     alert.min_volume = int(min_volume) if min_volume else None
                     
@@ -3098,10 +3098,29 @@ def update_alert(request):
                     alert.sustained_item_ids = None
                     alert.min_pressure_strength = None
                     alert.min_pressure_spread_pct = None
+                elif alert.type == 'threshold':
+                    # =============================================================================
+                    # THRESHOLD ALERT MIN VOLUME HANDLING
+                    # What: Save the min_volume field when editing a threshold alert
+                    # Why: Threshold alerts now support a minimum hourly volume (GP) filter
+                    #      to avoid triggering on low-liquidity items
+                    # How: Read min_volume from the request data and save it. Clear sustained-only
+                    #      fields that don't apply to threshold alerts.
+                    # =============================================================================
+                    min_volume = data.get('min_volume')
+                    alert.min_volume = int(min_volume) if min_volume else None
+                    # Clear sustained-only fields that don't apply to threshold alerts
+                    alert.min_consecutive_moves = None
+                    alert.min_move_percentage = None
+                    alert.volatility_buffer_size = None
+                    alert.volatility_multiplier = None
+                    alert.sustained_item_ids = None
+                    alert.min_pressure_strength = None
+                    alert.min_pressure_spread_pct = None
                 else:
-                    # Clear sustained/spread fields for other alert types (spike, threshold, collective_move)
+                    # Clear sustained/spread/threshold fields for other alert types (spike, collective_move)
                     # What: Reset all sustained-specific and min_volume fields when the alert
-                    #       type is not sustained or spread
+                    #       type is not sustained, spread, or threshold
                     # Why: Prevents stale data from a previous type from affecting the alert
                     # How: Set all sustained-specific fields and min_volume to None
                     alert.min_consecutive_moves = None
@@ -4031,6 +4050,22 @@ def update_single_alert(request, alert_id):
     
     maximum_price = data.get('maximum_price')
     alert.maximum_price = int(maximum_price) if maximum_price else None
+
+    # =============================================================================
+    # HANDLE MINIMUM HOURLY VOLUME FOR THRESHOLD/SUSTAINED/SPREAD ALERTS
+    # =============================================================================
+    # What: Persist the min_volume filter when editing alerts that support it
+    # Why: Threshold, sustained, and spread alerts use min_volume to filter out
+    #      low-liquidity items that shouldn't trigger notifications
+    # How: Read min_volume from request data when provided and store it on the Alert model
+    # =============================================================================
+    if 'min_volume' in data:
+        # min_volume: The requested minimum hourly volume (GP) value from the edit form
+        # What: Numeric threshold for the minimum activity level required to trigger
+        # Why: Used to enforce the liquidity filter for threshold/sustained/spread alerts
+        # How: Convert to int when present; store None when blank
+        min_volume = data.get('min_volume')
+        alert.min_volume = int(min_volume) if min_volume else None
     
     # Handle email notification
     alert.email_notification = data.get('email_notification', False)

@@ -558,6 +558,9 @@
                 <small class="form-hint">Min % change to count as move</small>
             </div>
             <div class="form-group" id="min-volume-group" style="display: none;">
+                <!-- What: Shared min hourly volume filter input for sustained, spread, and threshold alerts -->
+                <!-- Why: Users may only want alerts to trigger for actively traded items with sufficient GP volume -->
+                <!-- How: Uses the shared min_volume field on the Alert model; shown/hidden by alert-type JS -->
                 <label for="min-volume">Min Hourly Volume (GP)</label>
                 <input type="number" name="min_volume" id="min-volume" min="0" step="1" placeholder="e.g. 75000000" tabindex="10">
                 <small class="form-hint">Minimum hourly trading volume in GP</small>
