@@ -1,41 +1,64 @@
-# Sustained Alert Volume Debugging — Summary
+# HourlyItemVolume CharField Timestamp Analysis
 
-## The sustained alert code is actually working correctly
+## Problem
+The `HourlyItemVolume` model's `timestamp` field was changed from `DateTimeField` to `CharField(max_length=255)`. Need to verify that sustained alerts and spread alerts still grab the correct (most recent) row from the database.
 
-I confirmed by manually running it. No crashes, no errors, the volume DB lookup works fine (849,714 records in the `HourlyItemVolume` table).
+## How Alerts Query Volume
 
----
+Both sustained and spread alerts use the same method in `check_alerts.py`:
 
-## What's Happening
+```python
+def get_volume_from_timeseries(self, item_id, time_window_minutes):
+    latest_volume = HourlyItemVolume.objects.filter(item_id=int(item_id)).first()
+    if latest_volume:
+        return latest_volume.volume
+    return None
+```
 
-Every check cycle, prices show `change=0.0000%` because the OSRS Wiki API doesn't update faster than its cache interval. The streaks never build (`streak 0 < 2 required`), so alerts don't trigger. This is **normal sustained alert behavior** — they need real price movement over multiple consecutive checks.
+This relies on `Meta.ordering = ['-timestamp']` so that `.first()` returns the row with the largest timestamp.
 
----
+## Does Lexicographic Ordering Work?
 
-## What I Fixed
+With a `CharField`, Django uses **lexicographic (string) ordering** instead of chronological ordering.
 
-- **`scripts/update_volumes.py`**: `MAX_WORKERS` was accidentally set to `15` instead of `6` — fixed back to `6`
+### For Unix Epoch Integer Strings (e.g., `"1706012400"`)
+- All Unix timestamps are currently **10-digit numbers** (and will be until November 2286)
+- Lexicographic descending sort on equal-length numeric strings = chronological descending sort
+- **Result: `.first()` correctly returns the most recent row** ✅
 
----
+### For Datetime Strings (e.g., `"2024-01-23 18:00:00+00:00"`)
+- The `makeObjects()` function in `get-all-volume.py` stores `datetime.fromtimestamp()` objects
+- When saved to a CharField, these become strings like `"2024-01-23 18:00:00+00:00"`
+- These strings start with `"2"`, which sorts **after** Unix epoch strings starting with `"1"`
+- **This means old backfill rows could appear as "most recent" if mixed with integer timestamps** ⚠️
 
-## Debug Statements Added to `check_alerts.py`
+## Scripts and What They Store
 
-1. **Alert entry** — logs all alert config (ID, type, min_volume, min_moves, etc.)
-2. **State initialization** — logs when an item is seen for the first time
-3. **Every price check** — logs current price, change %, streak count, direction, volatility buffer
-4. **Each failure point** — logs exactly WHY an item failed:
-   - Time window exceeded
-   - Streak too short
-   - Direction mismatch
-   - Volume too low / no volume data
-   - Volatility buffer too small
-   - Total move below required threshold
-   - Pressure check failed
-5. **Volume lookup** — logs the DB query result, comparison against `min_volume`
-6. **Trigger success** — logs when an item actually triggers
+| Script | Function | Timestamp Format |
+|--------|----------|-----------------|
+| `update_volumes.py` | `fetch_item_volume()` | Raw API integer (e.g., `1706012400`) |
+| `get-all-volume.py` | `fetch_latest_volume_snapshot()` | Raw API integer (e.g., `1706012400`) |
+| `get-all-volume.py` | `makeObjects()` (legacy) | `datetime` object → string (e.g., `"2024-01-23 18:00:00+00:00"`) |
+| `backfill_volumes.py` | Main loop | Raw API integer (stored via `get-all-volume.py` functions) |
 
----
+## Current Assessment
 
-## Next Steps
+The **active** scripts (`update_volumes.py` and `fetch_latest_volume_snapshot()`) both store Unix epoch integers as strings. For these, the current `Meta.ordering = ['-timestamp']` + `.first()` pattern works correctly.
 
-If the alert still doesn't trigger after running for a while, the debug output will show exactly which gate is blocking it (streak count, volatility buffer, volume, etc.). **Restart `check_alerts.py` and watch the console output.**
+**However**, `makeObjects()` in `get-all-volume.py` (legacy, no longer auto-called) stored datetime objects. If that function was previously used to backfill data, those rows have timestamps like `"2024-01-23 18:00:00+00:00"` which lexicographically sort **after** integer strings like `"1706012400"` (because `"2"` > `"1"`). This could cause stale backfill rows to appear as "most recent."
+
+## Proposed Solutions
+
+### Option 1: Minimal — Update Comments Only
+- Assumes you're aware of the data format consistency
+- Just update comments in `check_alerts.py` and `models.py` to reflect CharField
+- No query logic changes needed if all active scripts store integers
+
+### Option 2: Robust — Use `.order_by('-id')` Instead
+- Replace reliance on `-timestamp` with `-id` (auto-increment PKs)
+- Newer DB rows always have larger IDs regardless of timestamp format
+- Protects against mixed timestamp formats from different scripts
+- Small change: `HourlyItemVolume.objects.filter(item_id=int(item_id)).order_by('-id').first()`
+
+## Recommendation
+**Option 2** is safer and future-proof. It costs nothing in performance (PK lookups are indexed by default) and eliminates any risk from inconsistent timestamp formats.

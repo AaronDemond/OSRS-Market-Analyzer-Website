@@ -933,16 +933,11 @@ class HourlyItemVolume(models.Model):
     # timestamp: When this volume data was gathered by the update_volumes.py script
     # NOT the timestamp from the API response — this is when our script ran
     # Indexed for fast ordering and time-range queries on historical data
-    timestamp = models.DateTimeField(db_index=True)
+    timestamp = models.CharField(max_length=255)
 
     class Meta:
         # Default ordering: most recent first, so .first() always returns the latest snapshot
         ordering = ['-timestamp']
-        # Composite index for the most common query pattern:
-        # "Get the latest volume for item X" → filter(item_id=X).first()
-        indexes = [
-            models.Index(fields=['item_id', '-timestamp']),
-        ]
 
     def __str__(self):
         """
@@ -950,7 +945,9 @@ class HourlyItemVolume(models.Model):
         Why: Useful in Django admin and debugging
         How: Shows item name, formatted GP volume, and timestamp
         """
-        return f"{self.item_name} - {self.volume:,} GP - {self.timestamp.strftime('%Y-%m-%d %H:%M')}"
+        from datetime import datetime, timezone
+
+        return f"{self.item_name} - {self.volume}"
 
 
 
