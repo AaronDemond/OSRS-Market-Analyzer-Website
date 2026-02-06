@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Flip, Alert, AlertGroup, FlipProfit, FavoriteItem, HourlyItemVolume, FiveMinTimeSeries, OneHourTimeSeries
+from .models import Flip, Alert, AlertGroup, FlipProfit, FavoriteItem, HourlyItemVolume, FiveMinTimeSeries, OneHourTimeSeries, SixHourTimeSeries, TwentyFourHourTimeSeries
 
 @admin.register(FlipProfit)
 class FlipProfitAdmin(admin.ModelAdmin):
@@ -38,5 +38,15 @@ class FiveMinTimeSeriesAdmin(admin.ModelAdmin):
 
 @admin.register(OneHourTimeSeries)
 class OneHourTimeSeriesAdmin(admin.ModelAdmin):
+    list_display = ('item_id', 'item_name', 'avg_low_price', 'avg_high_price', 'high_price_volume',
+                    'low_price_volume', 'timestamp')
+
+@admin.register(SixHourTimeSeries)
+class SixHourTimeSeriesAdmin(admin.ModelAdmin):
+    list_display = ('item_id', 'item_name', 'avg_low_price', 'avg_high_price', 'high_price_volume',
+                    'low_price_volume', 'timestamp')
+
+@admin.register(TwentyFourHourTimeSeries)
+class TwentyFourHourTimeSeriesAdmin(admin.ModelAdmin):
     list_display = ('item_id', 'item_name', 'avg_low_price', 'avg_high_price', 'high_price_volume',
                     'low_price_volume', 'timestamp')
