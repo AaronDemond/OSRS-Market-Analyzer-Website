@@ -2,6 +2,7 @@ import os
 import sys
 import time
 import json
+import math
 from collections import defaultdict
 from pathlib import Path
 
@@ -22,6 +23,249 @@ if not os.environ.get('DJANGO_SETTINGS_MODULE'):
     django.setup()
 
 from Website.models import Alert, HourlyItemVolume
+
+# =============================================================================
+# FLIP CONFIDENCE SCORING FUNCTIONS
+# =============================================================================
+# What: Pure functions that compute a "flip confidence" score (0-100) for an OSRS item
+#        using time-series data from the OSRS Wiki API.
+# Why: These functions are used by check_flip_confidence_alert() to evaluate whether
+#       an item is a good flipping candidate based on trend, pressure, spread, volume,
+#       and stability signals.
+# How: Originally defined in scripts/confidence_score.py; imported here so check_alerts.py
+#       can call them directly without subprocess or cross-module imports.
+# =============================================================================
+
+def _clamp(x, lo, hi):
+    """
+    Clamp a value to a range [lo, hi].
+
+    What: Returns x capped to the range [lo, hi].
+    Why: Used to normalize sub-scores to predictable 0-1 ranges.
+    How: If x < lo returns lo; if x > hi returns hi; otherwise returns x.
+    """
+    return max(lo, min(x, hi))
+
+
+def _weighted_regression_slope(prices, volumes):
+    """
+    Compute the slope of a volume-weighted least-squares regression line through a price series.
+
+    What: Returns the slope of the best-fit line through price points weighted by volume.
+    Why: Volume-weighted slope gives more importance to price movements during high-activity
+         periods, producing a more meaningful trend signal.
+    How: Uses weighted least squares with x = [0, 1, ..., n-1] as the time index
+         and volumes as weights. Calculates slope = weighted_cov(x, y) / weighted_var(x).
+
+    Args:
+        prices: List of price values (one per time bucket).
+        volumes: List of volume values (same length as prices).
+
+    Returns:
+        float: The slope in "price units per bucket index". Returns 0.0 if fewer than
+               2 points, total weight is 0, or denominator is 0.
+    """
+    n = len(prices)
+    if n < 2:
+        return 0.0
+
+    # x: Time index positions [0, 1, 2, ..., n-1]
+    x = list(range(n))
+    # total_weight: Sum of all volume weights; if zero, regression is undefined
+    total_weight = sum(volumes)
+
+    if total_weight == 0:
+        return 0.0
+
+    # x_mean: Volume-weighted mean of the time indices
+    x_mean = sum(x[i] * volumes[i] for i in range(n)) / total_weight
+    # y_mean: Volume-weighted mean of the price values
+    y_mean = sum(prices[i] * volumes[i] for i in range(n)) / total_weight
+
+    # numerator: Weighted covariance of x and y (prices)
+    numerator = sum(
+        volumes[i] * (x[i] - x_mean) * (prices[i] - y_mean)
+        for i in range(n)
+    )
+
+    # denominator: Weighted variance of x (time indices)
+    denominator = sum(
+        volumes[i] * (x[i] - x_mean) ** 2
+        for i in range(n)
+    )
+
+    return numerator / denominator if denominator else 0.0
+
+
+def _standard_deviation(values):
+    """
+    Compute the population standard deviation of a list of numeric values.
+
+    What: Returns the population std dev (divides by n, not n-1).
+    Why: Used to measure price volatility/noise in the stability sub-score.
+    How: Calculates mean, then average squared deviation, then square root.
+
+    Args:
+        values: List of numeric values.
+
+    Returns:
+        float: Population standard deviation, or 0.0 if the list is empty.
+    """
+    if not values:
+        return 0.0
+
+    mean = sum(values) / len(values)
+    variance = sum((v - mean) ** 2 for v in values) / len(values)
+    return variance ** 0.5
+
+
+def compute_flip_confidence(api_data, weights=None):
+    """
+    Compute a flip confidence score (0-100) for an item using OSRS Wiki timeseries data.
+
+    What: Takes a list of time-bucket dicts from the OSRS Wiki timeseries endpoint and
+          returns a single numeric score (0.0 to 100.0) representing how promising the
+          item looks for flipping.
+    Why: Combines five market-quality signals into one number so users can quickly
+         assess flip opportunities without manual analysis.
+    How: Cleans the input data, extracts price/volume series, computes five sub-scores
+         (trend, pressure, spread, volume, stability), then takes a weighted average.
+
+    Args:
+        api_data: List of dicts, each containing:
+            - avgHighPrice: Average high (instant buy) price for the time bucket
+            - avgLowPrice: Average low (instant sell) price for the time bucket
+            - highPriceVolume: Number of items traded at high price
+            - lowPriceVolume: Number of items traded at low price
+        weights: Optional dict with keys 'trend', 'pressure', 'spread', 'volume', 'stability'
+                 mapping to float weights that must sum to 1.0. If None, uses defaults
+                 (0.35, 0.25, 0.20, 0.10, 0.10).
+
+    Returns:
+        float: Confidence score from 0.0 to 100.0 (rounded to 1 decimal place).
+               Returns 0.0 if fewer than 3 valid data points are available.
+    """
+    # --- Step A: Clean the input (filter out rows with null prices) ---
+    # cleaned: List of validated data dicts with non-null prices and defaulted volumes
+    cleaned = []
+    for p in api_data:
+        # ah: Average high price for this time bucket (None means no trades occurred)
+        ah = p.get("avgHighPrice")
+        # al: Average low price for this time bucket (None means no trades occurred)
+        al = p.get("avgLowPrice")
+        # hv: High price volume (number of items instant-bought); defaults to 0 if missing
+        hv = p.get("highPriceVolume")
+        # lv: Low price volume (number of items instant-sold); defaults to 0 if missing
+        lv = p.get("lowPriceVolume")
+
+        # Skip rows where either price is None (no trades in that bucket)
+        if ah is None or al is None:
+            continue
+
+        cleaned.append({
+            "avgHighPrice": ah,
+            "avgLowPrice": al,
+            "highPriceVolume": hv or 0,
+            "lowPriceVolume": lv or 0,
+        })
+
+    # Require at least 3 data points for meaningful statistical analysis
+    if len(cleaned) < 3:
+        return 0.0
+
+    # --- Step B: Extract series and compute basic aggregates ---
+    # avg_high_prices: List of average high prices across all cleaned buckets
+    avg_high_prices = [p["avgHighPrice"] for p in cleaned]
+    # avg_low_prices: List of average low prices across all cleaned buckets
+    avg_low_prices = [p["avgLowPrice"] for p in cleaned]
+    # high_volumes: List of high-price trade volumes across all cleaned buckets
+    high_volumes = [p["highPriceVolume"] for p in cleaned]
+    # low_volumes: List of low-price trade volumes across all cleaned buckets
+    low_volumes = [p["lowPriceVolume"] for p in cleaned]
+
+    # n: Number of cleaned data points
+    n = len(cleaned)
+
+    # avg_price: Overall average price (mean of all high and low prices combined)
+    avg_price = (sum(avg_high_prices) + sum(avg_low_prices)) / (2 * n)
+    # avg_high: Mean of high prices only
+    avg_high = sum(avg_high_prices) / n
+    # avg_low: Mean of low prices only
+    avg_low = sum(avg_low_prices) / n
+
+    # total_high_volume: Sum of all high-price trade volumes
+    total_high_volume = sum(high_volumes)
+    # total_low_volume: Sum of all low-price trade volumes
+    total_low_volume = sum(low_volumes)
+    # total_volume: Combined total of all trade volumes
+    total_volume = total_high_volume + total_low_volume
+
+    # --- Sub-score 1: Trend (volume-weighted regression slope) ---
+    # high_slope: Slope of high-price trend weighted by high volumes
+    high_slope = _weighted_regression_slope(avg_high_prices, high_volumes)
+    # low_slope: Slope of low-price trend weighted by low volumes
+    low_slope = _weighted_regression_slope(avg_low_prices, low_volumes)
+
+    # weighted_slope: Combined slope emphasizing high-price trend (60/40 split)
+    weighted_slope = 0.6 * high_slope + 0.4 * low_slope
+
+    # trend_strength: Normalized relative slope, clamped to [-2%, +2%] per bucket
+    trend_strength = _clamp(weighted_slope / avg_price, -0.02, 0.02)
+    # trend_score: Mapped to 0-1 where -2% => 0, 0% => 0.5, +2% => 1.0
+    trend_score = (trend_strength + 0.02) / 0.04
+
+    # --- Sub-score 2: Buy vs sell pressure ---
+    # buy_pressure: Ratio of high-volume trades to total trades (0.5 = balanced)
+    buy_pressure = (total_high_volume / total_volume) if total_volume > 0 else 0.5
+    # pressure_score: Rescaled to 0-1 where 0.25 => 0, 0.5 => 0.5, 0.75 => 1.0
+    pressure_score = _clamp((buy_pressure - 0.5) * 2 + 0.5, 0.0, 1.0)
+
+    # --- Sub-score 3: Spread health ---
+    # spread_pct: Percentage spread between average high and low prices
+    spread_pct = (avg_high - avg_low) / avg_low if avg_low > 0 else 0.0
+    # spread_score: Normalized to 0-1 where 0% => 0, 1.5% => 0.5, 3%+ => 1.0
+    spread_score = _clamp(spread_pct / 0.03, 0.0, 1.0)
+
+    # --- Sub-score 4: Volume sufficiency ---
+    # volume_threshold: Dynamic "enough volume" threshold based on item price tier
+    # Minimum 200 trades; scales linearly with price (2000 per 1M GP)
+    volume_threshold = max(200, int(2000 * (avg_price / 1_000_000)))
+    # volume_score: Ratio of total volume to threshold, capped at 1.0
+    volume_score = _clamp(total_volume / volume_threshold, 0.0, 1.0)
+
+    # --- Sub-score 5: Stability (noise penalty) ---
+    # mid_prices: Mid-point prices for each bucket (average of high and low)
+    mid_prices = [(avg_high_prices[i] + avg_low_prices[i]) / 2 for i in range(n)]
+    # price_std: Population standard deviation of mid-prices
+    price_std = _standard_deviation(mid_prices)
+    # stability_score: 1.0 minus relative volatility, where 1% std = 0 stability
+    stability_score = 1.0 - _clamp((price_std / avg_price) / 0.01, 0.0, 1.0)
+
+    # --- Final weighted score ---
+    # Use custom weights if provided, otherwise use defaults
+    if weights:
+        w_trend = weights.get('trend', 0.35)
+        w_pressure = weights.get('pressure', 0.25)
+        w_spread = weights.get('spread', 0.20)
+        w_volume = weights.get('volume', 0.10)
+        w_stability = weights.get('stability', 0.10)
+    else:
+        w_trend = 0.35
+        w_pressure = 0.25
+        w_spread = 0.20
+        w_volume = 0.10
+        w_stability = 0.10
+
+    # score: Weighted average of all five sub-scores (0.0 to 1.0 range)
+    score = (
+        w_trend * trend_score +
+        w_pressure * pressure_score +
+        w_spread * spread_score +
+        w_volume * volume_score +
+        w_stability * stability_score
+    )
+
+    return round(score * 100, 1)
 
 
 class Command(BaseCommand):
@@ -1729,6 +1973,367 @@ class Command(BaseCommand):
         
         return trigger_data
 
+    # =============================================================================
+    # FLIP CONFIDENCE ALERT METHODS
+    # =============================================================================
+
+    # TIMESTEP_SECONDS: Maps user-facing timestep labels to the API 'timestep' parameter
+    # What: Lookup table converting timestep choices to the value the OSRS Wiki API expects
+    # Why: The OSRS Wiki API timeseries endpoint accepts specific timestep values (5m, 1h, 6h)
+    # How: Used by fetch_timeseries_data to construct the API URL
+    TIMESTEP_API_VALUES = {
+        '5m': '5m',
+        '1h': '1h',
+        '6h': '6h',
+        '24h': '6h',  # Wiki API doesn't have 24h; use 6h with more lookback
+    }
+
+    # TIMESTEP_TO_SECONDS: Maps timestep labels to their duration in seconds
+    # What: Converts timestep labels to seconds for calculating time ranges
+    # Why: Needed to compute the 'start' timestamp when querying the timeseries API
+    # How: lookback_seconds = timestep_seconds * lookback_count
+    TIMESTEP_TO_SECONDS = {
+        '5m': 300,
+        '1h': 3600,
+        '6h': 21600,
+        '24h': 86400,
+    }
+
+    def fetch_timeseries_data(self, item_id, timestep, lookback_count):
+        """
+        Fetch timeseries data from the OSRS Wiki API for a single item.
+
+        What: Retrieves price history (avgHighPrice, avgLowPrice, highPriceVolume,
+              lowPriceVolume) for a given item over a specified time window.
+        Why: The flip confidence score requires historical time-series data to compute
+             trend, pressure, spread, volume, and stability sub-scores.
+        How: Constructs a GET request to the OSRS Wiki timeseries endpoint with the
+             appropriate timestep parameter, then returns the data array.
+
+        Args:
+            item_id: The OSRS item ID to fetch data for.
+            timestep: The time bucket size (e.g., '5m', '1h', '6h', '24h').
+            lookback_count: Number of time buckets to include.
+
+        Returns:
+            list: List of dicts with keys avgHighPrice, avgLowPrice, highPriceVolume,
+                  lowPriceVolume, timestamp. Empty list on error or no data.
+        """
+        try:
+            # api_timestep: The actual timestep value to pass to the API
+            # Note: '24h' maps to '6h' since the Wiki API doesn't support 24h timestep
+            api_timestep = self.TIMESTEP_API_VALUES.get(timestep, '1h')
+
+            # Build the API URL with item ID and timestep
+            url = f'https://prices.runescape.wiki/api/v1/osrs/timeseries?timestep={api_timestep}&id={item_id}'
+
+            response = requests.get(
+                url,
+                headers={'User-Agent': 'GE-Tools (not yet live) - demondsoftware@gmail.com'},
+                timeout=10
+            )
+
+            if response.status_code != 200:
+                return []
+
+            data = response.json()
+            if 'data' not in data or not data['data']:
+                return []
+
+            # timeseries: Raw list of data points from the API, sorted oldest-first
+            timeseries = data['data']
+
+            # For '24h' timestep, we need to aggregate 6h buckets into 24h buckets
+            # by taking every 4th point. This approximates daily data from 6-hourly data.
+            if timestep == '24h':
+                timeseries = timeseries[::4]
+
+            # Return only the last lookback_count data points
+            # Why: We only need the most recent N buckets for the confidence calculation
+            return timeseries[-lookback_count:]
+
+        except (requests.RequestException, json.JSONDecodeError, KeyError) as e:
+            self.stdout.write(self.style.ERROR(
+                f'Error fetching timeseries for item {item_id}: {e}'
+            ))
+            return []
+
+    def check_flip_confidence_alert(self, alert, all_prices):
+        """
+        Check if a flip confidence alert should trigger.
+
+        What: Evaluates item(s) by computing their flip confidence scores and comparing
+              against the user's configured threshold and trigger rule.
+        Why: Users want to be notified when items become good flipping candidates based
+             on a multi-factor confidence score that considers trend, pressure, spread,
+             volume sufficiency, and price stability.
+        How:
+            1. Validate alert configuration (timestep, lookback, threshold)
+            2. Determine which items to check (single, multi, or all)
+            3. For each item:
+               a. Check cooldown period
+               b. Check evaluation interval
+               c. Fetch timeseries data from OSRS Wiki API
+               d. Apply pre-filters (min spread, min volume)
+               e. Compute flip confidence score via compute_flip_confidence()
+               f. Apply trigger rule (crosses_above or delta_increase)
+               g. Track sustained condition if configured
+            4. Return triggered items list or True/False
+
+        Args:
+            alert: Alert model instance with flip_confidence configuration
+            all_prices: Dictionary of all current prices keyed by item_id
+
+        Returns:
+            - List of triggered item dicts for multi-item/all-items alerts
+            - True/False for single-item alerts
+        """
+        # =============================================================================
+        # VALIDATE ALERT CONFIGURATION
+        # =============================================================================
+        # timestep: The time bucket granularity for the timeseries API call
+        timestep = alert.confidence_timestep or '1h'
+        # lookback: Number of time buckets to analyze (must be >= 3)
+        lookback = alert.confidence_lookback or 24
+        if lookback < 3:
+            lookback = 3
+        # threshold: The confidence score threshold for triggering
+        threshold = alert.confidence_threshold
+        if threshold is None:
+            return False
+        # trigger_rule: How to compare the score against the threshold
+        trigger_rule = alert.confidence_trigger_rule or 'crosses_above'
+        # cooldown_minutes: How long to wait before re-alerting on the same item
+        cooldown_minutes = alert.confidence_cooldown or 0
+        # sustained_count: Number of consecutive passing evaluations required
+        sustained_count = alert.confidence_sustained_count or 1
+        # eval_interval: Minutes between evaluations
+        eval_interval = alert.confidence_eval_interval or 0
+        # min_spread_pct: Minimum spread percentage to consider an item
+        min_spread_pct = alert.confidence_min_spread_pct
+        # min_vol: Minimum total volume across the lookback window
+        min_vol = alert.confidence_min_volume
+
+        # Build custom weights dict if any are set, otherwise None for defaults
+        weights = None
+        if any([
+            alert.confidence_weight_trend is not None,
+            alert.confidence_weight_pressure is not None,
+            alert.confidence_weight_spread is not None,
+            alert.confidence_weight_volume is not None,
+            alert.confidence_weight_stability is not None,
+        ]):
+            weights = {
+                'trend': alert.confidence_weight_trend if alert.confidence_weight_trend is not None else 0.35,
+                'pressure': alert.confidence_weight_pressure if alert.confidence_weight_pressure is not None else 0.25,
+                'spread': alert.confidence_weight_spread if alert.confidence_weight_spread is not None else 0.20,
+                'volume': alert.confidence_weight_volume if alert.confidence_weight_volume is not None else 0.10,
+                'stability': alert.confidence_weight_stability if alert.confidence_weight_stability is not None else 0.10,
+            }
+
+        # =============================================================================
+        # LOAD PERSISTENT STATE (last scores, consecutive counts, eval times)
+        # =============================================================================
+        # last_scores: Per-item state dict tracking score history for trigger rules
+        last_scores = {}
+        if alert.confidence_last_scores:
+            try:
+                last_scores = json.loads(alert.confidence_last_scores)
+            except (json.JSONDecodeError, TypeError):
+                last_scores = {}
+
+        # =============================================================================
+        # DETERMINE ITEMS TO CHECK
+        # =============================================================================
+        items_to_check = []
+        item_mapping = self.get_item_mapping()
+
+        if alert.is_all_items:
+            # All items mode: check every item in the market (with price filters)
+            for item_id_str, price_data in all_prices.items():
+                high = price_data.get('high')
+                low = price_data.get('low')
+                if high is None or low is None:
+                    continue
+                # Apply min/max price filters if configured
+                if alert.minimum_price is not None and (high < alert.minimum_price or low < alert.minimum_price):
+                    continue
+                if alert.maximum_price is not None and (high > alert.maximum_price or low > alert.maximum_price):
+                    continue
+                items_to_check.append(item_id_str)
+        elif alert.item_ids:
+            # Multi-item mode: check specific list of items
+            try:
+                items_to_check = [str(x) for x in json.loads(alert.item_ids)]
+            except (json.JSONDecodeError, TypeError):
+                items_to_check = []
+        elif alert.item_id:
+            # Single-item mode
+            items_to_check = [str(alert.item_id)]
+
+        if not items_to_check:
+            return False
+
+        # now_ts: Current Unix timestamp for cooldown and eval interval checks
+        now_ts = time.time()
+        # triggered_items: List of items that meet all trigger conditions
+        triggered_items = []
+        # state_changed: Whether we need to save updated last_scores
+        state_changed = False
+
+        for item_id_str in items_to_check:
+            # =============================================================================
+            # PER-ITEM STATE: Load previous score, consecutive count, and last eval time
+            # =============================================================================
+            item_state = last_scores.get(item_id_str, {})
+            # prev_score: The last computed confidence score for this item
+            prev_score = item_state.get('score')
+            # consecutive: How many consecutive evaluations this item has passed
+            consecutive = item_state.get('consecutive', 0)
+            # last_eval: Unix timestamp of the last evaluation for this item
+            last_eval = item_state.get('last_eval', 0)
+
+            # =============================================================================
+            # CHECK EVALUATION INTERVAL: Skip if checked too recently
+            # =============================================================================
+            if eval_interval > 0 and last_eval > 0:
+                elapsed_minutes = (now_ts - last_eval) / 60
+                if elapsed_minutes < eval_interval:
+                    continue  # Too soon, skip this item
+
+            # =============================================================================
+            # CHECK COOLDOWN: Skip if recently triggered
+            # =============================================================================
+            # last_triggered_ts: Unix timestamp when this item last triggered the alert
+            last_triggered_ts = item_state.get('last_triggered', 0)
+            if cooldown_minutes > 0 and last_triggered_ts > 0:
+                elapsed_since_trigger = (now_ts - last_triggered_ts) / 60
+                if elapsed_since_trigger < cooldown_minutes:
+                    continue  # Still in cooldown, skip
+
+            # =============================================================================
+            # PRE-FILTER: Check current spread percentage against minimum
+            # =============================================================================
+            if min_spread_pct is not None and min_spread_pct > 0:
+                price_data = all_prices.get(item_id_str)
+                if price_data:
+                    high = price_data.get('high')
+                    low = price_data.get('low')
+                    if high and low and low > 0:
+                        current_spread = ((high - low) / low) * 100
+                        if current_spread < min_spread_pct:
+                            # Update state to reflect this check even if skipped
+                            item_state['last_eval'] = now_ts
+                            item_state['consecutive'] = 0
+                            last_scores[item_id_str] = item_state
+                            state_changed = True
+                            continue
+
+            # =============================================================================
+            # FETCH TIMESERIES DATA FROM OSRS WIKI API
+            # =============================================================================
+            timeseries_data = self.fetch_timeseries_data(item_id_str, timestep, lookback)
+            if not timeseries_data or len(timeseries_data) < 3:
+                # Not enough data points; reset consecutive counter
+                item_state['last_eval'] = now_ts
+                item_state['consecutive'] = 0
+                last_scores[item_id_str] = item_state
+                state_changed = True
+                continue
+
+            # =============================================================================
+            # PRE-FILTER: Check minimum volume across the lookback window
+            # =============================================================================
+            if min_vol is not None and min_vol > 0:
+                total_vol = sum(
+                    (p.get('highPriceVolume') or 0) + (p.get('lowPriceVolume') or 0)
+                    for p in timeseries_data
+                )
+                if total_vol < min_vol:
+                    item_state['last_eval'] = now_ts
+                    item_state['consecutive'] = 0
+                    last_scores[item_id_str] = item_state
+                    state_changed = True
+                    continue
+
+            # =============================================================================
+            # COMPUTE FLIP CONFIDENCE SCORE
+            # =============================================================================
+            score = compute_flip_confidence(timeseries_data, weights=weights)
+
+            # =============================================================================
+            # APPLY TRIGGER RULE
+            # =============================================================================
+            # passed: Whether this item's score meets the trigger condition
+            passed = False
+
+            if trigger_rule == 'delta_increase':
+                # Delta increase rule: score increased by >= threshold since last check
+                if prev_score is not None:
+                    delta = score - prev_score
+                    if delta >= threshold:
+                        passed = True
+            else:
+                # Default: crosses_above rule: score >= threshold
+                if score >= threshold:
+                    passed = True
+
+            # Update the stored score for next comparison
+            item_state['score'] = score
+            item_state['last_eval'] = now_ts
+
+            if passed:
+                # Increment consecutive counter
+                item_state['consecutive'] = consecutive + 1
+
+                # Check sustained condition: must pass N consecutive times
+                if item_state['consecutive'] >= sustained_count:
+                    # TRIGGERED! Reset consecutive counter and set last_triggered
+                    item_state['last_triggered'] = now_ts
+
+                    # item_name: Human-readable name for display
+                    item_name = item_mapping.get(item_id_str, f'Item {item_id_str}')
+
+                    triggered_items.append({
+                        'item_id': item_id_str,
+                        'item_name': item_name,
+                        'confidence_score': score,
+                        'previous_score': prev_score,
+                        'trigger_rule': trigger_rule,
+                        'threshold': threshold,
+                        'consecutive_passes': item_state['consecutive'],
+                    })
+            else:
+                # Reset consecutive counter on failure
+                item_state['consecutive'] = 0
+
+            last_scores[item_id_str] = item_state
+            state_changed = True
+
+        # =============================================================================
+        # SAVE UPDATED STATE
+        # =============================================================================
+        if state_changed:
+            alert.confidence_last_scores = json.dumps(last_scores)
+            alert.save(update_fields=['confidence_last_scores'])
+
+        # =============================================================================
+        # RETURN RESULTS
+        # =============================================================================
+        if alert.item_id and not alert.is_all_items and not alert.item_ids:
+            # Single-item mode: return True/False
+            if triggered_items:
+                # Store triggered data for display
+                alert.triggered_data = json.dumps(triggered_items[0])
+                alert.save(update_fields=['triggered_data'])
+                return True
+            return False
+        else:
+            # Multi-item or all-items mode: return list
+            if triggered_items:
+                triggered_items.sort(key=lambda x: x['confidence_score'], reverse=True)
+            return triggered_items
+
     def send_alert_notification(self, alert, triggered_text):
         """
         Send email/SMS notification when an alert is triggered.
@@ -1779,6 +2384,16 @@ class Command(BaseCommand):
         # How: Calculates simple or weighted average of item changes, compares to threshold
         if alert.type == 'collective_move':
             return self.check_collective_move_alert(alert, all_prices)
+        
+        # =============================================================================
+        # HANDLE FLIP CONFIDENCE ALERTS
+        # =============================================================================
+        # What: Computes a flip confidence score (0-100) for item(s) using OSRS Wiki
+        #       timeseries data and triggers when score meets the user's threshold/rule.
+        # Why: Users want automated notification when items become good flip candidates
+        # How: Fetches timeseries data, runs compute_flip_confidence(), applies trigger rule
+        if alert.type == 'flip_confidence':
+            return self.check_flip_confidence_alert(alert, all_prices)
         
         # Handle threshold alerts
         # What: Checks if price has crossed a threshold (percentage or value) from reference price
@@ -2340,6 +2955,7 @@ class Command(BaseCommand):
                    or (a.type == 'sustained')  # Sustained always re-checks
                    or (a.type == 'threshold' and (a.is_all_items or a.item_ids))  # Multi-item/all-items threshold can re-trigger
                    or (a.type == 'collective_move')  # Collective move alerts always re-check (monitors groups)
+                   or (a.type == 'flip_confidence')  # Flip confidence alerts always re-check (continuous monitoring)
             ]
             
             if alerts_to_check:
@@ -2368,6 +2984,37 @@ class Command(BaseCommand):
                                 alert.save()
                                 self.stdout.write(
                                     self.style.WARNING(f'TRIGGERED (collective move): {alert}')
+                                )
+                                # Send email notification if enabled, then disable to prevent spam
+                                if alert.email_notification:
+                                    self.send_alert_notification(alert, alert.triggered_text())
+                                    alert.email_notification = False
+                                    alert.save()
+                            continue  # Skip to next alert
+                        
+                        # =============================================================================
+                        # HANDLE FLIP CONFIDENCE ALERTS
+                        # =============================================================================
+                        # What: Process flip_confidence alerts which return True/list/False
+                        # Why: Flip confidence alerts continuously monitor items and can re-trigger
+                        # How: For single-item, result is True/False; for multi/all-items, result is a list.
+                        #      Similar to collective_move handling: always stay active.
+                        if alert.type == 'flip_confidence':
+                            if result and result is not False:
+                                # Handle both single-item (True) and multi-item (list) results
+                                if isinstance(result, list) and result:
+                                    alert.triggered_data = json.dumps(result)
+                                alert.is_triggered = True
+                                # Only show notification if show_notification is enabled
+                                alert.is_dismissed = not alert.show_notification
+                                alert.is_active = True  # Keep monitoring - never auto-deactivate
+                                alert.triggered_at = timezone.now()
+                                alert.save()
+                                triggered_count = len(result) if isinstance(result, list) else 1
+                                self.stdout.write(
+                                    self.style.WARNING(
+                                        f'TRIGGERED (flip confidence): {triggered_count} item(s) for {alert}'
+                                    )
                                 )
                                 # Send email notification if enabled, then disable to prevent spam
                                 if alert.email_notification:
