@@ -1482,6 +1482,17 @@ def create_alert(request):
         is_all_items_flag = request.POST.get('is_all_items') == 'true'
         minimum_price = request.POST.get('minimum_price')
         maximum_price = request.POST.get('maximum_price')
+        # min_volume: Minimum hourly trading volume in GP (required for spike alerts)
+        # What: Captures the user-entered min hourly volume filter from the form
+        # Why: Spike alerts now require this value; sustained/spread may also use it
+        # How: Read directly from POST data so validation can occur before alert creation
+        min_volume = request.POST.get('min_volume')
+        
+        # min_volume_value: Parsed integer value for min_volume when validation succeeds
+        # What: Stores the numeric minimum hourly volume in GP (only set when parsed successfully)
+        # Why: Avoids double-casting and keeps spike validation consistent with the saved value
+        # How: Set during spike validation; otherwise remains None for non-spike alerts
+        min_volume_value = None
         email_notification = request.POST.get('email_notification') == 'on'
         group_id = request.POST.get('group_id')  # Group to assign alert to
         
@@ -1506,6 +1517,32 @@ def create_alert(request):
                 messages.error(request, 'Minimum Price and Maximum Price are required when tracking All Items')
                 return redirect('alerts')
         
+        # =============================================================================
+        # SERVER-SIDE VALIDATION: SPIKE ALERTS REQUIRE MIN HOURLY VOLUME
+        # =============================================================================
+        # What: Ensures spike alerts always provide a minimum hourly volume (GP) value
+        # Why: Spike alerts must filter out low-activity items; missing volume would make
+        #      the alert configuration invalid and inconsistent with the required UI field
+        # How: If alert_type is 'spike', verify min_volume is non-empty; otherwise return
+        #      an error message and redirect back to the alerts page
+        if alert_type == 'spike':
+            # min_volume: Raw string value submitted from the form input
+            # What: Holds the user-entered minimum hourly volume in GP
+            # Why: We need to confirm it exists before converting to an integer later
+            # How: Check for None, empty string, or whitespace-only values
+            if not min_volume or not min_volume.strip():
+                messages.error(request, 'Min Hourly Volume (GP) is required for spike alerts')
+                return redirect('alerts')
+            
+            # What: Validate that the min_volume value is numeric
+            # Why: Non-numeric values would raise a ValueError when we cast to int for storage
+            # How: Attempt int conversion and handle failures with a user-facing error
+            try:
+                min_volume_value = int(min_volume)
+            except (TypeError, ValueError):
+                messages.error(request, 'Min Hourly Volume (GP) must be a whole number')
+                return redirect('alerts')
+        
         # show_notification: Controls whether a notification banner appears when alert triggers
         # What: Boolean flag from checkbox input
         # Why: Users may want alerts to track data without notification banners
@@ -1517,7 +1554,6 @@ def create_alert(request):
         min_move_percentage = request.POST.get('min_move_percentage')
         volatility_buffer_size = request.POST.get('volatility_buffer_size')
         volatility_multiplier = request.POST.get('volatility_multiplier')
-        min_volume = request.POST.get('min_volume')
         sustained_item_ids_str = request.POST.get('sustained_item_ids', '')
         min_pressure_strength = request.POST.get('min_pressure_strength') or None
         min_pressure_spread_pct = request.POST.get('min_pressure_spread_pct')
@@ -1871,7 +1907,15 @@ def create_alert(request):
             min_move_percentage=float(min_move_percentage) if min_move_percentage else None,
             volatility_buffer_size=int(volatility_buffer_size) if volatility_buffer_size else None,
             volatility_multiplier=float(volatility_multiplier) if volatility_multiplier else None,
-            min_volume=int(min_volume) if min_volume else None,
+            # min_volume: Use the validated integer for spike alerts; parse for other alert types if provided
+            # What: Avoid parsing empty strings for non-spike alerts
+            # Why: Non-spike alerts may omit min_volume entirely, so we guard against empty values
+            # How: Only cast to int when min_volume is present and non-empty after trimming
+            min_volume=(
+                min_volume_value
+                if min_volume_value is not None
+                else (int(min_volume) if min_volume and str(min_volume).strip() else None)
+            ),
             sustained_item_ids=sustained_item_ids_json,
             min_pressure_strength=min_pressure_strength,
             min_pressure_spread_pct=float(min_pressure_spread_pct) if min_pressure_spread_pct else None,
@@ -2919,6 +2963,49 @@ def update_alert(request):
                             'redirect': '/alerts/'
                         }, status=400)
                 
+                # =============================================================================
+                # SERVER-SIDE VALIDATION: SPIKE ALERTS REQUIRE MIN HOURLY VOLUME
+                # =============================================================================
+                # What: Ensures spike alerts always provide a minimum hourly volume (GP) value
+                # Why: Spike alerts must filter out low-activity items; missing volume would make
+                #      the alert configuration invalid and inconsistent with the required UI field
+                # How: If alert.type is 'spike', verify min_volume is non-empty; otherwise return
+                #      a JSON error response so the UI can show validation feedback
+                # min_volume_int: Parsed integer value for spike min_volume validation
+                # What: Stores the numeric minimum hourly volume for spike alerts after validation
+                # Why: Allows reuse later when saving the alert without re-parsing the value
+                # How: Set during the spike validation block below
+                min_volume_int = None
+                
+                if alert.type == 'spike':
+                    # min_volume_val: Raw string value submitted for minimum hourly volume
+                    # What: Holds the user-entered minimum hourly volume in GP
+                    # Why: We need to confirm it exists before converting to an integer later
+                    # How: Check for None, empty string, or whitespace-only values
+                    min_volume_val = data.get('min_volume')
+                    min_volume_missing = (
+                        min_volume_val is None
+                        or (isinstance(min_volume_val, str) and not min_volume_val.strip())
+                    )
+                    if min_volume_missing:
+                        return JsonResponse({
+                            'status': 'error',
+                            'error': 'Min Hourly Volume (GP) is required for spike alerts',
+                            'redirect': '/alerts/'
+                        }, status=400)
+                    
+                    # What: Validate that the min_volume value is numeric
+                    # Why: Non-numeric values would raise a ValueError when we cast to int for storage
+                    # How: Attempt int conversion and handle failures with a JSON error response
+                    try:
+                        min_volume_int = int(min_volume_val)
+                    except (TypeError, ValueError):
+                        return JsonResponse({
+                            'status': 'error',
+                            'error': 'Min Hourly Volume (GP) must be a whole number',
+                            'redirect': '/alerts/'
+                        }, status=400)
+                
                 alert.is_all_items = is_all_items
                 
                 # Handle item_ids for multi-item alerts
@@ -3131,6 +3218,20 @@ def update_alert(request):
                     # How: Convert min_volume_value to int if provided, otherwise None
                     alert.min_volume = int(min_volume_value) if min_volume_value else None
                     # Clear sustained-only fields that don't apply to threshold alerts
+                elif alert.type == 'spike':
+                    # =============================================================================
+                    # SPIKE ALERT MIN VOLUME HANDLING
+                    # What: Save the required min_volume field when editing a spike alert
+                    # Why: Spike alerts now enforce a minimum hourly volume (GP) threshold
+                    # How: Reuse the validated min_volume_int from the earlier validation block
+                    #      and clear sustained-only fields that don't apply to spike alerts.
+                    # =============================================================================
+                    # min_volume_int: Parsed integer value from earlier validation
+                    # What: Reuse the validated integer instead of re-parsing the string
+                    # Why: Keeps validation and persistence consistent for spike alerts
+                    # How: Assign the cached integer value from the spike validation block
+                    alert.min_volume = min_volume_int
+                    # Clear sustained-only fields that don't apply to spike alerts
                     alert.min_consecutive_moves = None
                     alert.min_move_percentage = None
                     alert.volatility_buffer_size = None
@@ -3140,6 +3241,7 @@ def update_alert(request):
                     alert.min_pressure_spread_pct = None
                 else:
                     # Clear sustained/spread/threshold fields for other alert types (spike, collective_move)
+                    # Clear sustained/spread fields for other alert types (threshold, collective_move)
                     # What: Reset all sustained-specific and min_volume fields when the alert
                     #       type is not sustained, spread, or threshold
                     # Why: Prevents stale data from a previous type from affecting the alert

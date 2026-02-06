@@ -2064,13 +2064,13 @@
                     {% endif %}
                     
                     <!-- =============================================================================
-                         SPREAD ALERT VOLUME DISPLAY
-                         What: Shows the minimum hourly volume (GP) filter when set on a spread alert
-                         Why: Users need to see their volume filter setting in the alert config card
-                         How: Conditional display based on alert type being 'spread' AND min_volume
+                         SPREAD/SPIKE ALERT VOLUME DISPLAY
+                         What: Shows the minimum hourly volume (GP) filter when set on a spread or spike alert
+                         Why: Users need to see their required (spike) or optional (spread) volume filter
+                         How: Conditional display based on alert type being 'spread' or 'spike' AND min_volume
                               being set. Uses intcomma filter for readable formatting.
                     ============================================================================= -->
-                    {% if alert.type == 'spread' and alert.min_volume %}
+                    {% if alert.type == 'spread' and alert.min_volume or alert.type == 'spike' and alert.min_volume %}
                     <div class="detail-item">
                         <span class="detail-label">Min Hourly Volume (GP)</span>
                         <span class="detail-value">{{ alert.min_volume|intcomma }}</span>
@@ -2444,7 +2444,10 @@
                     <div class="form-group" id="min-volume-group" style="display: none;">
                         <label for="edit-min-volume">Min Hourly Volume (GP)</label>
                         <input type="number" id="edit-min-volume" value="{{ alert.min_volume|default:'' }}" min="0" step="1" placeholder="e.g. 75000000">
-                        <small class="form-hint">Minimum hourly trading volume in GP</small>
+                        <!-- What: Helper text for editing the min hourly volume -->
+                        <!-- Why: Spike alerts now require this value, while spread alerts keep it optional -->
+                        <!-- How: Provide a concise hint explaining which alert types require the field -->
+                        <small class="form-hint">Minimum hourly trading volume in GP (required for spike alerts)</small>
                     </div>
                     
                     <!-- Minimum Price (all items only) -->
@@ -4143,11 +4146,22 @@ function handleTypeChange() {
         referencePrices: document.getElementById('reference-prices-group')
     };
     
+    // minVolumeInput: The input element for the minimum hourly volume value
+    // What: Direct reference to the numeric input inside the min-volume-group container
+    // Why: We need to toggle the required attribute when switching between alert types
+    // How: Use document.getElementById to grab the input by its fixed ID
+    const minVolumeInput = document.getElementById('edit-min-volume');
+    
     // Helper to hide all sustained-specific fields
     const hideSustainedFields = () => {
         if (groups.minConsecutiveMoves) groups.minConsecutiveMoves.style.display = 'none';
         if (groups.minMovePercentage) groups.minMovePercentage.style.display = 'none';
         if (groups.minVolume) groups.minVolume.style.display = 'none';
+        // What: Clear the required flag when the min volume field is hidden
+        // Why: Only spike/sustained alerts require this field; other alert types must not
+        //      be blocked by an invisible required input
+        // How: Explicitly set required=false on the input whenever we hide the field
+        if (minVolumeInput) minVolumeInput.required = false;
         if (groups.volatilityBuffer) groups.volatilityBuffer.style.display = 'none';
         if (groups.volatilityMultiplier) groups.volatilityMultiplier.style.display = 'none';
         if (groups.pressureStrength) groups.pressureStrength.style.display = 'none';
@@ -4183,6 +4197,10 @@ function handleTypeChange() {
         //      to exclude low-volume items with artificially inflated spreads
         // How: Override hideSustainedFields() which hides minVolume, and show it explicitly
         if (groups.minVolume) groups.minVolume.style.display = 'block';
+        // What: Ensure min volume stays OPTIONAL for spread alerts
+        // Why: Spread alerts allow volume filtering but do not require it
+        // How: Explicitly set required=false so HTML validation doesn't block saving
+        if (minVolumeInput) minVolumeInput.required = false;
         
         // Let scope change handler determine item/min/max visibility
         handleScopeChange();
@@ -4196,6 +4214,11 @@ function handleTypeChange() {
         groups.direction.style.display = 'block';
         hideSustainedFields();
         hideThresholdFields();
+        // What: Show and require min volume for spike alerts in edit mode
+        // Why: Spike alerts must enforce a minimum hourly volume threshold
+        // How: Display the min-volume group and mark the input as required
+        if (groups.minVolume) groups.minVolume.style.display = 'block';
+        if (minVolumeInput) minVolumeInput.required = true;
         
         // Let scope change handler determine item/min/max visibility
         handleScopeChange();
@@ -4216,6 +4239,10 @@ function handleTypeChange() {
         if (groups.minConsecutiveMoves) groups.minConsecutiveMoves.style.display = 'block';
         if (groups.minMovePercentage) groups.minMovePercentage.style.display = 'block';
         if (groups.minVolume) groups.minVolume.style.display = 'block';
+        // What: Keep min volume required for sustained alerts
+        // Why: Sustained move logic depends on volume filtering to avoid low-activity noise
+        // How: Mark the min volume input as required when sustained fields are visible
+        if (minVolumeInput) minVolumeInput.required = true;
         if (groups.volatilityBuffer) groups.volatilityBuffer.style.display = 'block';
         if (groups.volatilityMultiplier) groups.volatilityMultiplier.style.display = 'block';
         if (groups.pressureStrength) groups.pressureStrength.style.display = 'block';
@@ -4707,6 +4734,12 @@ async function saveChanges() {
     const alertType = document.getElementById('edit-type').value;
     const isAllItems = document.getElementById('edit-is-all-items').value === 'true';
     
+    // minVolumeVal: Normalized min-volume value for spike alerts (trimmed string)
+    // What: Holds the validated min hourly volume input after trimming whitespace
+    // Why: Allows reuse later when building the spike alert payload
+    // How: Initialized to null and populated during spike validation
+    let minVolumeVal = null;
+    
     // =============================================================================
     // CLIENT-SIDE VALIDATION: ALL ITEMS REQUIRES MIN/MAX PRICE
     // =============================================================================
@@ -4735,6 +4768,39 @@ async function saveChanges() {
             showValidationError('Minimum Price and Maximum Price are required when tracking All Items');
             return;  // Stop save operation - don't send request to server
         }
+    }
+    
+    // =============================================================================
+    // CLIENT-SIDE VALIDATION: SPIKE ALERTS REQUIRE MIN HOURLY VOLUME
+    // =============================================================================
+    // What: Validates that the min hourly volume field is set when editing spike alerts
+    // Why: Spike alerts now require this value to prevent low-activity items from triggering
+    // How: Check the min-volume input, show validation error, and abort save if missing
+    if (alertType === 'spike') {
+        // minVolumeVal: Current value from the min hourly volume input field
+        // What: Captures the numeric value typed by the user
+        // Why: Needed to verify the required spike alert field is not empty
+        // How: Read the input value from edit-min-volume for trimming
+        minVolumeVal = document.getElementById('edit-min-volume').value;
+        
+        // trimmedMinVolumeVal: Whitespace-trimmed min volume input
+        // What: Normalized string value for validation and payload use
+        // Why: Ensures we treat whitespace-only inputs as empty
+        // How: Apply .trim() to the raw input value
+        const trimmedMinVolumeVal = minVolumeVal.trim();
+        
+        // What: Prevent save when min volume is missing for spike alerts
+        // Why: The new requirement makes this field mandatory for spike alerts
+        // How: Treat empty or whitespace-only values as invalid
+        if (!trimmedMinVolumeVal) {
+            showValidationError('Min Hourly Volume (GP) is required for spike alerts');
+            return;  // Stop save operation - don't send request to server
+        }
+        
+        // What: Store the trimmed value for reuse when building the spike payload
+        // Why: Avoids re-reading from the DOM and keeps validation consistent
+        // How: Assign the trimmed value back to minVolumeVal for later use
+        minVolumeVal = trimmedMinVolumeVal;
     }
     
     // Get item_ids from multi-item selector
@@ -4795,6 +4861,10 @@ async function saveChanges() {
         data.direction = document.getElementById('edit-direction').value || 'both';
         // Reference defaults to 'average' for spike alerts
         data.reference = document.getElementById('edit-reference').value || 'average';
+        // What: Include min_volume in spike alert save data
+        // Why: Spike alerts now require a minimum hourly volume threshold
+        // How: Use the validated, trimmed minVolumeVal from the spike validation block
+        data.min_volume = minVolumeVal;
         if (isAllItems) {
             data.minimum_price = document.getElementById('edit-minimum-price').value || null;
             data.maximum_price = document.getElementById('edit-maximum-price').value || null;

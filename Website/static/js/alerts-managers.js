@@ -518,6 +518,12 @@
                 collectiveDirection: document.querySelector(groups.collectiveDirection),
                 collectiveThreshold: document.querySelector(groups.collectiveThreshold)
             };
+            
+            // minVolumeInput: The input element for the minimum hourly volume value
+            // What: Direct reference to the numeric input inside the min-volume-group container
+            // Why: We need to toggle the required attribute depending on alert type (required for spike/sustained)
+            // How: Use document.getElementById to grab the input by its fixed ID
+            const minVolumeInput = document.getElementById('min-volume');
 
             // Helper to hide all sustained move fields
             const hideSustainedFields = () => {
@@ -526,6 +532,11 @@
                 if (elements.volatilityBuffer) elements.volatilityBuffer.style.display = 'none';
                 if (elements.volatilityMultiplier) elements.volatilityMultiplier.style.display = 'none';
                 if (elements.minVolume) elements.minVolume.style.display = 'none';
+                // What: Clear the required flag when the min volume field is hidden
+                // Why: Only spike/sustained alerts require this field; other alert types must not
+                //      be blocked by an invisible required input
+                // How: Explicitly set required=false on the input whenever we hide the field
+                if (minVolumeInput) minVolumeInput.required = false;
                 if (elements.sustainedScope) elements.sustainedScope.style.display = 'none';
                 if (elements.sustainedItems) elements.sustainedItems.style.display = 'none';
                 if (elements.pressureStrength) elements.pressureStrength.style.display = 'none';
@@ -618,6 +629,10 @@
                 // How: Override the hideSustainedFields() call above which hides minVolume,
                 //      and explicitly show it for spread alerts
                 if (elements.minVolume) elements.minVolume.style.display = 'block';
+                // What: Ensure min volume is OPTIONAL for spread alerts
+                // Why: Spread alerts allow filtering by volume but do not require it
+                // How: Explicitly set required=false so HTML validation doesn't block form submission
+                if (minVolumeInput) minVolumeInput.required = false;
 
                 // Let scope change handler determine remaining visibility
                 this.handleSpreadScopeChange(formType);
@@ -639,6 +654,11 @@
                 hideSustainedFields();
                 hideThresholdFields();
                 // Spike uses min/max only when all items selected; handleSpikeScopeChange manages visibility
+                // What: Show and require min volume for spike alerts
+                // Why: Spike alerts must enforce a minimum hourly GP volume filter
+                // How: Display the min-volume group and mark the input as required
+                if (elements.minVolume) elements.minVolume.style.display = 'block';
+                if (minVolumeInput) minVolumeInput.required = true;
                 this.handleSpikeScopeChange(formType);
             } else if (alertType === AlertsConfig.alertTypes.SUSTAINED) {
                 // Sustained Move alerts: scope selector + time frame + direction + reference + sustained-specific fields
@@ -665,6 +685,10 @@
                 if (elements.volatilityBuffer) elements.volatilityBuffer.style.display = 'block';
                 if (elements.volatilityMultiplier) elements.volatilityMultiplier.style.display = 'block';
                 if (elements.minVolume) elements.minVolume.style.display = 'block';
+                // What: Keep min volume required for sustained alerts
+                // Why: Sustained move logic depends on volume filtering to avoid low-activity noise
+                // How: Mark the min volume input as required when sustained fields are visible
+                if (minVolumeInput) minVolumeInput.required = true;
 
                 // Show pressure filter fields
                 if (elements.pressureStrength) elements.pressureStrength.style.display = 'block';
