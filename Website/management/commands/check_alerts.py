@@ -1783,12 +1783,11 @@ class Command(BaseCommand):
                         # How: Query the HourlyItemVolume table for the latest volume snapshot.
                         #      If the volume is below the threshold, skip this item entirely.
                         # =========================================================================
-                        if alert.min_volume:
-                            # volume: The most recent hourly trading volume in GP for this item,
-                            #         or None if no volume data exists in the database yet
-                            volume = self.get_volume_from_timeseries(item_id, 0)
-                            if volume is None or volume < alert.min_volume:
-                                continue
+                        # volume: The most recent hourly trading volume in GP for this item,
+                        #         or None if no volume data exists in the database yet
+                        volume = self.get_volume_from_timeseries(item_id, 0)
+                        if volume is None or volume < alert.min_volume:
+                            continue
 
                         item_name = item_mapping.get(item_id, f'Item {item_id}')
                         matching_items.append({
@@ -2121,12 +2120,11 @@ class Command(BaseCommand):
                         # How: Query the HourlyItemVolume table for the latest volume snapshot.
                         #      If the volume is below the threshold, skip this item entirely.
                         # =========================================================================
-                        if alert.min_volume:
-                            # volume: The most recent hourly trading volume in GP for this item,
-                            #         or None if no volume data exists in the database yet
-                            volume = self.get_volume_from_timeseries(item_id_str, 0)
-                            if volume is None or volume < alert.min_volume:
-                                continue
+                        # volume: The most recent hourly trading volume in GP for this item,
+                        #         or None if no volume data exists in the database yet
+                        volume = self.get_volume_from_timeseries(item_id_str, 0)
+                        if volume is None or volume < alert.min_volume:
+                            continue
                         
                         all_within_threshold = False
                         matches.append({
@@ -2211,12 +2209,11 @@ class Command(BaseCommand):
                 # How: Query the HourlyItemVolume table for the latest volume snapshot.
                 #      If the volume is below the threshold, don't trigger the alert.
                 # =========================================================================
-                if alert.min_volume:
-                    # volume: The most recent hourly trading volume in GP for this item,
-                    #         or None if no volume data exists in the database yet
-                    volume = self.get_volume_from_timeseries(str(alert.item_id), 0)
-                    if volume is None or volume < alert.min_volume:
-                        return False
+                # volume: The most recent hourly trading volume in GP for this item,
+                #         or None if no volume data exists in the database yet
+                volume = self.get_volume_from_timeseries(str(alert.item_id), 0)
+                if volume is None or volume < alert.min_volume:
+                    return False
                 
                 alert.triggered_data = json.dumps({
                     'baseline': baseline_price,
