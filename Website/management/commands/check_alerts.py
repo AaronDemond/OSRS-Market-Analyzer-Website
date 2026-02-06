@@ -3170,7 +3170,12 @@ class Command(BaseCommand):
         
         while True:
             # Get all active alerts (include triggered all_items spread alerts for re-check)
-            active_alerts = Alert.objects.filter(is_active=True)
+            try:
+                active_alerts = Alert.objects.filter(is_active=True)
+            except Exception as e:
+                self.stdout.write(self.style.ERROR(f'Error fetching alerts: {e}'))
+                time.sleep(30)
+                return self.handle(self, *args, **options)
             # alerts_to_check: Filter to non-triggered OR alerts that can re-trigger
             # What: Determines which alerts need to be checked this cycle
             # Why: Some alerts (all_items spread, spike, sustained, multi-item spread, collective_move) can re-trigger
