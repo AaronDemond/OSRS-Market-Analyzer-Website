@@ -14,9 +14,15 @@
     #view-weights-toggle-btn, #edit-weights-toggle-group .btn-weights-toggle {
         margin-top: 5px !important;
         width: auto; /* prevents full‑width stretching */
-        max-width: 170px; padding: 4px 10px;/* reduce horizontal padding */
+        max-width: 190px; padding: 4px 10px;/* reduce horizontal padding */
         display: inline-block; white-space: nowrap;
         padding-top: 8px; padding-bottom: 8px
+    }
+}
+
+@media (max-width: 515px) {
+    .detail-item {
+        display: flex !important;
     }
 }
 #alert-delete-btn {
@@ -208,13 +214,44 @@
     .detail-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 20px;
+        gap: 10px !important;
     }
     
     .detail-item {
         display: flex;
         flex-direction: column;
         gap: 6px;
+    }
+
+    /* Default (compact) label styling — pill-shaped inline badge */
+    .detail-label {
+        width: auto;
+        padding: 2px 6px;
+        border-radius: 4px;
+    }
+
+    /* =============================================================================
+       COMPACT / EXPANDED VIEW TOGGLE
+       =============================================================================
+       What: The page defaults to "compact" (inline flex rows, pill labels, tight gap).
+             When .detail-grid has the .expanded-view class, items stack vertically
+             with more spacing and full-width labels.
+       Why: Lets users switch between a dense compact view and a spacious expanded view
+       How: .expanded-view increases grid gap to 20px, removes display:flex from
+            .detail-item so they stack, and resets .detail-label to full-width block
+    ============================================================================= */
+    .detail-grid {
+        gap: 10px;
+    }
+    .expanded-view {
+        gap: 5px !important;
+    }
+    .expanded-view .detail-item {
+        display: block;
+    }
+    .expanded-view .detail-label {
+        width: 100%;
+        padding: 0;
     }
     
     /* Full-width detail item for reference prices display */
@@ -272,27 +309,29 @@
     }
     
     .detail-label {
-        font-size: 0.8rem;
+        font-size: 0.7rem;
         font-weight: 600;
-        color: #6c757d;
+        color: #2a7fca;
         text-transform: uppercase;
         letter-spacing: 0.5px;
+        background-color: #e8eef5;
+        border-radius: 4px;
+        padding: 2px 6px !important;
     }
     
     .detail-value {
-        font-size: 1.1rem;
+        font-size: 0.8rem;
         font-weight: 500;
         color: #333;
     }
     
     .detail-value.highlight {
-        color: #667eea;
+        color: #18b43f;
         font-weight: 700;
     }
     
     .detail-value.price {
         font-family: 'Segoe UI', system-ui, sans-serif;
-        font-weight: 700;
     }
     
     .detail-value.positive {
@@ -341,6 +380,34 @@
     }
     
     .btn-edit svg {
+        width: 14px;
+        height: 14px;
+    }
+    
+    /* btn-compact-toggle: Button to switch between compact and expanded detail views
+       What: Styled like the "Manage Groups" outline button on the favorites page
+       Why: White/outline style visually communicates a secondary, non-destructive action
+       How: White background, grey text, light border; hover darkens background and
+            highlights border with the page's primary accent color */
+    .btn-compact-toggle {
+        background: #FFFFFF;
+        color: #374151;
+        border: 1px solid #E5E7EB;
+        padding: 6px 14px;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .btn-compact-toggle:hover {
+        background: #F5F6F8;
+        border-color: #667eea;
+    }
+    .btn-compact-toggle svg {
         width: 14px;
         height: 14px;
     }
@@ -2004,6 +2071,7 @@
         font-size: 11px;
         margin-bottom: 2px;
         color: #1cb154;
+        background-color: #eef2ef;
 
     }
     .weight-item .detail-value {
@@ -2116,6 +2184,15 @@
                 Alert Configuration
             </h3>
             <div class="edit-controls" id="editControls">
+                <!-- What: Toggle between compact (inline) and expanded (stacked) detail views
+                     Why: Compact shows label+value on one line for density; expanded stacks them
+                     How: Toggles .compact-view class on .detail-grid which controls display:flex
+                          on .detail-item and pill-style padding on .detail-label -->
+                <button class="btn-compact-toggle" onclick="toggleCompactView()" id="compact-toggle-btn">
+                    <!-- SVG: horizontal bars icon representing a list/layout toggle -->
+                    <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>
+                    <span id="compact-toggle-label">Expanded</span>
+                </button>
                 <button class="btn-edit" onclick="enterEditMode()">
                     <svg fill="currentColor" viewBox="0 0 20 20"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg>
                     Edit
@@ -2418,36 +2495,41 @@
                                       d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
                                       clip-rule="evenodd"/>
                             </svg>
-                            Scoring Weights
+                            Show Scoring Weights
                         </button>
-                    </div>
-                    <div id="view-weights-panel" class="weights-panel" style="display: none; flex-basis: 100%;">
-                        {% if alert.confidence_weight_trend is not None or alert.confidence_weight_pressure is not None or alert.confidence_weight_spread is not None or alert.confidence_weight_volume is not None or alert.confidence_weight_stability is not None %}
-                        <div class="weights-grid">
-                            <div class="weight-item">
-                                <span class="detail-label">Trend</span>
-                                <span class="detail-value">{{ alert.confidence_weight_trend|default:"0.35" }}</span>
+                        <!-- What: Weights panel lives inside the same detail-item as the button
+                             Why: Ensures the panel appears directly below the button in the same
+                                  grid column, rather than flowing into the next grid cell
+                             How: The parent detail-item is flex-direction:column, so child elements
+                                  stack vertically -->
+                        <div id="view-weights-panel" class="weights-panel" style="display: none;">
+                            {% if alert.confidence_weight_trend is not None or alert.confidence_weight_pressure is not None or alert.confidence_weight_spread is not None or alert.confidence_weight_volume is not None or alert.confidence_weight_stability is not None %}
+                            <div class="weights-grid">
+                                <div class="weight-item">
+                                    <span class="detail-label">Trend</span>
+                                    <span class="detail-value">{{ alert.confidence_weight_trend|default:"0.35" }}</span>
+                                </div>
+                                <div class="weight-item">
+                                    <span class="detail-label">Pressure</span>
+                                    <span class="detail-value">{{ alert.confidence_weight_pressure|default:"0.25" }}</span>
+                                </div>
+                                <div class="weight-item">
+                                    <span class="detail-label">Spread</span>
+                                    <span class="detail-value">{{ alert.confidence_weight_spread|default:"0.20" }}</span>
+                                </div>
+                                <div class="weight-item">
+                                    <span class="detail-label">Volume</span>
+                                    <span class="detail-value">{{ alert.confidence_weight_volume|default:"0.10" }}</span>
+                                </div>
+                                <div class="weight-item">
+                                    <span class="detail-label">Stability</span>
+                                    <span class="detail-value">{{ alert.confidence_weight_stability|default:"0.10" }}</span>
+                                </div>
                             </div>
-                            <div class="weight-item">
-                                <span class="detail-label">Pressure</span>
-                                <span class="detail-value">{{ alert.confidence_weight_pressure|default:"0.25" }}</span>
-                            </div>
-                            <div class="weight-item">
-                                <span class="detail-label">Spread</span>
-                                <span class="detail-value">{{ alert.confidence_weight_spread|default:"0.20" }}</span>
-                            </div>
-                            <div class="weight-item">
-                                <span class="detail-label">Volume</span>
-                                <span class="detail-value">{{ alert.confidence_weight_volume|default:"0.10" }}</span>
-                            </div>
-                            <div class="weight-item">
-                                <span class="detail-label">Stability</span>
-                                <span class="detail-value">{{ alert.confidence_weight_stability|default:"0.10" }}</span>
-                            </div>
+                            {% else %}
+                            <span class="form-hint">Using default weights (Trend: 0.35, Pressure: 0.25, Spread: 0.20, Volume: 0.10, Stability: 0.10)</span>
+                            {% endif %}
                         </div>
-                        {% else %}
-                        <span class="form-hint">Using default weights (Trend: 0.35, Pressure: 0.25, Spread: 0.20, Volume: 0.10, Stability: 0.10)</span>
-                        {% endif %}
                     </div>
 
                     {% endif %}
@@ -4938,6 +5020,61 @@ function toggleViewWeights() {
     if (!panel) return;
     panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
 }
+
+/**
+ * toggleCompactView()
+ * What: Toggles the .compact-view class on all .detail-grid containers
+ * Why: Switches between compact (label + value inline) and expanded (stacked) layouts
+ * How: Toggles the class and updates the button text to reflect current state.
+ *      The .compact-view class triggers CSS rules that add display:flex to .detail-item
+ *      and pill-style padding/width to .detail-label
+ */
+function toggleCompactView() {
+    // grids: All detail-grid containers on the page (config card, triggered data, etc.)
+    const grids = document.querySelectorAll('.detail-grid');
+    // label: The toggle button's label span, used to update its text
+    const label = document.getElementById('compact-toggle-label');
+
+    grids.forEach(grid => grid.classList.toggle('expanded-view'));
+
+    // isExpanded: Whether expanded mode is now active (after the toggle)
+    const isExpanded = grids.length > 0 && grids[0].classList.contains('expanded-view');
+
+    // Persist the user's preference in localStorage
+    // What: Saves 'compact' or 'expanded' so the choice survives page reloads
+    // Why: Users shouldn't have to re-select their preferred layout every visit
+    // How: localStorage.setItem stores a simple string value keyed by 'alertDetailViewMode'
+    localStorage.setItem('alertDetailViewMode', isExpanded ? 'expanded' : 'compact');
+
+    if (label) {
+        // Update label to show what clicking will switch TO
+        label.textContent = isExpanded ? 'Compact' : 'Expanded';
+    }
+}
+
+/**
+ * applyCompactViewPreference()
+ * What: Reads the saved view mode from localStorage and applies it on page load
+ * Why: Persists the user's compact/expanded choice across page reloads and navigation
+ * How: Checks localStorage for 'alertDetailViewMode'; if 'expanded', adds .expanded-view
+ *      to all grids and updates the button label. Default is compact (no class added).
+ */
+function applyCompactViewPreference() {
+    // savedMode: The persisted view mode string ('compact' or 'expanded'), or null if never set
+    const savedMode = localStorage.getItem('alertDetailViewMode');
+
+    if (savedMode === 'expanded') {
+        const grids = document.querySelectorAll('.detail-grid');
+        grids.forEach(grid => grid.classList.add('expanded-view'));
+
+        const label = document.getElementById('compact-toggle-label');
+        if (label) label.textContent = 'Compact';
+    }
+    // Default is compact — no class needed, button already says "Expanded"
+}
+
+// Apply saved preference as soon as the DOM is ready
+document.addEventListener('DOMContentLoaded', applyCompactViewPreference);
 
 /**
  * toggleEditWeights()
