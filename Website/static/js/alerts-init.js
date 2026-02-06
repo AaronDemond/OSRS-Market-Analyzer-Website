@@ -431,76 +431,415 @@
             form.addEventListener('submit', function (e) {
                 const alertType = document.getElementById('alert-type').value;
                 const errors = [];
+                
+                // =============================================================================
+                // REQUIRED FIELD TRACKING (MISSING INPUTS)
+                // =============================================================================
+                // What: Track whether any required, visible inputs are empty for this alert type
+                // Why: User requirement is that every non-checkbox input must be filled before submit
+                // How: Use helper utilities to detect visibility and empty values, then set a flag
+                //      that triggers a single generic "fill all boxes" error message at the top
+                // hasMissingRequiredFields: True when at least one required field is empty
+                let hasMissingRequiredFields = false;
+                
+                // missingRequiredMessage: Generic top-level error message for missing required inputs
+                const missingRequiredMessage = 'Please fill in all required fields';
+                
+                // isElementVisible: Helper to confirm a form-group is currently visible
+                // What: Returns true if the element exists and is not display:none
+                // Why: Only visible inputs should be required for the current alert type
+                // How: Checks the element's display style
+                // element: The DOM node we are checking for visibility
+                const isElementVisible = (element) => element && element.style.display !== 'none';
+                
+                // isValueEmpty: Helper to normalize "empty" input values across text/select/number fields
+                // What: Treats null/undefined/whitespace-only strings as empty
+                // Why: Avoids repeating trim logic for every required input
+                // How: Converts value to string and trims before comparison
+                // value: The raw value from an input/select element
+                const isValueEmpty = (value) => value === null || value === undefined || String(value).trim() === '';
+                
+                // markMissingRequired: Helper to set the missing-required flag
+                // What: Marks that at least one required field is empty
+                // Why: We only want one generic error message for any missing input
+                // How: Flips hasMissingRequiredFields to true
+                const markMissingRequired = () => { hasMissingRequiredFields = true; };
 
                 // Check item name for types that need it
                 const itemNameGroup = document.getElementById('item-name-group');
-                const itemNameVisible = itemNameGroup && itemNameGroup.style.display !== 'none';
-
+                const itemNameVisible = isElementVisible(itemNameGroup);
+                
                 if (itemNameVisible) {
                     const itemName = document.getElementById('item-name').value.trim();
                     const itemId = document.getElementById('item-id').value.trim();
-
-                    if (!itemName) {
-                        errors.push('Item name is required');
-                    } else if (!itemId) {
-                        errors.push('Please select a valid item from the suggestions');
+                    
+                    // itemName: The visible item name input value for single-item alerts
+                    // What: Represents the user-entered item name
+                    // Why: Required when the single-item input is visible
+                    // How: Validate non-empty and then confirm a matching item_id was selected
+                    if (isValueEmpty(itemName)) {
+                        markMissingRequired();
+                    } else if (isValueEmpty(itemId)) {
+                        markMissingRequired();
+                    }
+                }
+                
+                // Check custom alert name when custom name mode is visible
+                // What: Ensures the custom alert name field is filled when shown
+                // Why: Custom name mode requires a user-provided name instead of default
+                // How: Validate the visible input for non-empty value
+                const customNameGroup = document.getElementById('custom-name-group');
+                const customNameVisible = isElementVisible(customNameGroup);
+                
+                if (customNameVisible) {
+                    const customNameValue = document.getElementById('alert-custom-name').value.trim();
+                    
+                    // customNameValue: The user-entered custom alert name
+                    // What: Holds the custom name text for validation
+                    // Why: Required when custom name mode is active
+                    // How: Mark missing if empty after trimming
+                    if (isValueEmpty(customNameValue)) {
+                        markMissingRequired();
                     }
                 }
 
                 // Check price for above/below types
                 if (alertType === 'above' || alertType === 'below') {
                     const price = document.getElementById('price').value;
-                    if (!price || price <= 0) {
+                    if (isValueEmpty(price)) {
+                        markMissingRequired();
+                    } else if (price <= 0) {
                         errors.push('Price threshold is required');
+                    }
+                    
+                    // Check reference price selector when visible
+                    // What: Ensures reference dropdown has a value for above/below alerts
+                    // Why: Reference price is required for consistent alert calculations
+                    // How: Only validate when the reference group is visible
+                    const referenceGroup = document.getElementById('reference-group');
+                    if (isElementVisible(referenceGroup)) {
+                        const referenceValue = document.getElementById('reference').value;
+                        
+                        // referenceValue: Selected reference price option (high/low/average)
+                        // What: Stores current selection from the dropdown
+                        // Why: Must be non-empty when the field is visible
+                        // How: Mark missing if empty
+                        if (isValueEmpty(referenceValue)) {
+                            markMissingRequired();
+                        }
                     }
                 }
 
                 // Check percentage for spread/spike types
                 if (alertType === 'spread' || alertType === 'spike') {
                     const percentage = document.getElementById('percentage').value;
-                    if (!percentage || percentage <= 0) {
+                    if (isValueEmpty(percentage)) {
+                        markMissingRequired();
+                    } else if (percentage <= 0) {
                         errors.push('Percentage is required');
+                    }
+                }
+                
+                // Spread-specific required fields
+                if (alertType === 'spread') {
+                    const spreadScopeValue = document.getElementById('spread-scope').value;
+                    
+                    // spreadScopeValue: Current "Apply To" selection for spread alerts
+                    // What: Determines whether we require item selection or min/max price fields
+                    // Why: Specific items require a selection; all items require price filters
+                    // How: If not "all", require at least one item ID
+                    if (!isValueEmpty(spreadScopeValue) && spreadScopeValue !== 'all') {
+                        const spreadItemIds = document.getElementById('spread-item-ids').value;
+                        
+                        // spreadItemIds: Comma-separated IDs from the multi-item selector
+                        // What: Tracks selected items for spread alerts
+                        // Why: Required when the spread multi-item selector is visible
+                        // How: Mark missing if empty or whitespace
+                        if (isValueEmpty(spreadItemIds)) {
+                            markMissingRequired();
+                        }
                     }
                 }
 
                 // Check time frame for spike type
                 if (alertType === 'spike') {
                     const timeFrame = document.getElementById('time-frame').value;
-                    if (!timeFrame || timeFrame <= 0) {
+                    if (isValueEmpty(timeFrame)) {
+                        markMissingRequired();
+                    } else if (timeFrame <= 0) {
                         errors.push('Time frame is required');
+                    }
+                    
+                    const spikeScopeValue = document.getElementById('spike-scope').value;
+                    
+                    // spikeScopeValue: Current "Apply To" selection for spike alerts
+                    // What: Determines whether we require item selection or min/max price fields
+                    // Why: Specific items require a selection; all items require price filters
+                    // How: If not "all", require at least one item ID
+                    if (!isValueEmpty(spikeScopeValue) && spikeScopeValue !== 'all') {
+                        const spikeItemIds = document.getElementById('spike-item-ids').value;
+                        
+                        // spikeItemIds: Comma-separated IDs from the multi-item selector
+                        // What: Tracks selected items for spike alerts
+                        // Why: Required when the spike multi-item selector is visible
+                        // How: Mark missing if empty or whitespace
+                        if (isValueEmpty(spikeItemIds)) {
+                            markMissingRequired();
+                        }
+                    }
+                    
+                    // Check reference price selector when visible
+                    // What: Ensures reference dropdown has a value for spike alerts
+                    // Why: Reference price is required for spike calculations
+                    // How: Only validate when the reference group is visible
+                    const referenceGroup = document.getElementById('reference-group');
+                    if (isElementVisible(referenceGroup)) {
+                        const referenceValue = document.getElementById('reference').value;
+                        
+                        // referenceValue: Selected reference price option (high/low/average)
+                        // What: Stores current selection from the dropdown
+                        // Why: Must be non-empty when the field is visible
+                        // How: Mark missing if empty
+                        if (isValueEmpty(referenceValue)) {
+                            markMissingRequired();
+                        }
+                    }
+                    
+                    // Check direction selector when visible
+                    // What: Ensures direction dropdown has a value for spike alerts
+                    // Why: Direction is required to interpret spike thresholds
+                    // How: Only validate when the direction group is visible
+                    const directionGroup = document.getElementById('direction-group');
+                    if (isElementVisible(directionGroup)) {
+                        const directionValue = document.getElementById('direction').value;
+                        
+                        // directionValue: Selected direction option (both/up/down)
+                        // What: Stores current selection from the dropdown
+                        // Why: Must be non-empty when the field is visible
+                        // How: Mark missing if empty
+                        if (isValueEmpty(directionValue)) {
+                            markMissingRequired();
+                        }
                     }
                 }
 
                 // Check sustained move specific fields
                 if (alertType === 'sustained') {
                     const timeFrame = document.getElementById('time-frame').value;
-                    if (!timeFrame || timeFrame <= 0) {
+                    if (isValueEmpty(timeFrame)) {
+                        markMissingRequired();
+                    } else if (timeFrame <= 0) {
                         errors.push('Time frame is required');
                     }
                     const minMoves = document.getElementById('min-consecutive-moves').value;
-                    if (!minMoves || minMoves < 2) {
+                    if (isValueEmpty(minMoves)) {
+                        markMissingRequired();
+                    } else if (minMoves < 2) {
                         errors.push('Minimum consecutive moves must be at least 2');
                     }
                     const minMovePercent = document.getElementById('min-move-percentage').value;
-                    if (!minMovePercent || minMovePercent <= 0) {
+                    if (isValueEmpty(minMovePercent)) {
+                        markMissingRequired();
+                    } else if (minMovePercent <= 0) {
                         errors.push('Minimum move percentage is required');
                     }
                     const volBuffer = document.getElementById('volatility-buffer-size').value;
-                    if (!volBuffer || volBuffer < 5) {
+                    if (isValueEmpty(volBuffer)) {
+                        markMissingRequired();
+                    } else if (volBuffer < 5) {
                         errors.push('Volatility buffer size must be at least 5');
                     }
                     const volMultiplier = document.getElementById('volatility-multiplier').value;
-                    if (!volMultiplier || volMultiplier <= 0) {
+                    if (isValueEmpty(volMultiplier)) {
+                        markMissingRequired();
+                    } else if (volMultiplier <= 0) {
                         errors.push('Volatility multiplier is required');
+                    }
+                    
+                    const minVolume = document.getElementById('min-volume').value;
+                    const pressureStrength = document.getElementById('min-pressure-strength').value;
+                    const pressureSpread = document.getElementById('min-pressure-spread').value;
+                    
+                    // minVolume: Minimum volume input for sustained alerts
+                    // What: Captures the required minimum trading volume
+                    // Why: Must be provided when sustained-specific fields are visible
+                    // How: Mark missing if empty after trimming
+                    if (isValueEmpty(minVolume)) {
+                        markMissingRequired();
+                    }
+                    
+                    // pressureStrength: Market pressure select value (must not be empty)
+                    // What: Selected pressure strength option for sustained alerts
+                    // Why: Requirement is that all visible inputs are filled
+                    // How: Mark missing if empty (including "No Pressure Filter" default)
+                    if (isValueEmpty(pressureStrength)) {
+                        markMissingRequired();
+                    }
+                    
+                    // pressureSpread: Minimum pressure spread percentage input value
+                    // What: Captures the required minimum spread % for pressure validation
+                    // Why: Requirement is that all visible inputs are filled
+                    // How: Mark missing if empty after trimming
+                    if (isValueEmpty(pressureSpread)) {
+                        markMissingRequired();
+                    }
+                    
+                    // Check reference price selector when visible
+                    // What: Ensures reference dropdown has a value for sustained alerts
+                    // Why: Reference price is required for sustained calculations
+                    // How: Only validate when the reference group is visible
+                    const referenceGroup = document.getElementById('reference-group');
+                    if (isElementVisible(referenceGroup)) {
+                        const referenceValue = document.getElementById('reference').value;
+                        
+                        // referenceValue: Selected reference price option (high/low/average)
+                        // What: Stores current selection from the dropdown
+                        // Why: Must be non-empty when the field is visible
+                        // How: Mark missing if empty
+                        if (isValueEmpty(referenceValue)) {
+                            markMissingRequired();
+                        }
+                    }
+                    
+                    // Check direction selector when visible
+                    // What: Ensures direction dropdown has a value for sustained alerts
+                    // Why: Direction is required for sustained move interpretation
+                    // How: Only validate when the direction group is visible
+                    const directionGroup = document.getElementById('direction-group');
+                    if (isElementVisible(directionGroup)) {
+                        const directionValue = document.getElementById('direction').value;
+                        
+                        // directionValue: Selected direction option (both/up/down)
+                        // What: Stores current selection from the dropdown
+                        // Why: Must be non-empty when the field is visible
+                        // How: Mark missing if empty
+                        if (isValueEmpty(directionValue)) {
+                            markMissingRequired();
+                        }
                     }
 
                     // Check items - either all items or at least one specific item
                     const sustainedScope = document.getElementById('sustained-scope').value;
                     if (sustainedScope === 'specific') {
                         const selectedItemIds = document.getElementById('sustained-item-ids').value;
-                        if (!selectedItemIds || selectedItemIds.trim() === '') {
-                            errors.push('Please select at least one item');
+                        
+                        // selectedItemIds: Comma-separated IDs from the sustained multi-item selector
+                        // What: Tracks selected items for sustained alerts
+                        // Why: Required when sustained scope is specific
+                        // How: Mark missing if empty or whitespace
+                        if (isValueEmpty(selectedItemIds)) {
+                            markMissingRequired();
                         }
+                    }
+                }
+                
+                // Threshold alert required fields
+                if (alertType === 'threshold') {
+                    const thresholdItemsTrackedValue = document.getElementById('threshold-items-tracked').value;
+                    const thresholdTypeValue = document.getElementById('threshold-type').value;
+                    const thresholdDirectionValue = document.getElementById('threshold-direction').value;
+                    const thresholdValue = document.getElementById('threshold-value').value;
+                    const thresholdReferenceValue = document.getElementById('threshold-reference').value;
+                    
+                    // thresholdItemsTrackedValue: Apply-to selection for threshold alerts
+                    // What: Determines whether specific items or all items are used
+                    // Why: Required to decide which fields must be filled
+                    // How: Mark missing if empty
+                    if (isValueEmpty(thresholdItemsTrackedValue)) {
+                        markMissingRequired();
+                    }
+                    
+                    // thresholdTypeValue: Threshold type selection (percentage/value)
+                    // What: Stores the threshold type dropdown selection
+                    // Why: Must be filled when threshold fields are visible
+                    // How: Mark missing if empty
+                    if (isValueEmpty(thresholdTypeValue)) {
+                        markMissingRequired();
+                    }
+                    
+                    // thresholdDirectionValue: Above/Below selection for threshold alerts
+                    // What: Stores the threshold direction dropdown selection
+                    // Why: Must be filled when threshold fields are visible
+                    // How: Mark missing if empty
+                    if (isValueEmpty(thresholdDirectionValue)) {
+                        markMissingRequired();
+                    }
+                    
+                    // thresholdValue: Numeric threshold input for threshold alerts
+                    // What: Stores the numeric threshold entered by the user
+                    // Why: Required to define the alert trigger amount
+                    // How: Mark missing if empty
+                    if (isValueEmpty(thresholdValue)) {
+                        markMissingRequired();
+                    }
+                    
+                    // thresholdReferenceValue: Reference price selection for threshold alerts
+                    // What: Stores the threshold reference dropdown selection
+                    // Why: Must be filled when threshold fields are visible
+                    // How: Mark missing if empty
+                    if (isValueEmpty(thresholdReferenceValue)) {
+                        markMissingRequired();
+                    }
+                    
+                    if (thresholdItemsTrackedValue === 'specific') {
+                        const thresholdItemIds = document.getElementById('threshold-item-ids').value;
+                        
+                        // thresholdItemIds: Comma-separated IDs from the threshold multi-item selector
+                        // What: Tracks selected items for threshold alerts
+                        // Why: Required when tracking specific items
+                        // How: Mark missing if empty or whitespace
+                        if (isValueEmpty(thresholdItemIds)) {
+                            markMissingRequired();
+                        }
+                    }
+                }
+                
+                // Collective Move required fields
+                if (alertType === 'collective_move') {
+                    const collectiveItemIds = document.getElementById('collective-item-ids').value;
+                    const collectiveReferenceValue = document.getElementById('collective-reference').value;
+                    const collectiveCalculationValue = document.getElementById('collective-calculation-method').value;
+                    const collectiveDirectionValue = document.getElementById('collective-direction').value;
+                    const collectiveThresholdValue = document.getElementById('collective-threshold').value;
+                    
+                    // collectiveItemIds: Comma-separated IDs from the collective multi-item selector
+                    // What: Tracks selected items for collective move alerts
+                    // Why: Required because collective move alerts only support specific items
+                    // How: Mark missing if empty or whitespace
+                    if (isValueEmpty(collectiveItemIds)) {
+                        markMissingRequired();
+                    }
+                    
+                    // collectiveReferenceValue: Reference price selection for collective move alerts
+                    // What: Stores the collective reference dropdown selection
+                    // Why: Must be filled when collective fields are visible
+                    // How: Mark missing if empty
+                    if (isValueEmpty(collectiveReferenceValue)) {
+                        markMissingRequired();
+                    }
+                    
+                    // collectiveCalculationValue: Calculation method selection (simple/weighted)
+                    // What: Stores the calculation method dropdown selection
+                    // Why: Must be filled when collective fields are visible
+                    // How: Mark missing if empty
+                    if (isValueEmpty(collectiveCalculationValue)) {
+                        markMissingRequired();
+                    }
+                    
+                    // collectiveDirectionValue: Direction selection for collective move alerts
+                    // What: Stores the collective direction dropdown selection
+                    // Why: Must be filled when collective fields are visible
+                    // How: Mark missing if empty
+                    if (isValueEmpty(collectiveDirectionValue)) {
+                        markMissingRequired();
+                    }
+                    
+                    // collectiveThresholdValue: Numeric threshold input for collective move alerts
+                    // What: Stores the collective threshold entered by the user
+                    // Why: Required to define the average change trigger amount
+                    // How: Mark missing if empty
+                    if (isValueEmpty(collectiveThresholdValue)) {
+                        markMissingRequired();
                     }
                 }
 
@@ -526,15 +865,18 @@
                     
                     // Both fields must have values when All Items is selected
                     // We trim to catch whitespace-only inputs as invalid
-                    if (!minPriceValue || minPriceValue.trim() === '') {
-                        errors.push('Minimum Price is required when tracking All Items');
+                    if (isValueEmpty(minPriceValue)) {
+                        markMissingRequired();
                     }
-                    if (!maxPriceValue || maxPriceValue.trim() === '') {
-                        errors.push('Maximum Price is required when tracking All Items');
+                    if (isValueEmpty(maxPriceValue)) {
+                        markMissingRequired();
                     }
                 }
 
-                if (errors.length > 0) {
+                if (hasMissingRequiredFields) {
+                    e.preventDefault();
+                    FormValidation.showError(missingRequiredMessage);
+                } else if (errors.length > 0) {
                     e.preventDefault();
                     FormValidation.showError(errors[0]);
                 }
