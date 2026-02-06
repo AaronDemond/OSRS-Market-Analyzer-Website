@@ -336,12 +336,12 @@ class SingleItemRollingBaselineTests(RollingBaselineMixin, TestCase):
         # --- Check at time index 5 (t = 1500s from base_time) ---
         # The current "now" is 5 intervals after base_time.
         # warmup_threshold = now - 300 = base_time + 1200
-        # cutoff = now - 300 - 60 = base_time + 1140
+        # cutoff = now - 300 - 2 = base_time + 1198
         # P0 (base_time + 0) is way before cutoff → pruned
         # P1 (base_time + 300) is before cutoff → pruned
         # P2 (base_time + 600) is before cutoff → pruned
         # P3 (base_time + 900) is before cutoff → pruned
-        # P4 (base_time + 1200) is >= cutoff (1140) → survives
+        # P4 (base_time + 1200) is >= cutoff (1198) → survives
         # P4 timestamp (1200) <= warmup_threshold (1200) → warmup passes
         # Baseline = P4 = 1040
         now_5 = base_time + (5 * check_interval)
@@ -366,8 +366,8 @@ class SingleItemRollingBaselineTests(RollingBaselineMixin, TestCase):
         # --- Check at time index 6 (t = 1800s from base_time) ---
         # Now price_history has P4(1200) and P5(1500,1200) from check 5.
         # warmup_threshold = 1800 - 300 = 1500
-        # cutoff = 1800 - 300 - 60 = 1440
-        # P4 (base_time + 1200) < cutoff (base_time + 1440) → pruned!
+        # cutoff = 1800 - 300 - 2 = 1498
+        # P4 (base_time + 1200) < cutoff (base_time + 1498) → pruned!
         # P5 (base_time + 1500) >= cutoff → survives
         # P5 timestamp (1500) <= warmup_threshold (1500) → warmup passes
         # Baseline = P5 = 1200 (the price recorded during check 5)
@@ -424,7 +424,7 @@ class SingleItemRollingBaselineTests(RollingBaselineMixin, TestCase):
         #   Baseline = P8 = 1800
         #
         # Check 10 (now = base_time + 3000):
-        #   cutoff = 3000 - 302 = 2698
+        #   cutoff = 3000 - 300 - 2 = 2698
         #   P8(2400) < 2698 → pruned; P9(2700) >= 2698 → survives
         #   Baseline = P9 (whatever price was recorded at check 9)
         #
@@ -507,10 +507,10 @@ class SingleItemRollingBaselineTests(RollingBaselineMixin, TestCase):
         self.alert.save()
 
         # --- Check 2: P0 should be pruned, P1 becomes baseline ---
-        # P0 (base_time) : cutoff = base_time + 600 - 360 = base_time + 240
-        #   P0 at base_time (0) < 240 → pruned ✓
+        # P0 (base_time) : cutoff = base_time + 600 - 302 = base_time + 298
+        #   P0 at base_time (0) < 298 → pruned ✓
         # P1 (base_time + 300, price=1200): survives cutoff, passes warmup
-        #   P1 at 300 >= 240 → survives ✓
+        #   P1 at 300 >= 298 → survives ✓
         #   P1 at 300 <= warmup (600-300=300) → passes warmup ✓
         # Baseline = P1 = 1200
         now_2 = base_time + (2 * check_interval)
