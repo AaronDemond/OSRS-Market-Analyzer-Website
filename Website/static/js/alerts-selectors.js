@@ -2053,33 +2053,20 @@
          * EXCEPTION: When sorting by threshold distance, prices are fetched BEFORE
          * rendering to prevent visual flash of incorrect sort order. Threshold distance
          * calculations require current_price data, which comes from the prices API.
-         * 
-         * What: Fetch alerts, optionally fetch prices, then render
-         * Why: Prevents flash when sorting by threshold - prices must be available before sort
-         * How: Check sorting state, fetch prices if needed, apply to data, then render once
          */
         async refresh() {
-            // Don't refresh if any dropdown is open
-            // What: Skip refresh cycle when user is interacting with dropdowns
-            // Why: Prevents UI disruption and maintains user's current selection
-            // How: Check if any dropdown has focus via isDropdownOpen helper
+            // Skip refresh when dropdowns are open to prevent UI disruption
             if (this.isDropdownOpen()) {
                 return;
             }
 
             // =================================================================
-            // PHASE 1: Fetch alerts data from server
+            // PHASE 1: Fetch alerts (instant - no external API wait)
             // =================================================================
-            // What: Get current alerts and triggered notifications from backend
-            // Why: This is instant (no external API wait) so we can render quickly
-            // How: Call fetchAlerts() which hits our Django backend endpoint
             const data = await AlertsAPI.fetchAlerts();
             if (!data) return;
             
-            // DEBUG: Log what triggered alerts are coming back from server
-            // What: Console output showing which alerts were triggered
-            // Why: Helps debug notification display issues
-            // How: Loop through triggered array and log each alert's id and type
+            // DEBUG: Log triggered alerts from server
             console.log('[REFRESH DEBUG] Triggered alerts from server:', data.triggered);
             if (data.triggered && data.triggered.length > 0) {
                 data.triggered.forEach(t => {
@@ -2090,32 +2077,20 @@
             // =================================================================
             // CONDITIONAL: Fetch prices BEFORE render if sorting by threshold
             // =================================================================
-            // What: When user sorts by threshold distance, fetch prices before rendering
-            // Why: Threshold distance calculation needs current_price, which comes from prices API
-            //      Without this, alerts render with null/stale prices, causing flash when prices arrive
-            // How: Check if sortKey is 'thresholdDistance', if yes fetch prices and apply to alerts
+            // Threshold distance calculation needs current_price from prices API.
+            // Without this, alerts render with null/stale prices, causing flash when prices arrive.
             const isSortingByThreshold = AlertsState.sorting.sortKey === 'thresholdDistance';
             if (isSortingByThreshold && data.alerts && data.alerts.length > 0) {
-                // Fetch prices synchronously (wait for them) before rendering
-                // What: Get current market prices for all items from external API
-                // Why: Need prices to calculate accurate threshold distances for sorting
-                // How: Call fetchPrices(), apply to alerts array, then render with complete data
                 const priceData = await AlertsAPI.fetchPrices();
                 if (priceData && priceData.prices) {
                     const prices = priceData.prices;
                     
-                    // Apply prices to alerts data before rendering
-                    // What: Update each alert's current_price based on its item_id and reference type
-                    // Why: Ensures threshold distance calculations are accurate in the first render
-                    // How: Loop through alerts, find matching price, set current_price based on reference
+                    // Apply prices to alerts data before rendering to ensure accurate threshold distances
                     data.alerts.forEach(alert => {
                         if (alert.item_id && !alert.is_all_items) {
                             const itemPrices = prices[String(alert.item_id)];
                             if (itemPrices) {
-                                // Calculate current_price based on reference type (high/low/average)
-                                // What: Determine which price point to use for this alert
-                                // Why: Different alerts track different price points (high price, low price, or average)
-                                // How: Check alert.reference field and select corresponding price
+                                // Set current_price based on reference type (high/low/average)
                                 const ref = alert.reference || 'high';
                                 if (ref === 'low') {
                                     alert.current_price = itemPrices.low;
@@ -2129,10 +2104,7 @@
                                     alert.current_price = itemPrices.high;
                                 }
                                 
-                                // Calculate spread_percentage for spread alerts
-                                // What: Compute spread as percentage between high and low price
-                                // Why: Spread alerts need this value for display and threshold checks
-                                // How: Calculate ((high - low) / low) * 100, rounded to 2 decimals
+                                // Calculate spread percentage for spread alerts
                                 if (alert.type === 'spread') {
                                     const high = itemPrices.high;
                                     const low = itemPrices.low;
@@ -2146,25 +2118,14 @@
                 }
             }
             
-            // =================================================================
-            // RENDER: Update UI with alerts data (now includes prices if needed)
-            // =================================================================
-            // What: Render the alerts list with all necessary data
-            // Why: Single render with complete data prevents flash when sorting by threshold
-            // How: Call updateMyAlertsPane with data that now includes prices if needed
+            // Render alerts with complete data to prevent flash when sorting by threshold
             AlertsUI.updateMyAlertsPane(data);
             
             // =================================================================
             // PHASE 2: Fetch prices in background (if not already fetched)
             // =================================================================
-            // What: For non-threshold sorts, fetch prices after render for future use
-            // Why: Keeps price data fresh in cache for when user switches to threshold sort
-            // How: Only call fetchAndApplyPrices if we didn't already fetch prices above
+            // For non-threshold sorts, fetch prices after render to keep cache fresh
             if (!isSortingByThreshold) {
-                // This runs AFTER the list is visible, so user sees content fast
-                // What: Background price fetch to update cache
-                // Why: Keeps cached data fresh without blocking the initial render
-                // How: Call fetchAndApplyPrices which updates cache and re-renders if needed
                 this.fetchAndApplyPrices(data.alerts);
             }
         },
