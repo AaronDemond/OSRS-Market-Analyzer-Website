@@ -3063,6 +3063,7 @@ def update_alert(request):
                     min_move_percentage = data.get('min_move_percentage')
                     alert.min_move_percentage = float(min_move_percentage) if min_move_percentage else None
                     
+                    # min_volume is handled below for both sustained and spread alerts
                     min_volume = data.get('min_volume')
                     alert.min_volume = int(min_volume) if min_volume else None
                     
@@ -3077,8 +3078,32 @@ def update_alert(request):
                     
                     min_pressure_spread_pct = data.get('min_pressure_spread_pct')
                     alert.min_pressure_spread_pct = float(min_pressure_spread_pct) if min_pressure_spread_pct else None
+                elif alert.type == 'spread':
+                    # =============================================================================
+                    # SPREAD ALERT MIN VOLUME HANDLING
+                    # What: Save the min_volume field when editing a spread alert
+                    # Why: Spread alerts now support optional minimum hourly volume (GP) filtering
+                    #      to ensure only actively-traded items trigger spread alerts. The min_volume
+                    #      field is shared with sustained alerts on the Alert model.
+                    # How: Read min_volume from the request data and save it. Clear sustained-only
+                    #      fields that don't apply to spread alerts.
+                    # =============================================================================
+                    min_volume = data.get('min_volume')
+                    alert.min_volume = int(min_volume) if min_volume else None
+                    # Clear sustained-only fields that don't apply to spread alerts
+                    alert.min_consecutive_moves = None
+                    alert.min_move_percentage = None
+                    alert.volatility_buffer_size = None
+                    alert.volatility_multiplier = None
+                    alert.sustained_item_ids = None
+                    alert.min_pressure_strength = None
+                    alert.min_pressure_spread_pct = None
                 else:
-                    # Clear sustained fields for other alert types
+                    # Clear sustained/spread fields for other alert types (spike, threshold, collective_move)
+                    # What: Reset all sustained-specific and min_volume fields when the alert
+                    #       type is not sustained or spread
+                    # Why: Prevents stale data from a previous type from affecting the alert
+                    # How: Set all sustained-specific fields and min_volume to None
                     alert.min_consecutive_moves = None
                     alert.min_move_percentage = None
                     alert.min_volume = None

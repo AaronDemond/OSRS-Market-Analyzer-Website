@@ -2063,6 +2063,20 @@
                     </div>
                     {% endif %}
                     
+                    <!-- =============================================================================
+                         SPREAD ALERT VOLUME DISPLAY
+                         What: Shows the minimum hourly volume (GP) filter when set on a spread alert
+                         Why: Users need to see their volume filter setting in the alert config card
+                         How: Conditional display based on alert type being 'spread' AND min_volume
+                              being set. Uses intcomma filter for readable formatting.
+                    ============================================================================= -->
+                    {% if alert.type == 'spread' and alert.min_volume %}
+                    <div class="detail-item">
+                        <span class="detail-label">Min Hourly Volume (GP)</span>
+                        <span class="detail-value">{{ alert.min_volume|intcomma }}</span>
+                    </div>
+                    {% endif %}
+                    
                     {% if alert.type == 'spike' %}
                     <div class="detail-item">
                         <span class="detail-label">Time Frame</span>
@@ -2413,7 +2427,11 @@
                         <small class="form-hint">Spread % threshold for pressure</small>
                     </div>
                     
-                    <!-- Min Hourly Volume (sustained) -->
+                    <!-- Min Hourly Volume (sustained and spread) -->
+                    <!-- What: Input field for minimum hourly trading volume in GP
+                         Why: Both sustained and spread alerts can use this to filter out
+                              low-volume items that may have unreliable prices or inflated spreads
+                         How: Shared form field displayed for both alert types -->
                     <div class="form-group" id="min-volume-group" style="display: none;">
                         <label for="edit-min-volume">Min Hourly Volume (GP)</label>
                         <input type="number" id="edit-min-volume" value="{{ alert.min_volume|default:'' }}" min="0" step="1" placeholder="e.g. 75000000">
@@ -4130,7 +4148,10 @@ function handleTypeChange() {
     };
     
     if (alertType === 'spread') {
-        // Spread: show all items toggle, percentage
+        // Spread: show all items toggle, percentage, and min volume filter
+        // What: Configure edit form fields for spread alert editing
+        // Why: Spread alerts support percentage threshold and optional volume filtering
+        // How: Show spread-relevant fields plus minVolume for optional volume filtering
         groups.allItems.style.display = 'block';
         groups.price.style.display = 'none';
         groups.reference.style.display = 'none';
@@ -4139,6 +4160,11 @@ function handleTypeChange() {
         groups.direction.style.display = 'none';
         hideSustainedFields();
         hideThresholdFields();
+        // What: Show min volume field for spread alerts in edit mode
+        // Why: Users can filter spread alerts by minimum hourly trading volume (GP)
+        //      to exclude low-volume items with artificially inflated spreads
+        // How: Override hideSustainedFields() which hides minVolume, and show it explicitly
+        if (groups.minVolume) groups.minVolume.style.display = 'block';
         
         // Let scope change handler determine item/min/max visibility
         handleScopeChange();
@@ -4732,6 +4758,11 @@ async function saveChanges() {
     // How: We now only send type-specific fields for supported types.
     if (alertType === 'spread') {
         data.percentage = document.getElementById('edit-percentage').value || null;
+        // What: Include min_volume in spread alert save data
+        // Why: Spread alerts now support optional minimum hourly volume (GP) filtering
+        //      to ensure only actively-traded items trigger spread alerts
+        // How: Read the value from the min-volume input field; null if not set
+        data.min_volume = document.getElementById('edit-min-volume').value || null;
         if (isAllItems) {
             data.minimum_price = document.getElementById('edit-minimum-price').value || null;
             data.maximum_price = document.getElementById('edit-maximum-price').value || null;
