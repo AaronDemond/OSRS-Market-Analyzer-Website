@@ -4749,16 +4749,16 @@ async function saveChanges() {
     // Why: Spike alerts now require this value to prevent low-activity items from triggering
     // How: Check the min-volume input, show validation error, and abort save if missing
     if (alertType === 'spike') {
-        // minVolumeValue: Current value from the min hourly volume input field
+        // minVolumeVal: Current value from the min hourly volume input field
         // What: Captures the numeric value typed by the user
         // Why: Needed to verify the required spike alert field is not empty
         // How: Read and trim the input value from edit-min-volume
-        const minVolumeValue = document.getElementById('edit-min-volume').value;
+        const minVolumeVal = document.getElementById('edit-min-volume').value;
         
         // What: Prevent save when min volume is missing for spike alerts
         // Why: The new requirement makes this field mandatory for spike alerts
         // How: Treat empty or whitespace-only values as invalid
-        if (!minVolumeValue || minVolumeValue.trim() === '') {
+        if (!minVolumeVal || minVolumeVal.trim() === '') {
             showValidationError('Min Hourly Volume (GP) is required for spike alerts');
             return;  // Stop save operation - don't send request to server
         }
