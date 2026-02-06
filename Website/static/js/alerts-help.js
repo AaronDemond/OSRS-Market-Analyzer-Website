@@ -130,12 +130,11 @@
             return;
         }
         
-        // Add new group to AlertsState
-        // What: Adds the new group name to the application state
-        // Why: Makes it available in the dropdown and for future reference
-        // How: Push to alertGroups array and call updateGroupDropdown
-        existingGroups.push(groupName);
-        AlertsState.setAlertGroups(existingGroups);
+        // Add new group to AlertsState as a pending client-side group
+        // What: Registers the group as pending so refreshes don't overwrite it
+        // Why: Server refresh overwrites the dropdown list and would drop the new group
+        // How: Use AlertsState.registerPendingGroup to dedupe and merge with server groups
+        AlertsState.registerPendingGroup(groupName);
         
         // Select the newly created group in the dropdown
         // What: Automatically selects the new group in the dropdown
@@ -159,4 +158,3 @@
             closeNewGroupModal();
         }
     });
-

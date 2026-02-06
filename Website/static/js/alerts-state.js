@@ -78,6 +78,12 @@
         activeFilters: new Set(),       // Currently active filter IDs
         filterValues: {},               // Values for input-based filters (keyed by filter ID)
         alertGroups: [],                // Known alert groups
+        // pendingAlertGroups: Groups created client-side but not yet returned by server refresh
+        // What: Tracks new group names added via the create-alert modal before alert submission
+        // Why: Refresh updates the dropdown from server data every few seconds and would otherwise
+        //      wipe the client-only group, resetting selection back to "No Group"
+        // How: Store pending names and merge them with server groups when rendering the dropdown
+        pendingAlertGroups: [],
         cachedAlerts: [],               // Cached alerts data for instant filtering/sorting
         searchQuery: '',                // Current search query
         iconCache: {},                  // Cache for item icons (keyed by item_id)
@@ -314,8 +320,39 @@
          * Updates known alert groups from alert data payload.
          */
         setAlertGroups(groups) {
-            this.alertGroups = Array.isArray(groups) ? groups : [];
-            // Update the create form group dropdown
+            // serverGroups: The groups list returned by the backend during refresh
+            // What: Normalize server data into a safe array
+            // Why: Prevent non-array values from breaking downstream group rendering
+            // How: Replace with empty array if invalid, and trim whitespace
+            const serverGroups = Array.isArray(groups) ? groups : [];
+            
+            // Merge server groups with any pending client-only groups
+            // What: Preserve newly created groups that the backend doesn't know about yet
+            // Why: Without this merge, the refresh cycle overwrites the dropdown and drops
+            //      the new group, causing the selection to revert to "No Group"
+            // How: Combine serverGroups with pendingAlertGroups, dedupe by case-insensitive name
+            const mergedGroups = [];
+            const seen = new Set();
+            
+            // addGroup: Helper to add a group name if not already added (case-insensitive)
+            // What: Normalizes and deduplicates group names
+            // Why: Prevents duplicates when the server later returns the pending group
+            // How: Track a lowercase key in a Set for uniqueness
+            const addGroup = (name) => {
+                if (!name) return;
+                const cleaned = String(name).trim();
+                if (!cleaned) return;
+                const key = cleaned.toLowerCase();
+                if (seen.has(key)) return;
+                seen.add(key);
+                mergedGroups.push(cleaned);
+            };
+            
+            serverGroups.forEach(addGroup);
+            this.pendingAlertGroups.forEach(addGroup);
+            
+            // Update stored groups and refresh the dropdown
+            this.alertGroups = mergedGroups;
             this.updateGroupDropdown();
         },
 
@@ -340,6 +377,41 @@
             if (currentValue && this.alertGroups.includes(currentValue)) {
                 dropdown.value = currentValue;
             }
+        },
+        
+        /**
+         * Registers a new pending group created client-side.
+         * 
+         * What: Adds a group name to pendingAlertGroups and merges it into alertGroups
+         * Why: Keeps newly created groups visible and selectable until the server returns them
+         * How: Deduplicates case-insensitively, then updates the dropdown
+         * 
+         * @param {string} groupName - The new group name to register
+         */
+        registerPendingGroup(groupName) {
+            // cleanedName: Normalized group name to store
+            // What: Trimmed, normalized representation of the group name
+            // Why: Prevents blank or whitespace-only entries from being stored
+            // How: String trim and empty check
+            const cleanedName = String(groupName || '').trim();
+            if (!cleanedName) return;
+            
+            // Check if already tracked (case-insensitive)
+            // What: Avoid duplicate pending entries
+            // Why: A duplicate would cause redundant options in the dropdown
+            // How: Compare lowercase versions against existing pending groups
+            const exists = this.pendingAlertGroups.some(
+                g => String(g).toLowerCase() === cleanedName.toLowerCase()
+            );
+            if (!exists) {
+                this.pendingAlertGroups.push(cleanedName);
+            }
+            
+            // Merge pending with current groups and refresh dropdown
+            // What: Ensures the pending group appears immediately in the dropdown
+            // Why: Keeps selection stable even before the server refresh includes it
+            // How: Reuse setAlertGroups to perform the merge and update
+            this.setAlertGroups(this.alertGroups);
         },
 
         /**
