@@ -16,6 +16,9 @@ from django.test import TestCase
 
 from Website.management.commands.check_alerts import Command
 from Website.models import Alert, HourlyItemVolume
+import os
+import django
+
 
 
 class ThresholdMinVolumeTests(TestCase):
@@ -36,6 +39,8 @@ class ThresholdMinVolumeTests(TestCase):
         Why: Provides a consistent alert configuration for each min_volume scenario.
         How: Use the Alert model with threshold_type='percentage' and a reference_prices JSON blob.
         """
+
+
         # test_user: User instance to associate alerts with a valid account
         # What: Represents the owner of the alert in the test database
         # Why: Alerts require a user foreign key when user-based logic is used
