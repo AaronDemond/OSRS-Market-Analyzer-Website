@@ -3101,6 +3101,36 @@ def alert_detail(request, alert_id):
     from django.shortcuts import get_object_or_404
     import json
     
+    # What: Helper function to sort triggered items from biggest increase to biggest decrease
+    # Why: Users want to see the most significant changes first (biggest gains at top, biggest losses at bottom)
+    # How: Sort by the appropriate field for each alert type in descending order (highest to lowest)
+    #      - spread: sort by 'spread' (spread percentage)
+    #      - spike: sort by 'percent_change' (percentage change from baseline)
+    #      - sustained: sort by 'total_move_percent' (total percentage move)
+    #      - threshold: sort by 'change_percent' (percentage change from reference)
+    # Note: Uses negative values for 'down' movements, so higher values = bigger increase, lower values = bigger decrease
+    def sort_triggered_items(items, alert_type):
+        """Sort triggered items from biggest increase to biggest decrease based on alert type"""
+        if not items or not isinstance(items, list):
+            return items
+        
+        # Determine which field to sort by based on alert type
+        if alert_type == 'spread':
+            # For spread alerts, sort by spread percentage (descending)
+            return sorted(items, key=lambda x: x.get('spread', 0), reverse=True)
+        elif alert_type == 'spike':
+            # For spike alerts, sort by percent_change (descending - positive changes first)
+            return sorted(items, key=lambda x: x.get('percent_change', 0), reverse=True)
+        elif alert_type == 'sustained':
+            # For sustained alerts, sort by total_move_percent (descending - positive changes first)
+            return sorted(items, key=lambda x: x.get('total_move_percent', 0), reverse=True)
+        elif alert_type == 'threshold':
+            # For threshold alerts, sort by change_percent (descending - positive changes first)
+            return sorted(items, key=lambda x: x.get('change_percent', 0), reverse=True)
+        else:
+            # Unknown alert type - return unsorted
+            return items
+    
     user = request.user if request.user.is_authenticated else None
     alert = get_object_or_404(Alert, id=alert_id, user=user)
     
@@ -3149,7 +3179,8 @@ def alert_detail(request, alert_id):
                     if isinstance(sustained_data, list):
                         # Multi-item or all-items sustained alert - store items list for template
                         # triggered_info['items']: List of all sustained move triggers for multi-item display
-                        triggered_info['items'] = sustained_data
+                        # Sort items from biggest increase to biggest decrease
+                        triggered_info['items'] = sort_triggered_items(sustained_data, 'sustained')
                         triggered_info['sustained_data'] = sustained_data
                         
                         # For backwards compatibility, also populate individual fields from first item
@@ -3235,7 +3266,9 @@ def alert_detail(request, alert_id):
             # Why: All-items alerts store triggered items as JSON array in triggered_data
             # Note: Sustained alerts are handled separately above because they need special field extraction
             try:
-                triggered_info['items'] = json.loads(alert.triggered_data)
+                items = json.loads(alert.triggered_data)
+                # Sort items from biggest increase to biggest decrease
+                triggered_info['items'] = sort_triggered_items(items, alert.type)
             except json.JSONDecodeError:
                 triggered_info['items'] = []
         elif has_multiple_items and alert.triggered_data and alert.type != 'sustained':
@@ -3257,7 +3290,8 @@ def alert_detail(request, alert_id):
                 parsed_data = json.loads(alert.triggered_data)
                 if isinstance(parsed_data, list):
                     # Multi-item: triggered_data is a list of item dicts
-                    triggered_info['items'] = parsed_data
+                    # Sort items from biggest increase to biggest decrease
+                    triggered_info['items'] = sort_triggered_items(parsed_data, alert.type)
                 else:
                     # =============================================================================
                     # SINGLE-ITEM THRESHOLD WITH ITEM_IDS SET
@@ -3326,7 +3360,8 @@ def alert_detail(request, alert_id):
                     try:
                         threshold_data = json.loads(alert.triggered_data)
                         if isinstance(threshold_data, list):
-                            triggered_info['items'] = threshold_data
+                            # Sort items from biggest increase to biggest decrease
+                            triggered_info['items'] = sort_triggered_items(threshold_data, 'threshold')
                             # For backwards compatibility, populate single item fields from first item
                             if threshold_data:
                                 first_item = threshold_data[0]
