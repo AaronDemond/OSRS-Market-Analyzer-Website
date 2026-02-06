@@ -4824,8 +4824,13 @@ async function saveChanges() {
         data.reference = document.getElementById('edit-reference').value || 'average';
         // What: Include min_volume in spike alert save data
         // Why: Spike alerts now require a minimum hourly volume threshold
-        // How: Read the value from the min-volume input field; null if not set
-        data.min_volume = document.getElementById('edit-min-volume').value || null;
+        // How: Read the value from the min-volume input field; null if empty after trimming
+        // minVolumeRaw: Raw string value from the min-volume input field
+        // What: Captures the user-entered value before trimming
+        // Why: Allows consistent handling of empty strings when building the payload
+        // How: Read directly from the edit-min-volume input element
+        const minVolumeRaw = document.getElementById('edit-min-volume').value;
+        data.min_volume = minVolumeRaw.trim() === '' ? null : minVolumeRaw;
         if (isAllItems) {
             data.minimum_price = document.getElementById('edit-minimum-price').value || null;
             data.maximum_price = document.getElementById('edit-maximum-price').value || null;

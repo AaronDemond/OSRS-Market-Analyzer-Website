@@ -1482,6 +1482,17 @@ def create_alert(request):
         is_all_items_flag = request.POST.get('is_all_items') == 'true'
         minimum_price = request.POST.get('minimum_price')
         maximum_price = request.POST.get('maximum_price')
+        # min_volume: Minimum hourly trading volume in GP (required for spike alerts)
+        # What: Captures the user-entered min hourly volume filter from the form
+        # Why: Spike alerts now require this value; sustained/spread may also use it
+        # How: Read directly from POST data so validation can occur before alert creation
+        min_volume = request.POST.get('min_volume')
+        
+        # min_volume_value: Parsed integer value for min_volume when validation succeeds
+        # What: Stores the numeric minimum hourly volume in GP (only set when parsed successfully)
+        # Why: Avoids double-casting and keeps spike validation consistent with the saved value
+        # How: Set during spike validation; otherwise remains None for non-spike alerts
+        min_volume_value = None
         email_notification = request.POST.get('email_notification') == 'on'
         group_id = request.POST.get('group_id')  # Group to assign alert to
         
@@ -1527,7 +1538,7 @@ def create_alert(request):
             # Why: Non-numeric values would raise a ValueError when we cast to int for storage
             # How: Attempt int conversion and handle failures with a user-facing error
             try:
-                int(min_volume)
+                min_volume_value = int(min_volume)
             except (TypeError, ValueError):
                 messages.error(request, 'Min Hourly Volume (GP) must be a whole number')
                 return redirect('alerts')
@@ -1543,7 +1554,6 @@ def create_alert(request):
         min_move_percentage = request.POST.get('min_move_percentage')
         volatility_buffer_size = request.POST.get('volatility_buffer_size')
         volatility_multiplier = request.POST.get('volatility_multiplier')
-        min_volume = request.POST.get('min_volume')
         sustained_item_ids_str = request.POST.get('sustained_item_ids', '')
         min_pressure_strength = request.POST.get('min_pressure_strength') or None
         min_pressure_spread_pct = request.POST.get('min_pressure_spread_pct')
@@ -1897,7 +1907,8 @@ def create_alert(request):
             min_move_percentage=float(min_move_percentage) if min_move_percentage else None,
             volatility_buffer_size=int(volatility_buffer_size) if volatility_buffer_size else None,
             volatility_multiplier=float(volatility_multiplier) if volatility_multiplier else None,
-            min_volume=int(min_volume) if min_volume else None,
+            # min_volume: Use the validated integer for spike alerts; parse for other alert types if provided
+            min_volume=min_volume_value if min_volume_value is not None else (int(min_volume) if min_volume else None),
             sustained_item_ids=sustained_item_ids_json,
             min_pressure_strength=min_pressure_strength,
             min_pressure_spread_pct=float(min_pressure_spread_pct) if min_pressure_spread_pct else None,
@@ -2953,6 +2964,12 @@ def update_alert(request):
                 #      the alert configuration invalid and inconsistent with the required UI field
                 # How: If alert.type is 'spike', verify min_volume is non-empty; otherwise return
                 #      a JSON error response so the UI can show validation feedback
+                # min_volume_int: Parsed integer value for spike min_volume validation
+                # What: Stores the numeric minimum hourly volume for spike alerts after validation
+                # Why: Allows reuse later when saving the alert without re-parsing the value
+                # How: Set during the spike validation block below
+                min_volume_int = None
+                
                 if alert.type == 'spike':
                     # min_volume_val: Raw string value submitted for minimum hourly volume
                     # What: Holds the user-entered minimum hourly volume in GP
@@ -2974,7 +2991,7 @@ def update_alert(request):
                     # Why: Non-numeric values would raise a ValueError when we cast to int for storage
                     # How: Attempt int conversion and handle failures with a JSON error response
                     try:
-                        int(min_volume_val)
+                        min_volume_int = int(min_volume_val)
                     except (TypeError, ValueError):
                         return JsonResponse({
                             'status': 'error',
@@ -3174,7 +3191,11 @@ def update_alert(request):
                     # What: Holds the user-entered minimum hourly volume in GP
                     # Why: We need to convert it to an integer for storage in the model
                     # How: Cast to int now that validation has guaranteed a numeric value
-                    alert.min_volume = int(min_volume)
+                    # min_volume_int: Parsed integer value from earlier validation
+                    # What: Reuse the validated integer instead of re-parsing the string
+                    # Why: Keeps validation and persistence consistent for spike alerts
+                    # How: Assign the cached integer value from the spike validation block
+                    alert.min_volume = min_volume_int
                     # Clear sustained-only fields that don't apply to spike alerts
                     alert.min_consecutive_moves = None
                     alert.min_move_percentage = None
