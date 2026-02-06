@@ -373,12 +373,18 @@ class Alert(models.Model):
     # How: Checked before evaluating confidence; if current spread < this value, skip the item
     confidence_min_spread_pct = models.FloatField(blank=True, null=True, default=None)
     
-    # confidence_min_volume: Minimum total trade volume across the lookback window
-    # What: The minimum sum of highPriceVolume + lowPriceVolume across all buckets
-    # Why: Low-volume items may produce misleading confidence scores due to sparse data;
-    #      this ensures only actively-traded items are evaluated
-    # How: After fetching timeseries data, sum all volumes; if below this, skip the item
-    confidence_min_volume = models.IntegerField(blank=True, null=True, default=None)
+    # confidence_min_volume: Minimum total GP volume across the lookback window
+    # What: The minimum gold-piece value of all trades (buys + sells) across all
+    #        timeseries buckets within the lookback window
+    # Why: Raw trade counts are misleading — 500 trades of a 10gp item is negligible
+    #      market activity, while 500 trades of a 10M item is enormous.  GP volume
+    #      normalises across price tiers so the filter is meaningful for any item.
+    # How: After fetching timeseries data, compute:
+    #        GP volume = SUM(highPriceVolume * avgHighPrice) + SUM(lowPriceVolume * avgLowPrice)
+    #      If the result is below this threshold, the item is skipped.
+    # Note: BigIntegerField is required because GP volumes can easily exceed 2.1B
+    #       (the max of a 32-bit int) for actively traded expensive items.
+    confidence_min_volume = models.BigIntegerField(blank=True, null=True, default=None)
     
     # confidence_cooldown: Minutes to wait before re-alerting on the same item
     # What: Cooldown period (in minutes) after an alert fires before it can fire again
@@ -1114,6 +1120,56 @@ class HourlyItemVolume(models.Model):
 
 
 class FiveMinTimeSeries(models.Model):
+    """
+    Stores hourly trading volume snapshots for OSRS items, measured in GP (gold pieces).
+
+    What: A single hourly volume snapshot for one item at a specific point in time.
+    Why: Sustained move alerts need volume data to filter out low-activity items. Previously,
+         volume was fetched via individual API calls to the RuneScape Wiki timeseries endpoint
+         during each alert check cycle. For "all items" alerts, this meant hundreds of HTTP
+         requests per cycle. This model pre-fetches and caches volume data in the database,
+         replacing those API calls with fast DB queries.
+    How: Populated by scripts/update_volumes.py every 1 hour 5 minutes. Each fetch cycle
+         creates a NEW row per item (historical data accumulates over time). The alert checker
+         queries the most recent row for each item to get its current hourly volume.
+
+    Volume Calculation:
+        volume_gp = (highPriceVolume + lowPriceVolume) × ((avgHighPrice + avgLowPrice) / 2)
+        This represents the total GP value of items traded in the most recent hour.
+        Example: 5,000 units traded × 500,000 GP average price = 2,500,000,000 GP volume.
+
+    Data Source:
+        - RuneScape Wiki API: /timeseries?timestep=1h&id={item_id}
+        - Uses the most recent 1h interval from the timeseries response
+
+    Usage:
+        - check_alerts.py queries: HourlyItemVolume.objects.filter(item_id=X).first()
+          (ordered by -timestamp via Meta.ordering, so .first() = most recent)
+        - Historical data can be used for volume trend analysis in the future
+    """
+
+    # item_id: The OSRS item ID from the Wiki API (e.g., 4151 for Abyssal whip)
+    # Indexed for fast lookups when the alert checker queries by item
+    item_id = models.IntegerField(db_index=True)
+
+    # item_name: Human-readable item name, denormalized from item mapping
+    # Why denormalized: Avoids needing a join/lookup when displaying volume data
+    item_name = models.CharField(max_length=255)
+    
+    avg_high_price = models.IntegerField(null=True, blank=True)
+    avg_low_price = models.IntegerField(null=True, blank=True)
+    high_price_volume = models.IntegerField(default=0)
+    low_price_volume = models.IntegerField(default=0)
+
+    timestamp = models.CharField(max_length=255)
+
+    class Meta:
+        # Default ordering: most recent first, so .first() always returns the latest snapshot
+        ordering = ['-timestamp']
+
+
+
+class OneHourTimeSeries(models.Model):
     """
     Stores hourly trading volume snapshots for OSRS items, measured in GP (gold pieces).
 

@@ -1,3 +1,4 @@
+
 import asyncio
 from typing import Iterable, Dict, Any, List
 import aiohttp
@@ -35,7 +36,7 @@ import django
 django.setup()
 
 # Now we can safely import Django models
-from Website.models import HourlyItemVolume, FiveMinTimeSeries
+from Website.models import HourlyItemVolume, FiveMinTimeSeries, OneHourTimeSeries
 
 # =============================================================================
 # CONFIGURATION
@@ -157,7 +158,7 @@ def getAllTimeSeries():
     ids = [x['id'] for x in mapping]
     result = get_all_volume(ids)
     for r in result:
-        make_timeseries_objects([r])
+        make_one_hour_timeseries_objects([r])
     #with open("output.txt", "w", encoding="utf-8") as f:
         #print(result, file=f)
 
@@ -213,7 +214,7 @@ from datetime import datetime, timezone
 BULK_INSERT_BATCH_SIZE = 500
 
 
-def make_5m_timeseries_objects(result_item, lookup):
+def make_one_hour_timeseries_objects(result_item, lookup):
     item_id = result_item["id"]
     item_name = name_from_id(item_id, lookup) or ""
     objs = []
@@ -226,7 +227,7 @@ def make_5m_timeseries_objects(result_item, lookup):
         low_vol = x["lowPriceVolume"] or 0
 
 
-        objs.append(FiveMinTimeSeries(
+        objs.append(OneHourTimeSeries(
             item_id=item_id,
             item_name=item_name,
             avg_low_price=avg_low,
@@ -252,7 +253,7 @@ def make_volume_objects(result_item, lookup):
 
         volume_gp = (avg_high * high_vol) + (avg_low * low_vol)
 
-        objs.append(HourlyItemVolume(
+        objs.append(OneHourTimeSeries(
             item_id=item_id,
             item_name=item_name,
             volume=volume_gp,
@@ -289,12 +290,12 @@ def getDataTimeSeries():
 
     all_objects = []
     for r in result:
-        all_objects.extend(make_5m_timeseries_objects(r, lookup))
+        all_objects.extend(make_one_hour_timeseries_objects(r, lookup))
 
     print(f"prepared {len(all_objects)} rows, inserting...")
 
     with transaction.atomic():
-        FiveMinTimeSeries.objects.bulk_create(
+        OneHourTimeSeries.objects.bulk_create(
             all_objects,
             batch_size=BULK_INSERT_BATCH_SIZE,
             # ignore_conflicts=True,  # optional if you want to skip duplicates
@@ -407,7 +408,7 @@ def fetch_latest_volume_snapshot():
 
     return len(new_records)
 
-def fetch_latest_five_min_snapshot():
+def fetch_latest_one_hour_snapshot():
     """
     Fetch the most recent hourly volume datapoint for every item and insert it into the database.
 
@@ -486,7 +487,7 @@ def fetch_latest_five_min_snapshot():
         item_name = name_from_id(item_id, lookup) or ""
 
 
-        new_records.append(FiveMinTimeSeries(
+        new_records.append(OneHourTimeSeries(
             item_id=item_id,
             item_name=item_name,
             avg_low_price=avg_low,
@@ -499,8 +500,8 @@ def fetch_latest_five_min_snapshot():
     # batch_size=500 stays within SQLite's variable limit (default max 999 per query).
     if new_records:
         with transaction.atomic():
-            FiveMinTimeSeries.objects.bulk_create(new_records, batch_size=BULK_INSERT_BATCH_SIZE)
-        print(f"\nInserted {len(new_records)} records into FiveMinTimeSeries.")
+            OneHourTimeSeries.objects.bulk_create(new_records, batch_size=BULK_INSERT_BATCH_SIZE)
+        print(f"\nInserted {len(new_records)} records into OneHourTimeSeries.")
     else:
         print("\nNo records to insert.")
 
@@ -516,16 +517,17 @@ def fetch_latest_five_min_snapshot():
 lookup = build_id_to_name(load_item_mapping())  
 # use this to get all.
 #getDataTimeSeries()
+#print("DONE")
+#time.sleep(1000)
 import time
 hours = 1
 minutes = 5
-#time.sleep(1000)
 while True:
     #time.sleep(hours * 3600 + minutes * 60)
     #fetch_latest_volume_snapshot()
-    print("Sleeping for 5 minutes...")
-    time.sleep((minutes * 60) + 60)
+    print("Sleeping for one hour and five minutes...")
+    time.sleep((hours * 60 * 60) + (5*60))
     print("Fetching again...")
-    fetch_latest_five_min_snapshot()
+    fetch_latest_one_hour_snapshot()
 
 

@@ -946,11 +946,17 @@
                 <small class="form-hint">Minimum buy/sell spread percentage (optional, filters low-margin items)</small>
             </div>
 
-            <!-- Minimum Total Volume -->
+            <!-- Minimum Total GP Volume -->
+            <!-- What: Filters out items whose total GP traded is below this threshold
+                 Why: GP volume normalises across price tiers — raw trade counts are
+                      misleading because cheap items naturally have high counts while
+                      expensive items have low counts
+                 How: check_alerts computes SUM(qty * price) for all buys + sells in
+                      the lookback window and skips items below this value -->
             <div class="form-group" id="confidence-min-volume-group" style="display: none;">
-                <label for="confidence-min-volume">Min Total Volume</label>
-                <input type="number" name="confidence_min_volume" id="confidence-min-volume" min="0" step="1" placeholder="e.g. 500" tabindex="15">
-                <small class="form-hint">Minimum total trade volume across lookback window (optional)</small>
+                <label for="confidence-min-volume">Min Total Volume (GP)</label>
+                <input type="number" name="confidence_min_volume" id="confidence-min-volume" min="0" step="1" placeholder="" tabindex="15">
+                <small class="form-hint">Minimum total GP traded (buys + sells) across lookback window (optional)</small>
             </div>
 
             <!-- Evaluation Interval -->
@@ -1024,6 +1030,22 @@
                     <label for="confidence-weight-stability">Stability Weight</label>
                     <input type="number" name="confidence_weight_stability" id="confidence-weight-stability" step="0.01" min="0" max="1" placeholder="0.10" tabindex="24">
                     <small class="form-hint">Weight for price stability (default: 0.10)</small>
+                </div>
+
+                <!-- ===================================================================
+                     LIVE WEIGHT SUM INDICATOR
+                     ===================================================================
+                     What: A real-time readout showing the current sum of all 5 weight
+                           inputs compared to the required total of 1.00
+                     Why: Users need immediate visual feedback when adjusting weights,
+                          rather than discovering a sum error only after clicking Submit
+                     How: JavaScript (updateConfidenceWeightSum in alerts-init.js) listens
+                          for 'input' events on each weight field and recalculates the sum.
+                          CSS classes control the color: green (valid), red (invalid),
+                          muted (empty/defaults)
+                     =================================================================== -->
+                <div id="confidence-weight-sum-indicator" class="weight-sum-empty" style="display: none;">
+                    Total: &mdash; / 1.00 (using defaults)
                 </div>
             </div>
 

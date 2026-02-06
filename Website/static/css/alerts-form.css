@@ -104,6 +104,91 @@
     .create-alert-form > #volatility-buffer-group { order: 120; }
     .create-alert-form > #volatility-multiplier-group { order: 121; }
 
+    /* --- Confidence alert: advanced toggle + panel ordering --- */
+    /* What: Places the "Advanced Scoring Weights" toggle button and its panel
+             after the other form fields but before the notification checkboxes
+       Why: Confidence weight tuning is an advanced, optional section — it should
+            come after core settings but before "send me notifications" options
+       How: Assigns flex order values between the main fields (≤121) and
+            notifications (900+) */
+    .create-alert-form > #confidence-advanced-toggle-group { order: 130; }
+    .create-alert-form > #confidence-advanced-panel { order: 131; }
+
+    /* ==========================================================================
+       CONFIDENCE WEIGHT PANEL: FLEX LAYOUT + NARROW INPUTS
+       ==========================================================================
+       What: Styles the advanced weight panel as a flex row so all 5 weight inputs
+             fit side-by-side on wider screens, and wraps on narrow screens
+       Why: The default form-group width (250px) is far too wide for small numeric
+            inputs like "0.35".  Making each weight group ~140px lets 3-5 fit in
+            one row, matching the compact style of other inputs in the form
+       How:
+         - The panel itself is a flex container with wrap + gap
+         - Each child .form-group is constrained to 140px
+         - width: 100% + flex-basis: 100% force the panel to take the full row
+           inside the outer form flex container so children wrap within IT
+       ========================================================================== */
+    #confidence-advanced-panel {
+        width: 100%;
+        flex-basis: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px 16px;
+        align-items: flex-start;
+    }
+
+    /* Each weight input group is narrow (140px) so 3-5 fit on one row */
+    /* What: Overrides the default 250px form-group width for weight inputs only
+       Why: Number inputs 0.00-1.00 need very little horizontal space
+       How: Fixed 140px width with no shrink, and margin-bottom:0 to rely on
+            the gap of the parent flex container */
+    #confidence-advanced-panel > .form-group {
+        width: 140px;
+        flex-shrink: 0;
+        margin-bottom: 0;
+    }
+
+    /* The hint text ("Customize how ...") spans the full row above the inputs */
+    /* What: Makes the panel's introductory hint text take the full width
+       Why: It's a sentence-level description, not a field — it should not be
+            squeezed into a 140px column
+       How: flex-basis: 100% forces a line break after it */
+    #confidence-advanced-panel > .form-hint {
+        flex-basis: 100%;
+        margin-bottom: 4px;
+    }
+
+    /* ==========================================================================
+       CONFIDENCE WEIGHT SUM INDICATOR
+       ==========================================================================
+       What: A small live readout ("Total: 0.90 / 1.00") below the weight inputs
+       Why: Gives the user instant feedback on whether their weights sum correctly,
+            without having to submit the form first
+       How: Full-width flex child, styled as a muted label that turns green when
+            the sum equals 1.0 and red when it doesn't */
+    #confidence-weight-sum-indicator {
+        flex-basis: 100%;
+        font-size: 13px;
+        font-weight: 600;
+        padding: 6px 0 0 0;
+        transition: color 0.2s;
+    }
+
+    /* .weight-sum-valid: Applied when sum === 1.0 (within tolerance) */
+    #confidence-weight-sum-indicator.weight-sum-valid {
+        color: #22c55e; /* green-500 */
+    }
+
+    /* .weight-sum-invalid: Applied when sum !== 1.0 */
+    #confidence-weight-sum-indicator.weight-sum-invalid {
+        color: #ef4444; /* red-500 */
+    }
+
+    /* .weight-sum-empty: Applied when no weights are filled in (default state) */
+    #confidence-weight-sum-indicator.weight-sum-empty {
+        color: var(--muted);
+    }
+
     /* --- Notification options (must be last, but still before the submit button) --- */
     .create-alert-form > #show-notification-group { order: 900; }
     .create-alert-form > #sms-notification-group { order: 901; }
@@ -124,6 +209,16 @@
         .create-alert-form>.checkbox-group {
             width: calc(50% - 8px);
             flex-basis: calc(50% - 8px);
+        }
+
+        /* =====================================================================================
+           MOBILE: CONFIDENCE WEIGHT INPUTS
+           What: On narrow screens, weight inputs go 2-per-row instead of 5-per-row
+           Why: 140px inputs may be too tight on very small screens
+           How: calc(50% - 8px) lets two inputs sit side-by-side within the panel
+           ===================================================================================== */
+        #confidence-advanced-panel > .form-group {
+            width: calc(50% - 8px);
         }
     }
 

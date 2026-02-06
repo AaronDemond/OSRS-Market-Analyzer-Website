@@ -2242,9 +2242,11 @@
                     {% endif %}
                     {% if alert.confidence_min_volume %}
                     <div class="detail-item">
-                        <!-- What: Minimum total trade volume across the lookback window -->
-                        <span class="detail-label">Min Volume</span>
-                        <span class="detail-value">{{ alert.confidence_min_volume|intcomma }}</span>
+                        <!-- What: Minimum total GP volume (sum of qty * price for all buys + sells)
+                             Why: GP-based volume normalises across price tiers, unlike raw trade counts
+                             How: Displayed with intcomma formatting and " GP" suffix for clarity -->
+                        <span class="detail-label">Min Volume (GP)</span>
+                        <span class="detail-value">{{ alert.confidence_min_volume|intcomma }} GP</span>
                     </div>
                     {% endif %}
                     {% if alert.confidence_cooldown %}
