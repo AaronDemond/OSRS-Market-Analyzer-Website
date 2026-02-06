@@ -2070,7 +2070,7 @@
                          How: Conditional display based on alert type being 'spread' or 'spike' AND min_volume
                               being set. Uses intcomma filter for readable formatting.
                     ============================================================================= -->
-                    {% if (alert.type == 'spread' or alert.type == 'spike') and alert.min_volume %}
+                    {% if alert.type == 'spread' and alert.min_volume or alert.type == 'spike' and alert.min_volume %}
                     <div class="detail-item">
                         <span class="detail-label">Min Hourly Volume (GP)</span>
                         <span class="detail-value">{{ alert.min_volume|intcomma }}</span>
