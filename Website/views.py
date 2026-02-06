@@ -4146,6 +4146,12 @@ def update_single_alert(request, alert_id):
                 alert.item_name = item_data['name']
     
     # Handle price/reference for alerts
+    # What: Set price and time_frame based on alert type
+    # Why: Different alert types store time-related data in different fields:
+    #      - spike: uses alert.price for time frame (legacy design)
+    #      - collective_move/sustained: uses alert.time_frame
+    #      - flip_confidence: uses neither (has its own config fields)
+    # How: Type-based branching to set the correct field(s)
     if alert.type == 'spike':
         time_frame = data.get('time_frame') or data.get('price')
         alert.price = int(time_frame) if time_frame else None
@@ -4158,13 +4164,24 @@ def update_single_alert(request, alert_id):
         time_frame = data.get('time_frame')
         alert.time_frame = int(time_frame) if time_frame else None
         alert.price = None
+    elif alert.type == 'flip_confidence':
+        # flip_confidence alerts don't use price/time_frame — they have their own fields
+        # What: Clear shared price/time_frame fields for confidence alerts
+        # Why: Prevents stale data from a previous alert type persisting
+        alert.price = None
+        alert.time_frame = None
     else:
         price = data.get('price')
         alert.price = int(price) if price else None
         alert.time_frame = None
     
+    # reference: Which price point (high/low/average) to compare against
+    # What: Set the reference price type for alert types that use it
+    # Why: flip_confidence alerts don't use the shared reference field — they have their own config
+    # How: Only set reference for non-confidence alert types
     reference = data.get('reference')
-    alert.reference = reference if reference else None
+    if alert.type != 'flip_confidence':
+        alert.reference = reference if reference else None
     
     # =============================================================================
     # HANDLE DIRECTION FOR SPIKE, SUSTAINED, AND COLLECTIVE_MOVE ALERTS
@@ -4341,6 +4358,106 @@ def update_single_alert(request, alert_id):
             if target_price is not None:
                 alert.target_price = int(float(target_price)) if target_price else None
     
+    # =============================================================================
+    # HANDLE FLIP CONFIDENCE ALERT-SPECIFIC FIELDS
+    # =============================================================================
+    # What: Save all confidence-specific configuration fields when editing a flip_confidence alert
+    # Why: Flip confidence alerts have 9 config fields + 5 optional weight fields that are
+    #      completely separate from all other alert types' shared fields
+    # How: Check if alert type is flip_confidence, then read each confidence_* field from
+    #      the request data and persist it. Weights use all-or-nothing logic: either all 5
+    #      are provided (and must sum to 1.0 — already validated client-side), or none are
+    #      provided (keeping existing values or model defaults).
+    # =============================================================================
+    if alert.type == 'flip_confidence':
+        # confidence_timestep: Timeseries resolution (e.g. '5m', '1h', '6h')
+        # What: Determines which timeseries table to query for price data
+        confidence_timestep = data.get('confidence_timestep')
+        if confidence_timestep:
+            alert.confidence_timestep = confidence_timestep
+        
+        # confidence_lookback: Number of data points to analyze within the timestep
+        # What: Controls how far back in time the scoring engine looks
+        confidence_lookback = data.get('confidence_lookback')
+        if confidence_lookback is not None:
+            alert.confidence_lookback = int(confidence_lookback) if confidence_lookback else None
+        
+        # confidence_threshold: Minimum confidence score (0-100) required to trigger
+        # What: The score cutoff — items scoring below this are not flagged
+        confidence_threshold = data.get('confidence_threshold')
+        if confidence_threshold is not None:
+            alert.confidence_threshold = float(confidence_threshold) if confidence_threshold else None
+        
+        # confidence_trigger_rule: 'any' or 'sustained'
+        # What: 'any' triggers on a single above-threshold score; 'sustained' requires N consecutive
+        confidence_trigger_rule = data.get('confidence_trigger_rule')
+        if confidence_trigger_rule:
+            alert.confidence_trigger_rule = confidence_trigger_rule
+        
+        # confidence_min_spread_pct: Minimum buy/sell spread percentage to qualify
+        # What: Filters out items with thin margins (spread < this %)
+        confidence_min_spread_pct = data.get('confidence_min_spread_pct')
+        if confidence_min_spread_pct is not None:
+            alert.confidence_min_spread_pct = float(confidence_min_spread_pct) if confidence_min_spread_pct else None
+        
+        # confidence_min_volume: Minimum total GP volume across the lookback window
+        # What: Filters out items with insufficient trading activity (measured in GP)
+        confidence_min_volume = data.get('confidence_min_volume')
+        if confidence_min_volume is not None:
+            alert.confidence_min_volume = int(confidence_min_volume) if confidence_min_volume else None
+        
+        # confidence_cooldown: Minutes to wait after triggering before re-triggering
+        # What: Prevents rapid-fire re-triggers on the same item
+        confidence_cooldown = data.get('confidence_cooldown')
+        if confidence_cooldown is not None:
+            alert.confidence_cooldown = int(confidence_cooldown) if confidence_cooldown else None
+        
+        # confidence_eval_interval: Minutes between evaluation cycles
+        # What: Controls how often the scoring engine runs for this alert
+        confidence_eval_interval = data.get('confidence_eval_interval')
+        if confidence_eval_interval is not None:
+            alert.confidence_eval_interval = int(confidence_eval_interval) if confidence_eval_interval else None
+        
+        # confidence_sustained_count: Required consecutive above-threshold checks (for 'sustained' rule)
+        # What: Number of back-to-back evaluations that must exceed the threshold
+        confidence_sustained_count = data.get('confidence_sustained_count')
+        if confidence_sustained_count is not None:
+            alert.confidence_sustained_count = int(confidence_sustained_count) if confidence_sustained_count else None
+        
+        # =====================================================================
+        # SCORING WEIGHTS (optional — all-or-nothing)
+        # =====================================================================
+        # What: The 5 scoring component weights that control how the confidence score
+        #       is composed (trend, pressure, spread, volume, stability)
+        # Why: If ANY weight is sent, we expect ALL 5 (client-side validates sum=1.0)
+        #      If NONE are sent, we leave existing weights unchanged (or model defaults)
+        # How: Check if any weight key is present in data; if so, save all 5
+        # =====================================================================
+        weight_fields = [
+            'confidence_weight_trend',
+            'confidence_weight_pressure',
+            'confidence_weight_spread',
+            'confidence_weight_volume',
+            'confidence_weight_stability',
+        ]
+        # has_any_weight: True if the client sent at least one weight field
+        has_any_weight = any(field in data for field in weight_fields)
+        
+        if has_any_weight:
+            for field in weight_fields:
+                val = data.get(field)
+                if val is not None:
+                    setattr(alert, field, float(val))
+        
+        # Clear shared fields that don't apply to confidence alerts
+        # What: Ensure no stale data from a previous alert type lingers
+        # Why: If this alert was previously a spike/sustained/threshold, those fields
+        #      would still have values that are meaningless for flip_confidence
+        alert.percentage = None
+        alert.direction = None
+        alert.reference = None
+        alert.min_volume = None  # Confidence uses confidence_min_volume instead
+    
     # Handle min/max price
     minimum_price = data.get('minimum_price')
     alert.minimum_price = int(minimum_price) if minimum_price else None
@@ -4355,18 +4472,20 @@ def update_single_alert(request, alert_id):
     # Why: Threshold, sustained, and spread alerts rely on min_volume to ignore low-activity items
     # How: Apply min_volume only for supported alert types; clear it for other types
     # =============================================================================
-    if alert.type in ['sustained', 'spread', 'threshold']:
+    if alert.type in ['sustained', 'spread', 'threshold', 'spike']:
         # min_volume: The requested minimum hourly volume (GP) value from the edit form
         # What: Numeric threshold for the minimum activity level required to trigger
-        # Why: Used to enforce the liquidity filter for threshold/sustained/spread alerts
+        # Why: Used to enforce the liquidity filter for threshold/sustained/spread/spike alerts
         # How: Convert to int when present; store None when blank
         min_volume = data.get('min_volume')
         alert.min_volume = int(min_volume) if min_volume else None
-    else:
+    elif alert.type != 'flip_confidence':
         # min_volume: Clear the volume filter for alert types that do not support it
         # What: Ensures unsupported alert types don't retain stale min_volume values
-        # Why: Prevents confusion if an alert changes type away from threshold/sustained/spread
+        # Why: Prevents confusion if an alert changes type away from supported types
         # How: Explicitly set min_volume to None
+        # Note: flip_confidence is excluded because it uses confidence_min_volume (separate field)
+        #       and we already set min_volume=None in the confidence handler above
         alert.min_volume = None
     
     # Handle email notification
