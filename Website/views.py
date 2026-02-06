@@ -3354,6 +3354,14 @@ def alert_detail(request, alert_id):
                             # threshold_baseline_price: The item's price at alert creation time
                             # Why: Provides context for value-based alerts (may be None for older alerts)
                             triggered_info['threshold_baseline_price'] = parsed_data.get('reference_price')
+                            # Secondary fallback: If triggered_data didn't have reference_price,
+                            # try getting it from alert.reference_prices (same pattern as single-item path)
+                            if not triggered_info.get('threshold_baseline_price') and alert.reference_prices and alert.item_id:
+                                try:
+                                    ref_prices = json.loads(alert.reference_prices)
+                                    triggered_info['threshold_baseline_price'] = ref_prices.get(str(alert.item_id))
+                                except json.JSONDecodeError:
+                                    pass
                         else:
                             # Percentage-based threshold
                             triggered_info['threshold_reference_price'] = parsed_data.get('reference_price')
@@ -3454,6 +3462,29 @@ def alert_detail(request, alert_id):
                                 triggered_data_parsed = True
                         except json.JSONDecodeError:
                             # triggered_data exists but couldn't be parsed - fall through to fallback
+                            pass
+                    
+                    # =============================================================================
+                    # SECONDARY FALLBACK FOR BASELINE PRICE (VALUE-BASED THRESHOLD ONLY)
+                    # What: If triggered_data was successfully parsed but didn't contain
+                    #       reference_price (e.g., alert was triggered before we started storing
+                    #       baseline in triggered_data), try to get it from alert.reference_prices
+                    # Why: The configuration card shows baseline from alert.reference_prices,
+                    #      so the triggered data card should show it too for consistency.
+                    #      This handles the gap between when reference_prices was stored at creation
+                    #      vs when triggered_data started including reference_price.
+                    # How: Only runs when triggered_data was parsed but baseline is still missing.
+                    #      Reads directly from the alert model's reference_prices JSON field.
+                    # =============================================================================
+                    if (triggered_data_parsed 
+                        and alert.threshold_type == 'value' 
+                        and not triggered_info.get('threshold_baseline_price') 
+                        and alert.reference_prices 
+                        and alert.item_id):
+                        try:
+                            ref_prices = json.loads(alert.reference_prices)
+                            triggered_info['threshold_baseline_price'] = ref_prices.get(str(alert.item_id))
+                        except json.JSONDecodeError:
                             pass
                     
                     # Fallback: Calculate values from reference_prices and current API data
