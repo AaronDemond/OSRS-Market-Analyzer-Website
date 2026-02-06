@@ -1879,6 +1879,23 @@
                     </div>
                     {% endif %}
                     {% endif %}
+                    
+                    <!-- =============================================================================
+                         COLLECTIVE MOVE ALERT DISPLAY FIELDS
+                         What: Shows collective move time frame when viewing (not editing)
+                         Why: Users need to see the rolling window used for comparisons
+                         How: Displays alert.time_frame value in minutes
+                    ============================================================================= -->
+                    {% if alert.type == 'collective_move' %}
+                    <div class="detail-item">
+                        <!-- What: Displays the time frame setting for collective move alerts
+                             Why: Users need to see the monitoring window duration
+                             How: Shows time_frame field value -->
+                        <span class="detail-label">Time Frame</span>
+                        <span class="detail-value">{% if alert.time_frame %}{{ alert.time_frame }} minutes{% else %}Not Set{% endif %}</span>
+                    </div>
+                    {% endif %}
+                    
                     <div class="detail-item">
                         <!-- What: Displays the direction setting for threshold alerts
                              Why: Users need to see whether the alert triggers when price goes above or below threshold
@@ -2191,11 +2208,11 @@
                         <small class="form-hint">How to measure the threshold</small>
                     </div>
                     
-                    <!-- Time Frame (spike/sustained) -->
+                    <!-- Time Frame (spike/sustained/collective move) -->
                     <div class="form-group" id="time-frame-group" style="display: none;">
                         <label for="edit-time-frame">Time Frame (minutes)</label>
-                        <input type="number" id="edit-time-frame" value="{% if alert.type == 'spike' %}{{ alert.price|default:'' }}{% elif alert.type == 'sustained' %}{{ alert.time_frame|default:'' }}{% endif %}" min="1" step="1" placeholder="e.g. 10">
-                        <small class="form-hint">Time window for detecting price movement</small>
+                        <input type="number" id="edit-time-frame" value="{% if alert.type == 'spike' %}{{ alert.price|default:'' }}{% elif alert.type == 'sustained' or alert.type == 'collective_move' %}{{ alert.time_frame|default:'' }}{% endif %}" min="1" step="1" placeholder="e.g. 10">
+                        <small class="form-hint">Time window the alert must trigger within</small>
                     </div>
                     
                     <!-- Volatility Buffer (sustained) -->
@@ -2559,6 +2576,10 @@
                             <div class="triggered-info-item">
                                 <span class="detail-label">Reference</span>
                                 <span class="detail-value">{{ triggered_info.collective_data.reference_type|default:"Average"|title }}</span>
+                            </div>
+                            <div class="triggered-info-item">
+                                <span class="detail-label">Time Frame</span>
+                                <span class="detail-value">{% if triggered_info.collective_data.time_frame_minutes %}{{ triggered_info.collective_data.time_frame_minutes }} minutes{% else %}N/A{% endif %}</span>
                             </div>
                             
                             <!-- Items Table - Full width below the summary -->
@@ -3815,7 +3836,7 @@ function handleTypeChange() {
         
         // Let scope change handler determine item/min/max visibility
         handleThresholdScopeChange();
-    } else if (alertType === 'collective_move') {
+        } else if (alertType === 'collective_move') {
         // =============================================================================
         // COLLECTIVE MOVE ALERT TYPE HANDLING
         // What: Shows collective_move-specific fields and hides other alert type fields
@@ -3826,15 +3847,15 @@ function handleTypeChange() {
         // Hide all items toggle - collective move must use specific items
         groups.allItems.style.display = 'none';
         
-        // Show fields needed for collective move alerts
-        groups.itemName.style.display = 'none';  // Using multi-item selector instead
-        groups.price.style.display = 'none';
-        groups.reference.style.display = 'block';  // Reference price (high/low/average)
-        groups.percentage.style.display = 'block';  // Threshold percentage
-        groups.timeFrame.style.display = 'none';
-        groups.direction.style.display = 'block';  // Direction (up/down/both)
-        groups.minPrice.style.display = 'none';
-        groups.maxPrice.style.display = 'none';
+            // Show fields needed for collective move alerts
+            groups.itemName.style.display = 'none';  // Using multi-item selector instead
+            groups.price.style.display = 'none';
+            groups.reference.style.display = 'block';  // Reference price (high/low/average)
+            groups.percentage.style.display = 'block';  // Threshold percentage
+            groups.timeFrame.style.display = 'block';
+            groups.direction.style.display = 'block';  // Direction (up/down/both)
+            groups.minPrice.style.display = 'none';
+            groups.maxPrice.style.display = 'none';
         
         hideSustainedFields();
         hideThresholdFields();
@@ -4454,6 +4475,12 @@ async function saveChanges() {
         if (calcMethodEl) {
             data.calculation_method = calcMethodEl.value || 'simple';
         }
+        
+        // time_frame: Rolling window (minutes) for collective move comparisons
+        // What: The number of minutes back to compare against current prices
+        // Why: Collective move alerts require a time window to compute baseline changes
+        // How: Read from the shared edit-time-frame input used for time-frame alert types
+        data.time_frame = document.getElementById('edit-time-frame').value || null;
     }
     
     try {

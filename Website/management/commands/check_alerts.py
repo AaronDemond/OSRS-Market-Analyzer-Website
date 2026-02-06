@@ -828,11 +828,12 @@ class Command(BaseCommand):
         What: Checks if the average percentage change across multiple items meets the threshold
         Why: Users want to be notified when a group of items moves together (e.g., all herbs up 5%)
         How:
-            1. Load reference prices (baselines) for all tracked items
-            2. Calculate percentage change for each item from its baseline
-            3. Compute average change (simple or weighted by baseline value)
-            4. Check if average crosses threshold in specified direction
-            5. Store top 50 individual item changes in triggered_data for display
+            1. Determine the time window (minutes) and reference price type
+            2. Update rolling price history per item+reference+time_frame
+            3. Compare current price to the price from [time_frame] minutes ago
+            4. Compute average change (simple or weighted by baseline value)
+            5. Check if average crosses threshold in specified direction
+            6. Store top 50 individual item changes in triggered_data for display
         
         Calculation Methods:
             - Simple: arithmetic mean = sum(changes) / count
@@ -858,12 +859,19 @@ class Command(BaseCommand):
         reference_type = alert.reference or 'average'
         # threshold_value: The percentage threshold to trigger (stored in alert.percentage)
         threshold_value = alert.percentage if alert.percentage is not None else 0
+        # time_frame_minutes: Rolling window duration (minutes) for baseline comparisons
+        # What: Time frame setting for collective move alerts
+        # Why: We must compare against the price from X minutes ago
+        # How: Read from alert.time_frame and validate
+        time_frame_minutes = alert.time_frame
         
         # =============================================================================
-        # LOAD REFERENCE PRICES (BASELINES)
+        # LOAD REFERENCE PRICES (ITEM SET)
         # =============================================================================
         # reference_prices: Dict mapping item_id -> baseline price stored at alert creation
-        # These baselines are used to calculate percentage change for each item
+        # What: Used primarily to preserve the item set for collective move alerts
+        # Why: Keeps the alert scoped to the items captured at creation time
+        # How: Parse JSON if present; may be empty for older alerts
         reference_prices = {}
         if alert.reference_prices:
             try:
@@ -871,8 +879,18 @@ class Command(BaseCommand):
             except (json.JSONDecodeError, TypeError):
                 pass
         
-        if not reference_prices:
-            # No reference prices stored - cannot calculate changes
+        # =============================================================================
+        # VALIDATE TIME FRAME
+        # =============================================================================
+        # What: Ensure time frame is valid before we attempt rolling window comparisons
+        # Why: A missing/invalid time frame makes baseline comparisons impossible
+        # How: Validate and return False if missing or <= 0
+        try:
+            time_frame_minutes = int(time_frame_minutes) if time_frame_minutes is not None else None
+        except (TypeError, ValueError):
+            time_frame_minutes = None
+        
+        if not time_frame_minutes or time_frame_minutes <= 0:
             return False
         
         # =============================================================================
@@ -882,8 +900,11 @@ class Command(BaseCommand):
         items_to_check = []
         
         if alert.is_all_items:
-            # All items mode: Use all items in reference_prices (filtered at creation)
-            items_to_check = list(reference_prices.keys())
+            # All items mode: Use reference_prices if available; fallback to all_prices keys
+            # What: Use the stored item set if possible, otherwise check all available items
+            # Why: Collective move alerts may have been created before baselines were captured
+            # How: Prefer reference_prices keys, but fall back to all_prices for resilience
+            items_to_check = list(reference_prices.keys()) if reference_prices else list(all_prices.keys())
         elif alert.item_ids:
             # Multi-item mode: Use specific list of items
             try:
@@ -907,6 +928,24 @@ class Command(BaseCommand):
         item_changes = []
         item_mapping = self.get_item_mapping()
         
+        # now: Current UNIX timestamp for rolling window operations
+        # What: Used to timestamp price history entries
+        # Why: Needed for pruning and baseline lookup
+        # How: time.time() gives current epoch seconds
+        now = time.time()
+        
+        # warmup_threshold: Minimum age of oldest data point to consider window "warm"
+        # What: Oldest data point must be at least [time_frame_minutes] old
+        # Why: Avoid triggering until we have a full window for baseline comparisons
+        # How: Compare oldest timestamp to this threshold
+        warmup_threshold = now - (time_frame_minutes * 60)
+        
+        # cutoff: Timestamp marking the start of the rolling window for pruning
+        # What: Any price data older than this is removed from history
+        # Why: Keep memory bounded and prevent stale baselines
+        # How: Keep an extra 60-second buffer to avoid pruning before warmup completes
+        cutoff = now - (time_frame_minutes * 60) - 60
+        
         # sum_weighted_changes: Sum of (change_percent * baseline) for weighted calculation
         sum_weighted_changes = 0.0
         # sum_baselines: Sum of baseline values for weighted calculation divisor
@@ -920,11 +959,6 @@ class Command(BaseCommand):
             # Get price data for this item
             price_data = all_prices.get(item_id_str)
             if not price_data:
-                continue
-            
-            # Get reference (baseline) price for this item
-            ref_price = reference_prices.get(item_id_str)
-            if ref_price is None or ref_price == 0:
                 continue
             
             # Apply min/max price filters if configured (for all-items mode)
@@ -944,8 +978,39 @@ class Command(BaseCommand):
             if current_price is None:
                 continue
             
+            # =============================================================================
+            # ROLLING WINDOW BASELINE (PRICE HISTORY)
+            # =============================================================================
+            # key: Unique identifier for item+reference+time_frame
+            # What: Ensures different time frames do not prune each other's histories
+            # Why: Avoids mixing windows across alerts with different time frames
+            # How: Include time_frame_minutes in the key
+            key = f"{item_id_str}:{reference_type}:{time_frame_minutes}"
+            history = self.price_history[key]
+            history.append((now, current_price))
+            # Prune old entries outside the window + buffer
+            self.price_history[key] = [(ts, val) for ts, val in history if ts >= cutoff]
+            window = self.price_history[key]
+            
+            if not window:
+                continue
+            
+            # Warmup check: Ensure we have data old enough to compare
+            oldest_timestamp = window[0][0]
+            if oldest_timestamp > warmup_threshold:
+                # Still warming up - not enough historical data yet
+                continue
+            
+            # baseline_price: Price at exactly [time_frame] ago (oldest in window)
+            # What: Baseline used for percentage comparison
+            # Why: Collective move requires comparison to historical price
+            # How: Use the oldest entry in the window as the baseline
+            baseline_price = window[0][1]
+            if baseline_price in (None, 0):
+                continue
+            
             # Calculate percentage change for this item
-            change_percent = self._calculate_percent_change(ref_price, current_price)
+            change_percent = self._calculate_percent_change(baseline_price, current_price)
             
             # Get item name for display
             item_name = item_mapping.get(item_id_str, f'Item {item_id_str}')
@@ -954,16 +1019,16 @@ class Command(BaseCommand):
             item_changes.append({
                 'item_id': item_id_str,
                 'item_name': item_name,
-                'reference_price': ref_price,
+                'reference_price': baseline_price,
                 'current_price': current_price,
                 'change_percent': round(change_percent, 2),
-                'baseline_value': ref_price  # Used for weighted calculation display
+                'baseline_value': baseline_price  # Used for weighted calculation display
             })
             
             # Accumulate for average calculation
             sum_changes += change_percent
-            sum_weighted_changes += change_percent * ref_price
-            sum_baselines += ref_price
+            sum_weighted_changes += change_percent * baseline_price
+            sum_baselines += baseline_price
             valid_count += 1
         
         if valid_count == 0:
@@ -1024,6 +1089,7 @@ class Command(BaseCommand):
                 'total_items_checked': valid_count,
                 'items_in_response': len(top_items),
                 'reference_type': reference_type,
+                'time_frame_minutes': time_frame_minutes,
                 'items': top_items
             }
             

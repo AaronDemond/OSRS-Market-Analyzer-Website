@@ -1725,6 +1725,12 @@ def create_alert(request):
         time_frame_value = None
         if alert_type == 'sustained' and time_frame:
             time_frame_value = int(time_frame)
+        elif alert_type == 'collective_move' and time_frame:
+            # collective_time_frame: Time window for collective move comparisons
+            # What: Stores the time frame in minutes for rolling baseline checks
+            # Why: Collective move alerts compare against price from X minutes ago
+            # How: Parse the time_frame input and store in the time_frame field
+            time_frame_value = int(time_frame)
         
         # Determine final item name and ID based on alert type and scope
         # final_item_name: The display name for the alert (first item name or None for all-items)
@@ -2289,7 +2295,7 @@ def alerts_api(request):
             'reference': alert.reference,
             'price': alert.price,
             'percentage': alert.percentage,
-            'time_frame': alert.price if alert.type == 'spike' else (alert.time_frame if alert.type == 'sustained' else None),
+            'time_frame': alert.price if alert.type == 'spike' else (alert.time_frame if alert.type in ['sustained', 'collective_move'] else None),
             'minimum_price': alert.minimum_price,
             'maximum_price': alert.maximum_price,
             'created_at': alert.created_at.isoformat(),
@@ -2413,7 +2419,7 @@ def alerts_api(request):
             'triggered_data': alert.triggered_data,
             'reference': alert.reference,
             'price': alert.price,
-            'time_frame': alert.price if alert.type == 'spike' else (alert.time_frame if alert.type == 'sustained' else None),
+            'time_frame': alert.price if alert.type == 'spike' else (alert.time_frame if alert.type in ['sustained', 'collective_move'] else None),
             'percentage': alert.percentage
         }
 
@@ -2942,6 +2948,14 @@ def update_alert(request):
                     alert.time_frame = None  # Spike uses price field for time_frame
                 elif alert.type == 'sustained':
                     alert.price = None  # Sustained doesn't use price
+                    time_frame = data.get('time_frame')
+                    alert.time_frame = int(time_frame) if time_frame else None
+                elif alert.type == 'collective_move':
+                    # collective_time_frame: Time window for collective move comparisons
+                    # What: Store time_frame in dedicated field for collective move alerts
+                    # Why: Collective move comparisons require a rolling baseline window
+                    # How: Parse time_frame from request data and store in alert.time_frame
+                    alert.price = None
                     time_frame = data.get('time_frame')
                     alert.time_frame = int(time_frame) if time_frame else None
                 else:
@@ -3679,9 +3693,19 @@ def update_single_alert(request, alert_id):
     if alert.type == 'spike':
         time_frame = data.get('time_frame') or data.get('price')
         alert.price = int(time_frame) if time_frame else None
+        alert.time_frame = None
+    elif alert.type == 'collective_move':
+        # collective_time_frame: Time window for collective move comparisons
+        # What: Store time_frame in dedicated field for collective move alerts
+        # Why: Collective move comparisons require a rolling baseline window
+        # How: Parse time_frame from request data and store in alert.time_frame
+        time_frame = data.get('time_frame')
+        alert.time_frame = int(time_frame) if time_frame else None
+        alert.price = None
     else:
         price = data.get('price')
         alert.price = int(price) if price else None
+        alert.time_frame = None
     
     reference = data.get('reference')
     alert.reference = reference if reference else None
@@ -4362,6 +4386,7 @@ def update_item_collection(request, collection_id):
             'success': False,
             'error': 'A collection with this name already exists'
         }, status=409)
+
     
     # Parse item IDs - handle both arrays and comma-separated strings
     # What: Convert item_ids_data into a list of integers

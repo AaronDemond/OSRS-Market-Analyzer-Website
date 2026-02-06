@@ -1,126 +1,94 @@
 {
   "gainers": [
     {
-      "id": 1631,
-      "name": "Uncut dragonstone",
-      "icon": "Uncut dragonstone.png",
-      "change": 11.72,
-      "price": 18616,
-      "volume": 86040825
-    },
-    {
-      "id": 5295,
-      "name": "Ranarr seed",
-      "icon": "Ranarr seed 5.png",
-      "change": 3.98,
-      "price": 21672,
-      "volume": 95973549
-    },
-    {
-      "id": 29025,
-      "name": "Blood moon tassets",
-      "icon": "Blood moon tassets.png",
-      "change": 3.48,
-      "price": 11089955,
-      "volume": 217178285
-    },
-    {
-      "id": 566,
-      "name": "Soul rune",
-      "icon": "Soul rune.png",
-      "change": 3.42,
-      "price": 333,
-      "volume": 275513835
-    },
-    {
-      "id": 2361,
-      "name": "Adamantite bar",
-      "icon": "Adamantite bar.png",
-      "change": 3.3,
-      "price": 1943,
-      "volume": 124577388
-    },
-    {
-      "id": 24517,
-      "name": "Eldritch orb",
-      "icon": "Eldritch orb.png",
-      "change": 3.29,
-      "price": 192271350,
-      "volume": 424599231
-    },
-    {
-      "id": 5316,
-      "name": "Magic seed",
-      "icon": "Magic seed 5.png",
-      "change": 3.18,
-      "price": 98216,
-      "volume": 79432190
+      "id": 24419,
+      "name": "Inquisitor's great helm",
+      "icon": "Inquisitor's great helm.png",
+      "change": 5.03,
+      "price": 33791288,
+      "volume": 188668024
     },
     {
       "id": 5374,
       "name": "Magic sapling",
       "icon": "Magic sapling.png",
-      "change": 3.06,
-      "price": 101810,
-      "volume": 93291896
+      "change": 4.8,
+      "price": 106699,
+      "volume": 130417298
     },
     {
-      "id": 26235,
-      "name": "Zaryte vambraces",
-      "icon": "Zaryte vambraces.png",
-      "change": 2.92,
-      "price": 89923564,
-      "volume": 1139031810
+      "id": 5316,
+      "name": "Magic seed",
+      "icon": "Magic seed 5.png",
+      "change": 4.77,
+      "price": 102902,
+      "volume": 125420387
     },
     {
-      "id": 28919,
-      "name": "Tonalztics of ralos (uncharged)",
-      "icon": "Tonalztics of ralos (uncharged).png",
-      "change": 2.82,
-      "price": 46867597,
-      "volume": 158178139
-    }
-  ],
-  "losers": [
+      "id": 29025,
+      "name": "Blood moon tassets",
+      "icon": "Blood moon tassets.png",
+      "change": 4.2,
+      "price": 11555271,
+      "volume": 384212760
+    },
     {
-      "id": 24419,
-      "name": "Inquisitor's great helm",
-      "icon": "Inquisitor's great helm.png",
-      "change": -18.01,
-      "price": 32173145,
-      "volume": 329774736
+      "id": 566,
+      "name": "Soul rune",
+      "icon": "Soul rune.png",
+      "change": 3.9,
+      "price": 346,
+      "volume": 424350863
     },
     {
       "id": 24488,
       "name": "Inquisitor's armour set",
       "icon": "Inquisitor's armour set.png",
-      "change": -14.39,
-      "price": 195127038,
-      "volume": 2487869734
+      "change": 3.88,
+      "price": 202695379,
+      "volume": 1249954837
     },
     {
-      "id": 24420,
-      "name": "Inquisitor's hauberk",
-      "icon": "Inquisitor's hauberk.png",
-      "change": -12.9,
-      "price": 83617540,
-      "volume": 724685346
+      "id": 28313,
+      "name": "Magus ring",
+      "icon": "Magus ring.png",
+      "change": 3.56,
+      "price": 35243854,
+      "volume": 917808697
     },
     {
-      "id": 24421,
-      "name": "Inquisitor's plateskirt",
-      "icon": "Inquisitor's plateskirt.png",
-      "change": -11.14,
-      "price": 81967625,
-      "volume": 768446484
+      "id": 2353,
+      "name": "Steel bar",
+      "icon": "Steel bar.png",
+      "change": 3.55,
+      "price": 583,
+      "volume": 156273101
     },
     {
-      "id": 453,
-      "name": "Coal",
-      "icon": "Coal.png",
-      "change": -8.85,
-      "price": 237,
-      "volume": 152325094
+      "id": 5974,
+      "name": "Coconut",
+      "icon": "Coconut.png",
+      "change": 3.44,
+      "price": 2223,
+      "volume": 82357055
+    },
+    {
+      "id": 19707,
+      "name": "Amulet of eternal glory",
+      "icon": "Amulet of eternal glory.png",
+      "change": 3.37,
+      "price": 56399720,
+      "volume": 209148961
+    }
+  ],
+  "losers": [
+    {
+      "id": 20716,
+      "name": "Tome of fire (empty)",
+      "icon": "Tome of fire (empty).png",
+      "change": -9.71,
+      "price": 1178967,
+      "volume": 81692588
     },
     {
       "id": 27662,
@@ -139,29 +107,61 @@
       "volume": 77765476
     },
     {
-      "id": 21018,
-      "name": "Ancestral hat",
-      "icon": "Ancestral hat.png",
-      "change": -3.84,
-      "price": 62271749,
-      "volume": 550067116
+      "id": 1631,
+      "name": "Uncut dragonstone",
+      "icon": "Uncut dragonstone.png",
+      "change": -7.05,
+      "price": 17304,
+      "volume": 103837699
     },
     {
-      "id": 23959,
-      "name": "Enhanced crystal teleport seed",
-      "icon": "Enhanced crystal teleport seed.png",
-      "change": -3.59,
-      "price": 1963461,
-      "volume": 214426303
+      "id": 31406,
+      "name": "Dragon nails",
+      "icon": "Dragon nails.png",
+      "change": -6.82,
+      "price": 42923,
+      "volume": 192872712
     },
     {
-      "id": 24511,
-      "name": "Harmonised orb",
-      "icon": "Harmonised orb.png",
-      "change": -3.57,
-      "price": 184969167,
-      "volume": 562614549
+      "id": 453,
+      "name": "Coal",
+      "icon": "Coal.png",
+      "change": -5.49,
+      "price": 224,
+      "volume": 221382709
+    },
+    {
+      "id": 31139,
+      "name": "Blue moon armour set",
+      "icon": "Blue moon armour set.png",
+      "change": -5.34,
+      "price": 8463149,
+      "volume": 92389376
+    },
+    {
+      "id": 11230,
+      "name": "Dragon dart",
+      "icon": "Dragon dart.png",
+      "change": -5.3,
+      "price": 1375,
+      "volume": 179038177
+    },
+    {
+      "id": 26241,
+      "name": "Virtus mask",
+      "icon": "Virtus mask.png",
+      "change": -5.25,
+      "price": 8402567,
+      "volume": 204112356
+    },
+    {
+      "id": 12902,
+      "name": "Toxic staff (uncharged)",
+      "icon": "Toxic staff (uncharged).png",
+      "change": -5.1,
+      "price": 11236379,
+      "volume": 222386667
     }
   ],
-  "last_updated": "2026-02-05T18:58:43.567602"
+  "last_updated": "2026-02-05T23:10:50.925927"
 }
