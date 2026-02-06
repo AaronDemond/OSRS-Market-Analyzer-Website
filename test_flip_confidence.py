@@ -415,8 +415,19 @@ class FlipConfidenceAlertTests(TestCase):
         What: Validates the minimum data requirement in check_flip_confidence_alert.
         Why: compute_flip_confidence returns 0.0 with < 3 points, but the check method
              itself should also skip items with insufficient data.
-        How: Mock fetch_timeseries_data to return only 2 points.
+        How: Mock fetch_timeseries_data to return only 2 points and verify both:
+             1. compute_flip_confidence returns 0.0 for the data
+             2. check_flip_confidence_alert returns False
         """
+        # insufficient_data: Only 2 timeseries data points (below the 3-point minimum)
+        insufficient_data = [
+            {"avgHighPrice": 100, "avgLowPrice": 95, "highPriceVolume": 10, "lowPriceVolume": 10},
+            {"avgHighPrice": 101, "avgLowPrice": 96, "highPriceVolume": 10, "lowPriceVolume": 10},
+        ]
+        
+        # Verify that compute_flip_confidence itself returns 0.0 for < 3 points
+        self.assertEqual(compute_flip_confidence(insufficient_data), 0.0)
+        
         alert = self._create_alert(confidence_threshold=10.0)
         command = Command()
 
@@ -426,10 +437,7 @@ class FlipConfidenceAlertTests(TestCase):
 
         with patch.object(
             command, 'fetch_timeseries_data',
-            return_value=[
-                {"avgHighPrice": 100, "avgLowPrice": 95, "highPriceVolume": 10, "lowPriceVolume": 10},
-                {"avgHighPrice": 101, "avgLowPrice": 96, "highPriceVolume": 10, "lowPriceVolume": 10},
-            ]
+            return_value=insufficient_data
         ), patch.object(command, 'get_item_mapping', return_value={
             str(self.item_id): 'Abyssal whip'
         }):
