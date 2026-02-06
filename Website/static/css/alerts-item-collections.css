@@ -114,6 +114,7 @@
 .item-collection-modal-content {
     /* Modal container sizing */
     background: var(--surface);
+    border: none;
     border-radius: 12px;
     width: 100%;
     max-width: 500px;

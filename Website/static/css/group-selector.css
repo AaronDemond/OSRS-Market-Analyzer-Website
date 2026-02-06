@@ -120,6 +120,7 @@
 /* How: White background, rounded corners, shadow, max-width for readability */
 .new-group-modal-content {
     background: white;
+    border: none;
     border-radius: 12px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
     max-width: 400px;
@@ -151,7 +152,7 @@
     align-items: center;
     gap: 12px;
     padding: 20px 24px;
-    border-bottom: 1px solid #e9ecef;
+    border: none;
 }
 
 /* Header icon styling */
