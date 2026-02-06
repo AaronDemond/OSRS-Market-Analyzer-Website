@@ -26,11 +26,13 @@ Running a single test:
 import json
 import sys
 import time
+from datetime import timedelta
 from collections import defaultdict
 from io import StringIO
 
 from django.test import TestCase
 from django.contrib.auth.models import User
+from django.utils import timezone
 
 from Website.models import Alert, HourlyItemVolume
 from Website.management.commands.check_alerts import Command
@@ -164,11 +166,23 @@ class SpikeTestMixin:
         Returns:
             HourlyItemVolume: The created database record
         """
+        # volume_timestamp: Recent timestamp inside the 2h10m freshness window.
+        # What: Represents the "current" hour snapshot time for the volume record.
+        # Why: The alert checker now rejects stale volume snapshots, so tests must
+        #      ensure timestamps are fresh enough to pass the recency filter.
+        # How: Use timezone.now() minus a small buffer (5 minutes) to stay well
+        #      inside the allowed freshness window.
+        volume_timestamp = timezone.now() - timedelta(minutes=5)
+        # volume_timestamp_epoch: Unix epoch seconds string matching production format.
+        # What: Mirrors the RuneScape Wiki API timestamp that update_volumes.py stores.
+        # Why: Ensures the Unix-timestamp parsing path is exercised in tests.
+        # How: Convert the aware datetime to integer seconds and cast to string.
+        volume_timestamp_epoch = str(int(volume_timestamp.timestamp()))
         return HourlyItemVolume.objects.create(
             item_id=item_id,
             item_name=item_name,
             volume=volume,
-            timestamp='2026-02-06T12:00:00Z',
+            timestamp=volume_timestamp_epoch,
         )
 
 
