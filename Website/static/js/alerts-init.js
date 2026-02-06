@@ -977,6 +977,47 @@
         FormManager.handleCollectiveScopeChange('create');
     }
 
+    /**
+     * Global wrapper for handling flip confidence scope dropdown changes.
+     * 
+     * What: Calls FormManager.handleConfidenceScopeChange when user changes "All Items" vs "Specific Items"
+     * Why: HTML onchange attributes can only call global functions, not module-scoped ones
+     * How: Delegates to FormManager which shows/hides the item selector and min/max price fields
+     */
+    function handleConfidenceScopeChange() {
+        FormManager.handleConfidenceScopeChange('create');
+    }
+
+    /**
+     * Global wrapper for toggling the advanced scoring weights panel.
+     * 
+     * What: Shows/hides the advanced weight configuration fields for flip confidence alerts
+     * Why: HTML onclick attributes can only call global functions
+     * How: Toggles the display of the advanced panel and its child form groups
+     */
+    function toggleConfidenceAdvanced() {
+        const panel = document.getElementById('confidence-advanced-panel');
+        const groups = AlertsConfig.selectors.create.groups;
+        if (!panel) return;
+
+        const isVisible = panel.style.display !== 'none';
+        panel.style.display = isVisible ? 'none' : 'block';
+
+        // Show/hide the weight form groups inside the panel
+        const weightGroups = [
+            groups.confidenceWeightTrend,
+            groups.confidenceWeightPressure,
+            groups.confidenceWeightSpread,
+            groups.confidenceWeightVolume,
+            groups.confidenceWeightStability,
+        ];
+
+        weightGroups.forEach(selector => {
+            const el = document.querySelector(selector);
+            if (el) el.style.display = isVisible ? 'none' : 'block';
+        });
+    }
+
     // Modal handlers
     function closeSpreadModal() {
         ModalManager.closeSpreadModal();
@@ -1345,6 +1386,7 @@
                 SpikeMultiItemSelector.init();
                 ThresholdMultiItemSelector.init();
                 CollectiveMoveMultiItemSelector.init();
+                ConfidenceMultiItemSelector.init();
             }
         };
         
