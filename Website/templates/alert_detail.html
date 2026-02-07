@@ -4053,8 +4053,11 @@ const csrfToken = '{{ csrf_token }}';
 let isEditMode = false;
 let originalValues = {};
 
-// item_ids_data: Pre-populated list of {id, name} objects for multi-item spread alerts
-// Used to initialize the multi-item selector when editing an alert with item_ids
+// item_ids_data: Pre-populated list of {id, name} objects for multi-item alerts
+// What: Contains the existing items for any alert type that uses item_ids
+// Why: Used to initialize the multi-item selector when editing an alert that
+//      monitors specific items (spread, spike, sustained, flip_confidence, dump, etc.)
+// How: Django serializes alert.item_ids into JSON objects with id + resolved name
 const itemIdsData = {{ item_ids_data_json|safe }};
 
 // =============================================================================
@@ -5592,11 +5595,16 @@ function handleScopeChange() {
         
         // multiItemAlertTypes: Alert types that support multi-item selection
         // What: List of alert types that can monitor multiple specific items
-        // Why: Spread, spike, and sustained alerts can monitor multiple items
-        const multiItemAlertTypes = ['spread', 'spike', 'sustained'];
+        // Why: Spread, spike, sustained, flip_confidence, and dump alerts can all
+        //      monitor multiple specific items via the item_ids field. When editing
+        //      an alert that already has multiple items, we must show the multi-item
+        //      selector (search + chips) instead of the single "Item Name" input.
+        // How: If the current alert type is in this list AND the EditMultiItemSelector
+        //      already has items loaded (from item_ids_data_json), show multi-item UI.
+        const multiItemAlertTypes = ['spread', 'spike', 'sustained', 'flip_confidence', 'dump'];
         
         if (multiItemAlertTypes.includes(alertType) && hasMultipleItems) {
-            // Multi-item mode for spread/spike alerts with existing items
+            // Multi-item mode for alerts with existing items
             // What: Show multi-item selector and hide single item input
             // Why: User is editing a multi-item alert, show the appropriate UI
             itemNameGroup.style.display = 'none';
