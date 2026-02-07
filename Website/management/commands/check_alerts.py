@@ -29,7 +29,34 @@ if not os.environ.get('DJANGO_SETTINGS_MODULE'):
 #       for spike alert filtering; FiveMinTimeSeries provides cached timeseries data for
 #       flip confidence alerts (replacing per-item HTTP API calls with fast DB queries).
 # How: These models are imported from the Website app's models.py module.
-from Website.models import Alert, HourlyItemVolume, FiveMinTimeSeries
+from Website.models import Alert, HourlyItemVolume, FiveMinTimeSeries, OneHourTimeSeries, SixHourTimeSeries, TwentyFourHourTimeSeries
+
+# =============================================================================
+# ALERT STATE FIELDS — fields that check_alerts is allowed to write back
+# =============================================================================
+# What: Defines the exhaustive list of model fields that the alert-checking loop
+#       may modify during evaluation (trigger state, notification flags, caches).
+# Why: Using update_fields=ALERT_STATE_FIELDS on every alert.save() prevents a
+#       race condition where the checker reads an alert, the user edits its config
+#       via the web UI, and then the checker's bare .save() overwrites the user's
+#       changes with the stale in-memory copy. By restricting the UPDATE SQL to
+#       only state/runtime columns, user-facing configuration columns are never
+#       touched by the checker.
+# How: Every alert.save() in this file must pass update_fields=ALERT_STATE_FIELDS
+#       (or a subset). The list covers:
+#       - triggered_data      : JSON snapshot of currently triggered items
+#       - is_triggered        : whether the alert is currently in triggered state
+#       - triggered_at        : timestamp of last trigger
+#       - is_dismissed        : whether the notification banner has been dismissed
+#       - is_active           : whether the alert is still being monitored
+#       - email_notification  : toggled off after sending to prevent spam
+#       - confidence_last_scores : cached per-item scores for flip_confidence alerts
+#       - dump_state          : EWMA / rolling state for dump alerts
+ALERT_STATE_FIELDS = [
+    'triggered_data', 'is_triggered', 'triggered_at',
+    'is_dismissed', 'is_active', 'email_notification',
+    'confidence_last_scores', 'dump_state',
+]
 
 # =============================================================================
 # FLIP CONFIDENCE SCORING FUNCTIONS
@@ -659,7 +686,7 @@ class Command(BaseCommand):
                     f'Multi-item spread alert {alert.id}: No changes ({len(triggered_items)}/{len(total_item_ids)} items)'
                 )
         
-        alert.save()
+        alert.save(update_fields=ALERT_STATE_FIELDS)
         
         # Only send email notification if data has changed AND notifications are enabled
         # AND there are actually triggered items to report
@@ -671,7 +698,7 @@ class Command(BaseCommand):
             # Why: User only wants to be notified once, but alert stays active for monitoring
             # How: Alert can still re-trigger and update triggered_data, just won't send emails
             alert.email_notification = False
-            alert.save()
+            alert.save(update_fields=ALERT_STATE_FIELDS)
 
     def _handle_multi_item_spike_trigger(self, alert, triggered_items, all_within_threshold, all_warmed_up):
         """
@@ -750,7 +777,7 @@ class Command(BaseCommand):
                     alert.is_dismissed = False
                 
                 alert.is_active = True  # Keep monitoring for changes
-                alert.save()
+                alert.save(update_fields=ALERT_STATE_FIELDS)
                 
                 self.stdout.write(
                     self.style.WARNING(
@@ -764,13 +791,13 @@ class Command(BaseCommand):
                 if alert.email_notification:
                     self.send_alert_notification(alert, alert.triggered_text())
                     alert.email_notification = False
-                    alert.save()
+                    alert.save(update_fields=ALERT_STATE_FIELDS)
                 
                 return triggered_items
             else:
                 # Data unchanged - don't re-notify
                 alert.is_active = True  # Keep monitoring
-                alert.save()
+                alert.save(update_fields=ALERT_STATE_FIELDS)
                 self.stdout.write(
                     f'Multi-item spike alert {alert.id}: No data change ({len(triggered_items)}/{len(total_item_ids)} items still exceeding)'
                 )
@@ -784,7 +811,7 @@ class Command(BaseCommand):
                 self.stdout.write(
                     f'Multi-item spike alert {alert.id}: Items returned within threshold, waiting for all items'
                 )
-            alert.save()
+            alert.save(update_fields=ALERT_STATE_FIELDS)
             return False
 
     # =============================================================================
@@ -1652,7 +1679,7 @@ class Command(BaseCommand):
                     f'Threshold alert {alert.id}: No changes ({len(triggered_items)}/{len(total_item_ids)} items)'
                 )
         
-        alert.save()
+        alert.save(update_fields=ALERT_STATE_FIELDS)
         
         # Only send email notification if data has changed AND notifications are enabled
         # AND there are actually triggered items to report
@@ -1662,7 +1689,7 @@ class Command(BaseCommand):
             # What: Set email_notification to False after sending
             # Why: User only wants to be notified once, but alert stays active for monitoring
             alert.email_notification = False
-            alert.save()
+            alert.save(update_fields=ALERT_STATE_FIELDS)
 
     def get_volume_from_timeseries(self, item_id, time_window_minutes):
         """
@@ -2083,14 +2110,12 @@ class Command(BaseCommand):
     #       same schema: item_id, item_name, avg_high_price, avg_low_price, high_price_volume,
     #       low_price_volume, timestamp. Models that don't exist yet are set to None, which
     #       triggers a fallback to the HTTP API in fetch_timeseries_from_db().
-    # Note: Currently only FiveMinTimeSeries exists (despite its name, it stores 1h data).
-    #        When OneHourTimeSeries, SixHourTimeSeries, TwentyFourHourTimeSeries are created,
-    #        update this mapping to point to the correct model classes.
+    # Note: All four timeseries models exist and are populated by scripts/get-all-volume.py.
     TIMESTEP_TO_MODEL = {
-        '5m': FiveMinTimeSeries,   # Currently stores 1h data (used as the default model)
-        '1h': FiveMinTimeSeries,   # Same model — 1h data is what's actually cached here
-        '6h': None,                # Not yet created — will fall back to HTTP API
-        '24h': None,               # Not yet created — will fall back to HTTP API
+        '5m': FiveMinTimeSeries,
+        '1h': OneHourTimeSeries,
+        '6h': SixHourTimeSeries,
+        '24h': TwentyFourHourTimeSeries,
     }
 
     def fetch_timeseries_from_db(self, item_id, timestep, lookback_count):
@@ -3828,7 +3853,7 @@ class Command(BaseCommand):
                                 alert.is_dismissed = not alert.show_notification
                                 alert.is_active = True  # Keep monitoring - never auto-deactivate
                                 alert.triggered_at = timezone.now()
-                                alert.save()
+                                alert.save(update_fields=ALERT_STATE_FIELDS)
                                 self.stdout.write(
                                     self.style.WARNING(f'TRIGGERED (collective move): {alert}')
                                 )
@@ -3836,7 +3861,7 @@ class Command(BaseCommand):
                                 if alert.email_notification:
                                     self.send_alert_notification(alert, alert.triggered_text())
                                     alert.email_notification = False
-                                    alert.save()
+                                    alert.save(update_fields=ALERT_STATE_FIELDS)
                             continue  # Skip to next alert
                         
                         # =============================================================================
@@ -3856,7 +3881,7 @@ class Command(BaseCommand):
                                 alert.is_dismissed = not alert.show_notification
                                 alert.is_active = True  # Keep monitoring - never auto-deactivate
                                 alert.triggered_at = timezone.now()
-                                alert.save()
+                                alert.save(update_fields=ALERT_STATE_FIELDS)
                                 triggered_count = len(result) if isinstance(result, list) else 1
                                 # alert_str: String representation of the alert, with Unicode
                                 # characters replaced by ASCII equivalents to avoid cp1252
@@ -3871,7 +3896,7 @@ class Command(BaseCommand):
                                 if alert.email_notification:
                                     self.send_alert_notification(alert, alert.triggered_text())
                                     alert.email_notification = False
-                                    alert.save()
+                                    alert.save(update_fields=ALERT_STATE_FIELDS)
                             continue  # Skip to next alert
                         
                         # =============================================================================
@@ -3891,7 +3916,7 @@ class Command(BaseCommand):
                                 alert.is_dismissed = not alert.show_notification
                                 alert.is_active = True  # Keep monitoring - never auto-deactivate
                                 alert.triggered_at = timezone.now()
-                                alert.save()
+                                alert.save(update_fields=ALERT_STATE_FIELDS)
                                 # triggered_count: Number of items that triggered this cycle
                                 triggered_count = len(result) if isinstance(result, list) else 1
                                 # alert_str: Safe ASCII representation for Windows console output
@@ -3905,7 +3930,7 @@ class Command(BaseCommand):
                                 if alert.email_notification:
                                     self.send_alert_notification(alert, alert.triggered_text())
                                     alert.email_notification = False
-                                    alert.save()
+                                    alert.save(update_fields=ALERT_STATE_FIELDS)
                             continue  # Skip to next alert
                         
                         # Handle multi-item spread alerts FIRST, even when result is empty list
@@ -3946,7 +3971,7 @@ class Command(BaseCommand):
                                 # Why: Users may disable notifications but still want to track alerts
                                 alert.is_dismissed = not alert.show_notification
                                 alert.triggered_at = timezone.now()
-                                alert.save()
+                                alert.save(update_fields=ALERT_STATE_FIELDS)
                                 self.stdout.write(
                                     self.style.WARNING(f'TRIGGERED (all items spread): {len(result)} items found')
                                 )
@@ -3954,7 +3979,7 @@ class Command(BaseCommand):
                                 if alert.email_notification:
                                     self.send_alert_notification(alert, alert.triggered_text())
                                     alert.email_notification = False
-                                    alert.save()
+                                    alert.save(update_fields=ALERT_STATE_FIELDS)
                             
                             elif alert.type == 'spike' and alert.is_all_items and isinstance(result, list):
                                 alert.triggered_data = json.dumps(result)
@@ -3963,7 +3988,7 @@ class Command(BaseCommand):
                                 alert.is_dismissed = not alert.show_notification
                                 alert.is_active = True  # Keep monitoring - never auto-deactivate
                                 alert.triggered_at = timezone.now()
-                                alert.save()
+                                alert.save(update_fields=ALERT_STATE_FIELDS)
                                 self.stdout.write(
                                     self.style.WARNING(f'TRIGGERED (all items spike): {len(result)} items found')
                                 )
@@ -3971,7 +3996,7 @@ class Command(BaseCommand):
                                 if alert.email_notification:
                                     self.send_alert_notification(alert, alert.triggered_text())
                                     alert.email_notification = False
-                                    alert.save()
+                                    alert.save(update_fields=ALERT_STATE_FIELDS)
                             elif alert.type == 'sustained':
                                 # Sustained alerts stay active for re-triggering
                                 alert.is_triggered = True
@@ -3979,7 +4004,7 @@ class Command(BaseCommand):
                                 alert.is_dismissed = not alert.show_notification
                                 alert.is_active = True  # Keep monitoring - never auto-deactivate
                                 alert.triggered_at = timezone.now()
-                                alert.save()
+                                alert.save(update_fields=ALERT_STATE_FIELDS)
                                 
                                 # Log appropriately based on result type
                                 if isinstance(result, list):
@@ -3994,7 +4019,7 @@ class Command(BaseCommand):
                                 if alert.email_notification:
                                     self.send_alert_notification(alert, alert.triggered_text())
                                     alert.email_notification = False
-                                    alert.save()
+                                    alert.save(update_fields=ALERT_STATE_FIELDS)
                             else:
                                 # Generic alert handler (single-item alerts, etc.)
                                 alert.is_triggered = True
@@ -4005,7 +4030,7 @@ class Command(BaseCommand):
                                 # Only show notification if show_notification is enabled
                                 alert.is_dismissed = not alert.show_notification
                                 alert.triggered_at = timezone.now()
-                                alert.save()
+                                alert.save(update_fields=ALERT_STATE_FIELDS)
                                 self.stdout.write(
                                     self.style.WARNING(f'TRIGGERED: {alert}')
                                 )
@@ -4013,7 +4038,7 @@ class Command(BaseCommand):
                                 if alert.email_notification:
                                     self.send_alert_notification(alert, alert.triggered_text())
                                     alert.email_notification = False
-                                    alert.save()
+                                    alert.save(update_fields=ALERT_STATE_FIELDS)
             else:
                 self.stdout.write('No alerts to check.')
             
