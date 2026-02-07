@@ -2540,7 +2540,7 @@
                     <div class="detail-item">
                         <!-- What: Minutes before re-alerting on the same item -->
                         <span class="detail-label">Cooldown</span>
-                        <span class="detail-value">{% if alert.dump_cooldown_minutes is not None %}{{ alert.dump_cooldown_minutes }} minutes{% else %}Not Set{% endif %}</span>
+                        <span class="detail-value">{% if alert.dump_cooldown is not None %}{{ alert.dump_cooldown }} minutes{% else %}Not Set{% endif %}</span>
                     </div>
                     {% if alert.is_all_items %}
                     {% if alert.minimum_price %}
