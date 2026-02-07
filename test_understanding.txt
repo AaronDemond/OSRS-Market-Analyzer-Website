@@ -1,0 +1,89 @@
+DUMP ALERT TEST SUITE — MY UNDERSTANDING
+==========================================
+
+STRUCTURE:
+- 40 tests total, organized into 8 groups of 5
+- Each GROUP shares ONE database setup (same FiveMinTimeSeries rows, same HourlyItemVolume rows, same all_prices dict)
+- Within each group, only the ALERT PARAMETERS change (discount_min, shock_sigma, sell_ratio_min, rel_vol_min, etc.)
+- Each test states which items it expects to trigger (could be none, some, or all)
+- Each test prints to terminal: the database items created, the alert parameters, and the expected triggered items
+
+FLOW PER GROUP:
+1. setUp creates a shared database scenario (e.g., 5 items with various price/volume profiles)
+2. Test 1: Loose thresholds → expect items A, B, C to trigger
+3. Test 2: Tighten discount_min → expect only items A, B (C's discount is too small now)
+4. Test 3: Tighten shock_sigma → expect only item A (B's shock isn't extreme enough)
+5. Test 4: Tighten sell_ratio_min → expect nothing (A's sell ratio doesn't meet the bar)
+6. Test 5: Loosen everything back but raise liquidity_floor → expect different set
+
+The idea is that by keeping the market data constant and only changing alert sensitivity,
+we prove that each threshold parameter independently gates triggering in a realistic way.
+
+EXECUTION MECHANICS:
+- Each test needs TWO calls to check_dump_alert:
+  1. First call: initializes EWMA state (sets last_mid, fair, expected_vol). Cannot trigger.
+  2. Second call: computes shock sigma, sell ratio, discount, rel vol. Can trigger.
+- Between calls, I reload dump_state from the alert (simulating persistence across cycles)
+- Market drift must be pre-computed via compute_market_drift() before each call
+
+TERMINAL OUTPUT PER TEST:
+- Print the group name and database scenario description
+- Print the alert parameters being used for this specific test
+- Print: "Expected to trigger: [Item A, Item B]" or "Expected to trigger: None"
+- Print the actual result
+
+PROPOSED 8 GROUPS:
+
+Group 1: "Moderate Dump Scenario"
+  Database: 4 items. Two are clearly dumping (big price drop, high sell ratio, high volume).
+  One is borderline. One is stable.
+  Tests vary: discount_min, shock_sigma thresholds
+
+Group 2: "High Volume Spike vs Low Volume"
+  Database: 4 items with identical price drops but varying volume levels.
+  Tests vary: rel_vol_min, liquidity_floor thresholds
+
+Group 3: "Sell Pressure Gradient"
+  Database: 4 items with same price drop but sell ratios ranging from 0.50 to 0.95.
+  Tests vary: sell_ratio_min threshold
+
+Group 4: "Market-Wide Sell-Off vs Idiosyncratic Dump"
+  Database: 4 items all dropping. Market drift is large negative.
+  Tests vary: shock_sigma threshold — proving items that drop WITH the market don't trigger
+  but items that drop MORE than the market do
+
+Group 5: "Consistency Check Scenarios"
+  Database: 4 items with varying numbers of two-sided buckets (2, 5, 6, 10 out of 12)
+  Tests vary: consistency_required on/off, and other thresholds
+
+Group 6: "Cooldown & Confirmation"
+  Database: 2 items clearly dumping.
+  Tests vary: cooldown minutes, confirmation_buckets count
+
+Group 7: "Extreme vs Marginal Discounts"
+  Database: 4 items with discount percentages of 1%, 3%, 5%, 15%.
+  Tests vary: discount_min from 1% to 10%
+
+Group 8: "All-Items Mode vs Specific Items"
+  Database: 5 items, 3 dumping.
+  Tests vary: is_all_items vs item_ids vs single item_id, plus threshold changes
+
+QUESTIONS:
+
+1. For the "two calls" mechanic: should I set up the all_prices dict differently between
+   call 1 and call 2? Call 1 would have the "before" prices (normal), and call 2 would
+   have the "after" prices (dumped). This way the EWMA initializes at the normal price
+   on call 1, and then sees the crash on call 2. Is this the right approach?
+
+2. For market drift: should I seed dump_market_state['last_mids'] manually to control
+   the drift value, or should I let compute_market_drift() run naturally by giving it
+   all_prices on both calls (which means I need a "before" all_prices and "after" all_prices)?
+
+3. For groups that test cooldown: I'll need to manipulate the dump_state JSON directly
+   to set cooldown_until timestamps. Is that acceptable, or do you want me to actually
+   trigger the alert first, then try to trigger again?
+
+4. Should each group be its own TestCase class, or should all 40 tests be in one class?
+
+5. For the terminal output: should I use print() directly, or self.stdout (Django test
+   runner style)? print() is simplest and shows up in test output with -v flag.

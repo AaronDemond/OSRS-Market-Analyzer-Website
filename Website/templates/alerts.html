@@ -24,6 +24,30 @@
 
 <style>
 
+
+.form-actions {
+    display: flex;
+    gap: 4px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid #e9ecef;
+}
+
+#confidence-advanced-toggle {
+    margin-top: 25px;
+    width: 250px;
+    height: 50px;
+    text-align: center;
+}
+
+#dump-advanced-toggle {
+    margin-top: 25px;
+    width: 250px;
+    height: 50px;
+    text-align: center;
+}
+
+
 .btn-buy-limit {
     display: inline-flex;
     align-items: center;
@@ -34,10 +58,11 @@
     background: linear-gradient(135deg, #10B981 0%, #059669 100%);
     color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: 8px;
     cursor: pointer;
     transition: all 0.15s ease;
     position: relative;
+
 }
 
 .btn-buy-limit:hover:not(:disabled) {
@@ -221,7 +246,7 @@
         </div>
     </div>
     <div id="create-alert" class="tab-pane" style="display: none;">
-        <form method="POST" action="{% url 'create_alert' %}" class="create-alert-form">
+        <form method="POST" action="{% url 'create_alert' %}" id="create-alert-form" class="create-alert-form">
             {% csrf_token %}
 
             <div class="form-group">
@@ -236,6 +261,7 @@
                     <option value="threshold" selected>Threshold</option>
                     <option value="collective_move">Collective Move</option>
                     <option value="flip_confidence">Flip Confidence</option>
+                    <option value="dump">Dump Alert</option>
                 </select>
                 <button type="button" class="alert-help-btn" onclick="openAlertHelpModal()" tabindex="2">
                     <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
@@ -1049,8 +1075,180 @@
                 </div>
             </div>
 
+            <!-- =================================================================================
+                 DUMP ALERT SPECIFIC FIELDS
+                 =================================================================================
+                 What: Form fields for configuring dump (sharp sell-off) alerts
+                 Why: Users need to set scope, discount thresholds, shock sensitivity,
+                      liquidity floors, and advanced EWMA parameters for detecting
+                      when items drop sharply below their fair value
+                 How: These fields are shown/hidden by JS when alert type is 'dump'.
+                      Basic fields are always visible; advanced fields are behind a toggle.
+                 ================================================================================= -->
+
+            <!-- Scope: All Items vs Specific Items -->
+            <div class="form-group" id="dump-scope-group" style="display: none;">
+                <label for="dump-scope">Apply To</label>
+                <select name="dump_scope" id="dump-scope" onchange="handleDumpScopeChange()" tabindex="7">
+                    <option value="specific">Specific Item(s)</option>
+                    <option value="all">All Items</option>
+                </select>
+                <small class="form-hint">Monitor specific items or all liquid items for sudden sell-offs</small>
+            </div>
+
+            <!-- Multi-item selector for dump alerts -->
+            <div class="form-group" id="dump-items-group" style="display: none;">
+                <div class="label-with-notification">
+                    <label for="dump-item-input">Item(s)</label>
+                    <button type="button" class="btn-buy-limit" onclick="ItemCollectionManager.open('dump')" title="Apply a saved item collection">
+                        <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/></svg>
+                        Collection
+                    </button>
+                    <span id="dump-item-notification" class="item-notification"></span>
+                </div>
+                <div class="multi-item-selector">
+                    <div class="multi-item-selector-box">
+                        <input type="text" id="dump-item-input" placeholder="Search for item to add..." autocomplete="off" tabindex="8">
+                        <button type="button" class="multi-item-dropdown-toggle" id="dump-multi-item-toggle" title="Show selected items" tabindex="9">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                        <input type="hidden" name="dump_item_ids" id="dump-item-ids" value="">
+                        <div id="dump-item-suggestions" class="multi-item-suggestions-dropdown"></div>
+                        <div id="dump-selected-items-dropdown" class="multi-item-selected-dropdown">
+                            <div class="selected-items-list" id="dump-selected-items-list"></div>
+                            <div class="no-items-message" id="dump-no-items-message">No items selected</div>
+                        </div>
+                    </div>
+                </div>
+                <small class="form-hint">Add one or more items to monitor for sudden sell-offs</small>
+            </div>
+
+            <!-- =================================================================================
+                 DUMP BASIC FIELDS
+                 What: Core dump detection parameters that most users will want to configure
+                 Why: These 4 fields control the primary sensitivity of the dump detector
+                 How: discount_min sets the minimum % below fair value, shock_sigma sets
+                      statistical significance, liquidity_floor filters illiquid items,
+                      cooldown prevents rapid re-triggers
+                 ================================================================================= -->
+
+            <!-- Minimum Discount % -->
+            <div class="form-group" id="dump-discount-min-group" style="display: none;">
+                <label for="dump-discount-min">Min Discount (%)</label>
+                <input type="number" name="dump_discount_min" id="dump-discount-min" step="0.5" min="0.5" max="50" value="3" tabindex="10">
+                <small class="form-hint">Minimum % the price must drop below EWMA fair value to trigger (default: 3%)</small>
+            </div>
+
+            <!-- Shock Sigma Threshold -->
+            <div class="form-group" id="dump-shock-sigma-group" style="display: none;">
+                <label for="dump-shock-sigma">Shock Sigma (σ)</label>
+                <input type="number" name="dump_shock_sigma" id="dump-shock-sigma" step="0.5" min="-20" max="-1" value="-4" tabindex="11">
+                <small class="form-hint">How many standard deviations the idiosyncratic drop must be. More negative = more extreme drops only (default: -4σ)</small>
+            </div>
+
+            <!-- Liquidity Floor -->
+            <div class="form-group" id="dump-liquidity-floor-group" style="display: none;">
+                <label for="dump-liquidity-floor">Liquidity Floor (GP/hr)</label>
+                <input type="number" name="dump_liquidity_floor" id="dump-liquidity-floor" min="0" step="1000000" value="50000000" tabindex="12">
+                <small class="form-hint">Minimum hourly GP volume for an item to qualify. Filters out illiquid items (default: 50M)</small>
+            </div>
+
+            <!-- Cooldown -->
+            <div class="form-group" id="dump-cooldown-group" style="display: none;">
+                <label for="dump-cooldown">Cooldown (minutes)</label>
+                <input type="number" name="dump_cooldown" id="dump-cooldown" min="0" step="5" value="60" tabindex="13">
+                <small class="form-hint">Don't re-alert for this item for N minutes after triggering (default: 60)</small>
+            </div>
+
+            <!-- =================================================================================
+                 DUMP ADVANCED SETTINGS TOGGLE
+                 =================================================================================
+                 What: Toggle panel for advanced EWMA and detection parameters
+                 Why: Most users won't need to tune sell ratio, relative volume, or EWMA
+                      half-lives. These are hidden behind a toggle to keep the form clean.
+                 How: Hidden by default, shown when user clicks the toggle button
+                 ================================================================================= -->
+            <div class="form-group" id="dump-advanced-toggle-group" style="display: none;">
+                <button type="button" class="btn-buy-limit advanced-toggle" id="dump-advanced-toggle" onclick="toggleDumpAdvanced()" tabindex="14">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
+                        <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/>
+                    </svg>
+                    Advanced Detection Settings
+                </button>
+            </div>
+
+            <div id="dump-advanced-panel" style="display: none;">
+                <small class="form-hint" style="margin-bottom: 10px; display: block;">
+                    Fine-tune the EWMA engine and sell pressure detection. Defaults work well for most items.
+                </small>
+
+                <!-- Sell Ratio Minimum -->
+                <div class="form-group" id="dump-sell-ratio-min-group" style="display: none;">
+                    <label for="dump-sell-ratio-min">Min Sell Ratio</label>
+                    <input type="number" name="dump_sell_ratio_min" id="dump-sell-ratio-min" step="0.05" min="0.5" max="1.0" value="0.70" tabindex="15">
+                    <small class="form-hint">Fraction of 5min bucket volume at the low price. Higher = more sell-dominated required (default: 0.70)</small>
+                </div>
+
+                <!-- Relative Volume Minimum -->
+                <div class="form-group" id="dump-rel-vol-min-group" style="display: none;">
+                    <label for="dump-rel-vol-min">Min Relative Volume</label>
+                    <input type="number" name="dump_rel_vol_min" id="dump-rel-vol-min" step="0.5" min="1.0" max="20" value="2.5" tabindex="16">
+                    <small class="form-hint">Minimum volume spike vs EWMA expected volume. Higher = bigger volume spike needed (default: 2.5×)</small>
+                </div>
+
+                <!-- Fair Value Half-Life -->
+                <div class="form-group" id="dump-fair-halflife-group" style="display: none;">
+                    <label for="dump-fair-halflife">Fair Value Half-Life (min)</label>
+                    <input type="number" name="dump_fair_halflife" id="dump-fair-halflife" step="5" min="10" max="1440" value="120" tabindex="17">
+                    <small class="form-hint">EWMA half-life for fair value anchor in minutes. Shorter = adapts faster to trends (default: 120)</small>
+                </div>
+
+                <!-- Volume Half-Life -->
+                <div class="form-group" id="dump-vol-halflife-group" style="display: none;">
+                    <label for="dump-vol-halflife">Volume Half-Life (min)</label>
+                    <input type="number" name="dump_vol_halflife" id="dump-vol-halflife" step="5" min="10" max="1440" value="60" tabindex="18">
+                    <small class="form-hint">EWMA half-life for expected volume baseline in minutes (default: 60)</small>
+                </div>
+
+                <!-- Variance Half-Life -->
+                <div class="form-group" id="dump-var-halflife-group" style="display: none;">
+                    <label for="dump-var-halflife">Variance Half-Life (min)</label>
+                    <input type="number" name="dump_var_halflife" id="dump-var-halflife" step="5" min="10" max="1440" value="60" tabindex="19">
+                    <small class="form-hint">EWMA half-life for return variance in minutes. Controls shock sigma sensitivity (default: 60)</small>
+                </div>
+
+                <!-- Confirmation Buckets -->
+                <div class="form-group" id="dump-confirmation-buckets-group" style="display: none;">
+                    <label for="dump-confirmation-buckets">Confirmation Buckets</label>
+                    <input type="number" name="dump_confirmation_buckets" id="dump-confirmation-buckets" step="1" min="1" max="10" value="1" tabindex="20">
+                    <small class="form-hint">Consecutive 5-minute buckets that must show sell pressure before triggering (default: 1)</small>
+                </div>
+
+                <!-- Consistency Check -->
+                <!-- =====================================================================================
+                     CONSISTENCY CHECK CHECKBOX
+                     What: A checkbox toggle for requiring consistency checks on dump alerts.
+                     Why: Must NOT be inside a .form-group div, because the .form-group input
+                          CSS rule applies text-input styling (100% width, padding, border-radius)
+                          to ALL inputs, which breaks checkbox rendering.
+                     How: Uses the same structure as the notification checkboxes (form-check
+                          without form-group), so it inherits the identical native checkbox
+                          appearance.  The form-hint is placed outside the form-check div.
+                     ===================================================================================== -->
+                <div id="dump-consistency-required-group" style="display: none;">
+                    <div class="form-check d-flex align-items-center">
+                        <input style="transform: scale(1.35); margin-top: 0;" type="checkbox" class="form-check-input me-2" name="dump_consistency_required" id="dump-consistency-required" checked tabindex="21">
+                        <label class="form-check-label" for="dump-consistency-required">
+                            Require Consistency Check
+                        </label>
+                    </div>
+                    <small class="form-hint">Require majority of recent 5min rows to show sell-dominated volume (recommended)</small>
+                </div>
+            </div>
+
             <!-- =====================================================================================
-                 NOTIFICATION OPTIONS (ALWAYS LAST)
 
                  What: These are the two “delivery channel” toggles for an alert.
                  Why: You requested these appear LAST for Threshold/Sustained/Spike/Spread (and visually this
@@ -1073,7 +1271,7 @@
                     <span>Receive SMS Notification?</span>
                 </label>
             </div>
-
+            <hr />
             <button type="submit" class="btn-create-alert" tabindex="100">Create Alert</button>
         </form>
     </div>
@@ -1515,6 +1713,7 @@
                 <button class="alert-help-tab" data-help-tab="threshold">Threshold</button>
                 <button class="alert-help-tab" data-help-tab="collective_move">Collective</button>
                 <button class="alert-help-tab" data-help-tab="flip_confidence">Confidence</button>
+                <button class="alert-help-tab" data-help-tab="dump">Dump</button>
             </div>
             <div class="alert-help-content">
                 <!-- Spread Alert -->
@@ -2261,6 +2460,259 @@
                             <div class="recommended-value">
                                 <div class="label">Min Spread</div>
                                 <div class="value">1.5% (ensures profit margin)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- =============================================================================
+                     DUMP ALERT HELP SECTION
+                     What: Comprehensive help documentation for the Dump Alert type.
+                     Why:  Users need to understand the EWMA-based sell-off detection algorithm
+                           and every configurable input field, so they can tune detection to
+                           their trading style and risk tolerance.
+                     How:  Follows the same card-based layout (How It Works, Input Fields,
+                           When To Use, Example Scenario, Recommended Values) that other alert
+                           types use.  Every user-facing form field is explained in plain language.
+                ============================================================================= -->
+                <div class="alert-help-section" data-help-section="dump">
+                    <h3>
+                        Dump Alert
+                        <span class="alert-type-badge dump">Sell-Off Detection</span>
+                    </h3>
+                    <p class="subtitle">Get notified when a normally-liquid item suddenly drops sharply below
+                        its fair value, driven by abnormally high sell-side volume, distinct from a general
+                        market sell-off. Ideal for catching panic-sell buying opportunities.</p>
+
+                    <!-- ============================== HOW IT WORKS ============================== -->
+                    <div class="alert-help-card">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+                                <path fill-rule="evenodd"
+                                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                            How It Works
+                        </h4>
+                        <p>The dump detector uses <strong>four pillars</strong>, <em>all</em> of which must be met
+                            simultaneously for an item to trigger:</p>
+                        <ol style="margin-top: 8px; padding-left: 20px;">
+                            <li style="margin-bottom: 8px;">
+                                <strong>Fair Value Anchor</strong> — An EWMA (exponentially-weighted moving average) of the
+                                item's mid price tracks its "fair" value over time. The half-life controls how quickly
+                                the fair value adapts to gradual trends vs. staying anchored to older prices.
+                            </li>
+                            <li style="margin-bottom: 8px;">
+                                <strong>Idiosyncratic Shock</strong> — The item's price return is compared to the overall
+                                market drift (the median return of all items being checked). Only item-specific drops count —
+                                if the entire market is falling, the drop is not considered a dump. The "shock sigma" measures
+                                how many standard deviations the item-specific drop is from normal.
+                            </li>
+                            <li style="margin-bottom: 8px;">
+                                <strong>Sell Pressure</strong> — The latest 5-minute data bucket must show a high fraction
+                                of volume at the low price (sell ratio) <em>and</em> total bucket volume must spike above
+                                the EWMA-expected volume (relative volume). This confirms real selling activity, not just
+                                a price change.
+                            </li>
+                            <li style="margin-bottom: 8px;">
+                                <strong>Discount</strong> — The current low price must be at least N% below the EWMA fair
+                                value. This ensures the price has actually moved meaningfully, not just fluctuated within
+                                normal bounds.
+                            </li>
+                        </ol>
+
+                        <div class="alert-help-note" style="margin-top: 12px; padding: 10px; background: rgba(255, 193, 7, 0.1); border-radius: 6px; border-left: 3px solid #ffc107;">
+                            <strong>⏳ Warmup Period:</strong> The EWMA engine needs at least two consecutive check cycles
+                            to establish a baseline. The first cycle initializes the fair value and mid price; the second
+                            can compute returns and variance. No alerts will fire during warmup.
+                        </div>
+                    </div>
+
+                    <!-- ========================== INPUT FIELDS GUIDE ========================== -->
+                    <div class="alert-help-card">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+                                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                                <path fill-rule="evenodd"
+                                    d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                            Input Fields Explained
+                        </h4>
+                        <div class="input-fields-guide" style="margin-top: 4px;">
+                            <h5 style="font-size: 13px; font-weight: 600; margin-bottom: 10px; color: var(--text);">📝 Basic Settings:</h5>
+                            <ul>
+                                <li><strong>Apply To:</strong> Choose what items to monitor:
+                                    <ul style="margin-top: 4px; margin-left: 16px;">
+                                        <li><em>Specific Item(s)</em> — Select one or more specific items to watch for
+                                            dumps. Best when you know which items you'd buy on a dip.</li>
+                                        <li><em>All Items</em> — Scan every item on the Grand Exchange that passes the
+                                            liquidity floor. Casts a wide net to catch any dump across the market.</li>
+                                    </ul>
+                                </li>
+                                <li><strong>Items</strong> (when Specific Item(s) selected): Type to search for items.
+                                    Click an item to add it. Click the dropdown arrow to see/remove selected items.
+                                    You can also apply a saved item collection.</li>
+                                <li><strong>Min Discount (%):</strong> How far below the EWMA fair value the current low
+                                    price must drop before triggering. For example, "3" means the price must be at least
+                                    3% below fair value. Higher values catch only bigger dips but miss smaller sell-offs.
+                                    Range: 0.5–50%.</li>
+                                <li><strong>Shock Sigma (σ):</strong> How extreme the item-specific price drop must be,
+                                    measured in standard deviations of the item's own return variance. This is a
+                                    <em>negative</em> number — more negative = more extreme. For example, "-4" means the
+                                    drop must be at least 4 standard deviations below normal. This filters out routine
+                                    price movements and only fires on truly anomalous crashes.
+                                    Range: -20 to -1.</li>
+                                <li><strong>Liquidity Floor (GP/hr):</strong> Minimum hourly GP volume an item must have
+                                    to be considered. This filters out illiquid items where a single trade can move the
+                                    price dramatically. Uses the HourlyItemVolume database snapshots (no API calls).
+                                    Default: 50,000,000 GP/hr.</li>
+                                <li><strong>Cooldown (minutes):</strong> After the alert triggers for a specific item, how
+                                    many minutes to wait before that same item can trigger again. Prevents spam when an
+                                    item is in a prolonged sell-off. Set to 0 for no cooldown. Default: 60 minutes.</li>
+                            </ul>
+
+                            <h5 style="font-size: 13px; font-weight: 600; margin-bottom: 10px; margin-top: 18px; color: var(--text);">⚙️ Advanced Detection Settings:</h5>
+                            <p style="font-size: 13px; color: var(--muted); margin-bottom: 10px;">
+                                Click the <strong>"Advanced Detection Settings"</strong> button to reveal these fields.
+                                The defaults work well for most items — only adjust these if you understand EWMA mechanics.
+                            </p>
+                            <ul>
+                                <li><strong>Min Sell Ratio:</strong> The fraction of volume in the latest 5-minute bucket
+                                    that must be at the low price (i.e., sell-side). A value of 0.70 means at least 70%
+                                    of the bucket's volume was sold at the low price. Higher values require more
+                                    one-sided selling. Range: 0.50–1.00. Default: 0.70.</li>
+                                <li><strong>Min Relative Volume:</strong> How much the 5-minute bucket's total volume must
+                                    exceed the EWMA-expected volume. A value of 2.5 means the bucket must have at least
+                                    2.5× the normal expected volume — confirming a genuine volume spike, not just a quiet
+                                    period with a few sells. Range: 1.0–20.0. Default: 2.5×.</li>
+                                <li><strong>Fair Value Half-Life (min):</strong> Controls how quickly the EWMA fair value
+                                    adapts to new prices. A 120-minute half-life means 50% of the weight is on the last
+                                    ~2 hours of data. Shorter = faster adaptation (good for volatile items), longer =
+                                    more stable anchor (better for catching large deviations from a slower-moving average).
+                                    Range: 10–1440 min. Default: 120 min.</li>
+                                <li><strong>Volume Half-Life (min):</strong> Controls how quickly the expected-volume
+                                    EWMA adapts. This determines what "normal" volume looks like. A 60-minute half-life
+                                    means the expected volume is weighted toward the last hour. Shorter = more responsive
+                                    to recent volume changes. Range: 10–1440 min. Default: 60 min.</li>
+                                <li><strong>Variance Half-Life (min):</strong> Controls how quickly the return-variance
+                                    EWMA adapts. The variance is used to compute shock sigma — it defines what a "normal"
+                                    price move looks like. Shorter = more sensitive to recent volatility, longer = smoother
+                                    baseline. Range: 10–1440 min. Default: 60 min.</li>
+                                <li><strong>Confirmation Buckets:</strong> Number of consecutive 5-minute buckets that must
+                                    <em>all</em> show sell pressure before the alert triggers. Setting this to 2 or higher
+                                    reduces false positives by requiring sustained dumping over multiple intervals, but
+                                    delays the alert. Range: 1–10. Default: 1 (instant trigger).</li>
+                                <li><strong>Require Consistency Check:</strong> When enabled, requires that a majority of
+                                    the most recent 5-minute data rows have non-zero volume on both sides (buy and sell).
+                                    This filters out items that have sparse or one-sided data, which can produce misleading
+                                    sell ratios. Recommended to keep enabled. Default: Enabled.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- ============================== WHEN TO USE ============================== -->
+                    <div class="alert-help-card">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+                                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                                <path fill-rule="evenodd"
+                                    d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                            When To Use
+                        </h4>
+                        <ul>
+                            <li>Catching panic sells on high-value items (Twisted Bow, Scythe, etc.) where the price
+                                recovers quickly — buy the dip before others notice</li>
+                            <li>Detecting liquidation events where someone dumps a large stack below market price</li>
+                            <li>Monitoring a broad set of items with "All Items" mode to find surprise opportunities</li>
+                            <li>Filtering out broad market sell-offs — the idiosyncratic shock filter ensures only
+                                item-specific dumps trigger, not market-wide crashes</li>
+                            <li>Confirming real selling pressure via volume analysis — not just a stale price quote</li>
+                        </ul>
+                    </div>
+
+                    <!-- ========================== MULTI-ITEM BEHAVIOR ========================== -->
+                    <div class="alert-help-card">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+                                <path fill-rule="evenodd"
+                                    d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                            Multi-Item &amp; All-Items Behavior
+                        </h4>
+                        <p>Dump alerts can monitor <strong>many items at once</strong>. Here's how they behave:</p>
+                        <ul>
+                            <li><strong>Per-item state:</strong> Each item maintains its own EWMA fair value, variance,
+                                expected volume, and cooldown timer. Items are evaluated independently.</li>
+                            <li><strong>Triggers:</strong> The alert fires when <em>any</em> monitored item passes all
+                                four pillars simultaneously.</li>
+                            <li><strong>Notification content:</strong> Shows all currently-dumping items sorted by biggest
+                                discount % first, with fair value, discount %, sell ratio, and spike volume for each.</li>
+                            <li><strong>Cooldown:</strong> Per-item — after an item triggers, it enters cooldown
+                                individually. Other items can still trigger during that time.</li>
+                            <li><strong>All Items mode:</strong> Scans every item in the database that passes the liquidity
+                                floor. No need to specify items manually.</li>
+                        </ul>
+                    </div>
+
+                    <!-- ========================== EXAMPLE SCENARIO ========================== -->
+                    <div class="example-scenario">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+                                <path
+                                    d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" />
+                            </svg>
+                            Example Scenario
+                        </h4>
+                        <p>You set up a dump alert on "All Items" with a 3% discount threshold, -4σ shock sigma,
+                            and a 50M GP/hr liquidity floor. Someone panic-sells a large stack of Twisted Bows,
+                            dropping the price 5% below the 2-hour EWMA fair value. The latest 5-minute bucket shows
+                            85% of volume at the low price and total volume is 4× normal. Meanwhile, other high-value
+                            items like Scythe and Ancestral Hat haven't moved — confirming this is item-specific, not
+                            a market-wide crash. You receive an alert showing:</p>
+                        <ul style="margin-top: 8px;">
+                            <li><strong>Twisted Bow</strong> — Fair: 1,420M → Low: 1,349M (−5.0%), sell ratio 0.85, volume 4.2×</li>
+                        </ul>
+                        <p style="margin-top: 8px;">You hop on the GE and buy before the price recovers.</p>
+                    </div>
+
+                    <!-- ======================== RECOMMENDED VALUES ======================== -->
+                    <div class="recommended-values">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+                                <path fill-rule="evenodd"
+                                    d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                            Recommended Starting Values
+                        </h4>
+                        <div class="value-grid">
+                            <div class="recommended-value">
+                                <div class="label">Min Discount</div>
+                                <div class="value">3% (catches meaningful dips)</div>
+                            </div>
+                            <div class="recommended-value">
+                                <div class="label">Shock Sigma</div>
+                                <div class="value">-4σ (only severe drops)</div>
+                            </div>
+                            <div class="recommended-value">
+                                <div class="label">Liquidity Floor</div>
+                                <div class="value">50M GP/hr (liquid items only)</div>
+                            </div>
+                            <div class="recommended-value">
+                                <div class="label">Cooldown</div>
+                                <div class="value">60 minutes (reduces spam)</div>
+                            </div>
+                            <div class="recommended-value">
+                                <div class="label">Sell Ratio</div>
+                                <div class="value">0.70 (70%+ sell-side)</div>
+                            </div>
+                            <div class="recommended-value">
+                                <div class="label">Fair Half-Life</div>
+                                <div class="value">120 min (2-hour anchor)</div>
                             </div>
                         </div>
                     </div>

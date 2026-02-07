@@ -1654,6 +1654,32 @@ def create_alert(request):
         confidence_weight_volume = request.POST.get('confidence_weight_volume', '')
         confidence_weight_stability = request.POST.get('confidence_weight_stability', '')
         
+        # =============================================================================
+        # DUMP ALERT SPECIFIC FIELDS
+        # =============================================================================
+        # What: Extract form data specific to dump alerts
+        # Why: Dump alerts detect sharp sell-offs using EWMA fair value, idiosyncratic shock,
+        #      sell pressure, and relative volume. Users can tune all thresholds.
+        # How: Parse scope, item IDs, basic thresholds, and advanced EWMA settings
+        
+        # dump_scope: 'all' for monitoring all items, 'specific' for selected items
+        dump_scope = request.POST.get('dump_scope', 'specific')
+        # dump_item_ids_str: Comma-separated list of item IDs from the multi-item selector
+        dump_item_ids_str = request.POST.get('dump_item_ids', '')
+        # Basic fields
+        dump_discount_min = request.POST.get('dump_discount_min', '')
+        dump_shock_sigma = request.POST.get('dump_shock_sigma', '')
+        dump_liquidity_floor = request.POST.get('dump_liquidity_floor', '')
+        dump_cooldown = request.POST.get('dump_cooldown', '')
+        # Advanced fields
+        dump_sell_ratio_min = request.POST.get('dump_sell_ratio_min', '')
+        dump_rel_vol_min = request.POST.get('dump_rel_vol_min', '')
+        dump_fair_halflife = request.POST.get('dump_fair_halflife', '')
+        dump_vol_halflife = request.POST.get('dump_vol_halflife', '')
+        dump_var_halflife = request.POST.get('dump_var_halflife', '')
+        dump_confirmation_buckets = request.POST.get('dump_confirmation_buckets', '')
+        dump_consistency_required = request.POST.get('dump_consistency_required', 'on')
+        
         direction_value = None
         if alert_type in ['spike', 'sustained']:
             direction_value = (direction or '').lower()
@@ -1687,6 +1713,9 @@ def create_alert(request):
         # For flip_confidence alerts, use the confidence_scope field to determine all-items flag
         elif alert_type == 'flip_confidence':
             is_all_items = (confidence_scope == 'all')
+        # For dump alerts, use the dump_scope field to determine all-items flag
+        elif alert_type == 'dump':
+            is_all_items = (dump_scope == 'all')
         
         # Handle sustained move multi-item selection
         sustained_item_ids_json = None
@@ -1803,6 +1832,26 @@ def create_alert(request):
                         confidence_item_name = item['name']
                         break
         
+        # =============================================================================
+        # HANDLE DUMP MULTI-ITEM SELECTION
+        # =============================================================================
+        # What: Process dump_item_ids when user selects "Specific Item(s)" for dump alerts
+        # Why: Dump alerts can monitor multiple specific items for sell-off events
+        # How: Parse comma-separated IDs, convert to JSON array, get first item name for display
+        dump_item_ids_json = None
+        dump_item_name = None
+        if alert_type == 'dump' and dump_scope == 'specific' and dump_item_ids_str:
+            # Parse comma-separated item IDs from the multi-item selector
+            item_ids = [int(x) for x in dump_item_ids_str.split(',') if x.strip()]
+            if item_ids:
+                dump_item_ids_json = json_module.dumps(item_ids)
+                # Get first item name for display purposes in alert list
+                mapping = get_item_mapping()
+                for name, item in mapping.items():
+                    if item['id'] == item_ids[0]:
+                        dump_item_name = item['name']
+                        break
+        
         # Look up item ID from name if not provided (for non-sustained alerts)
         if not item_id and item_name and alert_type != 'sustained':
             mapping = get_item_mapping()
@@ -1851,6 +1900,9 @@ def create_alert(request):
         elif alert_type == 'flip_confidence' and confidence_item_name:
             # For flip_confidence alerts with specific items, use first item name
             final_item_name = confidence_item_name
+        elif alert_type == 'dump' and dump_item_name:
+            # For dump alerts with specific items, use first item name
+            final_item_name = dump_item_name
         elif not is_all_items:
             final_item_name = item_name
         
@@ -1877,6 +1929,10 @@ def create_alert(request):
         elif alert_type == 'flip_confidence' and confidence_item_ids_json:
             # Store first item ID for backwards compatibility
             item_ids = json_module.loads(confidence_item_ids_json)
+            final_item_id = item_ids[0] if item_ids else None
+        elif alert_type == 'dump' and dump_item_ids_json:
+            # Store first item ID for backwards compatibility
+            item_ids = json_module.loads(dump_item_ids_json)
             final_item_id = item_ids[0] if item_ids else None
         elif item_id and not is_all_items:
             final_item_id = int(item_id)
@@ -1946,6 +2002,8 @@ def create_alert(request):
             item_ids_json = collective_item_ids_json
         elif alert_type == 'flip_confidence' and confidence_item_ids_json:
             item_ids_json = confidence_item_ids_json
+        elif alert_type == 'dump' and dump_item_ids_json:
+            item_ids_json = dump_item_ids_json
         
         alert = Alert.objects.create(
             user=user,
@@ -2024,6 +2082,25 @@ def create_alert(request):
             confidence_weight_spread=float(confidence_weight_spread) if alert_type == 'flip_confidence' and confidence_weight_spread and str(confidence_weight_spread).strip() else None,
             confidence_weight_volume=float(confidence_weight_volume) if alert_type == 'flip_confidence' and confidence_weight_volume and str(confidence_weight_volume).strip() else None,
             confidence_weight_stability=float(confidence_weight_stability) if alert_type == 'flip_confidence' and confidence_weight_stability and str(confidence_weight_stability).strip() else None,
+            # =============================================================================
+            # DUMP ALERT FIELDS
+            # =============================================================================
+            # What: Set dump-specific configuration fields on the alert
+            # Why: These fields control the dump detection algorithm thresholds and EWMA parameters
+            # How: Only set for dump alerts; all other types get None
+            # Basic fields
+            dump_discount_min=float(dump_discount_min) if alert_type == 'dump' and dump_discount_min and str(dump_discount_min).strip() else None,
+            dump_shock_sigma=float(dump_shock_sigma) if alert_type == 'dump' and dump_shock_sigma and str(dump_shock_sigma).strip() else None,
+            dump_liquidity_floor=int(dump_liquidity_floor) if alert_type == 'dump' and dump_liquidity_floor and str(dump_liquidity_floor).strip() else None,
+            dump_cooldown=int(dump_cooldown) if alert_type == 'dump' and dump_cooldown and str(dump_cooldown).strip() else None,
+            # Advanced fields
+            dump_sell_ratio_min=float(dump_sell_ratio_min) if alert_type == 'dump' and dump_sell_ratio_min and str(dump_sell_ratio_min).strip() else None,
+            dump_rel_vol_min=float(dump_rel_vol_min) if alert_type == 'dump' and dump_rel_vol_min and str(dump_rel_vol_min).strip() else None,
+            dump_fair_halflife=int(dump_fair_halflife) if alert_type == 'dump' and dump_fair_halflife and str(dump_fair_halflife).strip() else None,
+            dump_vol_halflife=int(dump_vol_halflife) if alert_type == 'dump' and dump_vol_halflife and str(dump_vol_halflife).strip() else None,
+            dump_var_halflife=int(dump_var_halflife) if alert_type == 'dump' and dump_var_halflife and str(dump_var_halflife).strip() else None,
+            dump_confirmation_buckets=int(dump_confirmation_buckets) if alert_type == 'dump' and dump_confirmation_buckets and str(dump_confirmation_buckets).strip() else None,
+            dump_consistency_required=(dump_consistency_required == 'on') if alert_type == 'dump' else True,
         )
         
         # =============================================================================
@@ -3439,6 +3516,10 @@ def alert_detail(request, alert_id):
             # For flip confidence alerts, sort by confidence_score (descending - highest scores first)
             # Why: Users want to see items with the highest flip confidence at the top of the list
             return sorted(items, key=lambda x: x.get('confidence_score', 0), reverse=True)
+        elif alert_type == 'dump':
+            # For dump alerts, sort by discount_pct (descending - biggest dip first)
+            # Why: Users want to see items with the deepest sell-off at the top
+            return sorted(items, key=lambda x: x.get('discount_pct', 0), reverse=True)
         else:
             # Unknown alert type - return unsorted
             return items
@@ -3609,6 +3690,37 @@ def alert_detail(request, alert_id):
                     triggered_info['confidence_data'] = None
             else:
                 triggered_info['confidence_data'] = None
+
+        # =============================================================================
+        # DUMP ALERT TRIGGERED INFO
+        # =============================================================================
+        # What: Populate triggered_info with dump alert data for template display
+        # Why: Dump alerts produce a list of items that experienced sharp sell-offs,
+        #      each with fair_value, discount_pct, sell_ratio, and spike_volume
+        # How: Parse triggered_data JSON (always a list for dump alerts since they
+        #      monitor multiple items). Sort by discount_pct descending so the
+        #      deepest sell-off appears first.
+        # =============================================================================
+        if alert.type == 'dump':
+            if alert.triggered_data:
+                try:
+                    # dump_data: The raw parsed JSON from triggered_data, a list of
+                    # item dicts each containing item_id, item_name, fair_value,
+                    # discount_pct, sell_ratio, spike_volume
+                    dump_data = json.loads(alert.triggered_data)
+                    
+                    if isinstance(dump_data, list):
+                        # Multi-item result: sort by discount_pct descending (biggest dip first)
+                        triggered_info['items'] = sort_triggered_items(dump_data, 'dump')
+                        triggered_info['dump_data'] = dump_data
+                    elif isinstance(dump_data, dict):
+                        # Single-item result: wrap in list for consistent template rendering
+                        triggered_info['items'] = [dump_data]
+                        triggered_info['dump_data'] = [dump_data]
+                except json.JSONDecodeError:
+                    triggered_info['dump_data'] = None
+            else:
+                triggered_info['dump_data'] = None
 
         
         # has_multiple_items: Boolean indicating if this alert monitors multiple specific items
@@ -4457,6 +4569,77 @@ def update_single_alert(request, alert_id):
         alert.direction = None
         alert.reference = None
         alert.min_volume = None  # Confidence uses confidence_min_volume instead
+    
+    # =============================================================================
+    # UPDATE DUMP ALERT FIELDS
+    # =============================================================================
+    # What: Save all dump-specific configuration fields when editing a dump alert
+    # Why: Dump alerts have 11 config fields (basic + advanced) that control the
+    #      EWMA-based sell-off detection algorithm
+    # How: Check if alert type is 'dump', then read each dump_* field from
+    #      the request data and persist it
+    # =============================================================================
+    if alert.type == 'dump':
+        # dump_discount_min: Minimum % discount below fair value to trigger
+        dump_discount_min = data.get('dump_discount_min')
+        if dump_discount_min is not None:
+            alert.dump_discount_min = float(dump_discount_min) if dump_discount_min else None
+        
+        # dump_shock_sigma: Standard deviations of idiosyncratic shock required (negative)
+        dump_shock_sigma = data.get('dump_shock_sigma')
+        if dump_shock_sigma is not None:
+            alert.dump_shock_sigma = float(dump_shock_sigma) if dump_shock_sigma else None
+        
+        # dump_liquidity_floor: Minimum hourly GP volume for an item to qualify
+        dump_liquidity_floor = data.get('dump_liquidity_floor')
+        if dump_liquidity_floor is not None:
+            alert.dump_liquidity_floor = int(dump_liquidity_floor) if dump_liquidity_floor else None
+        
+        # dump_cooldown: Minutes after triggering before re-triggering
+        dump_cooldown = data.get('dump_cooldown')
+        if dump_cooldown is not None:
+            alert.dump_cooldown = int(dump_cooldown) if dump_cooldown else None
+        
+        # dump_sell_ratio_min: Minimum fraction of volume at low price
+        dump_sell_ratio_min = data.get('dump_sell_ratio_min')
+        if dump_sell_ratio_min is not None:
+            alert.dump_sell_ratio_min = float(dump_sell_ratio_min) if dump_sell_ratio_min else None
+        
+        # dump_rel_vol_min: Minimum relative volume vs expected
+        dump_rel_vol_min = data.get('dump_rel_vol_min')
+        if dump_rel_vol_min is not None:
+            alert.dump_rel_vol_min = float(dump_rel_vol_min) if dump_rel_vol_min else None
+        
+        # dump_fair_halflife: EWMA half-life for fair value in minutes
+        dump_fair_halflife = data.get('dump_fair_halflife')
+        if dump_fair_halflife is not None:
+            alert.dump_fair_halflife = int(dump_fair_halflife) if dump_fair_halflife else None
+        
+        # dump_vol_halflife: EWMA half-life for expected volume in minutes
+        dump_vol_halflife = data.get('dump_vol_halflife')
+        if dump_vol_halflife is not None:
+            alert.dump_vol_halflife = int(dump_vol_halflife) if dump_vol_halflife else None
+        
+        # dump_var_halflife: EWMA half-life for return variance in minutes
+        dump_var_halflife = data.get('dump_var_halflife')
+        if dump_var_halflife is not None:
+            alert.dump_var_halflife = int(dump_var_halflife) if dump_var_halflife else None
+        
+        # dump_confirmation_buckets: Consecutive 5m buckets required before trigger
+        dump_confirmation_buckets = data.get('dump_confirmation_buckets')
+        if dump_confirmation_buckets is not None:
+            alert.dump_confirmation_buckets = int(dump_confirmation_buckets) if dump_confirmation_buckets else None
+        
+        # dump_consistency_required: Whether majority of 5m rows must show sell pressure
+        dump_consistency_required_val = data.get('dump_consistency_required')
+        if dump_consistency_required_val is not None:
+            alert.dump_consistency_required = (dump_consistency_required_val in ['on', 'true', True])
+        
+        # Clear shared fields that don't apply to dump alerts
+        alert.percentage = None
+        alert.direction = None
+        alert.reference = None
+        alert.min_volume = None  # Dump uses dump_liquidity_floor instead
     
     # Handle min/max price
     minimum_price = data.get('minimum_price')

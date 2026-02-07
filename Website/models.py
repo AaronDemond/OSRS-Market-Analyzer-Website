@@ -159,6 +159,7 @@ class Alert(models.Model):
         ('threshold', 'Threshold'),  # Percentage or value-based threshold from reference price
         ('collective_move', 'Collective Move'),  # Average percentage change across multiple items
         ('flip_confidence', 'Flip Confidence'),  # Confidence score for flipping items (0-100)
+        ('dump', 'Dump'),  # Detects sharp sell-off below fair value on liquid items
     ]
     
     # THRESHOLD_TYPE_CHOICES: Options for how threshold alerts calculate their trigger condition
@@ -439,10 +440,127 @@ class Alert(models.Model):
     confidence_last_scores = models.TextField(blank=True, null=True, default=None)
     
     # =============================================================================
-    # SPIKE ALERT BASELINE TRACKING FIELDS
+    # DUMP ALERT SPECIFIC FIELDS
     # =============================================================================
-    # baseline_prices: JSON dictionary storing per-item baseline prices for spike alerts
-    # What: Stores the baseline price for each monitored item at the point in time [timeframe] ago
+    # What: Fields that configure the dump detection algorithm.
+    # Why: The dump alert detects sharp sell-offs on liquid items by combining EWMA fair value,
+    #      idiosyncratic shock (vs market drift), sell pressure, relative volume, and discount
+    #      below fair value. Users can tune all thresholds via these fields.
+    # How: These fields are stored on the Alert model and read by check_alerts.py when
+    #      evaluating dump alerts. Basic fields are shown in the main form; advanced fields
+    #      are hidden under an "Advanced" toggle in the UI.
+    
+    # -------------------------------------------------------------------------
+    # BASIC DUMP FIELDS (shown in main form)
+    # -------------------------------------------------------------------------
+    
+    # dump_discount_min: Minimum percentage discount below EWMA fair value to trigger
+    # What: The floor on how far below fair value the avgLowPrice must be
+    # Why: Filters out small, insignificant dips that aren't actionable
+    # How: discount = (fair - avgLowPrice) / fair * 100; trigger if discount >= this value
+    # Note: Default 3.0 means the item must be trading at least 3% below fair value
+    dump_discount_min = models.FloatField(blank=True, null=True, default=None)
+    
+    # dump_shock_sigma: Shock sigma threshold for idiosyncratic return (negative = downward)
+    # What: How many standard deviations the item's return must deviate from market drift
+    # Why: Isolates item-specific crashes from general market movement
+    # How: shock_sigma = (item_return - market_drift) / sqrt(ewma_variance);
+    #      trigger if shock_sigma <= this value (e.g., -4 means 4 sigma down-shock)
+    # Note: More negative = more extreme dump required = fewer false positives
+    dump_shock_sigma = models.FloatField(blank=True, null=True, default=None)
+    
+    # dump_liquidity_floor: Minimum expected hourly GP volume for an item to be eligible
+    # What: Items must have at least this much GP trading volume per hour to be considered
+    # Why: Prevents alerts on illiquid items where prices are noisy and entry/exit is difficult
+    # How: Checked against HourlyItemVolume via get_volume_from_timeseries()
+    # Note: BigIntegerField because GP volumes can exceed 2.1B (32-bit int max)
+    dump_liquidity_floor = models.BigIntegerField(blank=True, null=True, default=None)
+    
+    # dump_cooldown: Minutes to wait before re-alerting on the same item after a trigger
+    # What: Cooldown period preventing notification spam on the same dump event
+    # Why: A single dump event can persist across multiple 5m buckets; without cooldown,
+    #      the same dump would fire every 30 seconds
+    # How: After triggering, store cooldown_until timestamp per item in dump_state;
+    #      skip re-evaluation until current_time >= cooldown_until
+    dump_cooldown = models.IntegerField(blank=True, null=True, default=None)
+    
+    # -------------------------------------------------------------------------
+    # ADVANCED DUMP FIELDS (hidden under "Advanced" toggle in UI)
+    # -------------------------------------------------------------------------
+    
+    # dump_sell_ratio_min: Minimum sell-side ratio to qualify as a dump
+    # What: The fraction of total volume that must be on the sell (low-price) side
+    # Why: True dumps are sell-heavy; without this, organic two-sided price drops would trigger
+    # How: sell_ratio = lowPriceVolume / (highPriceVolume + lowPriceVolume);
+    #      trigger only if sell_ratio >= this value
+    # Note: 0.70 means at least 70% of trades must be sells
+    dump_sell_ratio_min = models.FloatField(blank=True, null=True, default=None)
+    
+    # dump_rel_vol_min: Minimum relative volume (current bucket vs EWMA expected)
+    # What: How much higher the current bucket's volume must be compared to normal
+    # Why: Dumps involve abnormally high activity; normal-volume price drops are organic
+    # How: rel_vol = bucket_volume / ewma_expected_volume; trigger if rel_vol >= this value
+    # Note: 2.5 means volume must be at least 2.5x the rolling average
+    dump_rel_vol_min = models.FloatField(blank=True, null=True, default=None)
+    
+    # dump_fair_halflife: EWMA half-life in minutes for the fair value (mid price) calculation
+    # What: Controls how quickly the fair value adapts to price changes
+    # Why: Shorter half-life = more responsive to recent prices; longer = more stable anchor
+    # How: alpha = 1 - exp(ln(0.5) / (halflife_minutes / 5))  (5 = bucket size in minutes)
+    # Note: Default 120 minutes (2 hours) = 24 buckets half-life
+    dump_fair_halflife = models.IntegerField(blank=True, null=True, default=None)
+    
+    # dump_vol_halflife: EWMA half-life in minutes for expected volume calculation
+    # What: Controls how quickly the expected volume adapts to volume changes
+    # Why: Longer half-life gives a more stable "normal volume" baseline for relative volume
+    # How: Same alpha formula as fair_halflife, applied to bucket_volume EWMA
+    # Note: Default 360 minutes (6 hours) = 72 buckets half-life
+    dump_vol_halflife = models.IntegerField(blank=True, null=True, default=None)
+    
+    # dump_var_halflife: EWMA half-life in minutes for idiosyncratic return variance
+    # What: Controls how quickly the variance estimate adapts to return volatility changes
+    # Why: Used to normalize the shock sigma; shorter = more responsive to recent vol regime
+    # How: Same alpha formula, applied to r_idio^2 EWMA
+    # Note: Default 120 minutes (2 hours) = 24 buckets half-life
+    dump_var_halflife = models.IntegerField(blank=True, null=True, default=None)
+    
+    # dump_confirmation_buckets: Number of consecutive 5m buckets the dump signal must persist
+    # What: Requires the dump conditions to be met for M consecutive check cycles
+    # Why: Prevents triggering on a single noisy bucket; confirms the dump is sustained
+    # How: Track consecutive passes per item in dump_state; only trigger when count >= this
+    # Note: Default 2 means conditions must hold for ~10 minutes (2 consecutive 5m buckets)
+    dump_confirmation_buckets = models.IntegerField(blank=True, null=True, default=None)
+    
+    # dump_consistency_required: Whether to require both-side volume consistency
+    # What: When True, requires at least 6 of the last 12 five-minute buckets to have
+    #       both highPriceVolume > 0 AND lowPriceVolume > 0 for an item
+    # Why: Prevents triggering on items where only one side is trading (manipulated/illiquid)
+    # How: Query last 12 FiveMinTimeSeries rows; count rows with both sides > 0; skip if < 6
+    # Note: Default True; advanced users can disable if they want to catch edge cases
+    dump_consistency_required = models.BooleanField(default=True, blank=True, null=True)
+    
+    # -------------------------------------------------------------------------
+    # DUMP STATE PERSISTENCE (Option B — persisted EWMA across cycles)
+    # -------------------------------------------------------------------------
+    
+    # dump_state: JSON dict storing per-item EWMA state and tracking data
+    # What: Persists running EWMA values and trigger state across check cycles
+    # Why: Option B chosen for performance — computing EWMA from DB history each cycle
+    #      would require thousands of DB reads for "all items" mode at scale
+    # How: JSON dict keyed by item_id string:
+    #      {
+    #        "4151": {
+    #          "fair": 1500000.0,        // EWMA of mid price
+    #          "var_idio": 0.0004,       // EWMA of idiosyncratic return variance
+    #          "expected_vol": 250.0,    // EWMA of bucket volume (trade count)
+    #          "last_mid": 1495000.0,    // Previous cycle's mid price
+    #          "consecutive": 2,         // Consecutive dump-condition passes
+    #          "cooldown_until": 1706012400  // Unix timestamp when cooldown expires
+    #        },
+    #        ...
+    #      }
+    # Note: Initialized on first evaluation cycle; survives server restarts via DB persistence
+    dump_state = models.TextField(blank=True, null=True, default=None)
     # Why: Spike alerts use a rolling window comparison - comparing current price to price from X minutes ago
     #      This field stores the initial baseline captured at alert creation, which will be updated
     #      by the check_alerts command as the rolling window moves forward
@@ -612,6 +730,20 @@ class Alert(models.Model):
             if trigger == 'delta_increase':
                 return f"{target} confidence Δ≥{threshold} ({timestep})"
             return f"{target} confidence ≥{threshold} ({timestep})"
+        
+        # =========================================================================
+        # DUMP ALERTS: "[target] dump ≥[discount]% discount (σ≤[sigma])"
+        # =========================================================================
+        # What: Display format for dump alerts showing the key trigger thresholds
+        # Why: Users need to see the discount % and shock sigma at a glance
+        # How: Shows target items, minimum discount percentage, and shock sigma threshold
+        if self.type == 'dump':
+            target = get_target()
+            # discount: The minimum discount % below fair value required to trigger
+            discount = self.dump_discount_min if self.dump_discount_min is not None else 3.0
+            # sigma: The shock sigma threshold (negative = downward shock)
+            sigma = self.dump_shock_sigma if self.dump_shock_sigma is not None else -4.0
+            return f"{target} dump ≥{discount}% discount (σ≤{sigma})"
         
         # =========================================================================
         # FALLBACK: Generic format for unknown types

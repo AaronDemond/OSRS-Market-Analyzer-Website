@@ -1103,6 +1103,69 @@
         }
     }
 
+    /**
+     * Global wrapper for the dump alert scope change handler.
+     * 
+     * What: Delegates dump scope change events to FormManager
+     * Why: HTML onchange attributes can only call global functions, not methods on objects
+     * How: Calls FormManager.handleDumpScopeChange() with the 'create' form type
+     */
+    function handleDumpScopeChange() {
+        FormManager.handleDumpScopeChange('create');
+    }
+
+    /**
+     * Global wrapper for toggling the dump advanced detection settings panel.
+     * 
+     * What: Shows/hides the advanced EWMA and detection parameter fields for dump alerts
+     * Why: HTML onclick attributes can only call global functions
+     * How: Toggles the display of the advanced panel and its child form groups
+     *      (sell ratio, rel volume, half-lives, confirmation, consistency)
+     */
+    function toggleDumpAdvanced() {
+        /**
+         * Toggles the dump advanced detection settings panel visibility.
+         *
+         * What: Shows/hides the advanced EWMA and detection parameter fields for dump alerts
+         * Why: HTML onclick attributes can only call global functions; this wraps the toggle logic
+         * How: Toggles the panel display between 'none' and '' (empty string). Using an empty
+         *      string lets the CSS stylesheet rule (#dump-advanced-panel { display: flex })
+         *      take effect, which provides the proper flex-wrap grid layout. Setting 'flex'
+         *      inline would work too, but using '' is cleaner as it defers to CSS. Each child
+         *      form group is also toggled between 'none' and 'block'.
+         */
+        const panel = document.getElementById('dump-advanced-panel');
+        const groups = AlertsConfig.selectors.create.groups;
+        if (!panel) return;
+
+        // isVisible: Whether the advanced panel is currently shown
+        const isVisible = panel.style.display !== 'none';
+        // What: Toggle the panel between hidden and CSS-controlled layout
+        // Why: The CSS rule on #dump-advanced-panel sets display:flex with flex-wrap:wrap
+        //      and proper gap/width. Using '' (empty string) removes the inline override
+        //      so the CSS rule applies, giving us the correct grid layout
+        // How: 'none' hides; '' defers to CSS stylesheet which sets flex layout
+        panel.style.display = isVisible ? 'none' : '';
+
+        // Show/hide the advanced form groups inside the panel
+        // What: Toggle each individual advanced field group
+        // Why: Each group has its own display state for the config.js pattern
+        const advancedGroups = [
+            groups.dumpSellRatioMin,
+            groups.dumpRelVolMin,
+            groups.dumpFairHalflife,
+            groups.dumpVolHalflife,
+            groups.dumpVarHalflife,
+            groups.dumpConfirmationBuckets,
+            groups.dumpConsistencyRequired,
+        ];
+
+        advancedGroups.forEach(selector => {
+            const el = document.querySelector(selector);
+            if (el) el.style.display = isVisible ? 'none' : 'block';
+        });
+    }
+
     // =============================================================================
     // LIVE CONFIDENCE WEIGHT SUM INDICATOR
     // =============================================================================
@@ -1582,6 +1645,7 @@
                 ThresholdMultiItemSelector.init();
                 CollectiveMoveMultiItemSelector.init();
                 ConfidenceMultiItemSelector.init();
+                DumpMultiItemSelector.init();
             }
         };
         
