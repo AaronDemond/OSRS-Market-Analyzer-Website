@@ -2096,6 +2096,45 @@
     .weight-sum-valid { color: #22c55e; }
     .weight-sum-invalid { color: #ef4444; }
     .weight-sum-empty { color: var(--muted); }
+
+    /* ==========================================================================
+       edit-dump-advanced-grid / edit-dump-advanced-field
+       ==========================================================================
+       What: Flex grid layout for the dump advanced detection settings panel.
+       Why:  Mirrors the edit-weights-grid pattern — compact, left-aligned,
+             contained to the left side of the form. 2 inputs per row (each
+             ~160px) keeps it small and unobtrusive, matching the scoring
+             weights look for confidence alerts.
+       How:  display:flex with wrap. Each child has fixed width of 160px.
+             Labels and inputs are sized down to match edit-weight-field styling.
+       ========================================================================== */
+    .edit-dump-advanced-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 16px;
+    }
+
+    /* edit-dump-advanced-field: A single advanced dump input in edit mode
+       What: Narrow form-group for dump advanced number inputs
+       Why:  Keeps fields compact — two per row at 160px each, left-aligned
+       How:  Fixed width with no bottom margin (parent gap handles spacing) */
+    .edit-dump-advanced-field {
+        width: 160px;
+        flex-shrink: 0;
+        margin-bottom: 0 !important;
+    }
+    .edit-dump-advanced-field label {
+        font-size: 12px !important;
+        margin-bottom: 3px !important;
+        color: #166534;
+    }
+    .edit-dump-advanced-field input {
+        padding: 6px 8px !important;
+        font-size: 13px !important;
+    }
+    .edit-dump-advanced-field .form-hint {
+        font-size: 10px !important;
+    }
 </style>
 {% endblock %}
 
@@ -2219,7 +2258,7 @@
                         </span>
                     </div>
                     
-                    {% if alert.type == 'spread' or alert.type == 'spike' or alert.type == 'threshold' or alert.type == 'sustained' or alert.type == 'flip_confidence' %}
+                    {% if alert.type == 'spread' or alert.type == 'spike' or alert.type == 'threshold' or alert.type == 'sustained' or alert.type == 'flip_confidence' or alert.type == 'dump' %}
                     <div class="detail-item">
                         <span class="detail-label">All Items</span>
                         <span class="detail-value">{% if alert.is_all_items %}Yes{% else %}No{% endif %}</span>
@@ -2472,14 +2511,64 @@
                     {% endif %}
                     
                     <!-- =============================================================================
+                         DUMP ALERT DISPLAY FIELDS
+                         =============================================================================
+                         What: Shows dump-specific configuration when viewing (not editing).
+                         Why:  Users need to see discount threshold, shock sigma, liquidity floor,
+                               and cooldown at a glance. Advanced EWMA/detection parameters are
+                               hidden behind a toggle (matching the scoring weights pattern).
+                         How:  Conditional display based on alert.type == 'dump'. Basic fields are
+                               always shown; advanced fields are inside a collapsible panel toggled
+                               by toggleViewDumpAdvanced().
+                    ============================================================================= -->
+                    {% if alert.type == 'dump' %}
+                    <div class="detail-item">
+                        <!-- What: The minimum discount % below EWMA fair value to trigger -->
+                        <span class="detail-label">Min Discount</span>
+                        <span class="detail-value highlight">{% if alert.dump_discount_min is not None %}{{ alert.dump_discount_min }}%{% else %}Not Set{% endif %}</span>
+                    </div>
+                    <div class="detail-item">
+                        <!-- What: The shock sigma threshold (how many std devs the idiosyncratic return must drop) -->
+                        <span class="detail-label">Shock Sigma</span>
+                        <span class="detail-value">{% if alert.dump_shock_sigma is not None %}{{ alert.dump_shock_sigma }}{% else %}Not Set{% endif %}</span>
+                    </div>
+                    <div class="detail-item">
+                        <!-- What: Minimum GP/hr liquidity floor to filter out illiquid items -->
+                        <span class="detail-label">Liquidity Floor (GP)</span>
+                        <span class="detail-value">{% if alert.dump_liquidity_floor is not None %}{{ alert.dump_liquidity_floor|intcomma }}{% else %}Not Set{% endif %}</span>
+                    </div>
+                    <div class="detail-item">
+                        <!-- What: Minutes before re-alerting on the same item -->
+                        <span class="detail-label">Cooldown</span>
+                        <span class="detail-value">{% if alert.dump_cooldown_minutes is not None %}{{ alert.dump_cooldown_minutes }} minutes{% else %}Not Set{% endif %}</span>
+                    </div>
+                    {% if alert.is_all_items %}
+                    {% if alert.minimum_price %}
+                    <div class="detail-item">
+                        <span class="detail-label">Min Price Filter</span>
+                        <span class="detail-value price">{{ alert.minimum_price|intcomma }}</span>
+                    </div>
+                    {% endif %}
+                    {% if alert.maximum_price %}
+                    <div class="detail-item">
+                        <span class="detail-label">Max Price Filter</span>
+                        <span class="detail-value price">{{ alert.maximum_price|intcomma }}</span>
+                    </div>
+                    {% endif %}
+                    {% endif %}
+
+                    {% endif %}
+                    
+                    <!-- =============================================================================
                          SHARED FIELDS: Direction, Threshold Type, Percentage, Reference
                          What: These fields are common to spread/spike/sustained/threshold/collective_move
-                              but NOT applicable to flip_confidence alerts
+                              but NOT applicable to flip_confidence or dump alerts
                          Why: flip_confidence uses its own dedicated fields (timestep, lookback,
-                              trigger_rule, etc.) — showing "Threshold Type = Percentage" is misleading
-                         How: Wrap in a type check that excludes flip_confidence
+                              trigger_rule, etc.) and dump uses its own (discount, shock sigma, etc.)
+                              — showing "Threshold Type = Percentage" is misleading for both
+                         How: Wrap in a type check that excludes flip_confidence and dump
                     ============================================================================= -->
-                    {% if alert.type != 'flip_confidence' %}
+                    {% if alert.type != 'flip_confidence' and alert.type != 'dump' %}
                     <div class="detail-item">
                         <!-- What: Displays the direction setting for threshold alerts
                              Why: Users need to see whether the alert triggers when price goes above or below threshold
@@ -2517,11 +2606,11 @@
                     </div>
                     {% endif %}
                     
-                    <!-- What: Min/Max Price Filters for non-confidence alert types
+                    <!-- What: Min/Max Price Filters for non-confidence, non-dump alert types
                          Why: flip_confidence already shows these in its own config section above;
-                              showing them again here would create duplicates
-                         How: Exclude flip_confidence from this shared block -->
-                    {% if alert.type != 'flip_confidence' %}
+                              dump alerts use liquidity floor instead of min/max price filters
+                         How: Exclude flip_confidence and dump from this shared block -->
+                    {% if alert.type != 'flip_confidence' and alert.type != 'dump' %}
                     {% if alert.is_all_items %}
                     <div class="detail-item">
                         <span class="detail-label">Minimum Price Filter</span>
@@ -2632,6 +2721,69 @@
                             {% else %}
                             <span class="form-hint">Using default weights (Trend: 0.35, Pressure: 0.25, Spread: 0.20, Volume: 0.10, Stability: 0.10)</span>
                             {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- =============================================================
+                         DUMP ADVANCED DETECTION SETTINGS TOGGLE (View Mode)
+                         =============================================================
+                         What: Collapsible section showing advanced EWMA & detection params
+                         Why:  Positioned at the very end of the detail grid (after Group,
+                               after scoring weights) so it flows naturally as the last
+                               item. On wide screens it sits to the right of Group; on
+                               narrow screens it wraps to the bottom.
+                         How:  A button toggles a hidden div containing read-only values.
+                               Only rendered for dump alerts.
+                    ============================================================= -->
+                    {% if alert.type == 'dump' %}
+                    <div class="detail-item" style="flex-basis: 100%;">
+                        <button type="button"
+                                class="btn-weights-toggle"
+                                onclick="toggleViewDumpAdvanced()"
+                                id="view-dump-advanced-toggle-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
+                                 fill="currentColor" width="14" height="14">
+                                <path fill-rule="evenodd"
+                                      d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
+                                      clip-rule="evenodd"/>
+                            </svg>
+                            Advanced Detection Settings
+                        </button>
+                        <!-- What: Panel containing all advanced dump detection values (read-only)
+                             Why:  Keeps advanced settings out of the way until the user wants them
+                             How:  Uses the same weights-grid flex layout for compact, left-aligned display -->
+                        <div id="view-dump-advanced-panel" class="weights-panel" style="display: none;">
+                            <div class="weights-grid">
+                                <div class="weight-item">
+                                    <span class="detail-label">Sell Ratio</span>
+                                    <span class="detail-value">{{ alert.dump_sell_ratio_min|default:"0.70" }}</span>
+                                </div>
+                                <div class="weight-item">
+                                    <span class="detail-label">Rel Volume</span>
+                                    <span class="detail-value">{{ alert.dump_rel_vol_min|default:"2.5" }}</span>
+                                </div>
+                                <div class="weight-item">
+                                    <span class="detail-label">Fair HL</span>
+                                    <span class="detail-value">{{ alert.dump_fair_halflife|default:"120" }}m</span>
+                                </div>
+                                <div class="weight-item">
+                                    <span class="detail-label">Vol HL</span>
+                                    <span class="detail-value">{{ alert.dump_vol_halflife|default:"60" }}m</span>
+                                </div>
+                                <div class="weight-item">
+                                    <span class="detail-label">Var HL</span>
+                                    <span class="detail-value">{{ alert.dump_var_halflife|default:"60" }}m</span>
+                                </div>
+                                <div class="weight-item">
+                                    <span class="detail-label">Confirm</span>
+                                    <span class="detail-value">{{ alert.dump_confirmation_buckets|default:"1" }} bucket{{ alert.dump_confirmation_buckets|default:"1"|pluralize }}</span>
+                                </div>
+                                <div class="weight-item">
+                                    <span class="detail-label">Consistency</span>
+                                    <span class="detail-value">{% if alert.dump_consistency_required %}Required{% else %}Off{% endif %}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     {% endif %}
@@ -3035,78 +3187,6 @@
                         <small class="form-hint">Minutes before re-alerting on the same item</small>
                     </div>
                     
-                    <!-- Dump: Sell Ratio Min (Advanced) -->
-                    <div class="form-group" id="dump-sell-ratio-min-group" style="display: none;">
-                        <label for="edit-dump-sell-ratio-min">Min Sell Ratio</label>
-                        <input type="number" id="edit-dump-sell-ratio-min"
-                               value="{% if alert.dump_sell_ratio_min is not None %}{{ alert.dump_sell_ratio_min }}{% endif %}"
-                               step="0.05" min="0.5" max="1.0" placeholder="e.g. 0.70">
-                        <small class="form-hint">Fraction of 5min volume at low price (advanced)</small>
-                    </div>
-                    
-                    <!-- Dump: Relative Volume Min (Advanced) -->
-                    <div class="form-group" id="dump-rel-vol-min-group" style="display: none;">
-                        <label for="edit-dump-rel-vol-min">Min Relative Volume</label>
-                        <input type="number" id="edit-dump-rel-vol-min"
-                               value="{% if alert.dump_rel_vol_min is not None %}{{ alert.dump_rel_vol_min }}{% endif %}"
-                               step="0.5" min="1.0" max="20" placeholder="e.g. 2.5">
-                        <small class="form-hint">Volume spike vs EWMA expected (advanced)</small>
-                    </div>
-                    
-                    <!-- Dump: Fair Value Half-Life (Advanced) -->
-                    <div class="form-group" id="dump-fair-halflife-group" style="display: none;">
-                        <label for="edit-dump-fair-halflife">Fair Value Half-Life (min)</label>
-                        <input type="number" id="edit-dump-fair-halflife"
-                               value="{% if alert.dump_fair_halflife is not None %}{{ alert.dump_fair_halflife }}{% endif %}"
-                               step="5" min="10" max="1440" placeholder="e.g. 120">
-                        <small class="form-hint">EWMA half-life for fair value anchor (advanced)</small>
-                    </div>
-                    
-                    <!-- Dump: Volume Half-Life (Advanced) -->
-                    <div class="form-group" id="dump-vol-halflife-group" style="display: none;">
-                        <label for="edit-dump-vol-halflife">Volume Half-Life (min)</label>
-                        <input type="number" id="edit-dump-vol-halflife"
-                               value="{% if alert.dump_vol_halflife is not None %}{{ alert.dump_vol_halflife }}{% endif %}"
-                               step="5" min="10" max="1440" placeholder="e.g. 60">
-                        <small class="form-hint">EWMA half-life for expected volume (advanced)</small>
-                    </div>
-                    
-                    <!-- Dump: Variance Half-Life (Advanced) -->
-                    <div class="form-group" id="dump-var-halflife-group" style="display: none;">
-                        <label for="edit-dump-var-halflife">Variance Half-Life (min)</label>
-                        <input type="number" id="edit-dump-var-halflife"
-                               value="{% if alert.dump_var_halflife is not None %}{{ alert.dump_var_halflife }}{% endif %}"
-                               step="5" min="10" max="1440" placeholder="e.g. 60">
-                        <small class="form-hint">EWMA half-life for return variance (advanced)</small>
-                    </div>
-                    
-                    <!-- Dump: Confirmation Buckets (Advanced) -->
-                    <div class="form-group" id="dump-confirmation-buckets-group" style="display: none;">
-                        <label for="edit-dump-confirmation-buckets">Confirmation Buckets</label>
-                        <input type="number" id="edit-dump-confirmation-buckets"
-                               value="{% if alert.dump_confirmation_buckets is not None %}{{ alert.dump_confirmation_buckets }}{% endif %}"
-                               step="1" min="1" max="10" placeholder="e.g. 1">
-                        <small class="form-hint">Consecutive 5min buckets of sell pressure required (advanced)</small>
-                    </div>
-                    
-                    <!-- Dump: Consistency Required (Advanced) -->
-                    <!-- =====================================================================================
-                         CONSISTENCY CHECK CHECKBOX (Edit Page)
-                         What: Mirrors the create-page checkbox — NOT inside .form-group so that
-                               the native checkbox appearance is preserved (see alerts.html comment).
-                         ===================================================================================== -->
-                    <div id="dump-consistency-required-group" style="display: none;">
-                        <div class="form-check d-flex align-items-center">
-                            <input style="transform: scale(1.35); margin-top: 0;" type="checkbox" class="form-check-input me-2" id="edit-dump-consistency-required"
-                                   {% if alert.dump_consistency_required %}checked{% endif %}>
-                            <label class="form-check-label" for="edit-dump-consistency-required">
-                                Require Consistency Check
-                            </label>
-                        </div>
-                        <small class="form-hint">Require majority of recent rows to confirm sell pressure (advanced)</small>
-                    </div>
-                    
-                    
                     <!-- ======================= TOGGLE BUTTONS SECTION ======================= -->
                     <!-- Toggles appear at end, in order: Active, All Items, Show Alert Notification, SMS Notification -->
                     
@@ -3161,6 +3241,102 @@
                             <span class="toggle-label">{% if alert.email_notification %}Enabled{% else %}Disabled{% endif %}</span>
                         </div>
                         <small class="form-hint">Send SMS when alert is triggered</small>
+                    </div>
+
+                    <!-- =================================================================================
+                         Dump Alert: Advanced Detection Settings Toggle Button
+                         =================================================================================
+                         What: Toggle button to show/hide advanced EWMA and detection parameters.
+                         Why:  Placed after SMS notifications (the last common field) so it appears at
+                               the bottom of the basic fields section. Matches the scoring weights
+                               pattern — advanced fields are hidden behind a toggle to reduce clutter.
+                         How:  Clicking calls toggleEditDumpAdvanced() which toggles the panel div
+                               (#edit-dump-advanced-panel) containing all advanced fields. The panel
+                               uses its own .edit-dump-advanced-grid flex layout (2 inputs per row).
+                         ================================================================================= -->
+                    <div class="form-group" id="edit-dump-advanced-toggle-group" style="display: none;">
+                        <button type="button" class="btn-weights-toggle" id="edit-dump-advanced-toggle" onclick="toggleEditDumpAdvanced()">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
+                                <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/>
+                            </svg>
+                            Advanced Detection Settings
+                        </button>
+                    </div>
+                    <!-- =================================================================================
+                         Dump Alert: Advanced Detection Settings Panel
+                         =================================================================================
+                         What: Collapsible panel containing all advanced dump detection parameters.
+                         Why:  Mirrors the scoring weights panel pattern — a self-contained panel
+                               that sits outside the main .form-grid. Uses its own internal 2-column
+                               grid layout (.edit-dump-advanced-grid) so advanced fields appear compact,
+                               left-aligned, with two inputs per row — matching how scoring weights
+                               display for confidence alerts.
+                         How:  Panel is toggled by toggleEditDumpAdvanced(). Contains 7 fields
+                               (sell ratio, relative volume, 3 half-lives, confirmation buckets,
+                               consistency checkbox) in a 2-column flex grid.
+                         ================================================================================= -->
+                    <div id="edit-dump-advanced-panel" style="display: none; grid-column: 1 / -1;">
+                        <div class="edit-dump-advanced-grid">
+                            <!-- Dump: Sell Ratio Min -->
+                            <div class="form-group edit-dump-advanced-field" id="dump-sell-ratio-min-group">
+                                <label for="edit-dump-sell-ratio-min">Min Sell Ratio</label>
+                                <input type="number" id="edit-dump-sell-ratio-min"
+                                       value="{% if alert.dump_sell_ratio_min is not None %}{{ alert.dump_sell_ratio_min }}{% endif %}"
+                                       step="0.05" min="0.5" max="1.0" placeholder="e.g. 0.70">
+                                <small class="form-hint">Fraction of 5min volume at low price</small>
+                            </div>
+                            <!-- Dump: Relative Volume Min -->
+                            <div class="form-group edit-dump-advanced-field" id="dump-rel-vol-min-group">
+                                <label for="edit-dump-rel-vol-min">Min Relative Volume</label>
+                                <input type="number" id="edit-dump-rel-vol-min"
+                                       value="{% if alert.dump_rel_vol_min is not None %}{{ alert.dump_rel_vol_min }}{% endif %}"
+                                       step="0.5" min="1.0" max="20" placeholder="e.g. 2.5">
+                                <small class="form-hint">Volume spike vs EWMA expected</small>
+                            </div>
+                            <!-- Dump: Fair Value Half-Life -->
+                            <div class="form-group edit-dump-advanced-field" id="dump-fair-halflife-group">
+                                <label for="edit-dump-fair-halflife">Fair Half-Life (min)</label>
+                                <input type="number" id="edit-dump-fair-halflife"
+                                       value="{% if alert.dump_fair_halflife is not None %}{{ alert.dump_fair_halflife }}{% endif %}"
+                                       step="5" min="10" max="1440" placeholder="e.g. 120">
+                                <small class="form-hint">EWMA half-life for fair value</small>
+                            </div>
+                            <!-- Dump: Volume Half-Life -->
+                            <div class="form-group edit-dump-advanced-field" id="dump-vol-halflife-group">
+                                <label for="edit-dump-vol-halflife">Vol Half-Life (min)</label>
+                                <input type="number" id="edit-dump-vol-halflife"
+                                       value="{% if alert.dump_vol_halflife is not None %}{{ alert.dump_vol_halflife }}{% endif %}"
+                                       step="5" min="10" max="1440" placeholder="e.g. 60">
+                                <small class="form-hint">EWMA half-life for expected volume</small>
+                            </div>
+                            <!-- Dump: Variance Half-Life -->
+                            <div class="form-group edit-dump-advanced-field" id="dump-var-halflife-group">
+                                <label for="edit-dump-var-halflife">Var Half-Life (min)</label>
+                                <input type="number" id="edit-dump-var-halflife"
+                                       value="{% if alert.dump_var_halflife is not None %}{{ alert.dump_var_halflife }}{% endif %}"
+                                       step="5" min="10" max="1440" placeholder="e.g. 60">
+                                <small class="form-hint">EWMA half-life for return variance</small>
+                            </div>
+                            <!-- Dump: Confirmation Buckets -->
+                            <div class="form-group edit-dump-advanced-field" id="dump-confirmation-buckets-group">
+                                <label for="edit-dump-confirmation-buckets">Confirmation Buckets</label>
+                                <input type="number" id="edit-dump-confirmation-buckets"
+                                       value="{% if alert.dump_confirmation_buckets is not None %}{{ alert.dump_confirmation_buckets }}{% endif %}"
+                                       step="1" min="1" max="10" placeholder="e.g. 1">
+                                <small class="form-hint">Consecutive 5min buckets required</small>
+                            </div>
+                        </div>
+                        <!-- Dump: Consistency Required Checkbox
+                             What: Checkbox for requiring consistency check, placed below the grid
+                             Why:  Checkboxes need different layout than number inputs — full width row -->
+                        <div class="form-check d-flex align-items-center" id="dump-consistency-required-group" style="margin-top: 8px;">
+                            <input style="transform: scale(1.35); margin-top: 0;" type="checkbox" class="form-check-input me-2" id="edit-dump-consistency-required"
+                                   {% if alert.dump_consistency_required %}checked{% endif %}>
+                            <label class="form-check-label" for="edit-dump-consistency-required">
+                                Require Consistency Check
+                            </label>
+                        </div>
+                        <small class="form-hint" style="margin-top: 4px;">Leave empty to use defaults.</small>
                     </div>
                     
                     <!-- ======================= REFERENCE PRICES (LAST) ======================= -->
@@ -4870,19 +5046,17 @@ function handleTypeChange() {
         confidenceWeightsToggle: document.getElementById('edit-weights-toggle-group'),
         confidenceWeightsPanel: document.getElementById('edit-weights-panel'),
         // Dump alert-specific groups
-        // What: References to all dump edit form containers
-        // Why: handleTypeChange() needs to show/hide these when switching to/from dump
+        // What: References to dump basic fields, toggle button, and advanced panel
+        // Why: handleTypeChange() needs to show/hide these when switching to/from dump.
+        //      Advanced fields are inside the panel (like scoring weights), not individual grid children.
+        // How: Basic fields are direct .form-grid children. The toggle button and panel
+        //      sit after SMS notifications and contain all advanced fields internally.
         dumpDiscountMin: document.getElementById('dump-discount-min-group'),
         dumpShockSigma: document.getElementById('dump-shock-sigma-group'),
         dumpLiquidityFloor: document.getElementById('dump-liquidity-floor-group'),
         dumpCooldown: document.getElementById('dump-cooldown-group'),
-        dumpSellRatioMin: document.getElementById('dump-sell-ratio-min-group'),
-        dumpRelVolMin: document.getElementById('dump-rel-vol-min-group'),
-        dumpFairHalflife: document.getElementById('dump-fair-halflife-group'),
-        dumpVolHalflife: document.getElementById('dump-vol-halflife-group'),
-        dumpVarHalflife: document.getElementById('dump-var-halflife-group'),
-        dumpConfirmationBuckets: document.getElementById('dump-confirmation-buckets-group'),
-        dumpConsistencyRequired: document.getElementById('dump-consistency-required-group')
+        dumpAdvancedToggle: document.getElementById('edit-dump-advanced-toggle-group'),
+        dumpAdvancedPanel: document.getElementById('edit-dump-advanced-panel')
     };
     
     // minVolumeInput: The input element for the minimum hourly volume value
@@ -4938,21 +5112,18 @@ function handleTypeChange() {
     };
     
     // Helper to hide all dump-specific fields
-    // What: Hides all form fields specific to dump alerts
+    // What: Hides all form fields specific to dump alerts (basic fields + toggle + panel)
     // Why: When switching away from dump type, these fields should be hidden
-    // How: Sets display to 'none' for each dump-specific field group
+    // How: Hides the 4 basic fields, the toggle button, and the advanced panel.
+    //      The panel contains all 7 advanced fields internally, so hiding the panel
+    //      hides them all at once (same pattern as scoring weights).
     const hideDumpFields = () => {
         if (groups.dumpDiscountMin) groups.dumpDiscountMin.style.display = 'none';
         if (groups.dumpShockSigma) groups.dumpShockSigma.style.display = 'none';
         if (groups.dumpLiquidityFloor) groups.dumpLiquidityFloor.style.display = 'none';
         if (groups.dumpCooldown) groups.dumpCooldown.style.display = 'none';
-        if (groups.dumpSellRatioMin) groups.dumpSellRatioMin.style.display = 'none';
-        if (groups.dumpRelVolMin) groups.dumpRelVolMin.style.display = 'none';
-        if (groups.dumpFairHalflife) groups.dumpFairHalflife.style.display = 'none';
-        if (groups.dumpVolHalflife) groups.dumpVolHalflife.style.display = 'none';
-        if (groups.dumpVarHalflife) groups.dumpVarHalflife.style.display = 'none';
-        if (groups.dumpConfirmationBuckets) groups.dumpConfirmationBuckets.style.display = 'none';
-        if (groups.dumpConsistencyRequired) groups.dumpConsistencyRequired.style.display = 'none';
+        if (groups.dumpAdvancedToggle) groups.dumpAdvancedToggle.style.display = 'none';
+        if (groups.dumpAdvancedPanel) groups.dumpAdvancedPanel.style.display = 'none';
     };
     
     if (alertType === 'spread') {
@@ -5171,14 +5342,11 @@ function handleTypeChange() {
         if (groups.dumpShockSigma) groups.dumpShockSigma.style.display = 'block';
         if (groups.dumpLiquidityFloor) groups.dumpLiquidityFloor.style.display = 'block';
         if (groups.dumpCooldown) groups.dumpCooldown.style.display = 'block';
-        // Show advanced fields too (they're all visible in edit mode, unlike create mode)
-        if (groups.dumpSellRatioMin) groups.dumpSellRatioMin.style.display = 'block';
-        if (groups.dumpRelVolMin) groups.dumpRelVolMin.style.display = 'block';
-        if (groups.dumpFairHalflife) groups.dumpFairHalflife.style.display = 'block';
-        if (groups.dumpVolHalflife) groups.dumpVolHalflife.style.display = 'block';
-        if (groups.dumpVarHalflife) groups.dumpVarHalflife.style.display = 'block';
-        if (groups.dumpConfirmationBuckets) groups.dumpConfirmationBuckets.style.display = 'block';
-        if (groups.dumpConsistencyRequired) groups.dumpConsistencyRequired.style.display = 'block';
+        // Show the advanced toggle button (advanced fields hidden behind it, same as create page)
+        // What: Shows the "Advanced Detection Settings" button but keeps the panel collapsed
+        // Why: Matches the create-page UX — advanced fields are opt-in, reducing clutter
+        // How: Only the toggle button is made visible; clicking it calls toggleEditDumpAdvanced()
+        if (groups.dumpAdvancedToggle) groups.dumpAdvancedToggle.style.display = 'block';
         
         // Let scope change handler determine item/min-max price visibility
         handleScopeChange();
@@ -5224,6 +5392,21 @@ function handleTypeChange() {
  */
 function toggleViewWeights() {
     const panel = document.getElementById('view-weights-panel');
+    if (!panel) return;
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+
+/**
+ * toggleViewDumpAdvanced()
+ *
+ * What: Toggles the dump advanced detection settings panel in VIEW mode (read-only).
+ * Why:  Mirrors toggleViewWeights() — lets users inspect advanced EWMA parameters
+ *       without cluttering the main config view. Panel shows read-only values.
+ * How:  Finds #view-dump-advanced-panel and toggles display between 'none' and 'block'.
+ */
+function toggleViewDumpAdvanced() {
+    // panel: The read-only panel containing all 7 advanced dump parameter values
+    const panel = document.getElementById('view-dump-advanced-panel');
     if (!panel) return;
     panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
 }
@@ -5297,6 +5480,28 @@ function toggleEditWeights() {
     panel.style.display = isVisible ? 'none' : 'block';
     // Recalculate sum indicator when panel is shown
     if (!isVisible) updateEditWeightSum();
+}
+
+/**
+ * toggleEditDumpAdvanced()
+ *
+ * What: Toggles the dump advanced detection settings panel on the edit page.
+ * Why:  Mirrors the scoring weights toggle pattern — a single panel div containing
+ *       all advanced fields is shown/hidden as a unit. This keeps them compact,
+ *       left-aligned, and visually contained (not scattered across the main grid).
+ * How:  Finds the #edit-dump-advanced-panel div and toggles its display between
+ *       'none' and 'block'. The panel uses grid-column: 1 / -1 to span the full
+ *       width of .form-grid, and contains its own .edit-dump-advanced-grid flex
+ *       layout with 2 inputs per row.
+ */
+function toggleEditDumpAdvanced() {
+    // panel: The container holding all 7 advanced dump fields
+    const panel = document.getElementById('edit-dump-advanced-panel');
+    if (!panel) return;
+
+    // isVisible: Current visibility state of the panel
+    const isVisible = panel.style.display !== 'none';
+    panel.style.display = isVisible ? 'none' : 'block';
 }
 
 /**
