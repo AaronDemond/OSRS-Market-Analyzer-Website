@@ -376,6 +376,7 @@ def fetch_and_store_snapshot(lookup):
         snapshot_timestamp=snapshot_timestamp,
     )
 
+
     if not objects_to_insert:
         log("INFO: Snapshot contained no insertable item data.")
         return 0

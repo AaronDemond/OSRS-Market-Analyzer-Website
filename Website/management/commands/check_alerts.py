@@ -305,6 +305,20 @@ class Command(BaseCommand):
         #   'volatility_buffer': list,     # Rolling buffer of absolute moves
         # }
         self.sustained_state = {}
+        
+        # =============================================================================
+        # DUMP ALERT MARKET DRIFT STATE
+        # =============================================================================
+        # What: Instance-level state for computing market-wide drift each check cycle.
+        # Why: Dump alerts need to subtract market-wide movement from individual item returns
+        #      to isolate idiosyncratic (item-specific) shocks. This state persists across
+        #      cycles within the same process lifetime.
+        # How: 'last_mids' stores the previous cycle's mid prices per item so we can compute
+        #      log returns; 'market_drift' stores the latest computed median return.
+        self.dump_market_state = {
+            'last_mids': {},      # item_id_str -> last mid price (float)
+            'market_drift': 0.0,  # median log return of liquid items this cycle
+        }
 
     def get_item_mapping(self):
         """Fetch and cache item ID to name mapping"""
@@ -2645,6 +2659,531 @@ class Command(BaseCommand):
         except Exception as e:
             self.stdout.write(self.style.ERROR(f'Failed to send notification: {e}'))
 
+    # =============================================================================
+    # DUMP ALERT: EWMA HELPER FUNCTIONS
+    # =============================================================================
+
+    def _compute_ewma_alpha(self, halflife_minutes):
+        """
+        Convert an EWMA half-life (in minutes) to the smoothing factor alpha.
+
+        What: Returns the alpha value such that the EWMA halves its weight
+              every 'halflife_minutes' minutes, with 5-minute buckets.
+        Why: EWMA alpha controls how fast the moving average adapts;
+             derived from half-life for intuitive user configuration.
+        How: alpha = 1 - exp(ln(0.5) / (halflife_minutes / 5))
+             where 5 is the bucket size in minutes.
+
+        Args:
+            halflife_minutes: Half-life in minutes (e.g., 120 = 2 hours).
+
+        Returns:
+            float: Alpha in (0, 1]. Returns 1.0 if halflife <= 0.
+        """
+        if halflife_minutes is None or halflife_minutes <= 0:
+            return 1.0
+        # halflife_buckets: Number of 5-minute buckets that make up the half-life
+        halflife_buckets = halflife_minutes / 5.0
+        return 1.0 - math.exp(math.log(0.5) / halflife_buckets)
+
+    def _update_ewma(self, current_ewma, new_value, alpha):
+        """
+        Update a single EWMA value with a new observation.
+
+        What: Returns the updated EWMA after incorporating new_value.
+        Why: Core building block for all EWMA calculations (fair, variance, volume).
+        How: If current_ewma is None (first observation), returns new_value;
+             otherwise returns (1 - alpha) * current_ewma + alpha * new_value.
+
+        Args:
+            current_ewma: Previous EWMA value, or None if uninitialized.
+            new_value: The new observation to incorporate.
+            alpha: Smoothing factor in (0, 1].
+
+        Returns:
+            float: Updated EWMA value.
+        """
+        if current_ewma is None:
+            return float(new_value)
+        return (1.0 - alpha) * current_ewma + alpha * float(new_value)
+
+    def compute_market_drift(self, all_prices):
+        """
+        Compute the median log return across all liquid items this check cycle.
+
+        What: Calculates the market-wide price drift so individual item returns
+              can be adjusted for general market movement.
+        Why: Dump detection must distinguish item-specific sell-offs from broad
+             market sell-offs. Subtracting market drift isolates idiosyncratic shocks.
+        How:
+            1. For each item in all_prices, compute mid = (high + low) / 2
+            2. If we have a previous mid (from last cycle), compute log return
+            3. Collect all valid log returns
+            4. Market drift = median of all returns (robust to outliers)
+            5. Update last_mids for next cycle
+
+        Args:
+            all_prices: Dict of item_id_str -> {'high': int, 'low': int, ...}
+
+        Side Effects:
+            Updates self.dump_market_state['last_mids'] and
+            self.dump_market_state['market_drift'].
+        """
+        # last_mids: Previous cycle's mid prices, keyed by item_id string
+        last_mids = self.dump_market_state['last_mids']
+        # returns: List of log returns for all items with valid previous and current mids
+        returns = []
+        # new_mids: This cycle's mid prices, will replace last_mids at end
+        new_mids = {}
+
+        for item_id_str, price_data in all_prices.items():
+            high = price_data.get('high')
+            low = price_data.get('low')
+            if high is None or low is None or high <= 0 or low <= 0:
+                continue
+            # mid: Current mid price for this item
+            mid = (high + low) / 2.0
+            new_mids[item_id_str] = mid
+
+            # prev_mid: Previous cycle's mid price for this item
+            prev_mid = last_mids.get(item_id_str)
+            if prev_mid is not None and prev_mid > 0:
+                # r: Log return from previous cycle to current
+                r = math.log(mid / prev_mid)
+                returns.append(r)
+
+        # Update state for next cycle
+        self.dump_market_state['last_mids'] = new_mids
+
+        # Compute median return as robust drift estimate
+        if returns:
+            returns.sort()
+            n = len(returns)
+            if n % 2 == 1:
+                self.dump_market_state['market_drift'] = returns[n // 2]
+            else:
+                self.dump_market_state['market_drift'] = (
+                    returns[n // 2 - 1] + returns[n // 2]
+                ) / 2.0
+        else:
+            # No valid returns yet (first cycle) — drift is 0
+            self.dump_market_state['market_drift'] = 0.0
+
+    def _get_latest_5m_bucket(self, item_id):
+        """
+        Get the most recent FiveMinTimeSeries row for an item.
+
+        What: Returns the latest 5-minute time series data point for an item.
+        Why: Provides sell ratio and bucket volume data for dump evaluation.
+        How: Queries FiveMinTimeSeries ordered by -timestamp and returns first result.
+
+        Args:
+            item_id: Integer or string item ID.
+
+        Returns:
+            FiveMinTimeSeries instance, or None if no data exists.
+        """
+        return FiveMinTimeSeries.objects.filter(
+            item_id=int(item_id)
+        ).first()
+
+    def _compute_sell_ratio(self, bucket):
+        """
+        Compute the sell-side ratio from a FiveMinTimeSeries bucket.
+
+        What: Returns the fraction of total volume on the sell (low-price) side.
+        Why: Dumps are characterized by sell-heavy volume; this metric quantifies it.
+        How: sell_ratio = low_price_volume / (high_price_volume + low_price_volume)
+
+        Args:
+            bucket: FiveMinTimeSeries instance with high_price_volume and low_price_volume.
+
+        Returns:
+            float: Sell ratio in [0, 1], or 0.0 if total volume is 0.
+        """
+        # total: Combined high and low price volume for this 5-minute bucket
+        total = (bucket.high_price_volume or 0) + (bucket.low_price_volume or 0)
+        if total <= 0:
+            return 0.0
+        return (bucket.low_price_volume or 0) / total
+
+    def _check_dump_consistency(self, item_id):
+        """
+        Check if an item has consistent two-sided trading in recent history.
+
+        What: Returns True if at least 6 of the last 12 five-minute buckets have
+              both high-side and low-side volume > 0.
+        Why: Items with one-sided volume are likely manipulated or illiquid,
+             making dump detection unreliable.
+        How: Queries last 12 FiveMinTimeSeries rows and counts valid buckets.
+
+        Args:
+            item_id: Integer or string item ID.
+
+        Returns:
+            bool: True if consistency check passes (>= 6 of 12 buckets valid).
+        """
+        # recent_buckets: Last 12 five-minute time series rows for this item
+        recent_buckets = FiveMinTimeSeries.objects.filter(
+            item_id=int(item_id)
+        )[:12]
+        # both_side_count: Number of buckets where both sides have trades
+        both_side_count = sum(
+            1 for b in recent_buckets
+            if (b.high_price_volume or 0) > 0 and (b.low_price_volume or 0) > 0
+        )
+        return both_side_count >= 6
+
+    def _evaluate_single_item_dump(self, item_id_str, all_prices, item_state,
+                                    alpha_fair, alpha_vol, alpha_var,
+                                    market_drift, alert):
+        """
+        Evaluate dump conditions for a single item, updating EWMA state in place.
+
+        What: Checks all dump conditions for one item and returns triggered data
+              if all conditions are met, or None otherwise.
+        Why: Core per-item evaluation logic, separated from multi-item iteration
+             for clarity and testability.
+        How:
+            1. Get current mid price from all_prices
+            2. Update EWMA state (fair value, expected volume, variance)
+            3. Check each dump condition (shock, sell ratio, rel vol, discount)
+            4. Handle confirmation buckets and cooldown
+            5. Return triggered data dict or None
+
+        Args:
+            item_id_str: String item ID.
+            all_prices: Dict of all current prices.
+            item_state: Mutable dict with this item's EWMA state (modified in place).
+            alpha_fair: EWMA alpha for fair value.
+            alpha_vol: EWMA alpha for expected volume.
+            alpha_var: EWMA alpha for variance.
+            market_drift: Current market drift value.
+            alert: Alert model instance with dump configuration.
+
+        Returns:
+            dict: Triggered item data if all conditions met, None otherwise.
+        """
+        # --- Get current price data ---
+        price_data = all_prices.get(item_id_str)
+        if not price_data:
+            return None
+        high = price_data.get('high')
+        low = price_data.get('low')
+        if high is None or low is None or high <= 0 or low <= 0:
+            return None
+
+        # mid: Current mid price for EWMA and return calculations
+        mid = (high + low) / 2.0
+        # last_mid: Previous cycle's mid price for this item
+        last_mid = item_state.get('last_mid')
+
+        # --- Update fair value EWMA ---
+        item_state['fair'] = self._update_ewma(item_state.get('fair'), mid, alpha_fair)
+
+        # --- Get latest 5m bucket for sell ratio and volume ---
+        bucket = self._get_latest_5m_bucket(item_id_str)
+        if not bucket:
+            item_state['last_mid'] = mid
+            return None
+
+        # bucket_vol: Total trade count in the latest 5-minute bucket
+        bucket_vol = (bucket.high_price_volume or 0) + (bucket.low_price_volume or 0)
+        # Update expected volume EWMA
+        item_state['expected_vol'] = self._update_ewma(
+            item_state.get('expected_vol'), bucket_vol, alpha_vol
+        )
+
+        # --- Compute idiosyncratic shock ---
+        # shock_sigma: How many sigmas the item's return deviates from market drift
+        # Requires a previous mid price to compute return
+        shock_sigma = 0.0
+        if last_mid is not None and last_mid > 0:
+            # r: Item's log return from previous to current cycle
+            r = math.log(mid / last_mid)
+            # r_idio: Idiosyncratic return after removing market drift
+            r_idio = r - market_drift
+            # Update variance EWMA with squared idiosyncratic return
+            item_state['var_idio'] = self._update_ewma(
+                item_state.get('var_idio'), r_idio * r_idio, alpha_var
+            )
+            # sigma: Standard deviation of idiosyncratic returns
+            var_val = item_state.get('var_idio', 0)
+            # epsilon: Small value to prevent division by zero in sigma computation
+            epsilon = 1e-12
+            sigma = math.sqrt(max(var_val, epsilon))
+            shock_sigma = r_idio / sigma
+        else:
+            # First observation — initialize variance but can't compute shock yet
+            item_state['var_idio'] = item_state.get('var_idio')
+            item_state['last_mid'] = mid
+            return None
+
+        # Update last_mid for next cycle
+        item_state['last_mid'] = mid
+
+        # --- Extract alert thresholds (with defaults) ---
+        # discount_min: Minimum % discount below fair value to trigger
+        discount_min = alert.dump_discount_min if alert.dump_discount_min is not None else 3.0
+        # shock_threshold: Shock sigma threshold (negative = downward)
+        shock_threshold = alert.dump_shock_sigma if alert.dump_shock_sigma is not None else -4.0
+        # sell_ratio_min: Minimum fraction of volume on sell side
+        sell_ratio_min = alert.dump_sell_ratio_min if alert.dump_sell_ratio_min is not None else 0.70
+        # rel_vol_min: Minimum relative volume vs expected
+        rel_vol_min = alert.dump_rel_vol_min if alert.dump_rel_vol_min is not None else 2.5
+        # confirmation_needed: Consecutive buckets required before triggering
+        confirmation_needed = alert.dump_confirmation_buckets if alert.dump_confirmation_buckets is not None else 2
+        # cooldown_minutes: Minutes to wait before re-alerting on same item
+        cooldown_minutes = alert.dump_cooldown if alert.dump_cooldown is not None else 30
+        # consistency_required: Whether to require both-side volume consistency
+        consistency_required = alert.dump_consistency_required if alert.dump_consistency_required is not None else True
+
+        # --- Check cooldown ---
+        now_ts = int(time.time())
+        # cooldown_until: Unix timestamp when this item's cooldown expires
+        cooldown_until = item_state.get('cooldown_until', 0)
+        if now_ts < cooldown_until:
+            return None
+
+        # --- Check each dump condition ---
+        # Condition 1: Shock sigma (must be a large negative outlier)
+        if shock_sigma > shock_threshold:
+            item_state['consecutive'] = 0
+            return None
+
+        # Condition 2: Sell ratio
+        # sell_ratio: Fraction of volume on the sell (low-price) side
+        sell_ratio = self._compute_sell_ratio(bucket)
+        if sell_ratio < sell_ratio_min:
+            item_state['consecutive'] = 0
+            return None
+
+        # Condition 3: Relative volume
+        expected_vol = item_state.get('expected_vol', 0)
+        # rel_vol: Current bucket volume relative to EWMA expected volume
+        rel_vol = (bucket_vol / expected_vol) if expected_vol > 0 else 0.0
+        if rel_vol < rel_vol_min:
+            item_state['consecutive'] = 0
+            return None
+
+        # Condition 4: Discount below fair value
+        fair = item_state.get('fair', mid)
+        # avg_low: The low-side average price from the 5m bucket (what buyers are paying)
+        avg_low = bucket.avg_low_price
+        if avg_low is None or avg_low <= 0 or fair <= 0:
+            item_state['consecutive'] = 0
+            return None
+        # discount_pct: How far below fair value the low price is, as a percentage
+        discount_pct = ((fair - avg_low) / fair) * 100.0
+        if discount_pct < discount_min:
+            item_state['consecutive'] = 0
+            return None
+
+        # Condition 5: Consistency check (if enabled)
+        if consistency_required and not self._check_dump_consistency(item_id_str):
+            item_state['consecutive'] = 0
+            return None
+
+        # --- All conditions passed — handle confirmation ---
+        # consecutive: Number of consecutive cycles where all conditions were met
+        consecutive = item_state.get('consecutive', 0) + 1
+        item_state['consecutive'] = consecutive
+
+        if consecutive < confirmation_needed:
+            return None
+
+        # --- TRIGGERED: Build result data ---
+        # Reset consecutive counter and set cooldown
+        item_state['consecutive'] = 0
+        item_state['cooldown_until'] = now_ts + (cooldown_minutes * 60)
+
+        # item_mapping: Dict of item_id_str -> item_name for display
+        item_mapping = self.get_item_mapping()
+        # item_name: Human-readable name for this item
+        item_name = item_mapping.get(item_id_str, f'Item {item_id_str}')
+
+        return {
+            'item_id': item_id_str,
+            'item_name': item_name,
+            'fair_value': round(fair, 0),
+            'current_low': avg_low,
+            'discount_pct': round(discount_pct, 2),
+            'sell_ratio': round(sell_ratio, 4),
+            'rel_vol': round(rel_vol, 2),
+            'shock_sigma': round(shock_sigma, 2),
+        }
+
+    def check_dump_alert(self, alert, all_prices):
+        """
+        Check if a dump alert should trigger for any monitored items.
+
+        What: Evaluates dump conditions across all items the alert is monitoring.
+        Why: Users want to detect sharp sell-offs on liquid items in real time.
+        How:
+            1. Load persisted EWMA state from alert.dump_state
+            2. Compute EWMA alphas from half-life settings
+            3. Determine which items to check (specific or all with price filters)
+            4. For "all items" mode, pre-filter to items with price drops
+            5. Check liquidity gate before expensive 5m queries
+            6. Evaluate each candidate via _evaluate_single_item_dump()
+            7. Persist updated state back to alert.dump_state
+            8. Return list of triggered items or True/False for single item
+
+        Args:
+            alert: Alert model instance with dump configuration.
+            all_prices: Dict of item_id_str -> {'high': int, 'low': int, ...}
+
+        Returns:
+            - List of triggered item dicts for multi-item/all-items alerts
+            - True/False for single-item alerts
+        """
+        # --- Load persisted EWMA state ---
+        # dump_state: Per-item EWMA state dict loaded from the database
+        dump_state = {}
+        if alert.dump_state:
+            try:
+                dump_state = json.loads(alert.dump_state)
+            except (json.JSONDecodeError, TypeError):
+                dump_state = {}
+
+        # --- Compute EWMA alphas from half-life settings ---
+        # alpha_fair: Smoothing factor for fair value EWMA
+        alpha_fair = self._compute_ewma_alpha(
+            alert.dump_fair_halflife if alert.dump_fair_halflife is not None else 120
+        )
+        # alpha_vol: Smoothing factor for expected volume EWMA
+        alpha_vol = self._compute_ewma_alpha(
+            alert.dump_vol_halflife if alert.dump_vol_halflife is not None else 360
+        )
+        # alpha_var: Smoothing factor for variance EWMA
+        alpha_var = self._compute_ewma_alpha(
+            alert.dump_var_halflife if alert.dump_var_halflife is not None else 120
+        )
+
+        # market_drift: Current cycle's market drift (computed once before alert loop)
+        market_drift = self.dump_market_state.get('market_drift', 0.0)
+        # liquidity_floor: Minimum hourly GP volume for an item to be eligible
+        liquidity_floor = alert.dump_liquidity_floor if alert.dump_liquidity_floor is not None else 5000000
+
+        # --- Determine which items to check ---
+        items_to_check = self._get_dump_items_to_check(alert, all_prices, dump_state)
+
+        # --- Evaluate each item ---
+        # triggered_items: List of items that passed all dump conditions
+        triggered_items = []
+
+        for item_id_str in items_to_check:
+            # --- Liquidity gate (check before expensive 5m queries) ---
+            volume = self.get_volume_from_timeseries(item_id_str, 0)
+            if volume is None or volume < liquidity_floor:
+                continue
+
+            # Get or create per-item state dict
+            if item_id_str not in dump_state:
+                dump_state[item_id_str] = {}
+            # item_state: Mutable reference to this item's EWMA state
+            item_state = dump_state[item_id_str]
+
+            result = self._evaluate_single_item_dump(
+                item_id_str, all_prices, item_state,
+                alpha_fair, alpha_vol, alpha_var,
+                market_drift, alert
+            )
+            if result:
+                triggered_items.append(result)
+
+        # --- Persist updated state ---
+        alert.dump_state = json.dumps(dump_state)
+        alert.save(update_fields=['dump_state'])
+
+        # --- Return results ---
+        if alert.is_all_items or alert.item_ids:
+            # Multi-item/all-items: return list (may be empty)
+            return triggered_items if triggered_items else False
+        else:
+            # Single item: return True/False
+            return True if triggered_items else False
+
+    def _get_dump_items_to_check(self, alert, all_prices, dump_state):
+        """
+        Determine which items a dump alert should evaluate this cycle.
+
+        What: Returns a list of item_id strings to check for dump conditions.
+        Why: Different alert scopes (single, multi, all) need different item lists;
+             "all items" mode benefits from pre-filtering for performance.
+        How:
+            - Single item: returns [str(alert.item_id)]
+            - Multi-item: returns parsed item_ids JSON
+            - All items: returns all items from all_prices that pass price filters
+              and show a price drop vs last cycle (pre-filter optimization)
+
+        Args:
+            alert: Alert model instance.
+            all_prices: Dict of all current prices.
+            dump_state: Current persisted EWMA state (for pre-filter comparison).
+
+        Returns:
+            list: Item ID strings to evaluate.
+        """
+        if alert.is_all_items:
+            return self._get_all_items_dump_candidates(alert, all_prices, dump_state)
+        elif alert.item_ids:
+            try:
+                ids = json.loads(alert.item_ids)
+                return [str(x) for x in ids] if isinstance(ids, list) else []
+            except (json.JSONDecodeError, TypeError):
+                return []
+        elif alert.item_id:
+            return [str(alert.item_id)]
+        return []
+
+    def _get_all_items_dump_candidates(self, alert, all_prices, dump_state):
+        """
+        Pre-filter all items for dump alert "all items" mode.
+
+        What: Returns item IDs that pass price range filters and show a potential price drop.
+        Why: Checking all ~4400 items is expensive; pre-filtering by price drop
+             eliminates items that can't possibly be dumping (going up or stable).
+        How:
+            1. Apply min/max price filters from alert config
+            2. Skip items where current mid >= last_mid (not dropping)
+            3. Return only items where mid has declined since last cycle
+
+        Args:
+            alert: Alert model instance with optional min/max price.
+            all_prices: Dict of all current prices.
+            dump_state: Current EWMA state with last_mid values.
+
+        Returns:
+            list: Item ID strings that are candidates for dump evaluation.
+        """
+        # candidates: Items that pass price filters and show a price decline
+        candidates = []
+        for item_id_str, price_data in all_prices.items():
+            high = price_data.get('high')
+            low = price_data.get('low')
+            if high is None or low is None or high <= 0 or low <= 0:
+                continue
+
+            # Apply min/max price filters
+            if alert.minimum_price is not None:
+                if high < alert.minimum_price or low < alert.minimum_price:
+                    continue
+            if alert.maximum_price is not None:
+                if high > alert.maximum_price or low > alert.maximum_price:
+                    continue
+
+            # Pre-filter: only check items with declining mid price
+            mid = (high + low) / 2.0
+            item_s = dump_state.get(item_id_str, {})
+            last_mid = item_s.get('last_mid')
+            # Allow items with no previous mid (first observation needs to initialize state)
+            if last_mid is not None and mid >= last_mid:
+                continue
+
+            candidates.append(item_id_str)
+        return candidates
+
     def check_alert(self, alert, all_prices):
         """
         Check if an alert should be triggered.
@@ -2677,6 +3216,15 @@ class Command(BaseCommand):
         # How: Fetches timeseries data, runs compute_flip_confidence(), applies trigger rule
         if alert.type == 'flip_confidence':
             return self.check_flip_confidence_alert(alert, all_prices)
+        
+        # =============================================================================
+        # HANDLE DUMP ALERTS
+        # =============================================================================
+        # What: Detects sharp sell-offs on liquid items below EWMA fair value
+        # Why: Users want to catch dump events distinct from general market sell-offs
+        # How: Uses EWMA fair value, idiosyncratic shock, sell pressure, and discount
+        if alert.type == 'dump':
+            return self.check_dump_alert(alert, all_prices)
         
         # Handle threshold alerts
         # What: Checks if price has crossed a threshold (percentage or value) from reference price
@@ -3244,6 +3792,7 @@ class Command(BaseCommand):
                    or (a.type == 'threshold' and (a.is_all_items or a.item_ids))  # Multi-item/all-items threshold can re-trigger
                    or (a.type == 'collective_move')  # Collective move alerts always re-check (monitors groups)
                    or (a.type == 'flip_confidence')  # Flip confidence alerts always re-check (continuous monitoring)
+                   or (a.type == 'dump')  # Dump alerts always re-check (continuous monitoring)
             ]
             
             if alerts_to_check:
@@ -3253,6 +3802,16 @@ class Command(BaseCommand):
                 all_prices = self.get_all_prices()
                 
                 if all_prices:
+                    # =============================================================================
+                    # COMPUTE MARKET DRIFT (once per check cycle, before evaluating alerts)
+                    # =============================================================================
+                    # What: Calculates the median log return across all items this cycle
+                    # Why: Dump alerts need market drift to isolate idiosyncratic shocks
+                    # How: Compares current mid prices to last cycle's mids, takes median return
+                    # Note: Runs every cycle regardless of whether dump alerts exist;
+                    #       the cost is negligible (just iterating all_prices dict in memory)
+                    self.compute_market_drift(all_prices)
+                    
                     for alert in alerts_to_check:
                         result = self.check_alert(alert, all_prices)
                         
@@ -3306,6 +3865,40 @@ class Command(BaseCommand):
                                 self.stdout.write(
                                     self.style.WARNING(
                                         f'TRIGGERED (flip confidence): {triggered_count} item(s) for {alert_str}'
+                                    )
+                                )
+                                # Send email notification if enabled, then disable to prevent spam
+                                if alert.email_notification:
+                                    self.send_alert_notification(alert, alert.triggered_text())
+                                    alert.email_notification = False
+                                    alert.save()
+                            continue  # Skip to next alert
+                        
+                        # =============================================================================
+                        # HANDLE DUMP ALERTS
+                        # =============================================================================
+                        # What: Process dump alerts which return True/list/False
+                        # Why: Dump alerts continuously monitor items and can re-trigger
+                        # How: For single-item, result is True/False; for multi/all-items, result is a list.
+                        #      Always stay active for continuous monitoring.
+                        if alert.type == 'dump':
+                            if result and result is not False:
+                                # Handle both single-item (True) and multi-item (list) results
+                                if isinstance(result, list) and result:
+                                    alert.triggered_data = json.dumps(result)
+                                alert.is_triggered = True
+                                # Only show notification if show_notification is enabled
+                                alert.is_dismissed = not alert.show_notification
+                                alert.is_active = True  # Keep monitoring - never auto-deactivate
+                                alert.triggered_at = timezone.now()
+                                alert.save()
+                                # triggered_count: Number of items that triggered this cycle
+                                triggered_count = len(result) if isinstance(result, list) else 1
+                                # alert_str: Safe ASCII representation for Windows console output
+                                alert_str = str(alert).replace('\u2265', '>=').replace('\u2264', '<=').replace('\u03c3', 'o')
+                                self.stdout.write(
+                                    self.style.WARNING(
+                                        f'TRIGGERED (dump): {triggered_count} item(s) for {alert_str}'
                                     )
                                 )
                                 # Send email notification if enabled, then disable to prevent spam

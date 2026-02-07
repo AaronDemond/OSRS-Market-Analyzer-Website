@@ -1119,6 +1119,17 @@ const ItemCollectionManager = {
                 selectedList: '#confidence-selected-items-list',
                 noItemsMsg: '#confidence-no-items-message',
                 notification: '#confidence-item-notification'
+            },
+            'dump': {
+                // DumpMultiItemSelector: Selector for dump alert type
+                // What: Maps dump alert type to its multi-item selector
+                // Why: Allows applying item collections to dump alerts
+                // How: References the DumpMultiItemSelector object defined in alerts-selectors.js
+                selector: typeof DumpMultiItemSelector !== 'undefined' ? DumpMultiItemSelector : null,
+                hiddenInput: '#dump-item-ids',
+                selectedList: '#dump-selected-items-list',
+                noItemsMsg: '#dump-no-items-message',
+                notification: '#dump-item-notification'
             }
         };
         

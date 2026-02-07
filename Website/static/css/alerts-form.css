@@ -33,8 +33,7 @@
     }
 
     .create-alert-form>button {
-        width: 100%;
-        flex-basis: 100%;
+        width: 250px;
         margin-top: 8px;
         order: 1000; /* Keep the submit button AFTER the checkbox options. */
     }
@@ -113,6 +112,86 @@
             notifications (900+) */
     .create-alert-form > #confidence-advanced-toggle-group { order: 130; }
     .create-alert-form > #confidence-advanced-panel { order: 131; }
+
+    /* --- Dump alert: scope, items, basic fields, advanced toggle + panel ordering --- */
+    /* What: Places all dump-specific form groups in the correct visual order within
+             the flex-based create form, after the core shared fields
+       Why: The create form uses flexbox ordering to standardize field sequence for
+            each alert type. Without explicit order, dump fields appear in DOM order
+            which may interleave with other alert type fields
+       How: Assigns flex order values: scope (50) → items (60) → basic fields (70-73)
+            → advanced toggle (130) → advanced panel (131) — consistent with the
+            existing ordering scheme used by spike/spread/sustained/threshold/confidence */
+    .create-alert-form > #dump-scope-group { order: 50; }
+    .create-alert-form > #dump-items-group { order: 60; }
+    .create-alert-form > #dump-discount-min-group { order: 70; }
+    .create-alert-form > #dump-shock-sigma-group { order: 71; }
+    .create-alert-form > #dump-liquidity-floor-group { order: 72; }
+    .create-alert-form > #dump-cooldown-group { order: 73; }
+    .create-alert-form > #dump-advanced-toggle-group { order: 130; }
+    .create-alert-form > #dump-advanced-panel { order: 131; }
+
+    /* ==========================================================================
+       DUMP ADVANCED PANEL: FULL-WIDTH FLEX GRID LAYOUT
+       ==========================================================================
+       What: Styles the dump advanced settings panel as a full-width container
+             that lays out its child form groups in the same wrap-grid pattern
+             as the main form (250px per field, wrapping to multiple rows)
+       Why: The panel is a direct child of the flex-based .create-alert-form.
+            It must take the full row width, then act as its own flex container
+            so the inner .form-group items wrap into a 250px-per-column grid
+            identical to the main form's layout
+       How:
+         - width: 100% + flex-basis: 100% force the panel onto its own full row
+         - display: flex + flex-wrap: wrap creates an inner grid
+         - gap: 16px matches the outer form's gap
+         - Child .form-group elements are explicitly sized to 250px
+       ========================================================================== */
+    #dump-advanced-panel {
+        width: 100%;
+        flex-basis: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        align-items: flex-start;
+    }
+
+    /* What: Each dump advanced form group uses the standard 250px width
+       Why: Without this, child .form-group elements would stretch to fill the
+            full panel width (flex items default to content-sized, but the inputs
+            inside them are width:100% which creates a feedback loop).
+            Explicitly constraining to 250px + max-width ensures they match
+            the main form's field grid regardless of flex context
+       How: Fixed 250px width and max-width with no grow/shrink */
+    #dump-advanced-panel > .form-group {
+        width: 250px;
+        max-width: 250px;
+        flex-grow: 0;
+        flex-shrink: 0;
+        margin-bottom: 0;
+    }
+
+    /* What: Makes the dump advanced panel's introductory hint text span the full row
+       Why: The description "Fine-tune the EWMA engine..." is a sentence-level guide,
+            not a field label — it should not be squeezed into a 250px column
+       How: flex-basis: 100% forces a line break after it */
+    #dump-advanced-panel > .form-hint {
+        flex-basis: 100%;
+        margin-bottom: 4px;
+    }
+
+    /* ==========================================================================
+       DUMP ADVANCED TOGGLE BUTTON: AUTO-WIDTH
+       ==========================================================================
+       What: Prevents the "Advanced Detection Settings" button container from
+             stretching to the full 250px form-group width
+       Why: The toggle button wraps text content that is much narrower than 250px.
+            At 250px it looks oversized and out of place next to the compact
+            basic fields. Auto width lets it shrink to fit its content
+       How: Override the form-group 250px width with auto for just this element */
+    .create-alert-form > #dump-advanced-toggle-group {
+        width: auto;
+    }
 
     /* ==========================================================================
        CONFIDENCE WEIGHT PANEL: FLEX LAYOUT + NARROW INPUTS
@@ -193,6 +272,25 @@
     .create-alert-form > #show-notification-group { order: 900; }
     .create-alert-form > #sms-notification-group { order: 901; }
 
+    /* =====================================================================================
+       HR SEPARATOR ABOVE THE CREATE BUTTON
+       What: Makes the <hr> element visible inside the flex-based create-alert form.
+       Why:  In a flex container, <hr> collapses to zero width because flex items default to
+             width: auto (which is 0 for an <hr>).  Without explicit sizing and ordering,
+             the <hr> is invisible and sits in the wrong position.
+       How:  Forces the <hr> to span the full row (width + flex-basis 100%), places it after
+             notifications (order 950) but before the submit button (order 1000), and applies
+             a subtle border style consistent with the site's --border colour variable.
+       ===================================================================================== */
+    .create-alert-form > hr {
+        width: 90%;
+        flex-basis: 90%;
+        order: 950;
+        border: none;
+        border-top: 5px solid #c6c6c6;
+        margin: 4px 0;
+    }
+
     @media (max-width: 600px) {
         .create-alert-form>.form-group {
             width: 100%;
@@ -219,6 +317,18 @@
            ===================================================================================== */
         #confidence-advanced-panel > .form-group {
             width: calc(50% - 8px);
+        }
+
+        /* =====================================================================================
+           MOBILE: DUMP ADVANCED INPUTS
+           What: On narrow screens, dump advanced fields go full-width (stacked)
+           Why: 250px fields may not fit side-by-side on very small screens, and the
+                long hint text beneath each input needs room to breathe
+           How: width: 100% makes each field take the full panel width
+           ===================================================================================== */
+        #dump-advanced-panel > .form-group {
+            width: 100%;
+            max-width: 100%;
         }
     }
 

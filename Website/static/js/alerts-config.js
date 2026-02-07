@@ -248,6 +248,30 @@
                 confidenceEvalInterval: '#confidence-eval-interval',
                 confidenceCooldown: '#confidence-cooldown',
                 confidenceSustainedCount: '#confidence-sustained-count',
+                // Dump alert selectors
+                // What: DOM selectors for dump alert's configuration UI
+                // Why: Enables the multi-item picker and parameter configuration for dump alerts
+                // How: Same pattern as flip_confidence with scope, items, basic and advanced settings
+                dumpScope: '#dump-scope',
+                dumpItemInput: '#dump-item-input',
+                dumpItemIds: '#dump-item-ids',
+                dumpItemSuggestions: '#dump-item-suggestions',
+                dumpSelectedItemsDropdown: '#dump-selected-items-dropdown',
+                dumpSelectedItemsList: '#dump-selected-items-list',
+                dumpNoItemsMessage: '#dump-no-items-message',
+                dumpMultiItemToggle: '#dump-multi-item-toggle',
+                dumpItemNotification: '#dump-item-notification',
+                dumpDiscountMin: '#dump-discount-min',
+                dumpShockSigma: '#dump-shock-sigma',
+                dumpLiquidityFloor: '#dump-liquidity-floor',
+                dumpCooldown: '#dump-cooldown',
+                dumpSellRatioMin: '#dump-sell-ratio-min',
+                dumpRelVolMin: '#dump-rel-vol-min',
+                dumpFairHalflife: '#dump-fair-halflife',
+                dumpVolHalflife: '#dump-vol-halflife',
+                dumpVarHalflife: '#dump-var-halflife',
+                dumpConfirmationBuckets: '#dump-confirmation-buckets',
+                dumpConsistencyRequired: '#dump-consistency-required',
                 groups: {
                     spreadScope: '#spread-scope-group',
                     spreadItems: '#spread-items-group',  // New group for spread multi-item selector
@@ -307,7 +331,24 @@
                     confidenceWeightPressure: '#confidence-weight-pressure-group',
                     confidenceWeightSpread: '#confidence-weight-spread-group',
                     confidenceWeightVolume: '#confidence-weight-volume-group',
-                    confidenceWeightStability: '#confidence-weight-stability-group'
+                    confidenceWeightStability: '#confidence-weight-stability-group',
+                    // Dump alert form groups
+                    // What: DOM selectors for dump alert form field containers
+                    // Why: Controls visibility of dump-specific form fields
+                    dumpScope: '#dump-scope-group',
+                    dumpItems: '#dump-items-group',
+                    dumpDiscountMin: '#dump-discount-min-group',
+                    dumpShockSigma: '#dump-shock-sigma-group',
+                    dumpLiquidityFloor: '#dump-liquidity-floor-group',
+                    dumpCooldown: '#dump-cooldown-group',
+                    dumpAdvancedToggle: '#dump-advanced-toggle-group',
+                    dumpSellRatioMin: '#dump-sell-ratio-min-group',
+                    dumpRelVolMin: '#dump-rel-vol-min-group',
+                    dumpFairHalflife: '#dump-fair-halflife-group',
+                    dumpVolHalflife: '#dump-vol-halflife-group',
+                    dumpVarHalflife: '#dump-var-halflife-group',
+                    dumpConfirmationBuckets: '#dump-confirmation-buckets-group',
+                    dumpConsistencyRequired: '#dump-consistency-required-group'
                 }
             },
             // Other UI elements
@@ -332,7 +373,8 @@
             SUSTAINED: 'sustained',
             THRESHOLD: 'threshold',
             COLLECTIVE_MOVE: 'collective_move',
-            FLIP_CONFIDENCE: 'flip_confidence'
+            FLIP_CONFIDENCE: 'flip_confidence',
+            DUMP: 'dump'
         },
 
         // CSRF token for Django POST requests

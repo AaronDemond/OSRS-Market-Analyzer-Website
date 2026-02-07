@@ -537,6 +537,26 @@
                 confidenceWeightSpread: document.querySelector(groups.confidenceWeightSpread),
                 confidenceWeightVolume: document.querySelector(groups.confidenceWeightVolume),
                 confidenceWeightStability: document.querySelector(groups.confidenceWeightStability),
+                // Dump alert elements
+                // What: DOM elements for dump alert form field containers
+                // Why: Controls visibility and access to dump-specific form fields when the user
+                //      selects "Dump Alert" from the alert type dropdown
+                // How: Resolves each dump form group selector defined in AlertsConfig.selectors.groups
+                //      so handleAlertTypeChange can show/hide them as needed
+                dumpScope: document.querySelector(groups.dumpScope),
+                dumpItems: document.querySelector(groups.dumpItems),
+                dumpDiscountMin: document.querySelector(groups.dumpDiscountMin),
+                dumpShockSigma: document.querySelector(groups.dumpShockSigma),
+                dumpLiquidityFloor: document.querySelector(groups.dumpLiquidityFloor),
+                dumpCooldown: document.querySelector(groups.dumpCooldown),
+                dumpAdvancedToggle: document.querySelector(groups.dumpAdvancedToggle),
+                dumpSellRatioMin: document.querySelector(groups.dumpSellRatioMin),
+                dumpRelVolMin: document.querySelector(groups.dumpRelVolMin),
+                dumpFairHalflife: document.querySelector(groups.dumpFairHalflife),
+                dumpVolHalflife: document.querySelector(groups.dumpVolHalflife),
+                dumpVarHalflife: document.querySelector(groups.dumpVarHalflife),
+                dumpConfirmationBuckets: document.querySelector(groups.dumpConfirmationBuckets),
+                dumpConsistencyRequired: document.querySelector(groups.dumpConsistencyRequired),
             };
             
             // minVolumeInput: The input element for the minimum hourly volume value
@@ -663,6 +683,37 @@
                 }
             };
 
+            /**
+             * Helper to hide all dump alert specific fields
+             * What: Hides all form fields that are specific to dump alerts
+             * Why: When switching away from dump alert type, these fields should be hidden
+             * How: Sets display to 'none' for each dump-specific field group, hides the
+             *      advanced panel, and clears any selected items
+             */
+            const hideDumpFields = () => {
+                if (elements.dumpScope) elements.dumpScope.style.display = 'none';
+                if (elements.dumpItems) elements.dumpItems.style.display = 'none';
+                if (elements.dumpDiscountMin) elements.dumpDiscountMin.style.display = 'none';
+                if (elements.dumpShockSigma) elements.dumpShockSigma.style.display = 'none';
+                if (elements.dumpLiquidityFloor) elements.dumpLiquidityFloor.style.display = 'none';
+                if (elements.dumpCooldown) elements.dumpCooldown.style.display = 'none';
+                if (elements.dumpAdvancedToggle) elements.dumpAdvancedToggle.style.display = 'none';
+                if (elements.dumpSellRatioMin) elements.dumpSellRatioMin.style.display = 'none';
+                if (elements.dumpRelVolMin) elements.dumpRelVolMin.style.display = 'none';
+                if (elements.dumpFairHalflife) elements.dumpFairHalflife.style.display = 'none';
+                if (elements.dumpVolHalflife) elements.dumpVolHalflife.style.display = 'none';
+                if (elements.dumpVarHalflife) elements.dumpVarHalflife.style.display = 'none';
+                if (elements.dumpConfirmationBuckets) elements.dumpConfirmationBuckets.style.display = 'none';
+                if (elements.dumpConsistencyRequired) elements.dumpConsistencyRequired.style.display = 'none';
+                // Hide the advanced panel container too
+                const dumpAdvPanel = document.getElementById('dump-advanced-panel');
+                if (dumpAdvPanel) dumpAdvPanel.style.display = 'none';
+                // Clear selected items when hiding
+                if (typeof DumpMultiItemSelector !== 'undefined') {
+                    DumpMultiItemSelector.clear();
+                }
+            };
+
             if (alertType === AlertsConfig.alertTypes.SPREAD) {
                 // Spread alerts: show spread-specific fields
                 elements.spreadScope.style.display = 'block';
@@ -677,6 +728,7 @@
                 hideSpikeFields();
                 hideCollectiveFields();
                 hideConfidenceFields();
+                hideDumpFields();
                 // What: Show min volume field for spread alerts
                 // Why: Users can filter spread opportunities by minimum hourly trading volume (GP)
                 //      to avoid low-volume items with inflated spreads that are impractical to flip
@@ -698,6 +750,7 @@
                 hideSpreadFields();  // Hide spread items to prevent duplicate item inputs
                 hideCollectiveFields();
                 hideConfidenceFields();
+                hideDumpFields();
                 if (elements.spikeScope) elements.spikeScope.style.display = 'block';
                 // Note: itemName is hidden for spike alerts - we use the multi-item selector instead
                 elements.itemName.style.display = 'none';
@@ -724,6 +777,7 @@
                 hideSpikeFields();
                 hideCollectiveFields();
                 hideConfidenceFields();
+                hideDumpFields();
                 elements.itemName.style.display = 'none';
                 elements.price.style.display = 'none';
                 elements.reference.style.display = 'block';  // Show reference selector for sustained alerts
@@ -764,6 +818,7 @@
                 hideSustainedFields();
                 hideCollectiveFields();
                 hideConfidenceFields();
+                hideDumpFields();
                 if (elements.numberItems) elements.numberItems.style.display = 'none';
                 elements.itemName.style.display = 'none';  // Using threshold's own item selector
                 elements.price.style.display = 'none';  // Using threshold value instead
@@ -806,6 +861,7 @@
                 hideSustainedFields();
                 hideThresholdFields();
                 hideConfidenceFields();
+                hideDumpFields();
                 if (elements.numberItems) elements.numberItems.style.display = 'none';
                 elements.itemName.style.display = 'none';  // Using collective's own item selector
                 elements.price.style.display = 'none';
@@ -839,6 +895,7 @@
                 hideSustainedFields();
                 hideThresholdFields();
                 hideCollectiveFields();
+                hideDumpFields();
                 if (elements.numberItems) elements.numberItems.style.display = 'none';
                 elements.itemName.style.display = 'none';  // Using confidence's own item selector
                 elements.price.style.display = 'none';
@@ -867,6 +924,44 @@
 
                 // Default to specific items
                 document.querySelector(selectors.isAllItems).value = 'false';
+            } else if (alertType === AlertsConfig.alertTypes.DUMP) {
+                /**
+                 * Dump alerts configuration
+                 * What: Shows dump-specific fields and hides other alert type fields
+                 * Why: Dump alerts detect sharp sell-offs using EWMA fair value, idiosyncratic shock,
+                 *      sell pressure, and discount below fair value
+                 * How: Hides all other alert type fields, shows dump basic fields (scope, discount,
+                 *      shock sigma, liquidity floor, cooldown) and the advanced toggle
+                 */
+                hideSpreadFields();
+                hideSpikeFields();
+                hideSustainedFields();
+                hideThresholdFields();
+                hideCollectiveFields();
+                hideConfidenceFields();
+                if (elements.numberItems) elements.numberItems.style.display = 'none';
+                elements.itemName.style.display = 'none';  // Using dump's own item selector
+                elements.price.style.display = 'none';
+                elements.reference.style.display = 'none';
+                elements.percentage.style.display = 'none';
+                elements.timeFrame.style.display = 'none';
+                elements.direction.style.display = 'none';
+                elements.minPrice.style.display = 'none';
+                elements.maxPrice.style.display = 'none';
+
+                // Show dump-specific basic fields
+                if (elements.dumpScope) elements.dumpScope.style.display = 'block';
+                if (elements.dumpDiscountMin) elements.dumpDiscountMin.style.display = 'block';
+                if (elements.dumpShockSigma) elements.dumpShockSigma.style.display = 'block';
+                if (elements.dumpLiquidityFloor) elements.dumpLiquidityFloor.style.display = 'block';
+                if (elements.dumpCooldown) elements.dumpCooldown.style.display = 'block';
+                if (elements.dumpAdvancedToggle) elements.dumpAdvancedToggle.style.display = 'block';
+
+                // Let scope change handler determine item selector visibility
+                this.handleDumpScopeChange(formType);
+
+                // Default to specific items
+                document.querySelector(selectors.isAllItems).value = 'false';
             } else {
                 // Above/Below alerts: show threshold fields
                 hideSpreadFields();  // Hide spread items to prevent duplicate item inputs
@@ -875,6 +970,7 @@
                 hideThresholdFields();
                 hideCollectiveFields();
                 hideConfidenceFields();
+                hideDumpFields();
                 if (elements.numberItems) elements.numberItems.style.display = 'none';
                 elements.itemName.style.display = 'block';
                 elements.price.style.display = 'block';
@@ -990,7 +1086,51 @@
         },
 
         /**
-         * Handles changes to the threshold alert "Items Tracked" dropdown.
+         * Handles changes to the dump alert "Apply To" dropdown.
+         * 
+         * What: Shows/hides the item selector and manages price filter visibility based on scope
+         * Why: When "All Items" is selected, the item selector is hidden (dump checks all items);
+         *      when "Specific Item(s)" is selected, the multi-item selector is shown
+         * How: Reads the dump-scope dropdown value and toggles visibility of items group and
+         *      price filter groups. Sets the is_all_items hidden input accordingly.
+         * 
+         * @param {string} formType - 'create' for create form, 'edit' for edit form
+         */
+        handleDumpScopeChange(formType) {
+            const selectors = AlertsConfig.selectors[formType];
+            const groups = selectors.groups;
+            
+            // Get the scope selection
+            const dumpScopeSelect = document.querySelector(selectors.dumpScope);
+            const dumpItemsGroup = document.querySelector(groups.dumpItems);
+            const isAllItemsInput = document.querySelector(selectors.isAllItems);
+            const minPriceGroup = document.querySelector(groups.minPrice);
+            const maxPriceGroup = document.querySelector(groups.maxPrice);
+            
+            if (!dumpScopeSelect) return;
+            
+            const selection = dumpScopeSelect.value;
+            
+            if (selection === 'all') {
+                // All Items mode: hide item selector, show price filters
+                if (dumpItemsGroup) dumpItemsGroup.style.display = 'none';
+                if (minPriceGroup) minPriceGroup.style.display = 'block';
+                if (maxPriceGroup) maxPriceGroup.style.display = 'block';
+                
+                // Set is_all_items flag
+                if (isAllItemsInput) isAllItemsInput.value = 'true';
+            } else {
+                // Specific Items mode: show item selector, hide price filters
+                if (dumpItemsGroup) dumpItemsGroup.style.display = 'block';
+                if (minPriceGroup) minPriceGroup.style.display = 'none';
+                if (maxPriceGroup) maxPriceGroup.style.display = 'none';
+                
+                // Clear is_all_items flag
+                if (isAllItemsInput) isAllItemsInput.value = 'false';
+            }
+        },
+
+        /**
          * 
          * What: Shows/hides the item selector and manages threshold type based on selection
          * Why: When "All Items" is selected, items selector is hidden and threshold type is locked to percentage

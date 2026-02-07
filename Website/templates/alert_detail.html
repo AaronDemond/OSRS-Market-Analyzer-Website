@@ -2666,6 +2666,7 @@
                             <option value="threshold" {% if alert.type == 'threshold' %}selected{% endif %}>Threshold</option>
                             <option value="collective_move" {% if alert.type == 'collective_move' %}selected{% endif %}>Collective Move</option>
                             <option value="flip_confidence" {% if alert.type == 'flip_confidence' %}selected{% endif %}>Flip Confidence</option>
+                            <option value="dump" {% if alert.type == 'dump' %}selected{% endif %}>Dump Alert</option>
                         </select>
                         <small class="form-hint">The condition that triggers this alert</small>
                     </div>
@@ -2988,6 +2989,123 @@
                         <small class="form-hint">Consecutive evaluations required before triggering</small>
                     </div>
                     
+                    <!-- =============================================================================
+                         DUMP ALERT EDIT FIELDS
+                         =============================================================================
+                         What: All editable configuration fields specific to dump alerts
+                         Why: Users need to adjust dump detection parameters (discount, shock sigma,
+                              liquidity floor, cooldown, and advanced EWMA settings) from the detail page
+                         How: Hidden by default (display:none), shown by handleTypeChange() when
+                              the selected type is 'dump'
+                    ============================================================================= -->
+                    
+                    <!-- Dump: Min Discount % -->
+                    <div class="form-group" id="dump-discount-min-group" style="display: none;">
+                        <label for="edit-dump-discount-min">Min Discount (%)</label>
+                        <input type="number" id="edit-dump-discount-min"
+                               value="{% if alert.dump_discount_min is not None %}{{ alert.dump_discount_min }}{% endif %}"
+                               step="0.5" min="0.5" max="50" placeholder="e.g. 3">
+                        <small class="form-hint">Minimum % the price must drop below EWMA fair value</small>
+                    </div>
+                    
+                    <!-- Dump: Shock Sigma -->
+                    <div class="form-group" id="dump-shock-sigma-group" style="display: none;">
+                        <label for="edit-dump-shock-sigma">Shock Sigma (σ)</label>
+                        <input type="number" id="edit-dump-shock-sigma"
+                               value="{% if alert.dump_shock_sigma is not None %}{{ alert.dump_shock_sigma }}{% endif %}"
+                               step="0.5" min="-20" max="-1" placeholder="e.g. -4">
+                        <small class="form-hint">Standard deviations for idiosyncratic drop (more negative = more extreme)</small>
+                    </div>
+                    
+                    <!-- Dump: Liquidity Floor -->
+                    <div class="form-group" id="dump-liquidity-floor-group" style="display: none;">
+                        <label for="edit-dump-liquidity-floor">Liquidity Floor (GP/hr)</label>
+                        <input type="number" id="edit-dump-liquidity-floor"
+                               value="{% if alert.dump_liquidity_floor is not None %}{{ alert.dump_liquidity_floor }}{% endif %}"
+                               min="0" step="1000000" placeholder="e.g. 50000000">
+                        <small class="form-hint">Minimum hourly GP volume for an item to qualify</small>
+                    </div>
+                    
+                    <!-- Dump: Cooldown -->
+                    <div class="form-group" id="dump-cooldown-group" style="display: none;">
+                        <label for="edit-dump-cooldown">Cooldown (minutes)</label>
+                        <input type="number" id="edit-dump-cooldown"
+                               value="{% if alert.dump_cooldown is not None %}{{ alert.dump_cooldown }}{% endif %}"
+                               min="0" step="5" placeholder="e.g. 60">
+                        <small class="form-hint">Minutes before re-alerting on the same item</small>
+                    </div>
+                    
+                    <!-- Dump: Sell Ratio Min (Advanced) -->
+                    <div class="form-group" id="dump-sell-ratio-min-group" style="display: none;">
+                        <label for="edit-dump-sell-ratio-min">Min Sell Ratio</label>
+                        <input type="number" id="edit-dump-sell-ratio-min"
+                               value="{% if alert.dump_sell_ratio_min is not None %}{{ alert.dump_sell_ratio_min }}{% endif %}"
+                               step="0.05" min="0.5" max="1.0" placeholder="e.g. 0.70">
+                        <small class="form-hint">Fraction of 5min volume at low price (advanced)</small>
+                    </div>
+                    
+                    <!-- Dump: Relative Volume Min (Advanced) -->
+                    <div class="form-group" id="dump-rel-vol-min-group" style="display: none;">
+                        <label for="edit-dump-rel-vol-min">Min Relative Volume</label>
+                        <input type="number" id="edit-dump-rel-vol-min"
+                               value="{% if alert.dump_rel_vol_min is not None %}{{ alert.dump_rel_vol_min }}{% endif %}"
+                               step="0.5" min="1.0" max="20" placeholder="e.g. 2.5">
+                        <small class="form-hint">Volume spike vs EWMA expected (advanced)</small>
+                    </div>
+                    
+                    <!-- Dump: Fair Value Half-Life (Advanced) -->
+                    <div class="form-group" id="dump-fair-halflife-group" style="display: none;">
+                        <label for="edit-dump-fair-halflife">Fair Value Half-Life (min)</label>
+                        <input type="number" id="edit-dump-fair-halflife"
+                               value="{% if alert.dump_fair_halflife is not None %}{{ alert.dump_fair_halflife }}{% endif %}"
+                               step="5" min="10" max="1440" placeholder="e.g. 120">
+                        <small class="form-hint">EWMA half-life for fair value anchor (advanced)</small>
+                    </div>
+                    
+                    <!-- Dump: Volume Half-Life (Advanced) -->
+                    <div class="form-group" id="dump-vol-halflife-group" style="display: none;">
+                        <label for="edit-dump-vol-halflife">Volume Half-Life (min)</label>
+                        <input type="number" id="edit-dump-vol-halflife"
+                               value="{% if alert.dump_vol_halflife is not None %}{{ alert.dump_vol_halflife }}{% endif %}"
+                               step="5" min="10" max="1440" placeholder="e.g. 60">
+                        <small class="form-hint">EWMA half-life for expected volume (advanced)</small>
+                    </div>
+                    
+                    <!-- Dump: Variance Half-Life (Advanced) -->
+                    <div class="form-group" id="dump-var-halflife-group" style="display: none;">
+                        <label for="edit-dump-var-halflife">Variance Half-Life (min)</label>
+                        <input type="number" id="edit-dump-var-halflife"
+                               value="{% if alert.dump_var_halflife is not None %}{{ alert.dump_var_halflife }}{% endif %}"
+                               step="5" min="10" max="1440" placeholder="e.g. 60">
+                        <small class="form-hint">EWMA half-life for return variance (advanced)</small>
+                    </div>
+                    
+                    <!-- Dump: Confirmation Buckets (Advanced) -->
+                    <div class="form-group" id="dump-confirmation-buckets-group" style="display: none;">
+                        <label for="edit-dump-confirmation-buckets">Confirmation Buckets</label>
+                        <input type="number" id="edit-dump-confirmation-buckets"
+                               value="{% if alert.dump_confirmation_buckets is not None %}{{ alert.dump_confirmation_buckets }}{% endif %}"
+                               step="1" min="1" max="10" placeholder="e.g. 1">
+                        <small class="form-hint">Consecutive 5min buckets of sell pressure required (advanced)</small>
+                    </div>
+                    
+                    <!-- Dump: Consistency Required (Advanced) -->
+                    <!-- =====================================================================================
+                         CONSISTENCY CHECK CHECKBOX (Edit Page)
+                         What: Mirrors the create-page checkbox — NOT inside .form-group so that
+                               the native checkbox appearance is preserved (see alerts.html comment).
+                         ===================================================================================== -->
+                    <div id="dump-consistency-required-group" style="display: none;">
+                        <div class="form-check d-flex align-items-center">
+                            <input style="transform: scale(1.35); margin-top: 0;" type="checkbox" class="form-check-input me-2" id="edit-dump-consistency-required"
+                                   {% if alert.dump_consistency_required %}checked{% endif %}>
+                            <label class="form-check-label" for="edit-dump-consistency-required">
+                                Require Consistency Check
+                            </label>
+                        </div>
+                        <small class="form-hint">Require majority of recent rows to confirm sell pressure (advanced)</small>
+                    </div>
+                    
                     
                     <!-- ======================= TOGGLE BUTTONS SECTION ======================= -->
                     <!-- Toggles appear at end, in order: Active, All Items, Show Alert Notification, SMS Notification -->
@@ -3238,6 +3356,17 @@
                                 <div class="triggered-item-details">
                                     Threshold: {{ item.threshold }} | {% if item.previous_score is not None %}Prev: {{ item.previous_score }}{% else %}Prev: N/A{% endif %} | {% if item.trigger_rule == 'delta_increase' %}Delta Increase{% else %}Crosses Above{% endif %}
                                 </div>
+                                {% elif triggered_info.alert_type == 'dump' %}
+                                <!-- =============================================================================
+                                     DUMP ALERT TRIGGERED ITEM DETAILS (Multi-item list view)
+                                     What: Shows dump detection details for each triggered item in the list
+                                     Why: Users need to see fair value, sell ratio, and spike volume at a glance
+                                     How: Displays fair value, sell ratio, and volume on the detail line.
+                                          The discount % is shown on the right side of the row.
+                                ============================================================================= -->
+                                <div class="triggered-item-details">
+                                    Fair: {{ item.fair_value|intcomma }} | Sell Ratio: {{ item.sell_ratio }} | Vol: {{ item.spike_volume|intcomma }}
+                                </div>
                                 {% endif %}
                             </div>
                             {% if triggered_info.alert_type == 'spread' %}
@@ -3261,6 +3390,11 @@
                             <!-- Why: The score is the primary metric users care about for flip confidence -->
                             <!-- How: Displays the score rounded to 1 decimal, always positive so no negative class -->
                             <span class="triggered-item-percentage">{{ item.confidence_score }}</span>
+                            {% elif triggered_info.alert_type == 'dump' %}
+                            <!-- What: Shows the discount percentage as the right-side value for each dump item -->
+                            <!-- Why: The discount % is the primary metric users care about for dump alerts -->
+                            <!-- How: Always negative (price below fair), so apply negative-change class for red color -->
+                            <span class="triggered-item-percentage negative-change">-{{ item.discount_pct }}%</span>
                             {% endif %}
                         </li>
                     {% endfor %}
@@ -4734,7 +4868,21 @@ function handleTypeChange() {
         confidenceEvalInterval: document.getElementById('confidence-eval-interval-group'),
         confidenceSustainedCount: document.getElementById('confidence-sustained-count-group'),
         confidenceWeightsToggle: document.getElementById('edit-weights-toggle-group'),
-        confidenceWeightsPanel: document.getElementById('edit-weights-panel')
+        confidenceWeightsPanel: document.getElementById('edit-weights-panel'),
+        // Dump alert-specific groups
+        // What: References to all dump edit form containers
+        // Why: handleTypeChange() needs to show/hide these when switching to/from dump
+        dumpDiscountMin: document.getElementById('dump-discount-min-group'),
+        dumpShockSigma: document.getElementById('dump-shock-sigma-group'),
+        dumpLiquidityFloor: document.getElementById('dump-liquidity-floor-group'),
+        dumpCooldown: document.getElementById('dump-cooldown-group'),
+        dumpSellRatioMin: document.getElementById('dump-sell-ratio-min-group'),
+        dumpRelVolMin: document.getElementById('dump-rel-vol-min-group'),
+        dumpFairHalflife: document.getElementById('dump-fair-halflife-group'),
+        dumpVolHalflife: document.getElementById('dump-vol-halflife-group'),
+        dumpVarHalflife: document.getElementById('dump-var-halflife-group'),
+        dumpConfirmationBuckets: document.getElementById('dump-confirmation-buckets-group'),
+        dumpConsistencyRequired: document.getElementById('dump-consistency-required-group')
     };
     
     // minVolumeInput: The input element for the minimum hourly volume value
@@ -4789,6 +4937,24 @@ function handleTypeChange() {
         if (groups.confidenceWeightsPanel) groups.confidenceWeightsPanel.style.display = 'none';
     };
     
+    // Helper to hide all dump-specific fields
+    // What: Hides all form fields specific to dump alerts
+    // Why: When switching away from dump type, these fields should be hidden
+    // How: Sets display to 'none' for each dump-specific field group
+    const hideDumpFields = () => {
+        if (groups.dumpDiscountMin) groups.dumpDiscountMin.style.display = 'none';
+        if (groups.dumpShockSigma) groups.dumpShockSigma.style.display = 'none';
+        if (groups.dumpLiquidityFloor) groups.dumpLiquidityFloor.style.display = 'none';
+        if (groups.dumpCooldown) groups.dumpCooldown.style.display = 'none';
+        if (groups.dumpSellRatioMin) groups.dumpSellRatioMin.style.display = 'none';
+        if (groups.dumpRelVolMin) groups.dumpRelVolMin.style.display = 'none';
+        if (groups.dumpFairHalflife) groups.dumpFairHalflife.style.display = 'none';
+        if (groups.dumpVolHalflife) groups.dumpVolHalflife.style.display = 'none';
+        if (groups.dumpVarHalflife) groups.dumpVarHalflife.style.display = 'none';
+        if (groups.dumpConfirmationBuckets) groups.dumpConfirmationBuckets.style.display = 'none';
+        if (groups.dumpConsistencyRequired) groups.dumpConsistencyRequired.style.display = 'none';
+    };
+    
     if (alertType === 'spread') {
         // Spread: show all items toggle, percentage, and min volume filter
         // What: Configure edit form fields for spread alert editing
@@ -4803,6 +4969,7 @@ function handleTypeChange() {
         hideSustainedFields();
         hideThresholdFields();
         hideConfidenceFields();
+        hideDumpFields();
         // What: Show min volume field for spread alerts in edit mode
         // Why: Users can filter spread alerts by minimum hourly trading volume (GP)
         //      to exclude low-volume items with artificially inflated spreads
@@ -4826,6 +4993,7 @@ function handleTypeChange() {
         hideSustainedFields();
         hideThresholdFields();
         hideConfidenceFields();
+        hideDumpFields();
         // What: Show and require min volume for spike alerts in edit mode
         // Why: Spike alerts must enforce a minimum hourly volume threshold
         // How: Display the min-volume group and mark the input as required
@@ -4847,6 +5015,7 @@ function handleTypeChange() {
         groups.direction.style.display = 'block';
         hideThresholdFields();
         hideConfidenceFields();
+        hideDumpFields();
         
         // Show sustained-specific fields
         if (groups.minConsecutiveMoves) groups.minConsecutiveMoves.style.display = 'block';
@@ -4880,6 +5049,7 @@ function handleTypeChange() {
         groups.timeFrame.style.display = 'none';
         hideSustainedFields();
         hideConfidenceFields();
+        hideDumpFields();
         
         // Show threshold-specific fields
         if (groups.thresholdDirection) groups.thresholdDirection.style.display = 'block';
@@ -4923,6 +5093,7 @@ function handleTypeChange() {
         hideSustainedFields();
         hideThresholdFields();
         hideConfidenceFields();
+        hideDumpFields();
         
         // Ensure is_all_items is always false for collective move
         document.getElementById('edit-is-all-items').value = 'false';
@@ -4954,6 +5125,7 @@ function handleTypeChange() {
         groups.direction.style.display = 'none';
         hideSustainedFields();
         hideThresholdFields();
+        hideDumpFields();
         
         // Show all confidence-specific fields
         if (groups.confidenceTimestep) groups.confidenceTimestep.style.display = 'block';
@@ -4967,6 +5139,46 @@ function handleTypeChange() {
         if (groups.confidenceSustainedCount) groups.confidenceSustainedCount.style.display = 'block';
         if (groups.confidenceWeightsToggle) groups.confidenceWeightsToggle.style.display = 'block';
         // Note: weights panel stays hidden until user clicks the toggle button
+        
+        // Let scope change handler determine item/min-max price visibility
+        handleScopeChange();
+    } else if (alertType === 'dump') {
+        // =============================================================================
+        // DUMP ALERT TYPE HANDLING
+        // =============================================================================
+        // What: Shows all dump-specific fields and hides fields from other types
+        // Why: Dump alerts have their own unique configuration (discount, shock sigma,
+        //      liquidity floor, cooldown, and advanced EWMA parameters)
+        // How: Hide all shared fields, show dump-specific fields (basic + advanced),
+        //      and handle scope (all items vs specific items) for item visibility
+        // =============================================================================
+        
+        // Show all-items toggle (dump supports all items mode)
+        groups.allItems.style.display = 'block';
+        
+        // Hide all shared fields that don't apply to dump
+        groups.price.style.display = 'none';
+        groups.reference.style.display = 'none';
+        groups.percentage.style.display = 'none';
+        groups.timeFrame.style.display = 'none';
+        groups.direction.style.display = 'none';
+        hideSustainedFields();
+        hideThresholdFields();
+        hideConfidenceFields();
+        
+        // Show dump-specific fields (basic)
+        if (groups.dumpDiscountMin) groups.dumpDiscountMin.style.display = 'block';
+        if (groups.dumpShockSigma) groups.dumpShockSigma.style.display = 'block';
+        if (groups.dumpLiquidityFloor) groups.dumpLiquidityFloor.style.display = 'block';
+        if (groups.dumpCooldown) groups.dumpCooldown.style.display = 'block';
+        // Show advanced fields too (they're all visible in edit mode, unlike create mode)
+        if (groups.dumpSellRatioMin) groups.dumpSellRatioMin.style.display = 'block';
+        if (groups.dumpRelVolMin) groups.dumpRelVolMin.style.display = 'block';
+        if (groups.dumpFairHalflife) groups.dumpFairHalflife.style.display = 'block';
+        if (groups.dumpVolHalflife) groups.dumpVolHalflife.style.display = 'block';
+        if (groups.dumpVarHalflife) groups.dumpVarHalflife.style.display = 'block';
+        if (groups.dumpConfirmationBuckets) groups.dumpConfirmationBuckets.style.display = 'block';
+        if (groups.dumpConsistencyRequired) groups.dumpConsistencyRequired.style.display = 'block';
         
         // Let scope change handler determine item/min-max price visibility
         handleScopeChange();
@@ -4988,6 +5200,7 @@ function handleTypeChange() {
         hideSustainedFields();
         hideThresholdFields();
         hideConfidenceFields();
+        hideDumpFields();
         document.getElementById('edit-is-all-items').value = 'false';
         document.getElementById('edit-all-items').checked = false;
     }
@@ -5884,6 +6097,48 @@ async function saveChanges() {
             Object.assign(data, weightValues);
         }
         // If filledCount === 0, we don't send weight fields → backend keeps existing values
+        
+        // Min/max price for all-items mode
+        if (isAllItems) {
+            data.minimum_price = document.getElementById('edit-minimum-price').value || null;
+            data.maximum_price = document.getElementById('edit-maximum-price').value || null;
+        }
+    } else if (alertType === 'dump') {
+        // =============================================================================
+        // DUMP ALERT SAVE DATA
+        // =============================================================================
+        // What: Collect all dump-specific field values for saving
+        // Why: Dump alerts have 11 config fields (4 basic + 7 advanced) that need to be
+        //      sent to the backend when editing
+        // How: Read each dump-specific input by its 'edit-dump-*' ID and add to data object
+        // =============================================================================
+        
+        // Basic fields
+        // dump_discount_min: Minimum % discount below fair value to trigger
+        data.dump_discount_min = document.getElementById('edit-dump-discount-min').value || null;
+        // dump_shock_sigma: Standard deviations of idiosyncratic shock required
+        data.dump_shock_sigma = document.getElementById('edit-dump-shock-sigma').value || null;
+        // dump_liquidity_floor: Minimum hourly GP volume for an item to qualify
+        data.dump_liquidity_floor = document.getElementById('edit-dump-liquidity-floor').value || null;
+        // dump_cooldown: Minutes after triggering before re-triggering
+        data.dump_cooldown = document.getElementById('edit-dump-cooldown').value || null;
+        
+        // Advanced fields
+        // dump_sell_ratio_min: Fraction of volume at low price
+        data.dump_sell_ratio_min = document.getElementById('edit-dump-sell-ratio-min').value || null;
+        // dump_rel_vol_min: Minimum relative volume vs expected
+        data.dump_rel_vol_min = document.getElementById('edit-dump-rel-vol-min').value || null;
+        // dump_fair_halflife: EWMA half-life for fair value in minutes
+        data.dump_fair_halflife = document.getElementById('edit-dump-fair-halflife').value || null;
+        // dump_vol_halflife: EWMA half-life for expected volume in minutes
+        data.dump_vol_halflife = document.getElementById('edit-dump-vol-halflife').value || null;
+        // dump_var_halflife: EWMA half-life for return variance in minutes
+        data.dump_var_halflife = document.getElementById('edit-dump-var-halflife').value || null;
+        // dump_confirmation_buckets: Consecutive 5m buckets required before trigger
+        data.dump_confirmation_buckets = document.getElementById('edit-dump-confirmation-buckets').value || null;
+        // dump_consistency_required: Whether majority of rows must show sell pressure
+        const dumpConsistencyEl = document.getElementById('edit-dump-consistency-required');
+        data.dump_consistency_required = dumpConsistencyEl ? dumpConsistencyEl.checked : true;
         
         // Min/max price for all-items mode
         if (isAllItems) {
