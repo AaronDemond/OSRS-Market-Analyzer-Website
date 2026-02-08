@@ -2508,6 +2508,21 @@
                     {% endif %}
                     {% endif %}
 
+                    <!-- =============================================================================
+                         DETECTION FILTER: Volume Concentration Threshold
+                         =============================================================================
+                         What: Shows the user-defined volume concentration threshold if set.
+                         Why: Users need to see their configured threshold at a glance.
+                         How: Conditional display — only shown when the value is not null.
+                    ============================================================================= -->
+                    {% if alert.confidence_filter_vol_concentration is not None %}
+                    <div class="detail-item">
+                        <!-- What: The maximum % of total volume allowed in a single bucket -->
+                        <span class="detail-label">Vol. Concentration Filter</span>
+                        <span class="detail-value">{{ alert.confidence_filter_vol_concentration }}%</span>
+                    </div>
+                    {% endif %}
+
                     {% endif %}
                     
                     <!-- =============================================================================
@@ -2652,12 +2667,13 @@
                         <span class="detail-value">{% if groups %}{{ groups|join:", " }}{% else %}No group{% endif %}</span>
                     </div>
                     
-                    {% if alert.type == 'threshold' %}
+                    {% if alert.type == 'threshold' and alert.reference_prices %}
                     <!-- Reference Prices Display (baseline prices at creation) -->
                     <!-- What: Shows the stored reference prices for each monitored item -->
                     <!-- Why: Users need to see what baseline their threshold is compared against -->
                     <!-- How: Render from reference_prices_display_data passed from view context -->
-                    <!-- Note: Positioned at end of display grid to keep other fields grouped -->
+                    <!-- Note: Only rendered when reference_prices exist (cleared when switching
+                         from all-items to specific-items mode) -->
                     <div class="detail-item detail-item-full">
                         <span class="detail-label">Reference Prices (Baseline)</span>
                         <div class="reference-prices-display-view" id="reference-prices-display-view">
@@ -3139,6 +3155,23 @@
                                value="{% if alert.confidence_sustained_count is not None %}{{ alert.confidence_sustained_count }}{% endif %}"
                                min="1" step="1" placeholder="e.g. 1">
                         <small class="form-hint">Consecutive evaluations required before triggering</small>
+                    </div>
+
+                    <!-- =============================================================================
+                         DETECTION FILTER: Volume Concentration Threshold (Edit Mode)
+                         =============================================================================
+                         What: A numeric input for the user-defined volume concentration threshold.
+                         Why: Users need to set/change the max % of volume allowed in one bucket.
+                         How: Pre-populated with the current alert value. Sent as a number in the
+                              JSON payload when saving. Empty means disabled (null).
+                              Visibility is controlled by handleTypeChange().
+                    ============================================================================= -->
+                    <div class="form-group" id="edit-confidence-filter-vol-concentration-group" style="display: none;">
+                        <label for="edit-confidence-filter-vol-concentration">Volume Concentration Filter (%)</label>
+                        <input type="number" id="edit-confidence-filter-vol-concentration"
+                               value="{% if alert.confidence_filter_vol_concentration is not None %}{{ alert.confidence_filter_vol_concentration }}{% endif %}"
+                               min="1" max="100" step="1" placeholder="e.g. 75">
+                        <small class="form-hint">Skip items where a single bucket holds more than this % of total volume (leave empty to disable)</small>
                     </div>
                     
                     <!-- =============================================================================
@@ -5048,6 +5081,10 @@ function handleTypeChange() {
         confidenceSustainedCount: document.getElementById('confidence-sustained-count-group'),
         confidenceWeightsToggle: document.getElementById('edit-weights-toggle-group'),
         confidenceWeightsPanel: document.getElementById('edit-weights-panel'),
+        // Detection filter checkboxes (edit mode)
+        // What: Reference to the volume concentration threshold input container
+        // Why: handleTypeChange() needs to show/hide this when switching to/from flip_confidence
+        confidenceFilterVolConcentration: document.getElementById('edit-confidence-filter-vol-concentration-group'),
         // Dump alert-specific groups
         // What: References to dump basic fields, toggle button, and advanced panel
         // Why: handleTypeChange() needs to show/hide these when switching to/from dump.
@@ -5112,6 +5149,8 @@ function handleTypeChange() {
         if (groups.confidenceSustainedCount) groups.confidenceSustainedCount.style.display = 'none';
         if (groups.confidenceWeightsToggle) groups.confidenceWeightsToggle.style.display = 'none';
         if (groups.confidenceWeightsPanel) groups.confidenceWeightsPanel.style.display = 'none';
+        // Detection filter — hide when switching away from flip_confidence
+        if (groups.confidenceFilterVolConcentration) groups.confidenceFilterVolConcentration.style.display = 'none';
     };
     
     // Helper to hide all dump-specific fields
@@ -5312,6 +5351,8 @@ function handleTypeChange() {
         if (groups.confidenceEvalInterval) groups.confidenceEvalInterval.style.display = 'block';
         if (groups.confidenceSustainedCount) groups.confidenceSustainedCount.style.display = 'block';
         if (groups.confidenceWeightsToggle) groups.confidenceWeightsToggle.style.display = 'block';
+        // Detection filter — show when editing a flip_confidence alert
+        if (groups.confidenceFilterVolConcentration) groups.confidenceFilterVolConcentration.style.display = 'block';
         // Note: weights panel stays hidden until user clicks the toggle button
         
         // Let scope change handler determine item/min-max price visibility
@@ -5575,9 +5616,6 @@ function handleScopeChange() {
     const isAllItemsInput = document.getElementById('edit-is-all-items');
     const toggleLabel = document.querySelector('#all-items-group .toggle-label');
     
-    // hasMultipleItems: Check if this is a multi-item spread alert (has items in the selector)
-    const hasMultipleItems = EditMultiItemSelector.hasMultipleItems();
-    
     if (isAllItems) {
         // All Items mode: hide item selectors, show price filters
         itemNameGroup.style.display = 'none';
@@ -5586,27 +5624,43 @@ function handleScopeChange() {
         maxPriceGroup.style.display = 'block';
         isAllItemsInput.value = 'true';
         if (toggleLabel) toggleLabel.textContent = 'Yes';
+        
+        // Threshold-specific: show reference prices when returning to all-items mode
+        // What: Re-display the baseline prices that were captured at alert creation
+        // Why: In all-items mode the baselines are still relevant to the current config
+        // How: Only touch the element for threshold alerts to avoid side effects
+        if (alertType === 'threshold') {
+            const refPrices = document.getElementById('reference-prices-group');
+            if (refPrices) refPrices.style.display = 'block';
+        }
     } else {
         // Specific item(s) mode
-        // What: Show appropriate item selector based on alert type and item count
-        // Why: Spread, spike, and sustained alerts with multiple items should use multi-item selector
-        //      Single item alerts or other types should use single item input
-        // How: Check alert type and hasMultipleItems flag to determine which UI to show
+        // What: Show the multi-item selector for types that support it, or
+        //      the single-item input for types that don't
+        // Why: When toggling "All Items" off, users need to specify which items
+        //      to monitor. Types in multiItemAlertTypes always get the multi-item
+        //      selector (search + chips) so they can add items from scratch.
+        // How: Check alert type against multiItemAlertTypes list
         
         // multiItemAlertTypes: Alert types that support multi-item selection
         // What: List of alert types that can monitor multiple specific items
-        // Why: Spread, spike, sustained, flip_confidence, and dump alerts can all
-        //      monitor multiple specific items via the item_ids field. When editing
-        //      an alert that already has multiple items, we must show the multi-item
-        //      selector (search + chips) instead of the single "Item Name" input.
-        // How: If the current alert type is in this list AND the EditMultiItemSelector
-        //      already has items loaded (from item_ids_data_json), show multi-item UI.
-        const multiItemAlertTypes = ['spread', 'spike', 'sustained', 'flip_confidence', 'dump'];
+        // Why: Spread, spike, sustained, flip_confidence, dump, and threshold alerts
+        //      can all monitor multiple specific items via the item_ids field. When
+        //      the user toggles "All Items" off, we should always show the multi-item
+        //      selector so they can add items — even if no items are loaded yet
+        //      (e.g. switching from all-items mode to specific-items mode).
+        // How: If the current alert type is in this list, always show the multi-item
+        //      selector. For types NOT in this list, fall through to the single item
+        //      input (kept for future safety / unknown types).
+        const multiItemAlertTypes = ['spread', 'spike', 'sustained', 'flip_confidence', 'dump', 'threshold'];
         
-        if (multiItemAlertTypes.includes(alertType) && hasMultipleItems) {
-            // Multi-item mode for alerts with existing items
+        if (multiItemAlertTypes.includes(alertType)) {
+            // Multi-item mode: show multi-item selector (search + chips)
             // What: Show multi-item selector and hide single item input
-            // Why: User is editing a multi-item alert, show the appropriate UI
+            // Why: All alert types that support "All Items" also support multi-item
+            //      selection. When the user switches away from all-items mode, they
+            //      need the multi-item selector to specify which items to monitor —
+            //      whether they already have items loaded or are starting fresh.
             itemNameGroup.style.display = 'none';
             multiItemGroup.style.display = 'block';
         } else {
@@ -5620,6 +5674,18 @@ function handleScopeChange() {
         maxPriceGroup.style.display = 'none';
         isAllItemsInput.value = 'false';
         if (toggleLabel) toggleLabel.textContent = 'No';
+        
+        // Threshold-specific: hide reference prices when switching to specific items
+        // What: Hide the baseline prices display that belongs to the old all-items set
+        // Why: When toggling off "All Items", the displayed baselines are stale —
+        //      they were captured for the previous item set and are meaningless for
+        //      whatever new items the user is about to add. New baselines will be
+        //      captured on save.
+        // How: Only touch the element for threshold alerts to avoid side effects
+        if (alertType === 'threshold') {
+            const refPrices = document.getElementById('reference-prices-group');
+            if (refPrices) refPrices.style.display = 'none';
+        }
     }
 }
 
@@ -5718,40 +5784,19 @@ function updateThresholdTypeState() {
  * How: Similar to handleScopeChange but also updates threshold type state
  */
 function handleThresholdScopeChange() {
-    const isAllItems = document.getElementById('edit-all-items').checked;
-    const itemNameGroup = document.getElementById('item-name-group');
-    const multiItemGroup = document.getElementById('multi-item-group');
-    const minPriceGroup = document.getElementById('min-price-group');
-    const maxPriceGroup = document.getElementById('max-price-group');
-    const isAllItemsInput = document.getElementById('edit-is-all-items');
-    const toggleLabel = document.querySelector('#all-items-group .toggle-label');
-    
-    const hasMultipleItems = EditMultiItemSelector.hasMultipleItems();
-    
-    if (isAllItems) {
-        // All Items mode: hide item selectors, show price filters
-        if (itemNameGroup) itemNameGroup.style.display = 'none';
-        if (multiItemGroup) multiItemGroup.style.display = 'none';
-        if (minPriceGroup) minPriceGroup.style.display = 'block';
-        if (maxPriceGroup) maxPriceGroup.style.display = 'block';
-        isAllItemsInput.value = 'true';
-        if (toggleLabel) toggleLabel.textContent = 'Yes';
-    } else {
-        // Specific item(s) mode
-        if (hasMultipleItems) {
-            if (itemNameGroup) itemNameGroup.style.display = 'none';
-            if (multiItemGroup) multiItemGroup.style.display = 'block';
-        } else {
-            if (itemNameGroup) itemNameGroup.style.display = 'block';
-            if (multiItemGroup) multiItemGroup.style.display = 'none';
-        }
-        if (minPriceGroup) minPriceGroup.style.display = 'none';
-        if (maxPriceGroup) maxPriceGroup.style.display = 'none';
-        isAllItemsInput.value = 'false';
-        if (toggleLabel) toggleLabel.textContent = 'No';
-    }
+    // What: Handles scope changes for threshold alerts specifically
+    // Why: Threshold alerts need the same multi-item selector logic as other types
+    //      (now handled in handleScopeChange(), including reference prices visibility),
+    //      PLUS an additional call to updateThresholdTypeState() to enforce the
+    //      "value" mode restriction (value mode requires a single item).
+    // How: Delegate to handleScopeChange() for the common item selector / price
+    //      filter / reference prices logic, then run threshold-specific state updates.
+    handleScopeChange();
     
     // Always update threshold type state when scope changes
+    // What: Enforces the rule that "value" threshold type requires exactly 1 item
+    // Why: When switching between all-items and specific-items mode, the available
+    //      threshold type options may change
     updateThresholdTypeState();
 }
 
@@ -6251,6 +6296,10 @@ async function saveChanges() {
         
         // confidence_sustained_count: Number of consecutive above-threshold checks for 'sustained' rule
         data.confidence_sustained_count = document.getElementById('edit-confidence-sustained-count').value || null;
+
+        // confidence_filter_vol_concentration: User-defined concentration threshold (%)
+        // What: Reads the numeric input value; empty means disabled (null)
+        data.confidence_filter_vol_concentration = document.getElementById('edit-confidence-filter-vol-concentration').value || null;
         
         // =========================================================================
         // WEIGHT COLLECTION AND VALIDATION

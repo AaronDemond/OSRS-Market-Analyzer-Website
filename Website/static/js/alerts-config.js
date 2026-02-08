@@ -327,6 +327,10 @@
                     confidenceCooldown: '#confidence-cooldown-group',
                     confidenceSustained: '#confidence-sustained-group',
                     confidenceAdvancedToggle: '#confidence-advanced-toggle-group',
+                    // Detection filter: volume concentration threshold input
+                    // What: DOM selector for the volume concentration filter input container
+                    // Why: This field needs to be shown/hidden with the rest of the confidence fields
+                    confidenceFilterVolConcentration: '#confidence-filter-vol-concentration-group',
                     confidenceWeightTrend: '#confidence-weight-trend-group',
                     confidenceWeightPressure: '#confidence-weight-pressure-group',
                     confidenceWeightSpread: '#confidence-weight-spread-group',

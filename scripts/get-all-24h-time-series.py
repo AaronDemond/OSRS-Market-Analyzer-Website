@@ -141,6 +141,16 @@ def get_all_volume(ids: List[int], timestep: str = "1h") -> List[Dict[str, Any]]
 def get_all_volume_5m(ids: List[int], timestep: str = "5m") -> List[Dict[str, Any]]:
     return asyncio.run(fetch_many(ids, timestep=timestep, concurrency=MAX_WORKERS))
 
+# get_all_volume_24h: Fetches timeseries data at 24-hour resolution for all items.
+# What: Wrapper around fetch_many() that forces timestep="24h" for all requests.
+# Why: The default get_all_volume() uses timestep="1h", which is incorrect for
+#      populating TwentyFourHourTimeSeries. Using the wrong resolution stores hourly-
+#      aggregated data that inflates volume counts and corrupts alert calculations.
+# How: Calls fetch_many() with timestep="24h" — the Wiki API's /timeseries endpoint
+#      natively supports 24h as a timestep value, returning up to 365 daily data points.
+def get_all_volume_24h(ids: List[int], timestep: str = "24h") -> List[Dict[str, Any]]:
+    return asyncio.run(fetch_many(ids, timestep=timestep, concurrency=MAX_WORKERS))
+
 
 def getNameAndIds():
     mapping = load_item_mapping()
@@ -157,9 +167,11 @@ def getData():
 def getAllTimeSeries():
     mapping = load_item_mapping()
     ids = [x['id'] for x in mapping]
-    result = get_all_volume(ids)
+    # Why: Use get_all_volume_24h() (timestep="24h") to fetch true daily-resolution data.
+    #      The default get_all_volume() uses timestep="1h" which is wrong for this model.
+    result = get_all_volume_24h(ids)
     for r in result:
-        make_twenty_four_hour_timeseries_objects([r])
+        make_twenty_four_hour_timeseries_objects(r, lookup)
     #with open("output.txt", "w", encoding="utf-8") as f:
         #print(result, file=f)
 
@@ -222,8 +234,8 @@ def make_twenty_four_hour_timeseries_objects(result_item, lookup):
 
     for x in result_item.get("data", []):
         ts = x["timestamp"]
-        avg_high = x["avgHighPrice"] or 0
-        avg_low = x["avgLowPrice"] or 0
+        avg_high = x["avgHighPrice"]
+        avg_low = x["avgLowPrice"]
         high_vol = x["highPriceVolume"] or 0
         low_vol = x["lowPriceVolume"] or 0
 
@@ -287,7 +299,10 @@ def getDataTimeSeries():
     mapping = load_item_mapping()
     ids = [x["id"] for x in mapping]
 
-    result = get_all_volume(ids)
+    # Why: Use get_all_volume_24h() (timestep="24h") to fetch true daily-resolution data.
+    #      The Wiki API /timeseries endpoint natively supports timestep="24h".
+    #      The default get_all_volume() uses timestep="1h" which is wrong for this model.
+    result = get_all_volume_24h(ids)
 
     all_objects = []
     for r in result:
@@ -447,10 +462,13 @@ def fetch_latest_twenty_four_hour_snapshot():
 
     # raw_results: List of dicts [{'id': int, 'data': [...]}, ...] from the async API fetcher.
     # Each entry contains the full timeseries response for one item.
-    raw_results = get_all_volume(ids)
+    # Why: We use get_all_volume_24h() (timestep="24h") instead of get_all_volume() (timestep="1h")
+    #      because the default get_all_volume() fetches hourly data which is the wrong resolution
+    #      for TwentyFourHourTimeSeries. The Wiki API natively supports timestep="24h".
+    raw_results = get_all_volume_24h(ids)
     print(f"Received responses for {len(raw_results)} items. Extracting latest datapoints...")
 
-    # new_records: List of HourlyItemVolume model instances to bulk-insert.
+    # new_records: List of TwentyFourHourTimeSeries model instances to bulk-insert.
     # Only the single most recent datapoint per item is included.
     new_records = []
 
@@ -458,8 +476,8 @@ def fetch_latest_twenty_four_hour_snapshot():
         # item_id: The OSRS item ID from the API response.
         item_id = result['id']
 
-        # data_points: The chronologically-sorted list of hourly snapshots from the API.
-        # The last element is the most recent hour's data.
+        # data_points: The chronologically-sorted list of 24h snapshots from the API.
+        # The last element is the most recent 24-hour period's data.
         data_points = result.get('data', [])
         if not data_points:
             continue
@@ -468,19 +486,18 @@ def fetch_latest_twenty_four_hour_snapshot():
         # Contains keys: timestamp, avgHighPrice, avgLowPrice, highPriceVolume, lowPriceVolume.
         latest = data_points[-1]
 
-        # timestamp: UTC datetime of the most recent hourly snapshot.
+        # timestamp: Unix timestamp for the start of the most recent 24-hour period.
         timestamp = latest['timestamp']
 
-        # avg_high / avg_low: Average prices for the hour, defaulting to 0 if None
-        # (None means no trades occurred at that price point during the hour).
-        avg_high = latest['avgHighPrice'] or 0
-        avg_low = latest['avgLowPrice'] or 0
+        # avg_high / avg_low: Preserve None from the API — the model fields are nullable.
+        avg_high = latest['avgHighPrice']
+        avg_low = latest['avgLowPrice']
 
         # high_vol / low_vol: Number of units traded at high/low price, defaulting to 0 if None.
         high_vol = latest['highPriceVolume'] or 0
         low_vol = latest['lowPriceVolume'] or 0
 
-        # volume_gp: Total GP traded in the most recent hour.
+        # volume_gp: Total GP traded in the most recent period.
         # Calculated as (units sold at high price * high price) + (units sold at low price * low price).
         volume_gp = (avg_high * high_vol) + (avg_low * low_vol)
 
@@ -494,7 +511,12 @@ def fetch_latest_twenty_four_hour_snapshot():
             avg_low_price=avg_low,
             avg_high_price=avg_high,
             high_price_volume=high_vol,
-            low_price_volume=low_vol
+            low_price_volume=low_vol,
+            # timestamp: The API-provided Unix timestamp for this data point.
+            # Why: Without this field, rows get empty-string timestamps which break
+            #      ordering (Meta.ordering = ['-timestamp']) and deduplication logic
+            #      in check_alerts.py's fetch_timeseries_from_db().
+            timestamp=timestamp
         ))
 
     # Bulk-insert all records in a single atomic transaction for performance.
@@ -515,12 +537,12 @@ def fetch_latest_twenty_four_hour_snapshot():
 
 
 
+import time
 lookup = build_id_to_name(load_item_mapping())  
 # use this to get all.
-#getDataTimeSeries()
-#print("DONE")
-#time.sleep(1000)
-import time
+getDataTimeSeries()
+print("DONE")
+time.sleep(1000)
 hours = 24
 minutes = 5
 while True:

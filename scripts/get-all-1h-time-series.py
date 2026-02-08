@@ -221,11 +221,12 @@ def make_one_hour_timeseries_objects(result_item, lookup):
 
     for x in result_item.get("data", []):
         ts = x["timestamp"]
-        avg_high = x["avgHighPrice"] or 0
-        avg_low = x["avgLowPrice"] or 0
+        # avg_high / avg_low: Preserve None from the API — the model fields are nullable.
+        # Storing None instead of 0 is critical for compute_flip_confidence() filtering.
+        avg_high = x["avgHighPrice"]
+        avg_low = x["avgLowPrice"]
         high_vol = x["highPriceVolume"] or 0
         low_vol = x["lowPriceVolume"] or 0
-
 
         objs.append(OneHourTimeSeries(
             item_id=item_id,
@@ -470,22 +471,17 @@ def fetch_latest_one_hour_snapshot():
         # timestamp: UTC datetime of the most recent hourly snapshot.
         timestamp = latest['timestamp']
 
-        # avg_high / avg_low: Average prices for the hour, defaulting to 0 if None
-        # (None means no trades occurred at that price point during the hour).
-        avg_high = latest['avgHighPrice'] or 0
-        avg_low = latest['avgLowPrice'] or 0
+        # avg_high / avg_low: Preserve None from the API — the model fields are nullable.
+        # Storing None instead of 0 is critical for compute_flip_confidence() filtering.
+        avg_high = latest['avgHighPrice']
+        avg_low = latest['avgLowPrice']
 
         # high_vol / low_vol: Number of units traded at high/low price, defaulting to 0 if None.
         high_vol = latest['highPriceVolume'] or 0
         low_vol = latest['lowPriceVolume'] or 0
 
-        # volume_gp: Total GP traded in the most recent hour.
-        # Calculated as (units sold at high price * high price) + (units sold at low price * low price).
-        volume_gp = (avg_high * high_vol) + (avg_low * low_vol)
-
         # item_name: Human-readable item name from the lookup dict, or empty string if not found.
         item_name = name_from_id(item_id, lookup) or ""
-
 
         new_records.append(OneHourTimeSeries(
             item_id=item_id,
@@ -493,7 +489,12 @@ def fetch_latest_one_hour_snapshot():
             avg_low_price=avg_low,
             avg_high_price=avg_high,
             high_price_volume=high_vol,
-            low_price_volume=low_vol
+            low_price_volume=low_vol,
+            # timestamp: The API-provided Unix timestamp for this data point.
+            # Why: Without this field, rows get empty-string timestamps which break
+            #      ordering (Meta.ordering = ['-timestamp']) and deduplication logic
+            #      in check_alerts.py's fetch_timeseries_from_db().
+            timestamp=timestamp
         ))
 
     # Bulk-insert all records in a single atomic transaction for performance.
@@ -515,11 +516,11 @@ def fetch_latest_one_hour_snapshot():
 
 
 lookup = build_id_to_name(load_item_mapping())  
-# use this to get all.
-#getDataTimeSeries()
-#print("DONE")
-#time.sleep(1000)
 import time
+# use this to get all.
+getDataTimeSeries()
+print("DONE")
+time.sleep(1000)
 hours = 1
 minutes = 5
 while True:

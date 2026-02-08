@@ -2084,7 +2084,7 @@ class Command(BaseCommand):
         '5m': '5m',
         '1h': '1h',
         '6h': '6h',
-        '24h': '6h',  # Wiki API doesn't have 24h; use 6h with more lookback
+        '24h': '24h',  # Wiki API natively supports 24h timestep
     }
 
     # TIMESTEP_TO_SECONDS: Maps timestep labels to their duration in seconds
@@ -2145,7 +2145,6 @@ class Command(BaseCommand):
             5. Converts Django model field names (snake_case) to the camelCase format that
                compute_flip_confidence() expects (e.g., avg_high_price -> avgHighPrice)
             6. Reverses the list to chronological order (oldest first) to match the API format
-            7. For '24h' timestep, samples every 4th point from 6h data (same as the API method)
 
         Args:
             item_id: The OSRS item ID to fetch data for (int or string).
@@ -2172,9 +2171,9 @@ class Command(BaseCommand):
 
         try:
             # effective_lookback: How many rows to fetch from the DB.
-            # For '24h' timestep, we need 4x more rows because we'll sample every 4th
-            # point to simulate daily data from 6h-resolution data (matching the API method).
-            effective_lookback = lookback_count * 4 if timestep == '24h' else lookback_count
+            # This is the same as lookback_count — each row in the DB represents one
+            # data point at the correct resolution for the timestep.
+            effective_lookback = lookback_count
 
             # db_rows: QuerySet of timeseries rows for this item, ordered newest-first
             # (via Meta.ordering = ['-timestamp']), limited to the effective lookback count.
@@ -2214,9 +2213,17 @@ class Command(BaseCommand):
                 #   avg_low_price   -> avgLowPrice   (average instant-sell price)
                 #   high_price_volume -> highPriceVolume (instant-buy trade count)
                 #   low_price_volume  -> lowPriceVolume  (instant-sell trade count)
+                # Why `or None`: The backfill scripts (get-all-*-time-series.py) historically
+                #   stored 0 instead of None for null API prices. The Wiki API returns None
+                #   when no trades occurred in a time bucket, and compute_flip_confidence()
+                #   relies on None to filter out incomplete data points. Treating 0 as a real
+                #   price corrupts the scoring (e.g., Lizardkicker got score=90 instead of 0
+                #   because 22 rows with avgHighPrice=0 passed the null check). Converting
+                #   0 back to None here ensures correct behavior regardless of what the
+                #   backfill scripts stored.
                 result.append({
-                    'avgHighPrice': row.avg_high_price,
-                    'avgLowPrice': row.avg_low_price,
+                    'avgHighPrice': row.avg_high_price or None,
+                    'avgLowPrice': row.avg_low_price or None,
                     'highPriceVolume': row.high_price_volume,
                     'lowPriceVolume': row.low_price_volume,
                     'timestamp': ts,
@@ -2230,14 +2237,8 @@ class Command(BaseCommand):
             # returned by the OSRS Wiki API and expected by compute_flip_confidence().
             result.reverse()
 
-            # For '24h' timestep, sample every 4th point from the data to simulate
-            # daily resolution from hourly data. This matches the behavior of the
-            # original HTTP API method (which used 6h API data sampled every 4th point).
-            if timestep == '24h':
-                result = result[::4]
-
-            # Trim to exactly lookback_count points (the sampling or dedup buffer
-            # may have produced slightly more or fewer than needed)
+            # Trim to exactly lookback_count points (the dedup buffer
+            # may have produced slightly more than needed)
             result = result[-lookback_count:]
 
             return result
@@ -2270,7 +2271,7 @@ class Command(BaseCommand):
         """
         try:
             # api_timestep: The actual timestep value to pass to the API
-            # Note: '24h' maps to '6h' since the Wiki API doesn't support 24h timestep
+            # Note: '24h' now maps directly to '24h' — the Wiki API natively supports this timestep
             api_timestep = self.TIMESTEP_API_VALUES.get(timestep, '1h')
 
             # Build the API URL with item ID and timestep
@@ -2291,11 +2292,6 @@ class Command(BaseCommand):
 
             # timeseries: Raw list of data points from the API, sorted oldest-first
             timeseries = data['data']
-
-            # For '24h' timestep, we need to aggregate 6h buckets into 24h buckets
-            # by taking every 4th point. This approximates daily data from 6-hourly data.
-            if timestep == '24h':
-                timeseries = timeseries[::4]
 
             # Return only the last lookback_count data points
             # Why: We only need the most recent N buckets for the confidence calculation
@@ -2366,6 +2362,12 @@ class Command(BaseCommand):
         #      normalises across price tiers (cheap vs expensive items)
         # How: Compared against sum of (qty * price) for all buys and sells
         min_vol = alert.confidence_min_volume
+
+        # vol_concentration_pct: User-defined maximum % of total volume allowed in a
+        # single bucket. If set (not None), items exceeding this threshold are skipped.
+        # The value is stored as a percentage (e.g. 75.0 means 75%) and converted to a
+        # ratio (0.75) when compared. None means the filter is disabled.
+        vol_concentration_pct = alert.confidence_filter_vol_concentration
 
         # Build custom weights dict if any are set, otherwise None for defaults
         weights = None
@@ -2567,6 +2569,45 @@ class Command(BaseCommand):
                     last_scores[item_id_str] = item_state
                     state_changed = True
                     continue
+
+            # =============================================================================
+            # PRE-FILTER: Volume Concentration Check
+            # =============================================================================
+            # What: If a volume concentration threshold is set, skips items where a
+            #       single time bucket holds more than the user-defined percentage of
+            #       total volume — a strong signal of manipulation, not genuine activity.
+            # Why: In OSRS, pump-and-dump manipulators often execute one massive buy order
+            #      in a single 5-minute window. This creates one bucket with thousands of
+            #      trades surrounded by buckets with 0-10 trades. Such data produces
+            #      artificially high trend, pressure, and volume scores even though the
+            #      underlying item is illiquid. Skipping these items prevents false alerts.
+            # How: For each bucket, compute total volume (highPriceVolume + lowPriceVolume).
+            #      Find the maximum single-bucket volume and the total across all buckets.
+            #      If max_bucket / total > (user_threshold / 100), skip the item.
+            #      vol_concentration_pct is stored as a percentage (e.g. 75.0), so we
+            #      divide by 100 to get the ratio for comparison.
+            if vol_concentration_pct is not None and vol_concentration_pct > 0:
+                # concentration_ratio_threshold: The user's chosen maximum fraction (0-1)
+                concentration_ratio_threshold = vol_concentration_pct / 100.0
+                # bucket_volumes: List of total trade count per time bucket
+                bucket_volumes = [
+                    (p.get('highPriceVolume') or 0) + (p.get('lowPriceVolume') or 0)
+                    for p in timeseries_data
+                ]
+                # total_vol: Sum of all trade volumes across every bucket
+                total_vol = sum(bucket_volumes)
+                if total_vol > 0:
+                    # max_bucket_vol: The single largest volume in any one bucket
+                    max_bucket_vol = max(bucket_volumes)
+                    # concentration_ratio: Fraction of total volume in the single busiest bucket
+                    concentration_ratio = max_bucket_vol / total_vol
+                    if concentration_ratio > concentration_ratio_threshold:
+                        # Skip this item — it's dominated by a single bucket (manipulation)
+                        item_state['last_eval'] = now_ts
+                        item_state['consecutive'] = 0
+                        last_scores[item_id_str] = item_state
+                        state_changed = True
+                        continue
 
             # =============================================================================
             # COMPUTE FLIP CONFIDENCE SCORE

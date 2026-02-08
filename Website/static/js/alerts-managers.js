@@ -532,6 +532,10 @@
                 confidenceCooldown: document.querySelector(groups.confidenceCooldown),
                 confidenceSustained: document.querySelector(groups.confidenceSustained),
                 confidenceAdvancedToggle: document.querySelector(groups.confidenceAdvancedToggle),
+                // Detection filter: volume concentration threshold input
+                // What: DOM element for the volume concentration filter input container
+                // Why: This field needs to be shown when flip_confidence is selected, hidden otherwise
+                confidenceFilterVolConcentration: document.querySelector(groups.confidenceFilterVolConcentration),
                 confidenceWeightTrend: document.querySelector(groups.confidenceWeightTrend),
                 confidenceWeightPressure: document.querySelector(groups.confidenceWeightPressure),
                 confidenceWeightSpread: document.querySelector(groups.confidenceWeightSpread),
@@ -669,6 +673,8 @@
                 if (elements.confidenceCooldown) elements.confidenceCooldown.style.display = 'none';
                 if (elements.confidenceSustained) elements.confidenceSustained.style.display = 'none';
                 if (elements.confidenceAdvancedToggle) elements.confidenceAdvancedToggle.style.display = 'none';
+                // Detection filter — hide when switching away from flip_confidence
+                if (elements.confidenceFilterVolConcentration) elements.confidenceFilterVolConcentration.style.display = 'none';
                 if (elements.confidenceWeightTrend) elements.confidenceWeightTrend.style.display = 'none';
                 if (elements.confidenceWeightPressure) elements.confidenceWeightPressure.style.display = 'none';
                 if (elements.confidenceWeightSpread) elements.confidenceWeightSpread.style.display = 'none';
@@ -918,6 +924,8 @@
                 if (elements.confidenceCooldown) elements.confidenceCooldown.style.display = 'block';
                 if (elements.confidenceSustained) elements.confidenceSustained.style.display = 'block';
                 if (elements.confidenceAdvancedToggle) elements.confidenceAdvancedToggle.style.display = 'block';
+                // Detection filter — show when flip_confidence is selected
+                if (elements.confidenceFilterVolConcentration) elements.confidenceFilterVolConcentration.style.display = 'block';
 
                 // Let scope change handler determine item selector vs min/max price
                 this.handleConfidenceScopeChange(formType);

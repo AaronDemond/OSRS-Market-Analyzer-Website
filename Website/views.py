@@ -1653,6 +1653,12 @@ def create_alert(request):
         confidence_weight_spread = request.POST.get('confidence_weight_spread', '')
         confidence_weight_volume = request.POST.get('confidence_weight_volume', '')
         confidence_weight_stability = request.POST.get('confidence_weight_stability', '')
+
+        # confidence_filter_vol_concentration: User-defined volume concentration threshold.
+        # What: A percentage (0-100) representing the max fraction of total volume allowed
+        #       in a single time bucket. Items exceeding this are skipped during scoring.
+        # How: Read from a numeric input field. Empty string means disabled (None).
+        confidence_filter_vol_concentration = request.POST.get('confidence_filter_vol_concentration', '')
         
         # =============================================================================
         # DUMP ALERT SPECIFIC FIELDS
@@ -2082,6 +2088,10 @@ def create_alert(request):
             confidence_weight_spread=float(confidence_weight_spread) if alert_type == 'flip_confidence' and confidence_weight_spread and str(confidence_weight_spread).strip() else None,
             confidence_weight_volume=float(confidence_weight_volume) if alert_type == 'flip_confidence' and confidence_weight_volume and str(confidence_weight_volume).strip() else None,
             confidence_weight_stability=float(confidence_weight_stability) if alert_type == 'flip_confidence' and confidence_weight_stability and str(confidence_weight_stability).strip() else None,
+            # confidence_filter_vol_concentration: User-defined volume concentration threshold (%)
+            # What: A percentage threshold for the max volume fraction in a single bucket
+            # How: Only applies to flip_confidence alerts; other types get None (disabled)
+            confidence_filter_vol_concentration=float(confidence_filter_vol_concentration) if alert_type == 'flip_confidence' and confidence_filter_vol_concentration and str(confidence_filter_vol_concentration).strip() else None,
             # =============================================================================
             # DUMP ALERT FIELDS
             # =============================================================================
@@ -2589,6 +2599,9 @@ def alerts_api(request):
             'confidence_cooldown': alert.confidence_cooldown if alert.type == 'flip_confidence' else None,
             'confidence_sustained_count': alert.confidence_sustained_count if alert.type == 'flip_confidence' else None,
             'confidence_eval_interval': alert.confidence_eval_interval if alert.type == 'flip_confidence' else None,
+            # confidence_filter_vol_concentration: User-defined concentration threshold (%)
+            # What: Percentage sent to frontend; null means disabled
+            'confidence_filter_vol_concentration': alert.confidence_filter_vol_concentration if alert.type == 'flip_confidence' else None,
         }
 
         for g in alert_dict['groups']:
@@ -4089,7 +4102,25 @@ def update_single_alert(request, alert_id):
     
     # Handle is_all_items
     is_all_items = data.get('is_all_items', False)
+    # was_all_items: Track whether the alert was previously in all-items mode
+    # What: Captures the old is_all_items state before overwriting it
+    # Why: When a threshold alert switches FROM all-items TO specific items, we need
+    #      to clear the stale reference_prices that belonged to the old all-items set.
+    #      Without this, the old baselines persist in the DB and display on the config
+    #      page even though they're no longer relevant to the new item selection.
+    # How: Compare was_all_items vs is_all_items after assignment to detect a mode change
+    was_all_items = alert.is_all_items
     alert.is_all_items = is_all_items
+    
+    # Clear stale reference_prices when a threshold alert leaves all-items mode
+    # What: Wipe baseline prices that belong to the old all-items configuration
+    # Why: Reference prices are per-item baselines captured at creation / edit time.
+    #      When the user switches from all-items to specific items, the old baselines
+    #      are meaningless — new baselines will be captured for whatever items are added.
+    # How: Set reference_prices to None so the view-mode display shows nothing, and the
+    #      item_ids processing block below will capture fresh baselines for any new items.
+    if alert.type == 'threshold' and was_all_items and not is_all_items:
+        alert.reference_prices = None
     
     # Handle item_ids for multi-item alerts (spread, spike, sustained, threshold)
     # What: Stores multiple item IDs as JSON array for multi-item alerts
@@ -4535,6 +4566,24 @@ def update_single_alert(request, alert_id):
         confidence_sustained_count = data.get('confidence_sustained_count')
         if confidence_sustained_count is not None:
             alert.confidence_sustained_count = int(confidence_sustained_count) if confidence_sustained_count else None
+
+        # =====================================================================
+        # DETECTION FILTERS (volume concentration + outlier capping)
+        # =====================================================================
+        # What: Two boolean toggles that apply pre-processing filters to timeseries
+        #       data before confidence scoring. Both are optional quality controls.
+        # Why: Manipulated/illiquid items can produce artificially high confidence scores.
+        #      These filters catch the two most common manipulation patterns:
+        #      1) Volume concentration: One single bucket has >90% of all trades
+        #      2) Outlier spikes: One data point has >10× the median volume
+        # How: Booleans sent from frontend as true/false. If present, save directly.
+
+        # confidence_filter_vol_concentration: User-defined concentration threshold (%)
+        # What: A percentage (0-100) for the max volume fraction in a single bucket
+        # How: Stored as a float. Empty/null means disabled.
+        if 'confidence_filter_vol_concentration' in data:
+            val = data['confidence_filter_vol_concentration']
+            alert.confidence_filter_vol_concentration = float(val) if val is not None and val != '' else None
         
         # =====================================================================
         # SCORING WEIGHTS (optional — all-or-nothing)

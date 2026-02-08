@@ -1007,6 +1007,26 @@
             </div>
 
             <!-- =================================================================================
+                 DETECTION FILTER: Volume Concentration Threshold
+                 =================================================================================
+                 What: An optional numeric input that sets the maximum percentage of total
+                       volume allowed in a single time bucket before an item is skipped.
+                 Why: Manipulation and illiquid items can produce misleadingly high confidence
+                      scores when most volume is concentrated in one bucket (pump-and-dump).
+                      Letting the user choose the threshold (e.g. 50%, 75%, 90%) gives them
+                      control over how aggressively to filter concentrated-volume items.
+                 How: Rendered as a number input (0-100). When set, the backend computes
+                      max_bucket_volume / total_volume and skips items exceeding the threshold.
+                      Left empty means the filter is disabled. Only shown for flip_confidence.
+                 ================================================================================= -->
+            <div class="form-group" id="confidence-filter-vol-concentration-group" style="display: none;">
+                <label for="confidence-filter-vol-concentration">Volume Concentration Filter (%)</label>
+                <input type="number" name="confidence_filter_vol_concentration" id="confidence-filter-vol-concentration"
+                       min="1" max="100" step="1" placeholder="e.g. 75" tabindex="25">
+                <small class="form-hint">Skip items where a single time bucket holds more than this % of total volume (leave empty to disable)</small>
+            </div>
+
+            <!-- =================================================================================
                  ADVANCED SETTINGS TOGGLE (Flip Confidence)
                  =================================================================================
                  What: Toggle panel for advanced weight tuning parameters

@@ -431,7 +431,24 @@ class Alert(models.Model):
     # confidence_weight_stability: Weight for the stability sub-score (default: 0.10)
     # Note: This is implicitly 1.0 - sum(other weights) but stored for explicitness
     confidence_weight_stability = models.FloatField(blank=True, null=True, default=None)
-    
+
+    # confidence_filter_vol_concentration: User-configurable volume concentration threshold.
+    # What: A percentage (0-100) representing the maximum fraction of total volume that
+    #       may come from a single time bucket before the item is skipped. When set (not
+    #       null), items where any single bucket holds more than this % of total volume
+    #       are flagged as suspicious and excluded from scoring.
+    # Why: In OSRS, manipulation/pump activity often shows as a single massive buy spike
+    #      in one 5m bucket while all other buckets are nearly empty. This creates
+    #      artificially high trend, pressure, and volume scores that don't reflect genuine
+    #      market activity. Filtering these items prevents false-positive alerts.
+    #      By letting the user choose the threshold (e.g. 50%, 75%, 90%), they can tune
+    #      how aggressively to filter concentrated-volume items.
+    # How: Before calling compute_flip_confidence(), sum per-bucket trade volume and check
+    #      if any single bucket exceeds (threshold / 100) of the total. If so, skip the item.
+    #      Null means the filter is disabled.
+    confidence_filter_vol_concentration = models.FloatField(blank=True, null=True, default=None)
+
+
     # confidence_last_scores: JSON dict storing per-item state for the confidence alert
     # What: Tracks the last computed confidence score, consecutive pass count, and last eval time
     # Why: Needed for delta_increase trigger rule (compare to previous score),
