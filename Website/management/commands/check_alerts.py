@@ -5,14 +5,13 @@ import json
 import math
 from collections import defaultdict
 from pathlib import Path
-from datetime import timedelta, timezone as dt_tz
+from datetime import timedelta
 
 import requests
 from django.core.management.base import BaseCommand
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
-from django.utils.dateparse import parse_datetime
 
 # Allow running the command directly (outside manage.py) by ensuring the project is on sys.path and Django is configured
 BASE_DIR = Path(__file__).resolve().parents[2]
@@ -307,15 +306,6 @@ class Command(BaseCommand):
 
     # Email/SMS recipient for alert notifications (loaded from environment variable)
     ALERT_RECIPIENT = os.environ.get('ALERT_RECIPIENT', '')
-    # VOLUME_RECENCY_MINUTES: Maximum age (in minutes) that a HourlyItemVolume snapshot
-    #                          can be before it is considered stale for min_volume checks.
-    # What: Defines the freshness window for hourly volume data used by spike/threshold/spread/sustained alerts.
-    # Why: The RuneScape Wiki hourly timeseries endpoint can lag by ~2 hours; we allow a 10-minute
-    #      buffer so alerts still work with delayed data while preventing stale snapshots (e.g., 6h old)
-    #      from passing min_volume filters.
-    # How: get_volume_from_timeseries compares the latest snapshot timestamp against
-    #      timezone.now() minus this window and returns None when the snapshot is too old.
-    VOLUME_RECENCY_MINUTES = 130
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -1706,10 +1696,8 @@ class Command(BaseCommand):
              volume field (in GP) or None if no data exists for this item.
 
         Note: The time_window_minutes parameter is kept in the method signature for backwards
-              compatibility with existing callers, but is no longer used. We always return
-              the most recent hourly volume when (and only when) the snapshot timestamp is
-              within VOLUME_RECENCY_MINUTES of now; stale snapshots return None so min_volume
-              filters fail safely on outdated volume data.
+              compatibility with existing callers, but is no longer used — we always return
+              the most recent hourly volume regardless of the time window.
 
         Args:
             item_id: The OSRS item ID to look up volume for
@@ -1726,46 +1714,6 @@ class Command(BaseCommand):
             # Model ordering is ['-timestamp'] so .first() gives the newest entry.
             latest_volume = HourlyItemVolume.objects.filter(item_id=int(item_id)).first()
             if latest_volume:
-                # latest_volume_timestamp: Raw timestamp stored on the latest volume snapshot.
-                # What: Captures the timestamp value recorded by update_volumes.py (typically
-                #       a Unix epoch seconds string, but tests may store ISO-8601 strings).
-                # Why: We must validate freshness before trusting min_volume checks.
-                # How: Parsed below into a timezone-aware datetime for comparison.
-                latest_volume_timestamp = latest_volume.timestamp
-                # parsed_volume_timestamp: Parsed, timezone-aware datetime for the snapshot.
-                # What: Represents when the latest volume snapshot was recorded.
-                # Why: Enables a direct comparison against the allowed recency window.
-                # How: Attempt Unix-epoch parsing first; fall back to ISO parsing.
-                parsed_volume_timestamp = None
-                # What: Parse timestamps stored as Unix epoch seconds (string or numeric).
-                # Why: The RuneScape Wiki timeseries API returns Unix timestamps, and
-                #      update_volumes.py stores them as-is, so this is the primary format.
-                # How: Convert to float and build a UTC-aware datetime.
-                try:
-                    parsed_volume_timestamp = timezone.datetime.fromtimestamp(
-                        float(latest_volume_timestamp),
-                        tz=dt_tz.utc,
-                    )
-                except (TypeError, ValueError, OverflowError):
-                    # What: Fall back to ISO-8601 parsing for test fixtures or legacy data.
-                    # Why: Some tests insert human-readable timestamps (e.g., "2026-02-06T12:00:00Z").
-                    # How: Use Django's parse_datetime and normalize to UTC if needed.
-                    parsed_volume_timestamp = parse_datetime(str(latest_volume_timestamp))
-                    if parsed_volume_timestamp and timezone.is_naive(parsed_volume_timestamp):
-                        parsed_volume_timestamp = timezone.make_aware(
-                            parsed_volume_timestamp,
-                            dt_tz.utc,
-                        )
-                # volume_recency_cutoff: Oldest timestamp allowed for volume to be considered current.
-                # What: Defines the freshness threshold for hourly volume data.
-                # Why: Prevents stale snapshots (e.g., several hours old) from passing min_volume gates.
-                # How: Compare parsed_volume_timestamp against "now - VOLUME_RECENCY_MINUTES".
-                volume_recency_cutoff = timezone.now() - timedelta(minutes=self.VOLUME_RECENCY_MINUTES)
-                # What: Treat missing/invalid timestamps or stale snapshots as "no volume data".
-                # Why: Alerts should only pass the min_volume filter if the volume is recent.
-                # How: Return None when parsing fails or the timestamp is older than the cutoff.
-                if parsed_volume_timestamp is None or parsed_volume_timestamp < volume_recency_cutoff:
-                    return None
                 return latest_volume.volume
             return None
         except Exception as e:
