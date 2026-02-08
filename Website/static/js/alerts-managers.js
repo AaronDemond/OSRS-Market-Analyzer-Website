@@ -303,61 +303,90 @@
             // =============================================================================
             // TABINDEX CONFIGURATION
             // =============================================================================
-            // What: Defines the correct tab order for each alert type and scope combination
-            // Why: Visual field order differs between "Specific Items" (shows item selector) and
-            //      "All Items" (shows min/max price filters) modes
-            // How: Maps field IDs to tabindex values based on their visual position in each mode
-            // Note: Values start at 7 because common fields (Alert Type, Name, Group) use 1-6
+            // What: Defines the correct tab order for each alert type and scope combination.
+            // Why: The visual order of fields is controlled by CSS flexbox `order` properties
+            //      (defined in alerts-form.css), NOT by HTML document order. Tab order must
+            //      match the VISUAL order so users can tab through fields top-to-bottom,
+            //      left-to-right as they appear on screen. Different scope modes (specific
+            //      items vs all items) show/hide different fields, so tab order must adapt.
+            // How: Maps field element IDs to sequential tabindex values based on their CSS
+            //      `order` values for each alert type and scope combination.
+            // Note: Values start at 7 because common fields use 1-6:
+            //       1=Alert Type, 2=Help Button, 3=Name Type, 4=Custom Name, 5=Group, 6=Add Group
+            // Note: Notification checkboxes (tabindex 90-91) and Submit button (tabindex 100)
+            //       are hard-coded in HTML and not managed here — they always come last.
             // =============================================================================
             
             const tabConfigs = {
+                // =============================================================================
                 // SPREAD alert tabindex configuration
+                // CSS order: scope(51) → items(61) → minVolume(86) → percentage(90)
+                // All Items adds: maxPrice(81) → minPrice(82) between scope and minVolume
+                // =============================================================================
                 spread: {
-                    // Specific Items: Apply To → Items → Percentage → Notifications
+                    // Specific Items: Apply To → Items → Min Volume → Percentage
                     specific: {
                         'spread-scope': 7,
                         'spread-item-input': 8,
                         'spread-multi-item-toggle': 9,
-                        'percentage': 10
+                        'min-volume': 10,
+                        'percentage': 11
                     },
-                    // All Items: Apply To → Max Price → Min Price → Percentage → Notifications
+                    // All Items: Apply To → Max Price → Min Price → Min Volume → Percentage
                     all: {
                         'spread-scope': 7,
                         'maximum-price': 8,
                         'minimum-price': 9,
-                        'percentage': 10
+                        'min-volume': 10,
+                        'percentage': 11
                     }
                 },
                 
+                // =============================================================================
                 // SPIKE alert tabindex configuration
+                // CSS order: scope(50) → items(60) → direction(70) → minVolume(86) →
+                //            percentage(90) → reference(95) → timeFrame(110)
+                // All Items adds: maxPrice(81) → minPrice(82) between direction and minVolume
+                // =============================================================================
                 spike: {
-                    // Specific Items: Apply To → Items → Direction → Percentage → Reference → Time Frame
+                    // Specific Items: Apply To → Items → Direction → Min Volume →
+                    //                 Percentage → Reference → Time Frame
                     specific: {
                         'spike-scope': 7,
                         'spike-item-input': 8,
                         'spike-multi-item-toggle': 9,
                         'direction': 10,
-                        'percentage': 11,
-                        'reference': 12,
-                        'time-frame': 13
+                        'min-volume': 11,
+                        'percentage': 12,
+                        'reference': 13,
+                        'time-frame': 14
                     },
-                    // All Items: Apply To → Direction → Max Price → Min Price → Percentage → Reference → Time Frame
+                    // All Items: Apply To → Direction → Max Price → Min Price → Min Volume →
+                    //            Percentage → Reference → Time Frame
                     all: {
                         'spike-scope': 7,
                         'direction': 8,
                         'maximum-price': 9,
                         'minimum-price': 10,
-                        'percentage': 11,
-                        'reference': 12,
-                        'time-frame': 13
+                        'min-volume': 11,
+                        'percentage': 12,
+                        'reference': 13,
+                        'time-frame': 14
                     }
                 },
                 
+                // =============================================================================
                 // SUSTAINED alert tabindex configuration
+                // CSS order: scope(52) → items(62) → direction(70) → pressureStrength(80) →
+                //            maxPrice(81) → minPrice(82) → minConsecutive(83) → minMove(84) →
+                //            pressureSpread(85) → minVolume(86) → reference(95) →
+                //            timeFrame(110) → volBuffer(120) → volMultiplier(121)
+                // Specific Items hides maxPrice/minPrice; All Items hides items
+                // =============================================================================
                 sustained: {
-                    // Specific Items: Apply To → Items → Direction → Market Pressure → Min Consecutive →
-                    //                 Min Move% → Min Spread% → Min Volume → Reference → Time Frame →
-                    //                 Vol Buffer → Vol Multiplier
+                    // Specific Items: Apply To → Items → Direction → Market Pressure →
+                    //                 Min Consecutive → Min Move% → Min Spread% → Min Volume →
+                    //                 Reference → Time Frame → Vol Buffer → Vol Multiplier
                     specific: {
                         'sustained-scope': 7,
                         'sustained-item-input': 8,
@@ -373,12 +402,9 @@
                         'volatility-buffer-size': 18,
                         'volatility-multiplier': 19
                     },
-                    // All Items: Apply To → Direction → Market Pressure → Max Price → Min Price → Min Consecutive →
-                    //            Min Move% → Min Spread% → Min Volume → Reference → Time Frame →
-                    //            Vol Buffer → Vol Multiplier
-                    // What: Tab order for sustained alerts when "All Items" is selected
-                    // Why: Users expect Min/Max price fields to be adjacent for easier form completion
-                    // How: Place minimum-price immediately after maximum-price (tabindex 11)
+                    // All Items: Apply To → Direction → Market Pressure → Max Price → Min Price →
+                    //            Min Consecutive → Min Move% → Min Spread% → Min Volume →
+                    //            Reference → Time Frame → Vol Buffer → Vol Multiplier
                     all: {
                         'sustained-scope': 7,
                         'direction': 8,
@@ -396,56 +422,191 @@
                     }
                 },
                 
+                // =============================================================================
                 // THRESHOLD alert tabindex configuration
+                // CSS order: scope(53) → items(63) → thDirection(71) → thType(72) →
+                //            minVolume(86) → thReference(96) → thValue(100)
+                // All Items adds: maxPrice(81) → minPrice(82) between thType and minVolume
+                // Specific Items hides maxPrice/minPrice; All Items hides items
+                // =============================================================================
                 threshold: {
-                    // Specific Items: Apply To → Items → Above/Below → Threshold Type → Reference → Threshold
+                    // Specific Items: Apply To → Items → Above/Below → Threshold Type →
+                    //                 Min Volume → Reference → Threshold Value
                     specific: {
                         'threshold-items-tracked': 7,
                         'threshold-item-input': 8,
                         'threshold-multi-item-toggle': 9,
                         'threshold-direction': 10,
                         'threshold-type': 11,
-                        'threshold-reference': 12,
-                        'threshold-value': 13
+                        'min-volume': 12,
+                        'threshold-reference': 13,
+                        'threshold-value': 14
                     },
-                    // All Items: Apply To → Above/Below → Threshold Type → Max Price → Min Price → Reference → Threshold
+                    // All Items: Apply To → Above/Below → Threshold Type → Max Price → Min Price →
+                    //            Min Volume → Reference → Threshold Value
                     all: {
                         'threshold-items-tracked': 7,
                         'threshold-direction': 8,
                         'threshold-type': 9,
                         'maximum-price': 10,
                         'minimum-price': 11,
-                        'threshold-reference': 12,
-                        'threshold-value': 13
+                        'min-volume': 12,
+                        'threshold-reference': 13,
+                        'threshold-value': 14
                     }
                 },
                 
+                // =============================================================================
                 // COLLECTIVE_MOVE alert tabindex configuration
-                // What: Tab order for collective_move alerts in both specific and all items modes
-                // Why: Users need logical tab flow through collective move configuration
-                // How: Groups related fields together for efficient form completion
+                // No explicit CSS order for collective fields — they render in HTML document
+                // order (all at default order: 0). Shared fields max-price-group(81),
+                // min-price-group(82), and time-frame-group(110) have explicit CSS order.
+                // In "all items" mode, prices appear AFTER all order-0 collective fields
+                // but BEFORE time-frame(110).
+                // Note: collectiveScope is always hidden for collective_move alerts.
+                // =============================================================================
                 collective_move: {
-                    // Specific Items: Apply To → Items → Reference → Calculation Method → Direction → Threshold → Time Frame
+                    // Specific Items: Items → Reference → Calculation Method →
+                    //                 Direction → Threshold → Time Frame
+                    // Note: Scope is hidden, so tab starts with items
                     specific: {
-                        'collective-scope': 7,
-                        'collective-item-input': 8,
-                        'collective-multi-item-toggle': 9,
-                        'collective-reference': 10,
-                        'collective-calculation-method': 11,
-                        'collective-direction': 12,
-                        'collective-threshold': 13,
-                        'time-frame': 14
+                        'collective-item-input': 7,
+                        'collective-multi-item-toggle': 8,
+                        'collective-reference': 9,
+                        'collective-calculation-method': 10,
+                        'collective-direction': 11,
+                        'collective-threshold': 12,
+                        'time-frame': 13
                     },
-                    // All Items: Apply To → Max Price → Min Price → Reference → Calculation Method → Direction → Threshold → Time Frame
+                    // All Items: Reference → Calculation Method → Direction → Threshold →
+                    //            Max Price → Min Price → Time Frame
+                    // Note: Scope is hidden; prices appear after order-0 fields due to CSS order 81-82
                     all: {
-                        'collective-scope': 7,
-                        'maximum-price': 8,
-                        'minimum-price': 9,
-                        'collective-reference': 10,
-                        'collective-calculation-method': 11,
-                        'collective-direction': 12,
-                        'collective-threshold': 13,
-                        'time-frame': 14
+                        'collective-reference': 7,
+                        'collective-calculation-method': 8,
+                        'collective-direction': 9,
+                        'collective-threshold': 10,
+                        'maximum-price': 11,
+                        'minimum-price': 12,
+                        'time-frame': 13
+                    }
+                },
+
+                // =============================================================================
+                // FLIP_CONFIDENCE alert tabindex configuration
+                // Most fields have no explicit CSS order (default 0) — they render in HTML
+                // document order. Two exceptions:
+                //   - confidence-advanced-toggle-group: order 130
+                //   - confidence-advanced-panel: order 131
+                // Shared price fields max-price-group(81) and min-price-group(82) appear
+                // AFTER all order-0 confidence fields but BEFORE advanced toggle(130).
+                // So in "all items" mode, prices come after volConcentration, before advanced.
+                // =============================================================================
+                flip_confidence: {
+                    // Specific Items: Apply To → Items → Timestep → Lookback → Trigger Rule →
+                    //                 Threshold → Min Spread → Min Volume → Eval Interval →
+                    //                 Cooldown → Sustained → Vol Concentration → Advanced Toggle →
+                    //                 (Advanced weight fields follow sequentially)
+                    specific: {
+                        'confidence-scope': 7,
+                        'confidence-item-input': 8,
+                        'confidence-multi-item-toggle': 9,
+                        'confidence-timestep': 10,
+                        'confidence-lookback': 11,
+                        'confidence-trigger-rule': 12,
+                        'confidence-threshold': 13,
+                        'confidence-min-spread-pct': 14,
+                        'confidence-min-volume': 15,
+                        'confidence-eval-interval': 16,
+                        'confidence-cooldown': 17,
+                        'confidence-sustained-count': 18,
+                        'confidence-filter-vol-concentration': 19,
+                        'confidence-advanced-toggle': 20,
+                        'confidence-weight-trend': 21,
+                        'confidence-weight-pressure': 22,
+                        'confidence-weight-spread': 23,
+                        'confidence-weight-volume': 24,
+                        'confidence-weight-stability': 25
+                    },
+                    // All Items: Apply To → Timestep → Lookback → Trigger Rule → Threshold →
+                    //            Min Spread → Min Volume → Eval Interval → Cooldown →
+                    //            Sustained → Vol Concentration → Max Price → Min Price →
+                    //            Advanced Toggle → (Advanced weight fields)
+                    // Note: maxPrice(81) and minPrice(82) appear AFTER all order-0 confidence
+                    //       fields but BEFORE advanced toggle(130) due to CSS flexbox ordering
+                    all: {
+                        'confidence-scope': 7,
+                        'confidence-timestep': 8,
+                        'confidence-lookback': 9,
+                        'confidence-trigger-rule': 10,
+                        'confidence-threshold': 11,
+                        'confidence-min-spread-pct': 12,
+                        'confidence-min-volume': 13,
+                        'confidence-eval-interval': 14,
+                        'confidence-cooldown': 15,
+                        'confidence-sustained-count': 16,
+                        'confidence-filter-vol-concentration': 17,
+                        'maximum-price': 18,
+                        'minimum-price': 19,
+                        'confidence-advanced-toggle': 20,
+                        'confidence-weight-trend': 21,
+                        'confidence-weight-pressure': 22,
+                        'confidence-weight-spread': 23,
+                        'confidence-weight-volume': 24,
+                        'confidence-weight-stability': 25
+                    }
+                },
+
+                // =============================================================================
+                // DUMP alert tabindex configuration
+                // CSS order: scope(50) → items(60) → discountMin(70) → shockSigma(71) →
+                //            liquidityFloor(72) → cooldown(73) → maxPrice(81) → minPrice(82) →
+                //            advancedToggle(130) → advancedPanel(131)
+                // In "all items" mode, items(60) is hidden and maxPrice/minPrice are shown.
+                // Price fields at order 81-82 appear AFTER cooldown(73) but BEFORE advanced(130).
+                // =============================================================================
+                dump: {
+                    // Specific Items: Apply To → Items → Discount Min → Shock Sigma →
+                    //                 Liquidity Floor → Cooldown → Advanced Toggle →
+                    //                 (Advanced fields follow sequentially)
+                    specific: {
+                        'dump-scope': 7,
+                        'dump-item-input': 8,
+                        'dump-multi-item-toggle': 9,
+                        'dump-discount-min': 10,
+                        'dump-shock-sigma': 11,
+                        'dump-liquidity-floor': 12,
+                        'dump-cooldown': 13,
+                        'dump-advanced-toggle': 14,
+                        'dump-sell-ratio-min': 15,
+                        'dump-rel-vol-min': 16,
+                        'dump-fair-halflife': 17,
+                        'dump-vol-halflife': 18,
+                        'dump-var-halflife': 19,
+                        'dump-confirmation-buckets': 20,
+                        'dump-consistency-required': 21
+                    },
+                    // All Items: Apply To → Discount Min → Shock Sigma → Liquidity Floor →
+                    //            Cooldown → Max Price → Min Price → Advanced Toggle →
+                    //            (Advanced fields follow sequentially)
+                    // Note: maxPrice(81) and minPrice(82) appear AFTER cooldown(73) but
+                    //       BEFORE advanced toggle(130) due to CSS flexbox ordering
+                    all: {
+                        'dump-scope': 7,
+                        'dump-discount-min': 8,
+                        'dump-shock-sigma': 9,
+                        'dump-liquidity-floor': 10,
+                        'dump-cooldown': 11,
+                        'maximum-price': 12,
+                        'minimum-price': 13,
+                        'dump-advanced-toggle': 14,
+                        'dump-sell-ratio-min': 15,
+                        'dump-rel-vol-min': 16,
+                        'dump-fair-halflife': 17,
+                        'dump-vol-halflife': 18,
+                        'dump-var-halflife': 19,
+                        'dump-confirmation-buckets': 20,
+                        'dump-consistency-required': 21
                     }
                 }
             };
@@ -889,6 +1050,13 @@
 
                 // Collective move alerts must use specific items, not all items
                 document.querySelector(selectors.isAllItems).value = 'false';
+                
+                // Set correct tab indices for collective move (always specific items)
+                // What: Apply tab order immediately when alert type is selected
+                // Why: collectiveScope is hidden so handleCollectiveScopeChange is never triggered
+                //      by user interaction — we must set tab indices here
+                // How: Call updateTabIndices with isAllItems=false since collective always uses specific items
+                this.updateTabIndices('collective_move', false);
             } else if (alertType === AlertsConfig.alertTypes.FLIP_CONFIDENCE) {
                 /**
                  * Flip Confidence alerts configuration
@@ -1082,6 +1250,12 @@
                 
                 // Set is_all_items flag
                 if (isAllItemsInput) isAllItemsInput.value = 'true';
+                
+                // Update tabindex values for All Items mode
+                // What: Adjust tab order to include maxPrice/minPrice fields
+                // Why: All Items mode shows price filters instead of item selector
+                // How: Call updateTabIndices with isAllItems=true
+                this.updateTabIndices('flip_confidence', true);
             } else {
                 // Specific Items mode: show item selector, hide price filters
                 if (confidenceItemsGroup) confidenceItemsGroup.style.display = 'block';
@@ -1090,6 +1264,12 @@
                 
                 // Clear is_all_items flag
                 if (isAllItemsInput) isAllItemsInput.value = 'false';
+                
+                // Update tabindex values for Specific Items mode
+                // What: Adjust tab order to include item selector fields
+                // Why: Specific Items mode shows item input instead of price filters
+                // How: Call updateTabIndices with isAllItems=false
+                this.updateTabIndices('flip_confidence', false);
             }
         },
 
@@ -1127,6 +1307,12 @@
                 
                 // Set is_all_items flag
                 if (isAllItemsInput) isAllItemsInput.value = 'true';
+                
+                // Update tabindex values for All Items mode
+                // What: Adjust tab order to include maxPrice/minPrice fields
+                // Why: All Items mode shows price filters instead of item selector
+                // How: Call updateTabIndices with isAllItems=true
+                this.updateTabIndices('dump', true);
             } else {
                 // Specific Items mode: show item selector, hide price filters
                 if (dumpItemsGroup) dumpItemsGroup.style.display = 'block';
@@ -1135,6 +1321,12 @@
                 
                 // Clear is_all_items flag
                 if (isAllItemsInput) isAllItemsInput.value = 'false';
+                
+                // Update tabindex values for Specific Items mode
+                // What: Adjust tab order to include item selector fields
+                // Why: Specific Items mode shows item input instead of price filters
+                // How: Call updateTabIndices with isAllItems=false
+                this.updateTabIndices('dump', false);
             }
         },
 
