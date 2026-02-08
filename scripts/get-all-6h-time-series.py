@@ -139,6 +139,15 @@ def get_all_volume(ids: List[int], timestep: str = "1h") -> List[Dict[str, Any]]
 def get_all_volume_5m(ids: List[int], timestep: str = "5m") -> List[Dict[str, Any]]:
     return asyncio.run(fetch_many(ids, timestep=timestep, concurrency=MAX_WORKERS))
 
+# get_all_volume_6h: Fetches timeseries data at 6-hour resolution for all items.
+# Why: The default get_all_volume() uses timestep="1h", which is incorrect for
+#      populating SixHourTimeSeries. Using the wrong resolution stores hourly-
+#      aggregated data that inflates volume counts and corrupts alert calculations.
+# How: Calls fetch_many() with timestep="6h" so the Wiki API returns data
+#      bucketed into 6-hour intervals.
+def get_all_volume_6h(ids: List[int], timestep: str = "6h") -> List[Dict[str, Any]]:
+    return asyncio.run(fetch_many(ids, timestep=timestep, concurrency=MAX_WORKERS))
+
 
 def getNameAndIds():
     mapping = load_item_mapping()
@@ -155,9 +164,11 @@ def getData():
 def getAllTimeSeries():
     mapping = load_item_mapping()
     ids = [x['id'] for x in mapping]
-    result = get_all_volume(ids)
+    # Why: Use get_all_volume_6h() to fetch at 6-hour resolution — get_all_volume()
+    #      defaults to 1h which is wrong for SixHourTimeSeries.
+    result = get_all_volume_6h(ids)
     for r in result:
-        make_six_hour_timeseries_objects([r])
+        make_six_hour_timeseries_objects(r, lookup)
     #with open("output.txt", "w", encoding="utf-8") as f:
         #print(result, file=f)
 
@@ -220,11 +231,10 @@ def make_six_hour_timeseries_objects(result_item, lookup):
 
     for x in result_item.get("data", []):
         ts = x["timestamp"]
-        avg_high = x["avgHighPrice"] or 0
-        avg_low = x["avgLowPrice"] or 0
+        avg_high = x["avgHighPrice"]
+        avg_low = x["avgLowPrice"]
         high_vol = x["highPriceVolume"] or 0
         low_vol = x["lowPriceVolume"] or 0
-
 
         objs.append(SixHourTimeSeries(
             item_id=item_id,
@@ -285,7 +295,10 @@ def getDataTimeSeries():
     mapping = load_item_mapping()
     ids = [x["id"] for x in mapping]
 
-    result = get_all_volume(ids)
+    # Why: Use get_all_volume_6h() (timestep="6h") to fetch 6-hour resolution data.
+    #      The default get_all_volume() uses timestep="1h" which stores hourly-aggregated
+    #      data into the 6-hour table — wrong resolution for this model.
+    result = get_all_volume_6h(ids)
 
     all_objects = []
     for r in result:
@@ -445,10 +458,13 @@ def fetch_latest_six_hour_snapshot():
 
     # raw_results: List of dicts [{'id': int, 'data': [...]}, ...] from the async API fetcher.
     # Each entry contains the full timeseries response for one item.
-    raw_results = get_all_volume(ids)
+    # Why: We use get_all_volume_6h() (timestep="6h") instead of get_all_volume() (timestep="1h")
+    #      because this function populates SixHourTimeSeries — storing hourly-aggregated data
+    #      in a 6-hour table gives the wrong resolution and corrupts volume calculations.
+    raw_results = get_all_volume_6h(ids)
     print(f"Received responses for {len(raw_results)} items. Extracting latest datapoints...")
 
-    # new_records: List of HourlyItemVolume model instances to bulk-insert.
+    # new_records: List of SixHourTimeSeries model instances to bulk-insert.
     # Only the single most recent datapoint per item is included.
     new_records = []
 
@@ -456,8 +472,8 @@ def fetch_latest_six_hour_snapshot():
         # item_id: The OSRS item ID from the API response.
         item_id = result['id']
 
-        # data_points: The chronologically-sorted list of hourly snapshots from the API.
-        # The last element is the most recent hour's data.
+        # data_points: The chronologically-sorted list of 6h snapshots from the API.
+        # The last element is the most recent 6-hour period's data.
         data_points = result.get('data', [])
         if not data_points:
             continue
@@ -466,25 +482,19 @@ def fetch_latest_six_hour_snapshot():
         # Contains keys: timestamp, avgHighPrice, avgLowPrice, highPriceVolume, lowPriceVolume.
         latest = data_points[-1]
 
-        # timestamp: UTC datetime of the most recent hourly snapshot.
+        # timestamp: Unix timestamp for the start of the most recent 6-hour period.
         timestamp = latest['timestamp']
 
-        # avg_high / avg_low: Average prices for the hour, defaulting to 0 if None
-        # (None means no trades occurred at that price point during the hour).
-        avg_high = latest['avgHighPrice'] or 0
-        avg_low = latest['avgLowPrice'] or 0
+        # avg_high / avg_low: Preserve None from the API — the model fields are nullable.
+        avg_high = latest['avgHighPrice']
+        avg_low = latest['avgLowPrice']
 
         # high_vol / low_vol: Number of units traded at high/low price, defaulting to 0 if None.
         high_vol = latest['highPriceVolume'] or 0
         low_vol = latest['lowPriceVolume'] or 0
 
-        # volume_gp: Total GP traded in the most recent hour.
-        # Calculated as (units sold at high price * high price) + (units sold at low price * low price).
-        volume_gp = (avg_high * high_vol) + (avg_low * low_vol)
-
         # item_name: Human-readable item name from the lookup dict, or empty string if not found.
         item_name = name_from_id(item_id, lookup) or ""
-
 
         new_records.append(SixHourTimeSeries(
             item_id=item_id,
@@ -492,7 +502,12 @@ def fetch_latest_six_hour_snapshot():
             avg_low_price=avg_low,
             avg_high_price=avg_high,
             high_price_volume=high_vol,
-            low_price_volume=low_vol
+            low_price_volume=low_vol,
+            # timestamp: The API-provided Unix timestamp for this data point.
+            # Why: Without this field, rows get empty-string timestamps which break
+            #      ordering (Meta.ordering = ['-timestamp']) and deduplication logic
+            #      in check_alerts.py's fetch_timeseries_from_db().
+            timestamp=timestamp
         ))
 
     # Bulk-insert all records in a single atomic transaction for performance.
@@ -513,12 +528,12 @@ def fetch_latest_six_hour_snapshot():
 
 
 
+import time
 lookup = build_id_to_name(load_item_mapping())  
 # use this to get all.
-#getDataTimeSeries()
-#print("DONE")
-#time.sleep(1000)
-import time
+getDataTimeSeries()
+print("DONE")
+time.sleep(1000)
 hours = 6
 minutes = 5
 while True:
