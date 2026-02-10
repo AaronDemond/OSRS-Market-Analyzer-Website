@@ -113,20 +113,23 @@ class SpikeTestMixin:
         What: Inserts a single (timestamp, price) tuple into cmd.price_history
               for the given item+reference combination, backdated to a precise
               position that satisfies two constraints:
-              1. Old enough: must be older than warmup_threshold
+              1. Old enough: must be at or before warmup_threshold
                  (now - time_frame_minutes * 60) so the warmup check passes.
-              2. Young enough: must be newer than cutoff
-                 (now - time_frame_minutes * 60 - 60) so it is NOT pruned
+                 The warmup check uses strict greater-than: oldest > warmup → skip.
+                 So baseline_ts <= warmup_threshold passes warmup.
+              2. Young enough: must be at or after cutoff
+                 (now - time_frame_minutes * 60 - 2) so it is NOT pruned
                  when check_alert() filters the price_history window.
+                 The prune filter uses: ts >= cutoff → survives.
         Why: Spike alerts require price data from at least [time_frame_minutes]
-             ago before they will evaluate. But check_alert() also prunes any
-             data older than cutoff (time_frame + 60 seconds). If the baseline
-             is placed too far in the past (e.g., 2× time_frame), it gets
-             pruned before the warmup check can use it.
-        How: Places the baseline at exactly (time_frame_minutes * 60 + 30)
+             ago before they will evaluate. The cutoff has a 2-second buffer
+             beyond the warmup_threshold (to guard against sub-second timing
+             drift between time.time() calls), giving a small window to place
+             the baseline.
+        How: Places the baseline at exactly (time_frame_minutes * 60 + 1)
              seconds in the past. This is:
-             - 30 seconds older than warmup_threshold → passes warmup
-             - 30 seconds younger than cutoff → survives pruning
+             - 1 second older than warmup_threshold → passes warmup
+             - 1 second younger than cutoff → survives pruning
 
         Args:
             cmd: Command instance whose price_history to populate
@@ -137,12 +140,12 @@ class SpikeTestMixin:
         """
         # key: The price_history lookup key, e.g. "100:high"
         key = f"{item_id}:{reference}"
-        # baseline_ts: Unix timestamp placed (time_frame + 30 seconds) in the past.
+        # baseline_ts: Unix timestamp placed (time_frame + 1 second) in the past.
         # This is carefully positioned between two boundaries:
-        #   - warmup_threshold = now - (time_frame * 60)        → baseline is 30s older ✓
-        #   - cutoff           = now - (time_frame * 60) - 60   → baseline is 30s younger ✓
+        #   - warmup_threshold = now - (time_frame * 60)        → baseline is 1s older ✓
+        #   - cutoff           = now - (time_frame * 60) - 2    → baseline is 1s younger ✓
         # This ensures the data point passes warmup AND survives pruning.
-        baseline_ts = time.time() - (time_frame_minutes * 60) - 30
+        baseline_ts = time.time() - (time_frame_minutes * 60) - 1
         cmd.price_history[key].append((baseline_ts, baseline_price))
 
     def _create_volume_record(self, item_id, item_name, volume):

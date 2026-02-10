@@ -3411,12 +3411,23 @@ class Command(BaseCommand):
             
             # cutoff: Timestamp marking the start of our rolling window for pruning
             # What: Any price data older than this is pruned from history
-            # Why: We only need data within the timeframe to find the baseline
-            # IMPORTANT: Add 60-second buffer beyond warmup_threshold to ensure data survives
-            #            long enough for the warmup check to pass. Without this buffer, data
-            #            gets pruned right as it becomes old enough (race condition).
-            # How: Keep data for an extra 60 seconds beyond the required window
-            cutoff = now - (time_frame_minutes * 60) - 60  # Extra 60-second buffer
+            # Why: We only need data within the timeframe to find the baseline.
+            #      The baseline should always be the price from approximately [timeframe]
+            #      ago, rolling forward on every check cycle. A small 2-second buffer
+            #      ensures data survives long enough for the warmup check to pass without
+            #      adding perceptible staleness to the baseline.
+            # How: Prune anything older than [timeframe] + 2 seconds. After warmup, the
+            #      oldest surviving entry shifts forward on every check, creating a rolling
+            #      baseline:
+            #        time 0 (creation) → baseline = current price (warmup starts)
+            #        time 1 … time N   → warming up (baseline = time 0 price, not yet used)
+            #        time N+1           → warmup complete, baseline = time 1 price (time 0 pruned)
+            #        time N+2           → baseline = time 2 price (time 1 pruned)
+            #        …and so on.
+            # Note: The previous 60-second buffer caused the baseline to lag by up to a full
+            #       minute. The 2-second buffer is imperceptible and only guards against the
+            #       sub-second timing drift between time.time() calls.
+            cutoff = now - (time_frame_minutes * 60) - 2
 
             # =============================================================================
             # ALL-ITEMS SPIKE ALERT
