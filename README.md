@@ -19,8 +19,6 @@ This site is built for active flippers who want more than a basic price checker.
 ### Flips
 <img width="1406" height="920" alt="image" src="https://github.com/user-attachments/assets/9a909588-0f4a-4c09-8d0f-4ceebbaa0aa6" />
 
-## What it does
-
 ### Flip tracking
 Track your trades with support for:
 
@@ -198,26 +196,12 @@ You can:
 
 This is especially useful for traders running multiple alert types at once across different item categories.
 
-#### Why it matters
 
-For active GE traders, timing matters. Good alerts help you react faster, reduce missed opportunities, and spend less time manually checking prices.
-
-Rather than treating alerts like a small extra feature, this site makes them a central part of the trading workflow:
-
-- identify setups
-- watch for market movement
-- receive notifications
-- act quickly
-- adjust your rules over time
-
-In practice, the alerts system turns the site from a passive tracker into an active trading assistant.
 ### Favorites
 Build grouped watchlists for faster monitoring and easier decision-making.
 
 ### Account Settings
 Basic account management, including session controls and account settings.
-
-
 
 ## Why this project exists
 
