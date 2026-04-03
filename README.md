@@ -19,6 +19,17 @@ This site is built for active flippers who want more than a basic price checker.
 ### Flips
 <img width="1406" height="920" alt="image" src="https://github.com/user-attachments/assets/9a909588-0f4a-4c09-8d0f-4ceebbaa0aa6" />
 
+## Features
+
+- Fast and responsive UI
+- Works well on desktop, tablet, and mobile
+- Ad-free experience
+- Real-time and historical item data
+- Detailed flip and portfolio tracking
+- Custom alerts with SMS/email notifications
+- Flexible favorites and grouping system
+- Sortable and filterable data across key pages
+
 ### Flip tracking
 Track your trades with support for:
 
@@ -75,16 +86,7 @@ The site also includes:
 - **Account settings** page
 - Sortable and filterable views for alerts, flips, and favorites
 
-## Features
 
-- Fast and responsive UI
-- Works well on desktop, tablet, and mobile
-- Ad-free experience
-- Real-time and historical item data
-- Detailed flip and portfolio tracking
-- Custom alerts with SMS/email notifications
-- Flexible favorites and grouping system
-- Sortable and filterable data across key pages
 
 ## Main pages
 
