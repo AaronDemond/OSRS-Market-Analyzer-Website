@@ -1256,6 +1256,16 @@ class HourlyItemVolume(models.Model):
     class Meta:
         # Default ordering: most recent first, so .first() always returns the latest snapshot
         ordering = ['-timestamp']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['item_id', 'timestamp'],
+                name='uniq_hourly_vol_item_ts',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['item_id', '-timestamp'], name='hourly_vol_item_ts_desc'),
+            models.Index(fields=['timestamp'], name='hourly_vol_ts_idx'),
+        ]
 
     def __str__(self):
         """
@@ -1315,6 +1325,16 @@ class FiveMinTimeSeries(models.Model):
     class Meta:
         # Default ordering: most recent first, so .first() always returns the latest snapshot
         ordering = ['-timestamp']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['item_id', 'timestamp'],
+                name='uniq_5m_item_ts',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['item_id', '-timestamp'], name='five_min_item_ts_desc'),
+            models.Index(fields=['timestamp'], name='five_min_ts_idx'),
+        ]
 
 
 
@@ -1330,6 +1350,16 @@ class OneHourTimeSeries(models.Model):
     class Meta:
         # Default ordering: most recent first, so .first() always returns the latest snapshot
         ordering = ['-timestamp']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['item_id', 'timestamp'],
+                name='uniq_1h_item_ts',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['item_id', '-timestamp'], name='one_hour_item_ts_desc'),
+            models.Index(fields=['timestamp'], name='one_hour_ts_idx'),
+        ]
 
 class SixHourTimeSeries(models.Model):
     item_id = models.IntegerField(db_index=True)
@@ -1343,6 +1373,16 @@ class SixHourTimeSeries(models.Model):
     class Meta:
         # Default ordering: most recent first, so .first() always returns the latest snapshot
         ordering = ['-timestamp']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['item_id', 'timestamp'],
+                name='uniq_6h_item_ts',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['item_id', '-timestamp'], name='six_hour_item_ts_desc'),
+            models.Index(fields=['timestamp'], name='six_hour_ts_idx'),
+        ]
 
 class TwentyFourHourTimeSeries(models.Model):
     item_id = models.IntegerField(db_index=True)
@@ -1356,7 +1396,16 @@ class TwentyFourHourTimeSeries(models.Model):
     class Meta:
         # Default ordering: most recent first, so .first() always returns the latest snapshot
         ordering = ['-timestamp']
-
+        constraints = [
+            models.UniqueConstraint(
+                fields=['item_id', 'timestamp'],
+                name='uniq_24h_item_ts',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['item_id', '-timestamp'], name='twentyfour_item_ts_desc'),
+            models.Index(fields=['timestamp'], name='twentyfour_ts_idx'),
+        ]
 
 
 

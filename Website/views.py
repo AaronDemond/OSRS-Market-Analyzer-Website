@@ -6,6 +6,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
+from django.core.cache import cache
 import requests
 import time
 import re
@@ -16,33 +17,23 @@ from .models import Flip, FlipProfit, Alert, AlertGroup, FavoriteItem
 
 
 # =============================================================================
-# CACHE CONFIGURATION FOR ITEM MAPPINGS
+# SHARED CACHE KEYS
 # =============================================================================
-# What: Module-level caches for item mapping data fetched from local JSON file
-# Why: Avoids redundant file reads on every page load
-# How: First request loads from file and caches; subsequent requests use cached data
-# Note: Cache persists for Python process lifetime; restarting server clears it
+# These values use Django's configured cache backend, which is database-backed in
+# settings.py. That keeps all worker processes consistent instead of each Python
+# process carrying its own private module-level cache.
 
-# _item_mapping_cache: Dictionary mapping item name (lowercase) to item data
-# Contains: {'item_name_lower': {'id': int, 'name': str, 'icon': str, ...}}
-_item_mapping_cache = None
+ITEM_MAPPING_CACHE_KEY = 'ge_tools:item_mapping'
+ITEM_ID_TO_NAME_CACHE_KEY = 'ge_tools:item_id_to_name'
+PRICE_CACHE_KEY = 'ge_tools:current_prices'
+PRICE_STALE_CACHE_KEY = 'ge_tools:current_prices:stale'
+TRENDING_CACHE_KEY = 'ge_tools:trending_items'
 
-# _item_id_to_name_cache: Dictionary mapping item ID (string) to item name
-
-# =============================================================================
-# PRICE CACHE - Short-term to prevent duplicate API calls during navigation
-# =============================================================================
-# What: Short-term cache for price data from external API
-# Why: When user navigates between pages quickly, prevents duplicate external API calls
-#      that block Django's single-threaded dev server
-# How: Cache prices for 5 seconds - enough to prevent duplicate calls during navigation
-#      but short enough that prices are always "fresh enough" for display
-# Note: This does NOT affect alert triggering (that happens in background job)
-_price_cache = None
-_price_cache_time = 0
-PRICE_CACHE_TTL = 5  # seconds - very short, just to prevent navigation blocking
-# Contains: {'item_id_str': 'Item Name'}
-_item_id_to_name_cache = None
+ITEM_MAPPING_CACHE_TTL = 24 * 60 * 60
+ITEM_ID_TO_NAME_CACHE_TTL = 24 * 60 * 60
+PRICE_CACHE_TTL = 5
+PRICE_STALE_CACHE_TTL = 5 * 60
+TRENDING_CACHE_TTL = 60
 
 
 def get_item_mapping():
@@ -61,39 +52,44 @@ def get_item_mapping():
           to Website/static/item-mapping.json, this will load from that file.
           Until then, falls back to the API.
     """
-    global _item_mapping_cache
-    if _item_mapping_cache is None:
-        import os
-        from django.conf import settings
-        
-        # json_file_path: Path to local JSON file with item mapping data
-        # Format: Array of objects with id, name, examine, members, lowalch, highalch, limit, icon
-        json_file_path = os.path.join(settings.BASE_DIR, 'Website', 'static', 'item-mapping.json')
-        
-        # Try to load from local JSON file first (much faster than API)
-        if os.path.exists(json_file_path):
-            try:
-                with open(json_file_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                # Build cache mapping item name (lowercase) to full item data
-                _item_mapping_cache = {item['name'].lower(): item for item in data}
-                return _item_mapping_cache
-            except (json.JSONDecodeError, IOError, KeyError) as e:
-                # If file is corrupted or malformed, fall back to API
-                print(f"Warning: Could not load item-mapping.json: {e}")
-        
-        # Fallback to API if local file doesn't exist
+    cached_mapping = cache.get(ITEM_MAPPING_CACHE_KEY)
+    if cached_mapping is not None:
+        return cached_mapping
+
+    import os
+    from django.conf import settings
+
+    # json_file_path: Path to local JSON file with item mapping data
+    # Format: Array of objects with id, name, examine, members, lowalch, highalch, limit, icon
+    json_file_path = os.path.join(settings.BASE_DIR, 'Website', 'static', 'item-mapping.json')
+
+    # Try to load from local JSON file first (much faster than API)
+    if os.path.exists(json_file_path):
         try:
-            response = requests.get(
-                'https://prices.runescape.wiki/api/v1/osrs/mapping',
-                headers={'User-Agent': 'GE-Tools (not yet live) - demondsoftware@gmail.com'}
-            )
-            if response.status_code == 200:
-                data = response.json()
-                _item_mapping_cache = {item['name'].lower(): item for item in data}
-        except requests.RequestException:
-            _item_mapping_cache = {}
-    return _item_mapping_cache
+            with open(json_file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            mapping = {item['name'].lower(): item for item in data}
+            cache.set(ITEM_MAPPING_CACHE_KEY, mapping, ITEM_MAPPING_CACHE_TTL)
+            return mapping
+        except (json.JSONDecodeError, IOError, KeyError) as e:
+            # If file is corrupted or malformed, fall back to API
+            print(f"Warning: Could not load item-mapping.json: {e}")
+
+    # Fallback to API if local file doesn't exist
+    try:
+        response = requests.get(
+            'https://prices.runescape.wiki/api/v1/osrs/mapping',
+            headers={'User-Agent': 'GE-Tools (not yet live) - demondsoftware@gmail.com'}
+        )
+        if response.status_code == 200:
+            data = response.json()
+            mapping = {item['name'].lower(): item for item in data}
+            cache.set(ITEM_MAPPING_CACHE_KEY, mapping, ITEM_MAPPING_CACHE_TTL)
+            return mapping
+    except requests.RequestException:
+        pass
+
+    return {}
 
 
 def get_item_id_to_name_mapping():
@@ -107,20 +103,19 @@ def get_item_id_to_name_mapping():
     Returns:
         dict: Mapping of item_id (str) -> item_name (str)
     """
-    global _item_id_to_name_cache
-    if _item_id_to_name_cache is None:
-        try:
-            response = requests.get(
-                'https://prices.runescape.wiki/api/v1/osrs/mapping',
-                headers={'User-Agent': 'GE-Tools (not yet live) - demondsoftware@gmail.com'}
-            )
-            if response.status_code == 200:
-                data = response.json()
-                # _item_id_to_name_cache: Dictionary mapping item ID (string) to item name
-                _item_id_to_name_cache = {str(item['id']): item['name'] for item in data}
-        except requests.RequestException:
-            _item_id_to_name_cache = {}
-    return _item_id_to_name_cache
+    cached_mapping = cache.get(ITEM_ID_TO_NAME_CACHE_KEY)
+    if cached_mapping is not None:
+        return cached_mapping
+
+    item_mapping = get_item_mapping()
+    id_to_name_mapping = {
+        str(item['id']): item['name']
+        for item in item_mapping.values()
+        if 'id' in item and 'name' in item
+    }
+    if id_to_name_mapping:
+        cache.set(ITEM_ID_TO_NAME_CACHE_KEY, id_to_name_mapping, ITEM_ID_TO_NAME_CACHE_TTL)
+    return id_to_name_mapping
 
 
 def get_all_current_prices():
@@ -144,14 +139,11 @@ def get_all_current_prices():
               Format: {'item_id': {'high': int, 'low': int, 'highTime': int, 'lowTime': int}}
               Returns empty dict {} if API call fails
     """
-    global _price_cache, _price_cache_time
-    
-    # Check if cache is still valid (within TTL)
-    current_time = time.time()
-    if _price_cache is not None and (current_time - _price_cache_time) < PRICE_CACHE_TTL:
-        return _price_cache
-    
-    # Cache expired or empty - fetch fresh data
+    cached_prices = cache.get(PRICE_CACHE_KEY)
+    if cached_prices is not None:
+        return cached_prices
+
+    # Cache expired or empty - fetch fresh data.
     try:
         response = requests.get(
             'https://prices.runescape.wiki/api/v1/osrs/latest',
@@ -160,16 +152,18 @@ def get_all_current_prices():
         if response.status_code == 200:
             data = response.json()
             if 'data' in data:
-                _price_cache = data['data']
-                _price_cache_time = current_time
-                return _price_cache
+                prices = data['data']
+                cache.set(PRICE_CACHE_KEY, prices, PRICE_CACHE_TTL)
+                cache.set(PRICE_STALE_CACHE_KEY, prices, PRICE_STALE_CACHE_TTL)
+                return prices
     except requests.RequestException:
         pass
-    
-    # If fetch failed but we have stale cache, return it
-    if _price_cache is not None:
-        return _price_cache
-    
+
+    # If fetch failed but we have stale cache, return it.
+    stale_prices = cache.get(PRICE_STALE_CACHE_KEY)
+    if stale_prices is not None:
+        return stale_prices
+
     return {}
 
 
@@ -217,11 +211,6 @@ def get_historical_price(item_id, time_filter):
 # How: Background script (scripts/update_trending.py) runs hourly and writes JSON file
 # Note: If file doesn't exist or is stale, returns empty data gracefully
 
-# _trending_cache: Module-level cache to avoid repeated file reads within same request
-_trending_cache = None
-_trending_cache_time = 0
-TRENDING_CACHE_TTL = 60  # Re-read file at most once per minute
-
 def get_trending_items():
     """
     Get top 3 price gainers and top 3 losers from pre-computed JSON file.
@@ -229,7 +218,7 @@ def get_trending_items():
     What: Reads trending items from static JSON file
     Why: Displays trending items on search page without blocking API calls
     How: 
-        1. Check module-level cache (60 second TTL)
+        1. Check shared Django cache (60 second TTL)
         2. If cache miss, read from static/data/trending_items.json
         3. Return data or empty dict if file doesn't exist
     
@@ -243,12 +232,9 @@ def get_trending_items():
     
     Note: Data is generated by scripts/update_trending.py which should run hourly
     """
-    global _trending_cache, _trending_cache_time
-    
-    # Check module-level cache first (avoid re-reading file on every request)
-    current_time = time.time()
-    if _trending_cache is not None and (current_time - _trending_cache_time) < TRENDING_CACHE_TTL:
-        return _trending_cache
+    cached_trending = cache.get(TRENDING_CACHE_KEY)
+    if cached_trending is not None:
+        return cached_trending
     
     # TRENDING_FILE: Path to pre-computed trending data JSON
     # Generated by scripts/update_trending.py running as scheduled task
@@ -261,9 +247,7 @@ def get_trending_items():
         with open(trending_file, 'r', encoding='utf-8') as f:
             data = json.load(f)
         
-        # Cache the data
-        _trending_cache = data
-        _trending_cache_time = current_time
+        cache.set(TRENDING_CACHE_KEY, data, TRENDING_CACHE_TTL)
         
         return data
         

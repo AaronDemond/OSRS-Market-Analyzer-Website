@@ -217,7 +217,7 @@ def makeObjects(results):
                 volume=volumeGP,
                 timestamp=timestamp)
         volumeObjects.append(volumeObject)
-    HourlyItemVolume.objects.bulk_create(volumeObjects, batch_size=500)
+    bulk_create_committed_chunks(HourlyItemVolume, volumeObjects, "HourlyItemVolume")
 
 
 
@@ -225,6 +225,22 @@ from django.db import transaction
 from datetime import datetime, timezone
 
 BULK_INSERT_BATCH_SIZE = 500
+
+
+def bulk_create_committed_chunks(model, objects, label):
+    attempted = 0
+    total = len(objects)
+    for start in range(0, total, BULK_INSERT_BATCH_SIZE):
+        batch = objects[start:start + BULK_INSERT_BATCH_SIZE]
+        with transaction.atomic():
+            model.objects.bulk_create(
+                batch,
+                batch_size=BULK_INSERT_BATCH_SIZE,
+                ignore_conflicts=True,
+            )
+        attempted += len(batch)
+        print(f"committed {label} chunk {attempted}/{total}; duplicates skipped")
+    return attempted
 
 
 def make_twenty_four_hour_timeseries_objects(result_item, lookup):
@@ -286,12 +302,7 @@ def getData2():
 
     print(f"prepared {len(all_objects)} rows, inserting...")
 
-    with transaction.atomic():
-        HourlyItemVolume.objects.bulk_create(
-            all_objects,
-            batch_size=BULK_INSERT_BATCH_SIZE,
-            # ignore_conflicts=True,  # optional if you want to skip duplicates
-        )
+    bulk_create_committed_chunks(HourlyItemVolume, all_objects, "HourlyItemVolume")
 
     print("done")
 
@@ -310,12 +321,7 @@ def getDataTimeSeries():
 
     print(f"prepared {len(all_objects)} rows, inserting...")
 
-    with transaction.atomic():
-        TwentyFourHourTimeSeries.objects.bulk_create(
-            all_objects,
-            batch_size=BULK_INSERT_BATCH_SIZE,
-            # ignore_conflicts=True,  # optional if you want to skip duplicates
-        )
+    bulk_create_committed_chunks(TwentyFourHourTimeSeries, all_objects, "TwentyFourHourTimeSeries")
 
     print("done")
 
@@ -413,12 +419,11 @@ def fetch_latest_volume_snapshot():
             timestamp=timestamp
         ))
 
-    # Bulk-insert all records in a single atomic transaction for performance.
+    # Bulk-insert records in committed chunks so long backfills show progress.
     # batch_size=500 stays within SQLite's variable limit (default max 999 per query).
     if new_records:
-        with transaction.atomic():
-            HourlyItemVolume.objects.bulk_create(new_records, batch_size=BULK_INSERT_BATCH_SIZE)
-        print(f"\nInserted {len(new_records)} records into HourlyItemVolume.")
+        bulk_create_committed_chunks(HourlyItemVolume, new_records, "HourlyItemVolume")
+        print(f"\nAttempted insert of {len(new_records)} records into HourlyItemVolume; duplicates were skipped.")
     else:
         print("\nNo records to insert.")
 
@@ -519,12 +524,11 @@ def fetch_latest_twenty_four_hour_snapshot():
             timestamp=timestamp
         ))
 
-    # Bulk-insert all records in a single atomic transaction for performance.
+    # Bulk-insert records in committed chunks so long backfills show progress.
     # batch_size=500 stays within SQLite's variable limit (default max 999 per query).
     if new_records:
-        with transaction.atomic():
-            TwentyFourHourTimeSeries.objects.bulk_create(new_records, batch_size=BULK_INSERT_BATCH_SIZE)
-        print(f"\nInserted {len(new_records)} records into TwentyFourHourTimeSeries.")
+        bulk_create_committed_chunks(TwentyFourHourTimeSeries, new_records, "TwentyFourHourTimeSeries")
+        print(f"\nAttempted insert of {len(new_records)} records into TwentyFourHourTimeSeries; duplicates were skipped.")
     else:
         print("\nNo records to insert.")
 
@@ -552,5 +556,3 @@ while True:
     time.sleep((hours * 60 * 60) + (5*60))
     print("Fetching again...")
     fetch_latest_twenty_four_hour_snapshot()
-
-
