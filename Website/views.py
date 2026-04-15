@@ -13,7 +13,7 @@ import re
 import json
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from .models import Flip, FlipProfit, Alert, AlertGroup, FavoriteItem
+from .models import Flip, FlipProfit, Alert, AlertGroup, FavoriteItem, OneHourTimeSeries
 
 
 # =============================================================================
@@ -28,12 +28,21 @@ ITEM_ID_TO_NAME_CACHE_KEY = 'ge_tools:item_id_to_name'
 PRICE_CACHE_KEY = 'ge_tools:current_prices'
 PRICE_STALE_CACHE_KEY = 'ge_tools:current_prices:stale'
 TRENDING_CACHE_KEY = 'ge_tools:trending_items'
+TRENDING_STALE_CACHE_KEY = 'ge_tools:trending_items:stale'
+TRENDING_LOCK_KEY = 'ge_tools:trending_items:lock'
 
 ITEM_MAPPING_CACHE_TTL = 24 * 60 * 60
 ITEM_ID_TO_NAME_CACHE_TTL = 24 * 60 * 60
 PRICE_CACHE_TTL = 5
 PRICE_STALE_CACHE_TTL = 5 * 60
-TRENDING_CACHE_TTL = 60
+TRENDING_CACHE_TTL = 15 * 60
+TRENDING_STALE_CACHE_TTL = 6 * 60 * 60
+TRENDING_LOCK_TTL = 30
+TRENDING_TOP_N = 10
+TRENDING_VOLUME_THRESHOLD = 75_000_000
+TRENDING_LOOKBACK_SECONDS = 24 * 60 * 60
+TRENDING_TIMESTAMP_SEARCH_LIMIT = 48
+TRENDING_MAX_DATA_AGE_SECONDS = 2 * 60 * 60
 
 
 def get_item_mapping():
@@ -116,6 +125,203 @@ def get_item_id_to_name_mapping():
     if id_to_name_mapping:
         cache.set(ITEM_ID_TO_NAME_CACHE_KEY, id_to_name_mapping, ITEM_ID_TO_NAME_CACHE_TTL)
     return id_to_name_mapping
+
+
+def parse_snapshot_timestamp(raw_timestamp):
+    """
+    Convert a snapshot timestamp string into an integer Unix timestamp.
+
+    What: Normalizes stored snapshot timestamps for comparison math.
+    Why: OneHourTimeSeries stores timestamps as CharField values.
+    How: Convert numeric-looking values to int and reject malformed values.
+
+    Returns:
+        int or None: Parsed timestamp, or None when the value is unusable.
+    """
+    try:
+        return int(str(raw_timestamp).strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def empty_trending_data():
+    """
+    Return the empty trending payload shape expected by the UI.
+
+    What: Builds the canonical empty response for trending.
+    Why: Keeps all fallback paths returning the same structure.
+    How: Returns empty gainer/loser lists with a null timestamp.
+    """
+    return {'gainers': [], 'losers': [], 'last_updated': None}
+
+
+def get_one_hour_trending_snapshot_timestamps():
+    """
+    Choose the latest hourly snapshot and the closest snapshot from ~24h earlier.
+
+    What: Finds the two timestamps needed for trending comparison.
+    Why: Trending should compare the newest hourly snapshot with roughly the same
+         hour one day earlier.
+    How: Read a small set of distinct recent timestamps, then pick the latest
+         snapshot and the nearest older timestamp at or before the 24h target.
+
+    Returns:
+        tuple[str | None, str | None]: (latest_timestamp, comparison_timestamp)
+    """
+    recent_timestamps = list(
+        OneHourTimeSeries.objects
+        .values_list('timestamp', flat=True)
+        .order_by('-timestamp')
+        .distinct()[:TRENDING_TIMESTAMP_SEARCH_LIMIT]
+    )
+
+    parsed_timestamps = []
+    for timestamp in recent_timestamps:
+        parsed_value = parse_snapshot_timestamp(timestamp)
+        if parsed_value is not None:
+            parsed_timestamps.append((timestamp, parsed_value))
+
+    if len(parsed_timestamps) < 2:
+        return None, None
+
+    latest_timestamp, latest_value = parsed_timestamps[0]
+    target_value = latest_value - TRENDING_LOOKBACK_SECONDS
+
+    older_candidates = [
+        (timestamp, parsed_value)
+        for timestamp, parsed_value in parsed_timestamps[1:]
+        if parsed_value <= target_value
+    ]
+    if older_candidates:
+        comparison_timestamp = max(older_candidates, key=lambda item: item[1])[0]
+        return latest_timestamp, comparison_timestamp
+
+    fallback_timestamp = min(
+        parsed_timestamps[1:],
+        key=lambda item: abs(item[1] - target_value),
+    )[0]
+    return latest_timestamp, fallback_timestamp
+
+
+def latest_trending_snapshot_is_fresh(latest_timestamp):
+    """
+    Check whether the latest hourly snapshot is fresh enough for trending.
+
+    What: Validates the age of the latest OneHourTimeSeries snapshot.
+    Why: Stale hourly ingestion should not overwrite a previously good trending result.
+    How: Compare the latest timestamp to the current Unix time.
+    """
+    latest_timestamp_value = parse_snapshot_timestamp(latest_timestamp)
+    if latest_timestamp_value is None:
+        return False
+
+    return (int(time.time()) - latest_timestamp_value) <= TRENDING_MAX_DATA_AGE_SECONDS
+
+
+def calculate_hourly_trending_data():
+    """
+    Build trending gainers and losers from the local hourly time-series table.
+
+    What: Compares the latest OneHourTimeSeries snapshot with a snapshot from
+          roughly 24 hours earlier.
+    Why: Keeps trending tied to existing local market data instead of a file
+         produced by a separate script.
+    How:
+        1. Pick the latest and comparison timestamps.
+        2. Load all rows for both snapshots.
+        3. Compare midpoint prices item-by-item.
+        4. Filter low-volume items and sort into gainers/losers.
+    """
+    latest_timestamp, comparison_timestamp = get_one_hour_trending_snapshot_timestamps()
+    if latest_timestamp is None or comparison_timestamp is None:
+        return None
+
+    if not latest_trending_snapshot_is_fresh(latest_timestamp):
+        return None
+
+    item_mapping = get_item_mapping()
+    item_metadata_by_id = {
+        item.get('id'): item
+        for item in item_mapping.values()
+        if 'id' in item
+    }
+
+    snapshot_rows = OneHourTimeSeries.objects.filter(
+        timestamp__in=[latest_timestamp, comparison_timestamp]
+    ).values(
+        'item_id',
+        'item_name',
+        'avg_high_price',
+        'avg_low_price',
+        'high_price_volume',
+        'low_price_volume',
+        'timestamp',
+    )
+
+    latest_rows = {}
+    comparison_rows = {}
+    for row in snapshot_rows:
+        if row['timestamp'] == latest_timestamp:
+            latest_rows[row['item_id']] = row
+        elif row['timestamp'] == comparison_timestamp:
+            comparison_rows[row['item_id']] = row
+
+    trending_candidates = []
+    for item_id, latest_row in latest_rows.items():
+        comparison_row = comparison_rows.get(item_id)
+        if comparison_row is None:
+            continue
+
+        latest_high = latest_row['avg_high_price']
+        latest_low = latest_row['avg_low_price']
+        comparison_high = comparison_row['avg_high_price']
+        comparison_low = comparison_row['avg_low_price']
+
+        if any(value is None for value in (latest_high, latest_low, comparison_high, comparison_low)):
+            continue
+
+        current_price = (latest_high + latest_low) // 2
+        comparison_price = (comparison_high + comparison_low) // 2
+        if comparison_price <= 0:
+            continue
+
+        hourly_volume = (latest_row['high_price_volume'] or 0) + (latest_row['low_price_volume'] or 0)
+        hourly_volume_gp = hourly_volume * current_price
+        if hourly_volume_gp < TRENDING_VOLUME_THRESHOLD:
+            continue
+
+        item_metadata = item_metadata_by_id.get(item_id, {})
+        trending_candidates.append({
+            'id': item_id,
+            'name': latest_row['item_name'],
+            'icon': item_metadata.get('icon', ''),
+            'change': round(((current_price - comparison_price) / comparison_price) * 100, 2),
+            'price': current_price,
+            'volume': int(hourly_volume_gp),
+        })
+
+    gainers = sorted(
+        [item for item in trending_candidates if item['change'] > 0],
+        key=lambda item: item['change'],
+        reverse=True,
+    )[:TRENDING_TOP_N]
+    losers = sorted(
+        [item for item in trending_candidates if item['change'] < 0],
+        key=lambda item: item['change'],
+    )[:TRENDING_TOP_N]
+
+    latest_timestamp_value = parse_snapshot_timestamp(latest_timestamp)
+    last_updated = (
+        datetime.utcfromtimestamp(latest_timestamp_value).isoformat() + 'Z'
+        if latest_timestamp_value is not None
+        else latest_timestamp
+    )
+
+    return {
+        'gainers': gainers,
+        'losers': losers,
+        'last_updated': last_updated,
+    }
 
 
 def get_all_current_prices():
@@ -204,23 +410,25 @@ def get_historical_price(item_id, time_filter):
 
 
 # =============================================================================
-# TRENDING ITEMS - Top Movers (Read from Pre-computed JSON)
+# TRENDING ITEMS - Top Movers (Read from Local Hourly Time-Series Data)
 # =============================================================================
-# What: Reads trending items data from a JSON file generated by background script
-# Why: Avoids expensive API calls during web requests - data is pre-computed hourly
-# How: Background script (scripts/update_trending.py) runs hourly and writes JSON file
-# Note: If file doesn't exist or is stale, returns empty data gracefully
+# What: Computes trending items from locally stored hourly market snapshots
+# Why: Avoids external API calls and keeps the page aligned with existing time-series data
+# How: On cache miss, compare the latest hourly snapshot with the closest snapshot from roughly 24 hours earlier
+# Note: If hourly history is missing or too sparse, returns empty data gracefully
 
 def get_trending_items():
     """
-    Get top 3 price gainers and top 3 losers from pre-computed JSON file.
+    Get top price gainers and losers from locally stored hourly time-series data.
     
-    What: Reads trending items from static JSON file
-    Why: Displays trending items on search page without blocking API calls
+    What: Reads trending items from OneHourTimeSeries
+    Why: Displays trending items on the search page without depending on a
+         separate pre-computed JSON file
     How: 
-        1. Check shared Django cache (60 second TTL)
-        2. If cache miss, read from static/data/trending_items.json
-        3. Return data or empty dict if file doesn't exist
+        1. Check shared Django cache (15 minute TTL)
+        2. If cache miss, compare the latest hourly snapshot to the closest
+           snapshot from roughly 24 hours earlier
+        3. Cache and return the computed trending data
     
     Returns:
         dict: {
@@ -228,42 +436,42 @@ def get_trending_items():
             'losers': [{'id': int, 'name': str, 'icon': str, 'change': float, 'price': int}, ...],
             'last_updated': str (ISO timestamp)
         }
-        Returns empty lists if data file doesn't exist.
-    
-    Note: Data is generated by scripts/update_trending.py which should run hourly
+        Returns empty lists if trending cannot yet be calculated.
     """
     cached_trending = cache.get(TRENDING_CACHE_KEY)
     if cached_trending is not None:
         return cached_trending
-    
-    # TRENDING_FILE: Path to pre-computed trending data JSON
-    # Generated by scripts/update_trending.py running as scheduled task
-    import os
-    from django.conf import settings
-    
-    trending_file = os.path.join(settings.BASE_DIR, 'Website', 'static', 'data', 'trending_items.json')
-    
+
+    stale_trending = cache.get(TRENDING_STALE_CACHE_KEY)
+
+    lock_acquired = cache.add(TRENDING_LOCK_KEY, '1', TRENDING_LOCK_TTL)
+    if not lock_acquired:
+        cached_trending = cache.get(TRENDING_CACHE_KEY)
+        if cached_trending is not None:
+            return cached_trending
+        if stale_trending is not None:
+            return stale_trending
+        return empty_trending_data()
+
     try:
-        with open(trending_file, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        
+        data = calculate_hourly_trending_data()
+        if data is None:
+            if stale_trending is not None:
+                return stale_trending
+            return empty_trending_data()
+
         cache.set(TRENDING_CACHE_KEY, data, TRENDING_CACHE_TTL)
-        
+        cache.set(TRENDING_STALE_CACHE_KEY, data, TRENDING_STALE_CACHE_TTL)
         return data
-        
-    except FileNotFoundError:
-        # File doesn't exist yet - script hasn't run
-        # Return empty data, don't crash the page
-        return {'gainers': [], 'losers': [], 'last_updated': None}
-        
-    except json.JSONDecodeError:
-        # File is corrupted or being written - return empty
-        return {'gainers': [], 'losers': [], 'last_updated': None}
-        
+
     except Exception as e:
-        # Any other error - log and return empty
-        print(f"Error reading trending items: {e}")
-        return {'gainers': [], 'losers': [], 'last_updated': None}
+        print(f"Error calculating trending items: {e}")
+        if stale_trending is not None:
+            return stale_trending
+        return empty_trending_data()
+    finally:
+        if lock_acquired:
+            cache.delete(TRENDING_LOCK_KEY)
 
 
 def test(request):
@@ -1344,7 +1552,7 @@ def item_search(request):
     Context passed to template:
         - trending: dict with 'gainers', 'losers', 'last_updated' from get_trending_items()
     """
-    # Get trending items (cached for 1 hour, won't slow down page load)
+    # Get trending items (cached for 15 minutes, computed from local hourly data)
     trending = get_trending_items()
     
     return render(request, 'item_search.html', {
