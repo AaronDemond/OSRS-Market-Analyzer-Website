@@ -13,7 +13,8 @@ import re
 import json
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from .models import Flip, FlipProfit, Alert, AlertGroup, FavoriteItem, OneHourTimeSeries
+from .models import Flip, FlipProfit, Alert, AlertGroup, FavoriteItem, LiveFeedbackWatch, OneHourTimeSeries
+from .live_feedback import STATUS_PAUSED, evaluate_watch
 
 
 # =============================================================================
@@ -5729,6 +5730,340 @@ def favorites_data_api(request):
         'grouped_favorites': grouped_favorites_json,
         'groups': groups,
     })
+
+
+def live_feedback_page(request):
+    """Display the Live Feedback page."""
+    return render(request, 'live_feedback.html', {})
+
+
+def live_feedback_api(request):
+    """Return the current user's Live Feedback watches with current market status."""
+    from django.utils import timezone
+
+    user = request.user if request.user.is_authenticated else None
+    if not user:
+        return JsonResponse({'success': False, 'error': 'Authentication required'}, status=401)
+    if request.method != 'GET':
+        return JsonResponse({'success': False, 'error': 'GET required'}, status=405)
+
+    latest_prices = get_all_current_prices()
+    checked_at = timezone.now()
+    watches = []
+
+    for watch in LiveFeedbackWatch.objects.filter(user=user):
+        evaluation = evaluate_watch(watch, latest_prices)
+        watches.append(_serialize_live_feedback_watch(watch, evaluation))
+
+    watches.sort(key=_live_feedback_sort_key)
+
+    return JsonResponse({
+        'success': True,
+        'watches': watches,
+        'stats': {
+            'active': sum(1 for watch in watches if watch['is_active']),
+            'triggered': sum(
+                1 for watch in watches
+                if watch['is_active'] and watch['is_currently_triggered'] and not watch['is_dismissed']
+            ),
+            'total': len(watches),
+        },
+        'checked_at': checked_at.isoformat(),
+    })
+
+
+@csrf_exempt
+def create_live_feedback_watch(request):
+    """Create a Live Feedback watch for the current user."""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST required'}, status=405)
+
+    user = request.user if request.user.is_authenticated else None
+    if not user:
+        return JsonResponse({'success': False, 'error': 'Authentication required'}, status=401)
+
+    data, error_response = _read_json_body(request)
+    if error_response:
+        return error_response
+
+    watch_data, validation_error = _validate_live_feedback_watch_payload(data)
+    if validation_error:
+        return validation_error
+
+    duplicate_exists = LiveFeedbackWatch.objects.filter(
+        user=user,
+        item_id=watch_data['item_id'],
+        side=watch_data['side'],
+        target_price=watch_data['target_price'],
+        is_active=True,
+    ).exists()
+    if duplicate_exists:
+        return JsonResponse({'success': False, 'error': 'This active watch already exists'}, status=409)
+
+    watch = LiveFeedbackWatch.objects.create(
+        user=user,
+        **watch_data,
+    )
+
+    return JsonResponse({
+        'success': True,
+        'watch': _serialize_live_feedback_watch(watch),
+    }, status=201)
+
+
+@csrf_exempt
+def update_live_feedback_watch(request, watch_id):
+    """Update any user-configurable parameters for a Live Feedback watch."""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST required'}, status=405)
+
+    user = request.user if request.user.is_authenticated else None
+    if not user:
+        return JsonResponse({'success': False, 'error': 'Authentication required'}, status=401)
+
+    watch = LiveFeedbackWatch.objects.filter(id=watch_id, user=user).first()
+    if not watch:
+        return JsonResponse({'success': False, 'error': 'Watch not found'}, status=404)
+
+    data, error_response = _read_json_body(request)
+    if error_response:
+        return error_response
+
+    watch_data, validation_error = _validate_live_feedback_watch_payload(data)
+    if validation_error:
+        return validation_error
+
+    duplicate_exists = LiveFeedbackWatch.objects.filter(
+        user=user,
+        item_id=watch_data['item_id'],
+        side=watch_data['side'],
+        target_price=watch_data['target_price'],
+        is_active=True,
+    ).exclude(id=watch.id).exists()
+    if duplicate_exists:
+        return JsonResponse({'success': False, 'error': 'This active watch already exists'}, status=409)
+
+    for field, value in watch_data.items():
+        setattr(watch, field, value)
+
+    watch.is_active = True
+    watch.is_triggered = False
+    watch.is_dismissed = False
+    watch.last_checked_at = None
+    watch.last_market_price = None
+    watch.last_market_time = None
+    watch.last_status = 'watching'
+    watch.triggered_at = None
+    watch.save(update_fields=[
+        'item_id',
+        'item_name',
+        'side',
+        'target_price',
+        'email_notification',
+        'sms_notification',
+        'sms_recipient',
+        'is_active',
+        'is_triggered',
+        'is_dismissed',
+        'last_checked_at',
+        'last_market_price',
+        'last_market_time',
+        'last_status',
+        'triggered_at',
+        'updated_at',
+    ])
+
+    return JsonResponse({
+        'success': True,
+        'watch': _serialize_live_feedback_watch(watch),
+    })
+
+
+def _validate_live_feedback_watch_payload(data):
+    side = str(data.get('side', '')).strip().lower()
+    if side not in {'buy', 'sell'}:
+        return None, JsonResponse({'success': False, 'error': 'side must be buy or sell'}, status=400)
+
+    try:
+        item_id = int(data.get('item_id'))
+        target_price = int(data.get('target_price'))
+    except (TypeError, ValueError):
+        return None, JsonResponse({'success': False, 'error': 'item_id and target_price must be numbers'}, status=400)
+
+    if item_id <= 0:
+        return None, JsonResponse({'success': False, 'error': 'item_id must be positive'}, status=400)
+    if target_price <= 0:
+        return None, JsonResponse({'success': False, 'error': 'target_price must be positive'}, status=400)
+
+    item_info = _get_item_info_by_id(item_id)
+    if not item_info:
+        return None, JsonResponse({'success': False, 'error': 'Item not found'}, status=404)
+
+    email_notification = bool(data.get('email_notification', False))
+    sms_notification = bool(data.get('sms_notification', False))
+    sms_recipient = str(data.get('sms_recipient', '')).strip()
+
+    if sms_notification:
+        sms_error = _validate_live_feedback_sms_recipient(sms_recipient)
+        if sms_error:
+            return None, sms_error
+    else:
+        sms_recipient = ''
+
+    return {
+        'item_id': item_id,
+        'item_name': item_info['name'],
+        'side': side,
+        'target_price': target_price,
+        'email_notification': email_notification,
+        'sms_notification': sms_notification,
+        'sms_recipient': sms_recipient,
+    }, None
+
+
+@csrf_exempt
+def delete_live_feedback_watch(request, watch_id):
+    """Delete a user-owned Live Feedback watch."""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST required'}, status=405)
+
+    user = request.user if request.user.is_authenticated else None
+    if not user:
+        return JsonResponse({'success': False, 'error': 'Authentication required'}, status=401)
+
+    deleted, _ = LiveFeedbackWatch.objects.filter(id=watch_id, user=user).delete()
+    if not deleted:
+        return JsonResponse({'success': False, 'error': 'Watch not found'}, status=404)
+
+    return JsonResponse({'success': True})
+
+
+@csrf_exempt
+def dismiss_live_feedback_watch(request, watch_id):
+    """Dismiss the current in-app notification for a Live Feedback watch."""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST required'}, status=405)
+
+    user = request.user if request.user.is_authenticated else None
+    if not user:
+        return JsonResponse({'success': False, 'error': 'Authentication required'}, status=401)
+
+    watch = LiveFeedbackWatch.objects.filter(id=watch_id, user=user).first()
+    if not watch:
+        return JsonResponse({'success': False, 'error': 'Watch not found'}, status=404)
+
+    watch.is_dismissed = True
+    watch.save(update_fields=['is_dismissed', 'updated_at'])
+    return JsonResponse({'success': True})
+
+
+@csrf_exempt
+def toggle_live_feedback_watch(request, watch_id):
+    """Pause or resume a user-owned Live Feedback watch."""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST required'}, status=405)
+
+    user = request.user if request.user.is_authenticated else None
+    if not user:
+        return JsonResponse({'success': False, 'error': 'Authentication required'}, status=401)
+
+    watch = LiveFeedbackWatch.objects.filter(id=watch_id, user=user).first()
+    if not watch:
+        return JsonResponse({'success': False, 'error': 'Watch not found'}, status=404)
+
+    data, error_response = _read_json_body(request)
+    if error_response:
+        return error_response
+
+    requested_active = data.get('is_active')
+    watch.is_active = (not watch.is_active) if requested_active is None else bool(requested_active)
+    if watch.is_active:
+        watch.last_status = 'watching'
+    else:
+        watch.last_status = STATUS_PAUSED
+        watch.is_triggered = False
+        watch.is_dismissed = False
+        watch.triggered_at = None
+
+    watch.save(update_fields=[
+        'is_active',
+        'is_triggered',
+        'is_dismissed',
+        'last_status',
+        'triggered_at',
+        'updated_at',
+    ])
+    return JsonResponse({'success': True, 'is_active': watch.is_active})
+
+
+def _read_json_body(request):
+    try:
+        return json.loads(request.body or '{}'), None
+    except json.JSONDecodeError:
+        return None, JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+
+
+def _get_item_info_by_id(item_id):
+    for item in get_item_mapping().values():
+        if int(item.get('id', 0)) == item_id:
+            return item
+    return None
+
+
+def _validate_live_feedback_sms_recipient(sms_recipient):
+    from django.core.exceptions import ValidationError
+    from django.core.validators import validate_email
+
+    if not sms_recipient:
+        return JsonResponse({'success': False, 'error': 'SMS recipient is required'}, status=400)
+    try:
+        validate_email(sms_recipient)
+    except ValidationError:
+        return JsonResponse({'success': False, 'error': 'SMS recipient must be an email-to-SMS address'}, status=400)
+    return None
+
+
+def _serialize_live_feedback_watch(watch, evaluation=None):
+    if evaluation is None:
+        evaluation = evaluate_watch(watch, {})
+
+    status = STATUS_PAUSED if not watch.is_active else evaluation.status
+    market_label = 'Highest buy' if watch.side == 'buy' else 'Lowest sell'
+
+    return {
+        'id': watch.id,
+        'item_id': watch.item_id,
+        'item_name': watch.item_name,
+        'side': watch.side,
+        'target_price': watch.target_price,
+        'is_active': watch.is_active,
+        'is_triggered': watch.is_triggered,
+        'is_currently_triggered': bool(watch.is_active and evaluation.is_triggered),
+        'is_dismissed': watch.is_dismissed,
+        'email_notification': watch.email_notification,
+        'sms_notification': watch.sms_notification,
+        'sms_recipient': watch.sms_recipient,
+        'status': status,
+        'last_status': watch.last_status,
+        'market_price': evaluation.market_price if watch.is_active else watch.last_market_price,
+        'market_time': evaluation.market_time if watch.is_active else watch.last_market_time,
+        'market_label': market_label,
+        'difference': evaluation.difference,
+        'message': evaluation.message,
+        'last_checked_at': watch.last_checked_at.isoformat() if watch.last_checked_at else None,
+        'triggered_at': watch.triggered_at.isoformat() if watch.triggered_at else None,
+        'created_at': watch.created_at.isoformat() if watch.created_at else None,
+    }
+
+
+def _live_feedback_sort_key(watch_data):
+    if watch_data['is_active'] and watch_data['is_currently_triggered'] and not watch_data['is_dismissed']:
+        group = 0
+    elif watch_data['is_active']:
+        group = 1
+    else:
+        group = 2
+    return (group, watch_data['item_name'].lower(), watch_data['target_price'])
 
 
 def auth_page(request):

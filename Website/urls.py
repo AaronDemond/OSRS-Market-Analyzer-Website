@@ -70,6 +70,13 @@ urlpatterns = [
     path('api/favorites/update-group/', views.update_favorite_group, name='update_favorite_group'),
     path('favorites/', views.favorites_page, name='favorites'),
     path('api/favorites/data/', views.favorites_data_api, name='favorites_data_api'),
+    path('live-feedback/', views.live_feedback_page, name='live_feedback'),
+    path('api/live-feedback/', views.live_feedback_api, name='live_feedback_api'),
+    path('api/live-feedback/create/', views.create_live_feedback_watch, name='create_live_feedback_watch'),
+    path('api/live-feedback/<int:watch_id>/update/', views.update_live_feedback_watch, name='update_live_feedback_watch'),
+    path('api/live-feedback/<int:watch_id>/delete/', views.delete_live_feedback_watch, name='delete_live_feedback_watch'),
+    path('api/live-feedback/<int:watch_id>/dismiss/', views.dismiss_live_feedback_watch, name='dismiss_live_feedback_watch'),
+    path('api/live-feedback/<int:watch_id>/toggle/', views.toggle_live_feedback_watch, name='toggle_live_feedback_watch'),
     # Authentication
     path('auth/', views.auth_page, name='auth'),
     path('login/', views.login_view, name='login'),

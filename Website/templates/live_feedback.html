@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Live Feedback - GE Tools{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/live-feedback.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="live-feedback-page">
+    <header class="live-feedback-header">
+        <div>
+            <h1>Live Feedback</h1>
+            <div class="live-feedback-meta" id="liveFeedbackLastChecked">Last checked: --</div>
+        </div>
+        <div class="live-feedback-stats" aria-label="Live Feedback stats">
+            <div class="live-feedback-stat">
+                <span class="live-feedback-stat-value" id="liveFeedbackActiveCount">0</span>
+                <span class="live-feedback-stat-label">Active</span>
+            </div>
+            <div class="live-feedback-stat live-feedback-stat-alert">
+                <span class="live-feedback-stat-value" id="liveFeedbackTriggeredCount">0</span>
+                <span class="live-feedback-stat-label">Triggered</span>
+            </div>
+            <div class="live-feedback-stat">
+                <span class="live-feedback-stat-value" id="liveFeedbackTotalCount">0</span>
+                <span class="live-feedback-stat-label">Total</span>
+            </div>
+        </div>
+    </header>
+
+    <form class="live-feedback-form" id="liveFeedbackForm" autocomplete="off">
+        <div class="live-feedback-search-wrap">
+            <label for="liveFeedbackItemSearch">Item</label>
+            <input id="liveFeedbackItemSearch" type="text" placeholder="Search item" autocomplete="off">
+            <input id="liveFeedbackItemId" type="hidden">
+            <input id="liveFeedbackItemName" type="hidden">
+            <div class="live-feedback-suggestions" id="liveFeedbackSuggestions"></div>
+        </div>
+
+        <div class="live-feedback-side" role="group" aria-label="Side">
+            <button type="button" class="live-feedback-side-btn active" data-side="buy">Buy</button>
+            <button type="button" class="live-feedback-side-btn" data-side="sell">Sell</button>
+        </div>
+
+        <div class="live-feedback-price-wrap">
+            <label for="liveFeedbackPrice">Price</label>
+            <input id="liveFeedbackPrice" type="number" min="1" step="1" placeholder="gp">
+        </div>
+
+        <label class="live-feedback-toggle">
+            <input id="liveFeedbackEmail" type="checkbox">
+            <span>Email</span>
+        </label>
+
+        <label class="live-feedback-toggle">
+            <input id="liveFeedbackSms" type="checkbox">
+            <span>SMS</span>
+        </label>
+
+        <div class="live-feedback-sms-wrap" id="liveFeedbackSmsWrap">
+            <label for="liveFeedbackSmsRecipient">SMS gateway</label>
+            <input id="liveFeedbackSmsRecipient" type="email" placeholder="number@carrier.gateway">
+        </div>
+
+        <button type="submit" class="live-feedback-add-btn" id="liveFeedbackAddBtn">
+            <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+            </svg>
+            <span>Add</span>
+        </button>
+        <a href="#" class="live-feedback-cancel-edit" id="liveFeedbackCancelEdit" hidden>Cancel edit</a>
+    </form>
+
+    <div class="live-feedback-preview" id="liveFeedbackPreview" hidden></div>
+    <div class="live-feedback-error" id="liveFeedbackError" hidden></div>
+
+    <section class="live-feedback-list" aria-label="Live Feedback watches">
+        <div class="live-feedback-table-head">
+            <span class="live-feedback-head-label" tabindex="0" data-tooltip="The item this watch is tracking.">Item</span>
+            <span class="live-feedback-head-label" tabindex="0" data-tooltip="Buy watches compare against higher buy offers. Sell watches compare against lower sell offers.">Side</span>
+            <span class="live-feedback-head-label" tabindex="0" data-tooltip="The buy or sell price you entered.">Your Price</span>
+            <span class="live-feedback-head-label" tabindex="0" data-tooltip="The next best price compared to your offer.">Competitor's Price</span>
+            <span class="live-feedback-head-label" tabindex="0" data-tooltip="How far your price is from the competing market price.">Gap</span>
+            <span class="live-feedback-head-label" tabindex="0" data-tooltip="Safe means your offer is not currently beaten. Undercut or Overcut means it is.">Status</span>
+            <span class="live-feedback-head-label" tabindex="0" data-tooltip="Edit the watch in the top form, or delete it.">Actions</span>
+        </div>
+        <div id="liveFeedbackWatchList" class="live-feedback-watch-list">
+            <div class="live-feedback-empty">No watches yet.</div>
+        </div>
+    </section>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/live-feedback.js' %}"></script>
+{% endblock %}
