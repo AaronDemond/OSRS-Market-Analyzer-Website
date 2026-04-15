@@ -380,16 +380,20 @@ def fetch_and_store_snapshot(lookup):
         log("INFO: Snapshot contained no insertable item data.")
         return 0
 
-    # inserted_count: Running total of inserted rows for accurate logging.
-    inserted_count = 0
+    # attempted_count: Rows sent to bulk_create; database constraints skip duplicates.
+    attempted_count = 0
     with transaction.atomic():
         for batch in chunk_list(objects_to_insert, BULK_INSERT_BATCH_SIZE):
             # batch: Current slice of objects to insert in this bulk_create call.
-            SixHourTimeSeries.objects.bulk_create(batch, batch_size=BULK_INSERT_BATCH_SIZE)
-            inserted_count += len(batch)
+            SixHourTimeSeries.objects.bulk_create(
+                batch,
+                batch_size=BULK_INSERT_BATCH_SIZE,
+                ignore_conflicts=True,
+            )
+            attempted_count += len(batch)
 
-    log(f"Inserted {inserted_count} SixHourTimeSeries rows.")
-    return inserted_count
+    log(f"Attempted insert of {attempted_count} SixHourTimeSeries rows.")
+    return attempted_count
 
 
 def main():

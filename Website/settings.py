@@ -173,19 +173,20 @@ else:
 # =============================================================================
 # CACHE CONFIGURATION
 # =============================================================================
-# What: Django cache backend for storing computed data like trending items
-# Why: Avoids expensive API calls on every page load (e.g., trending items hourly)
-# How: Uses local memory cache - simple, no external dependencies
-# Note: Cache is cleared when server restarts; fine for development
-#       For production, consider switching to Redis or file-based cache
+# Uses Django's database cache so multiple worker processes share one cache.
+# Create the table for each active database with:
+#   python manage.py createcachetable ge_tools_cache
+
+CACHE_TABLE_NAME = os.environ.get('DJANGO_CACHE_TABLE', 'ge_tools_cache')
 
 CACHES = {
     'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'unique-snowflake',
-        'TIMEOUT': 3600,  # Default 1 hour timeout
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': CACHE_TABLE_NAME,
+        'TIMEOUT': 3600,
         'OPTIONS': {
             'MAX_ENTRIES': 1000,
-        }
+            'CULL_FREQUENCY': 3,
+        },
     }
 }

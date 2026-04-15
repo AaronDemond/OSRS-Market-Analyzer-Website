@@ -387,14 +387,18 @@ def fetch_and_store_snapshot(lookup):
         log("INFO: Snapshot contained no insertable item data.")
         return 0
 
-    inserted_count = 0
+    attempted_count = 0
     with transaction.atomic():
         for batch in chunk_list(objects_to_insert, BULK_INSERT_BATCH_SIZE):
-            HourlyItemVolume.objects.bulk_create(batch, batch_size=BULK_INSERT_BATCH_SIZE)
-            inserted_count += len(batch)
+            HourlyItemVolume.objects.bulk_create(
+                batch,
+                batch_size=BULK_INSERT_BATCH_SIZE,
+                ignore_conflicts=True,
+            )
+            attempted_count += len(batch)
 
-    log(f"Inserted {inserted_count} HourlyItemVolume rows.")
-    return inserted_count
+    log(f"Attempted insert of {attempted_count} HourlyItemVolume rows.")
+    return attempted_count
 
 
 def main():
