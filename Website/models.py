@@ -967,6 +967,53 @@ class FavoriteItem(models.Model):
         return self.item_name
 
 
+class LiveFeedbackWatch(models.Model):
+    SIDE_CHOICES = [
+        ('buy', 'Buy'),
+        ('sell', 'Sell'),
+    ]
+
+    STATUS_CHOICES = [
+        ('watching', 'Watching'),
+        ('undercut', 'Undercut'),
+        ('overcut', 'Overcut'),
+        ('no_price', 'No recent price'),
+        ('paused', 'Paused'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='live_feedback_watches')
+    item_id = models.IntegerField(db_index=True)
+    item_name = models.CharField(max_length=255)
+    side = models.CharField(max_length=5, choices=SIDE_CHOICES)
+    target_price = models.PositiveIntegerField()
+    is_active = models.BooleanField(default=True)
+    is_triggered = models.BooleanField(default=False)
+    is_dismissed = models.BooleanField(default=False)
+    email_notification = models.BooleanField(default=False)
+    sms_notification = models.BooleanField(default=False)
+    sms_recipient = models.EmailField(blank=True, default='')
+    last_checked_at = models.DateTimeField(blank=True, null=True, default=None)
+    last_market_price = models.PositiveIntegerField(blank=True, null=True, default=None)
+    last_market_time = models.BigIntegerField(blank=True, null=True, default=None)
+    last_status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='watching')
+    triggered_at = models.DateTimeField(blank=True, null=True, default=None)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-is_triggered', '-is_active', 'item_name', 'target_price']
+        indexes = [
+            models.Index(fields=['user', 'is_active'], name='livefb_user_active_idx'),
+            models.Index(fields=['is_active', 'is_triggered'], name='livefb_active_trig_idx'),
+            models.Index(fields=['item_id', 'side'], name='livefb_item_side_idx'),
+            models.Index(fields=['last_status'], name='livefb_status_idx'),
+        ]
+
+    def __str__(self):
+        action = 'Buying' if self.side == 'buy' else 'Selling'
+        return f"{action} {self.item_name} at {self.target_price}"
+
+
 # =============================================================================
 # ITEM COLLECTION MODEL
 # =============================================================================
@@ -1406,6 +1453,5 @@ class TwentyFourHourTimeSeries(models.Model):
             models.Index(fields=['item_id', '-timestamp'], name='twentyfour_item_ts_desc'),
             models.Index(fields=['timestamp'], name='twentyfour_ts_idx'),
         ]
-
 
 

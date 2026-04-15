@@ -126,6 +126,15 @@
                 </a>
             </li>
             <li class="nav-item">
+                <a class="nav-link" href="/live-feedback/">
+                    <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path
+                            d="M11 3a1 1 0 00-1.832-.555l-6 9A1 1 0 004 13h4l-1 4a1 1 0 001.832.555l6-9A1 1 0 0014 7h-4l1-4z" />
+                    </svg>
+                    <span>Live Feedback</span>
+                </a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link" href="{% url 'favorites' %}">
                     <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
                         <path
@@ -617,6 +626,7 @@
                 '/home/',    // Dashboard page - shows user's trading overview
                 '/flips/',   // My Flips page - shows user's flip transactions
                 '/alerts/',  // Alerts page - shows user's price alerts
+                '/live-feedback/', // Live Feedback page - shows user's live price watches
                 '/favorites/' // Favorites page - shows user's favorited items
             ];
             
