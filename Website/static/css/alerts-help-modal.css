@@ -226,6 +226,11 @@
         color: #9F1239;
     }
 
+    .alert-type-badge.confidence {
+        background: #E0F2FE;
+        color: #0C4A6E;
+    }
+
     .alert-help-section .subtitle {
         font-size: 15px;
         color: var(--text-muted);
