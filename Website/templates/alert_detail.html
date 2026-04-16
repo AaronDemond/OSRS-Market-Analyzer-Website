@@ -3532,7 +3532,7 @@
                                 <span class="triggered-item-name">{{ item.item_name }}</span>
                                 {% if triggered_info.alert_type == 'spread' %}
                                 <div class="triggered-item-details">
-                                    Low: {{ item.low|intcomma }} | High: {{ item.high|intcomma }}
+                                    Low: {{ item.low|intcomma }} | High: {{ item.high|intcomma }}{% if item.volume %} | Vol: {{ item.volume|intcomma }} GP{% endif %}
                                 </div>
                                 {% elif triggered_info.alert_type == 'spike' %}
                                 <div class="triggered-item-details">
