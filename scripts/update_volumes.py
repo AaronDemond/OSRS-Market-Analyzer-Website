@@ -73,6 +73,8 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'Website.settings')
 import django
 django.setup()
 
+from django.db import transaction
+
 # Now we can safely import Django models
 from Website.models import HourlyItemVolume
 
@@ -96,6 +98,10 @@ API_HEADERS = {'User-Agent': 'GE-Tools (not yet live) - demondsoftware@gmail.com
 
 # API_BASE_URL: Base URL for the RuneScape Wiki pricing API.
 API_BASE_URL = 'https://prices.runescape.wiki/api/v1/osrs'
+
+# BULK_INSERT_BATCH_SIZE: Number of rows per insert chunk.
+# 500 is a safe cross-database size and matches the other fetch/backfill scripts.
+BULK_INSERT_BATCH_SIZE = 500
 
 # ITEM_MAPPING_FILE: Path to the local JSON file containing item ID/name mappings.
 # This file is the same one used by update_trending.py and the main Django app.
@@ -331,25 +337,46 @@ def save_volumes(volume_data_list):
     log(f"Saving {len(volume_objects)} volume records to database...")
 
     try:
-        # batch_size=500: Insert in batches of 500 to avoid overwhelming SQLite's
-        # variable limit (default max is 999 variables per query).
-        # For PostgreSQL this could be higher, but 500 is safe for all backends.
-        HourlyItemVolume.objects.bulk_create(volume_objects, batch_size=500)
-        log(f"Database: {len(volume_objects)} records created (timestamp: {fetch_timestamp.strftime('%Y-%m-%d %H:%M:%S')})")
-        return len(volume_objects)
+        attempted = 0
+        inserted = 0
+        duplicates_skipped = 0
+        total = len(volume_objects)
+
+        for start in range(0, total, BULK_INSERT_BATCH_SIZE):
+            batch = volume_objects[start:start + BULK_INSERT_BATCH_SIZE]
+            batch_unique_pairs = {(obj.item_id, obj.timestamp) for obj in batch}
+            item_ids = {obj.item_id for obj in batch}
+            timestamps = {obj.timestamp for obj in batch}
+            existing_pairs = set(
+                HourlyItemVolume.objects.filter(
+                    item_id__in=item_ids,
+                    timestamp__in=timestamps,
+                ).values_list('item_id', 'timestamp')
+            )
+            inserted_in_batch = len(batch_unique_pairs - existing_pairs)
+            with transaction.atomic():
+                HourlyItemVolume.objects.bulk_create(
+                    batch,
+                    batch_size=BULK_INSERT_BATCH_SIZE,
+                    ignore_conflicts=True,
+                )
+            attempted += len(batch)
+            inserted += inserted_in_batch
+            duplicates_skipped += len(batch) - inserted_in_batch
+            log(
+                f"Database: attempted {attempted}/{total} volume records; "
+                f"inserted {inserted}; duplicates skipped {duplicates_skipped}"
+            )
+
+        log(
+            f"Database: completed volume save cycle "
+            f"(attempted={attempted}, inserted={inserted}, duplicates_skipped={duplicates_skipped}) "
+            f"(timestamp: {fetch_timestamp.strftime('%Y-%m-%d %H:%M:%S')})"
+        )
+        return inserted
     except Exception as e:
         log(f"ERROR: Failed to bulk-create volume records: {e}")
-        # Fallback: try creating records one at a time to save what we can
-        # This is slower but ensures partial data is saved even if some records fail
-        created = 0
-        for obj in volume_objects:
-            try:
-                obj.save()
-                created += 1
-            except Exception:
-                pass
-        log(f"Fallback: saved {created}/{len(volume_objects)} records individually")
-        return created
+        return 0
 
 
 def run_update_cycle():

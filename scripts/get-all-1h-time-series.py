@@ -216,9 +216,21 @@ BULK_INSERT_BATCH_SIZE = 500
 
 def bulk_create_committed_chunks(model, objects, label):
     attempted = 0
+    inserted = 0
+    duplicates_skipped = 0
     total = len(objects)
     for start in range(0, total, BULK_INSERT_BATCH_SIZE):
         batch = objects[start:start + BULK_INSERT_BATCH_SIZE]
+        batch_unique_pairs = {(obj.item_id, obj.timestamp) for obj in batch}
+        item_ids = {obj.item_id for obj in batch}
+        timestamps = {obj.timestamp for obj in batch}
+        existing_pairs = set(
+            model.objects.filter(
+                item_id__in=item_ids,
+                timestamp__in=timestamps,
+            ).values_list("item_id", "timestamp")
+        )
+        inserted_in_batch = len(batch_unique_pairs - existing_pairs)
         with transaction.atomic():
             model.objects.bulk_create(
                 batch,
@@ -226,8 +238,13 @@ def bulk_create_committed_chunks(model, objects, label):
                 ignore_conflicts=True,
             )
         attempted += len(batch)
-        print(f"committed {label} chunk {attempted}/{total}; duplicates skipped")
-    return attempted
+        inserted += inserted_in_batch
+        duplicates_skipped += len(batch) - inserted_in_batch
+        print(
+            f"committed {label} chunk {attempted}/{total}; "
+            f"inserted {inserted}; duplicates skipped {duplicates_skipped}"
+        )
+    return attempted, inserted, duplicates_skipped
 
 
 def make_one_hour_timeseries_objects(result_item, lookup):
