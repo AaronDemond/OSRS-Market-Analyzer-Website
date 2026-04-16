@@ -27,6 +27,30 @@
     margin-bottom: 20px;
 }
 
+.live-feedback-title-group {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.live-feedback-header-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 48px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #6366F1 0%, #7C3AED 100%);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.30);
+}
+
+.live-feedback-header-icon svg {
+    width: 24px;
+    height: 24px;
+    color: #FFFFFF;
+}
+
 .live-feedback-header h1 {
     margin: 0 0 6px;
     font-size: 2rem;
@@ -273,24 +297,25 @@
     gap: 8px;
     border: 0;
     border-radius: 8px;
-    background: var(--lf-primary);
+    background: linear-gradient(135deg, #6366F1 0%, #5B5FE8 55%, #5558E3 100%);
     color: #FFFFFF;
     font-weight: 800;
     cursor: pointer;
     box-sizing: border-box;
+    box-shadow: 0 10px 18px rgba(99, 102, 241, 0.18);
 }
 
 .live-feedback-add-btn:hover {
-    background: var(--lf-primary-dark);
+    background: linear-gradient(135deg, #5558E3 0%, #4F46E5 60%, #4338CA 100%);
 }
 
 .live-feedback-add-btn.editing {
-    background: linear-gradient(135deg, #1D4ED8 0%, #2563EB 48%, #06B6D4 100%);
-    box-shadow: 0 10px 18px rgba(37, 99, 235, 0.20);
+    background: linear-gradient(135deg, #6366F1 0%, #5B5FE8 55%, #5558E3 100%);
+    box-shadow: 0 10px 18px rgba(99, 102, 241, 0.22);
 }
 
 .live-feedback-add-btn.editing:hover {
-    background: linear-gradient(135deg, #1E40AF 0%, #1D4ED8 48%, #0891B2 100%);
+    background: linear-gradient(135deg, #5558E3 0%, #4F46E5 60%, #4338CA 100%);
 }
 
 .live-feedback-form-editing .live-feedback-add-btn {
@@ -298,9 +323,21 @@
     border-radius: 8px 0 0 8px;
 }
 
+.live-feedback-form-editing .live-feedback-submit-actions {
+    grid-template-columns: repeat(2, 128px);
+}
+
 .live-feedback-add-btn svg {
     width: 17px;
     height: 17px;
+}
+
+.live-feedback-add-btn.editing svg {
+    display: none;
+}
+
+.live-feedback-add-btn.editing {
+    gap: 0;
 }
 
 .live-feedback-cancel-edit {
@@ -330,6 +367,11 @@
 
 .live-feedback-form-editing .live-feedback-cancel-edit {
     border-radius: 0 8px 8px 0;
+    width: 100%;
+}
+
+.live-feedback-form-editing .live-feedback-add-btn {
+    width: 100%;
 }
 
 .live-feedback-cancel-edit[hidden] {
@@ -694,6 +736,10 @@
         width: 100%;
     }
 
+    .live-feedback-form.live-feedback-form-editing .live-feedback-submit-actions {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .live-feedback-sms-wrap,
     .live-feedback-sms-wrap.visible {
         grid-column: 1 / -1;
@@ -784,5 +830,21 @@
 
     .live-feedback-header h1 {
         font-size: 1.7rem;
+    }
+
+    .live-feedback-title-group {
+        gap: 12px;
+    }
+
+    .live-feedback-header-icon {
+        width: 42px;
+        height: 42px;
+        flex-basis: 42px;
+        border-radius: 10px;
+    }
+
+    .live-feedback-header-icon svg {
+        width: 22px;
+        height: 22px;
     }
 }

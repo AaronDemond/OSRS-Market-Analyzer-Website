@@ -195,7 +195,6 @@
     }
 
     function updatePreview() {
-        const target = Number(els.price.value || 0);
         if (!selectedMarketData || !els.itemId.value) {
             els.preview.hidden = true;
             els.preview.innerHTML = '';
@@ -204,28 +203,11 @@
 
         const high = selectedMarketData.high;
         const low = selectedMarketData.low;
-        const marketPrice = selectedSide === 'buy' ? high : low;
-        const marketLabel = selectedSide === 'buy' ? 'Highest buy' : 'Lowest sell';
-        let status = 'Waiting for price';
-
-        if (target > 0 && marketPrice) {
-            if (selectedSide === 'buy') {
-                status = marketPrice > target
-                    ? `Overcut by ${formatNumber(marketPrice - target)} gp`
-                    : `Safe by ${formatNumber(target - marketPrice)} gp`;
-            } else {
-                status = marketPrice < target
-                    ? `Undercut by ${formatNumber(target - marketPrice)} gp`
-                    : `Safe by ${formatNumber(marketPrice - target)} gp`;
-            }
-        }
 
         els.preview.innerHTML = `
             <strong>${escapeHtml(selectedMarketData.name)}</strong>
-            <span>${marketLabel}: ${formatNumber(marketPrice)} gp</span>
             <span>High: ${formatNumber(high)} gp</span>
             <span>Low: ${formatNumber(low)} gp</span>
-            <span>${escapeHtml(status)}</span>
         `;
         els.preview.hidden = false;
     }
