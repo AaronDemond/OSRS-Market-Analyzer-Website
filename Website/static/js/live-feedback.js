@@ -305,7 +305,7 @@
                     <span class="live-feedback-cell-label">Gap</span>
                     <span class="live-feedback-price">${gap}</span>
                 </div>
-                <div>
+                <div class="live-feedback-status-cell">
                     <span class="live-feedback-status ${status}">${statusLabel}</span>
                 </div>
                 <div class="live-feedback-actions">
