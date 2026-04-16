@@ -58,8 +58,8 @@ class LiveFeedbackApiTests(TestCase):
             password='password123',
         )
         self.item_mapping = {
-            'abyssal whip': {'id': 4151, 'name': 'Abyssal whip'},
-            'dragon scimitar': {'id': 4587, 'name': 'Dragon scimitar'},
+            'abyssal whip': {'id': 4151, 'name': 'Abyssal whip', 'icon': 'Abyssal_whip.png'},
+            'dragon scimitar': {'id': 4587, 'name': 'Dragon scimitar', 'icon': 'Dragon_scimitar.png'},
         }
 
     def login(self, user=None):
@@ -158,9 +158,11 @@ class LiveFeedbackApiTests(TestCase):
         self.assertIsNone(watch.last_market_time)
         self.assertIsNone(watch.triggered_at)
 
+    @patch('Website.views.get_item_mapping')
     @patch('Website.views.get_all_current_prices')
-    def test_list_returns_current_trigger_status(self, mock_prices):
-        mock_prices.return_value = {'4151': {'high': 110, 'highTime': 123}}
+    def test_list_returns_current_trigger_status(self, mock_prices, mock_mapping):
+        mock_prices.return_value = {'4151': {'high': 110, 'low': 90, 'highTime': 123, 'lowTime': 120}}
+        mock_mapping.return_value = self.item_mapping
         self.login()
         LiveFeedbackWatch.objects.create(
             user=self.user,
@@ -177,6 +179,15 @@ class LiveFeedbackApiTests(TestCase):
         self.assertEqual(payload['watches'][0]['status'], STATUS_OVERCUT)
         self.assertTrue(payload['watches'][0]['is_currently_triggered'])
         self.assertEqual(payload['stats']['triggered'], 1)
+        self.assertEqual(payload['watches'][0]['market_data'], {
+            'id': 4151,
+            'name': 'Abyssal whip',
+            'icon': 'Abyssal_whip.png',
+            'high': 110,
+            'low': 90,
+            'highTime': 123,
+            'lowTime': 120,
+        })
 
     def test_user_cannot_delete_another_users_watch(self):
         watch = LiveFeedbackWatch.objects.create(
