@@ -12,8 +12,8 @@ Why:
 How:
     - Load the item ID -> name mapping from item-mapping.json.
     - Fetch the /1h snapshot (single API call).
-    - If the snapshot timestamp already exists in the database for ANY item, skip
-      the entire snapshot insert to avoid duplication.
+    - If rows already exist for the snapshot timestamp, continue anyway and let
+      row-level duplicate skipping handle only the conflicting items.
     - Build HourlyItemVolume objects (volume GP computed from price/volume fields),
       leaving missing fields as blank/zero where the model does not permit NULL.
     - Bulk-insert in batches of 500 inside a transaction.
@@ -231,8 +231,8 @@ def snapshot_already_ingested(snapshot_timestamp):
     Determine whether a snapshot timestamp already exists in the database.
 
     What: Checks for any HourlyItemVolume row with the same timestamp.
-    Why: Requirement says to skip entire snapshot if timestamp already exists.
-    How: Use Django ORM .exists() for an efficient DB lookup.
+    Why: Lets the script warn when rerunning a partially ingested snapshot.
+    How: Use Django ORM .exists() for an efficient advisory DB lookup.
 
     Args:
         snapshot_timestamp: Timestamp string to check for duplicates.
@@ -261,6 +261,56 @@ def chunk_list(items, batch_size):
     # start_index: Current list offset for slicing.
     for start_index in range(0, len(items), batch_size):
         yield items[start_index:start_index + batch_size]
+
+
+def existing_item_timestamp_pairs(model, objects):
+    """
+    Return already-present (item_id, timestamp) pairs for a batch of model objects.
+    """
+    if not objects:
+        return set()
+
+    item_ids = {obj.item_id for obj in objects}
+    timestamps = {obj.timestamp for obj in objects}
+    return set(
+        model.objects.filter(
+            item_id__in=item_ids,
+            timestamp__in=timestamps,
+        ).values_list("item_id", "timestamp")
+    )
+
+
+def bulk_insert_with_counts(model, objects, label):
+    """
+    Bulk insert objects while reporting attempted, inserted, and skipped counts.
+    """
+    attempted_count = 0
+    inserted_count = 0
+    duplicate_count = 0
+    total = len(objects)
+
+    with transaction.atomic():
+        for batch in chunk_list(objects, BULK_INSERT_BATCH_SIZE):
+            batch_unique_pairs = {(obj.item_id, obj.timestamp) for obj in batch}
+            existing_pairs = existing_item_timestamp_pairs(model, batch)
+            inserted_in_batch = len(batch_unique_pairs - existing_pairs)
+
+            model.objects.bulk_create(
+                batch,
+                batch_size=BULK_INSERT_BATCH_SIZE,
+                ignore_conflicts=True,
+            )
+
+            attempted_count += len(batch)
+            inserted_count += inserted_in_batch
+            duplicate_count += len(batch) - inserted_in_batch
+
+            log(
+                f"{label}: attempted {attempted_count}/{total}, "
+                f"inserted {inserted_count}, duplicates skipped {duplicate_count}"
+            )
+
+    return attempted_count, inserted_count, duplicate_count
 
 
 def build_volume_objects(snapshot_data, lookup, snapshot_timestamp):
@@ -351,7 +401,7 @@ def fetch_and_store_snapshot(lookup):
     How:
         - Fetch snapshot JSON.
         - Normalize timestamp to string.
-        - Skip insert if timestamp already exists.
+        - Continue even if part of the timestamp already exists.
         - Build and bulk-create model instances in batches of 500.
 
     Args:
@@ -370,8 +420,11 @@ def fetch_and_store_snapshot(lookup):
     snapshot_timestamp = str(snapshot.get("timestamp"))
 
     if snapshot_already_ingested(snapshot_timestamp):
-        log(f"INFO: Snapshot timestamp {snapshot_timestamp} already exists; skipping.")
-        return 0
+        existing_rows = HourlyItemVolume.objects.filter(timestamp=snapshot_timestamp).count()
+        log(
+            f"INFO: Snapshot timestamp {snapshot_timestamp} already has "
+            f"{existing_rows} rows; continuing and skipping duplicates per item."
+        )
 
     # snapshot_data: Dict of item_id -> price/volume payloads.
     snapshot_data = snapshot.get("data") or {}
@@ -387,18 +440,18 @@ def fetch_and_store_snapshot(lookup):
         log("INFO: Snapshot contained no insertable item data.")
         return 0
 
-    attempted_count = 0
-    with transaction.atomic():
-        for batch in chunk_list(objects_to_insert, BULK_INSERT_BATCH_SIZE):
-            HourlyItemVolume.objects.bulk_create(
-                batch,
-                batch_size=BULK_INSERT_BATCH_SIZE,
-                ignore_conflicts=True,
-            )
-            attempted_count += len(batch)
+    attempted_count, inserted_count, duplicate_count = bulk_insert_with_counts(
+        HourlyItemVolume,
+        objects_to_insert,
+        "HourlyItemVolume",
+    )
 
-    log(f"Attempted insert of {attempted_count} HourlyItemVolume rows.")
-    return attempted_count
+    log(
+        f"Snapshot {snapshot_timestamp}: attempted {attempted_count} "
+        f"HourlyItemVolume rows, inserted {inserted_count}, "
+        f"duplicates skipped {duplicate_count}"
+    )
+    return inserted_count
 
 
 def main():

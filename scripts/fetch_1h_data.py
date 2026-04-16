@@ -12,8 +12,8 @@ Why:
 How:
     - Load the item ID -> name mapping from item-mapping.json.
     - Fetch the /1h snapshot (single API call).
-    - If the snapshot timestamp already exists in the database for ANY item, skip
-      the entire snapshot insert to avoid duplication.
+    - If rows already exist for the snapshot timestamp, continue anyway and let
+      row-level duplicate skipping handle only the conflicting items.
     - Build OneHourTimeSeries objects, leaving missing fields blank (None or 0 when
       the model does not permit NULL), and bulk-insert in a transaction.
     - Loop forever: fetch immediately, then sleep for 1 hour between cycles.
@@ -230,8 +230,8 @@ def snapshot_already_ingested(snapshot_timestamp):
     Determine whether a snapshot timestamp already exists in the database.
 
     What: Checks for any OneHourTimeSeries row with the same timestamp.
-    Why: Requirement says to skip entire snapshot if timestamp already exists.
-    How: Use Django ORM .exists() for an efficient DB lookup.
+    Why: Lets the script warn when rerunning a partially ingested snapshot.
+    How: Use Django ORM .exists() for an efficient advisory DB lookup.
 
     Args:
         snapshot_timestamp: Timestamp string to check for duplicates.
@@ -260,6 +260,66 @@ def chunk_list(items, batch_size):
     # start_index: Current list offset for slicing.
     for start_index in range(0, len(items), batch_size):
         yield items[start_index:start_index + batch_size]
+
+
+def existing_item_timestamp_pairs(model, objects):
+    """
+    Return already-present (item_id, timestamp) pairs for a batch of model objects.
+
+    What: Looks up the unique keys that already exist in the database.
+    Why: Lets the script report actual inserted rows versus duplicates skipped.
+    How: Queries by the batch's item ids and timestamps, then materializes the
+         existing unique key pairs into a set for fast comparison.
+    """
+    if not objects:
+        return set()
+
+    item_ids = {obj.item_id for obj in objects}
+    timestamps = {obj.timestamp for obj in objects}
+    return set(
+        model.objects.filter(
+            item_id__in=item_ids,
+            timestamp__in=timestamps,
+        ).values_list("item_id", "timestamp")
+    )
+
+
+def bulk_insert_with_counts(model, objects, label):
+    """
+    Bulk insert objects while reporting attempted, inserted, and skipped counts.
+
+    What: Inserts objects in chunks using ignore_conflicts=True.
+    Why: A duplicate row should only skip that specific item, not the whole snapshot.
+    How: For each batch, compare the batch's unique keys against existing rows,
+         bulk_create with ignore_conflicts=True, and accumulate the counts.
+    """
+    attempted_count = 0
+    inserted_count = 0
+    duplicate_count = 0
+    total = len(objects)
+
+    with transaction.atomic():
+        for batch in chunk_list(objects, BULK_INSERT_BATCH_SIZE):
+            batch_unique_pairs = {(obj.item_id, obj.timestamp) for obj in batch}
+            existing_pairs = existing_item_timestamp_pairs(model, batch)
+            inserted_in_batch = len(batch_unique_pairs - existing_pairs)
+
+            model.objects.bulk_create(
+                batch,
+                batch_size=BULK_INSERT_BATCH_SIZE,
+                ignore_conflicts=True,
+            )
+
+            attempted_count += len(batch)
+            inserted_count += inserted_in_batch
+            duplicate_count += len(batch) - inserted_in_batch
+
+            log(
+                f"{label}: attempted {attempted_count}/{total}, "
+                f"inserted {inserted_count}, duplicates skipped {duplicate_count}"
+            )
+
+    return attempted_count, inserted_count, duplicate_count
 
 
 def build_timeseries_objects(snapshot_data, lookup, snapshot_timestamp):
@@ -344,7 +404,7 @@ def fetch_and_store_snapshot(lookup):
     How:
         - Fetch snapshot JSON.
         - Normalize timestamp to string.
-        - Skip insert if timestamp already exists.
+        - Continue even if part of the timestamp already exists.
         - Build and bulk-create model instances.
 
     Args:
@@ -363,8 +423,11 @@ def fetch_and_store_snapshot(lookup):
     snapshot_timestamp = str(snapshot.get("timestamp"))
 
     if snapshot_already_ingested(snapshot_timestamp):
-        log(f"INFO: Snapshot timestamp {snapshot_timestamp} already exists; skipping.")
-        return 0
+        existing_rows = OneHourTimeSeries.objects.filter(timestamp=snapshot_timestamp).count()
+        log(
+            f"INFO: Snapshot timestamp {snapshot_timestamp} already has "
+            f"{existing_rows} rows; continuing and skipping duplicates per item."
+        )
 
     # snapshot_data: Dict of item_id -> price/volume payloads.
     snapshot_data = snapshot.get("data") or {}
@@ -380,20 +443,18 @@ def fetch_and_store_snapshot(lookup):
         log("INFO: Snapshot contained no insertable item data.")
         return 0
 
-    # attempted_count: Rows sent to bulk_create; database constraints skip duplicates.
-    attempted_count = 0
-    with transaction.atomic():
-        for batch in chunk_list(objects_to_insert, BULK_INSERT_BATCH_SIZE):
-            # batch: Current slice of objects to insert in this bulk_create call.
-            OneHourTimeSeries.objects.bulk_create(
-                batch,
-                batch_size=BULK_INSERT_BATCH_SIZE,
-                ignore_conflicts=True,
-            )
-            attempted_count += len(batch)
+    attempted_count, inserted_count, duplicate_count = bulk_insert_with_counts(
+        OneHourTimeSeries,
+        objects_to_insert,
+        "OneHourTimeSeries",
+    )
 
-    log(f"Attempted insert of {attempted_count} OneHourTimeSeries rows.")
-    return attempted_count
+    log(
+        f"Snapshot {snapshot_timestamp}: attempted {attempted_count} "
+        f"OneHourTimeSeries rows, inserted {inserted_count}, "
+        f"duplicates skipped {duplicate_count}"
+    )
+    return inserted_count
 
 
 def main():

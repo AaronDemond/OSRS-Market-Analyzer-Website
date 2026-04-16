@@ -415,11 +415,37 @@ def main():
     # skipped instead of raising IntegrityError. This makes the script idempotent.
     print(f"\nInserting into database (batch_size={BULK_INSERT_BATCH_SIZE}, "
           f"ignore_conflicts=True)...")
-    with transaction.atomic():
-        HourlyItemVolume.objects.bulk_create(
-            all_objects,
-            batch_size=BULK_INSERT_BATCH_SIZE,
-            ignore_conflicts=True,
+    attempted = 0
+    inserted = 0
+    duplicates_skipped = 0
+    total = len(all_objects)
+
+    for start in range(0, total, BULK_INSERT_BATCH_SIZE):
+        batch = all_objects[start:start + BULK_INSERT_BATCH_SIZE]
+        batch_unique_pairs = {(obj.item_id, obj.timestamp) for obj in batch}
+        item_ids = {obj.item_id for obj in batch}
+        timestamps = {obj.timestamp for obj in batch}
+        existing_pairs = set(
+            HourlyItemVolume.objects.filter(
+                item_id__in=item_ids,
+                timestamp__in=timestamps,
+            ).values_list("item_id", "timestamp")
+        )
+        inserted_in_batch = len(batch_unique_pairs - existing_pairs)
+
+        with transaction.atomic():
+            HourlyItemVolume.objects.bulk_create(
+                batch,
+                batch_size=BULK_INSERT_BATCH_SIZE,
+                ignore_conflicts=True,
+            )
+
+        attempted += len(batch)
+        inserted += inserted_in_batch
+        duplicates_skipped += len(batch) - inserted_in_batch
+        print(
+            f"Inserted progress {attempted}/{total}: "
+            f"inserted={inserted}, duplicates_skipped={duplicates_skipped}"
         )
 
     # --- Step 5: Summary ---
@@ -427,7 +453,11 @@ def main():
     # Why query the DB: ignore_conflicts=True means some rows may have been skipped,
     # so len(all_objects) doesn't reflect actual inserts.
     final_count = HourlyItemVolume.objects.count()
-    print(f"\nDone! HourlyItemVolume now contains {final_count} rows.")
+    print(
+        f"\nDone! Attempted={attempted}, inserted={inserted}, "
+        f"duplicates_skipped={duplicates_skipped}. "
+        f"HourlyItemVolume now contains {final_count} rows."
+    )
     print("=" * 70)
 
 
