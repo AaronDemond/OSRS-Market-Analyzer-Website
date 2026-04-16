@@ -566,18 +566,48 @@
     }
 
     .live-feedback-form {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr) minmax(120px, 0.55fr) minmax(120px, 0.55fr);
+        align-items: end;
+    }
+
+    .live-feedback-search-wrap {
+        grid-column: 1 / 2;
+        grid-row: 1;
+    }
+
+    .live-feedback-side {
+        grid-column: 2 / -1;
+        grid-row: 1;
+    }
+
+    .live-feedback-price-wrap {
+        grid-column: 1 / 2;
+        grid-row: 2;
+    }
+
+    .live-feedback-email-toggle {
+        grid-column: 2 / 3;
+        grid-row: 2;
+        width: 100%;
+        justify-content: center;
+    }
+
+    .live-feedback-sms-toggle {
+        grid-column: 3 / 4;
+        grid-row: 2;
+        width: 100%;
+        justify-content: center;
     }
 
     .live-feedback-add-btn,
     .live-feedback-cancel-edit:not([hidden]) {
-        grid-column: auto;
+        grid-column: 1 / -1;
         width: 100%;
     }
 
     .live-feedback-sms-wrap,
     .live-feedback-sms-wrap.visible {
-        grid-column: auto;
+        grid-column: 1 / -1;
     }
 
     .live-feedback-table-head {
@@ -600,18 +630,56 @@
         display: block;
     }
 
+    .live-feedback-watch-row > div.live-feedback-status-cell {
+        justify-content: flex-end;
+        align-items: center;
+    }
+
     .live-feedback-cell-label {
         display: inline;
     }
 
-    .live-feedback-actions {
+    .live-feedback-watch-row > div.live-feedback-actions {
         justify-content: flex-end;
+        align-items: center;
     }
 }
 
 @media (max-width: 480px) {
-    .live-feedback-stats {
+    .live-feedback-form {
         grid-template-columns: 1fr;
+    }
+
+    .live-feedback-search-wrap,
+    .live-feedback-side,
+    .live-feedback-price-wrap,
+    .live-feedback-email-toggle,
+    .live-feedback-sms-toggle,
+    .live-feedback-sms-wrap,
+    .live-feedback-sms-wrap.visible,
+    .live-feedback-add-btn,
+    .live-feedback-cancel-edit:not([hidden]) {
+        grid-column: auto;
+        grid-row: auto;
+    }
+
+    .live-feedback-add-btn,
+    .live-feedback-cancel-edit:not([hidden]) {
+        width: 100%;
+    }
+
+    .live-feedback-stats {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .live-feedback-stat {
+        padding: 10px 8px;
+        text-align: center;
+    }
+
+    .live-feedback-stat-value {
+        font-size: 1.2rem;
     }
 
     .live-feedback-header h1 {
