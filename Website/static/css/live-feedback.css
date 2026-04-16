@@ -537,17 +537,22 @@
 
     .live-feedback-sms-wrap,
     .live-feedback-sms-wrap.visible {
-        grid-column: 1 / 4;
+        grid-column: 1 / -1;
     }
 
     .live-feedback-add-btn {
-        grid-column: 4 / 5;
-        width: 100%;
+        grid-column: 1 / 2;
+        justify-self: start;
+        min-width: 112px;
+        width: auto;
+        padding: 0 18px;
     }
 
     .live-feedback-cancel-edit:not([hidden]) {
-        grid-column: 5 / 6;
-        width: 100%;
+        grid-column: 2 / 3;
+        justify-self: start;
+        min-width: 128px;
+        width: auto;
     }
 }
 
@@ -647,24 +652,45 @@
 
 @media (max-width: 480px) {
     .live-feedback-form {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .live-feedback-search-wrap,
     .live-feedback-side,
     .live-feedback-price-wrap,
-    .live-feedback-email-toggle,
-    .live-feedback-sms-toggle,
     .live-feedback-sms-wrap,
-    .live-feedback-sms-wrap.visible,
-    .live-feedback-add-btn,
-    .live-feedback-cancel-edit:not([hidden]) {
-        grid-column: auto;
+    .live-feedback-sms-wrap.visible {
+        grid-column: 1 / -1;
         grid-row: auto;
     }
 
-    .live-feedback-add-btn,
+    .live-feedback-email-toggle {
+        grid-column: 1 / 2;
+        grid-row: auto;
+        width: 100%;
+        justify-content: center;
+    }
+
+    .live-feedback-sms-toggle {
+        grid-column: 2 / 3;
+        grid-row: auto;
+        width: 100%;
+        justify-content: center;
+    }
+
+    .live-feedback-add-btn {
+        grid-column: 1 / -1;
+        grid-row: auto;
+        width: 100%;
+    }
+
+    .live-feedback-form.live-feedback-form-editing .live-feedback-add-btn {
+        grid-column: 1 / 2;
+    }
+
     .live-feedback-cancel-edit:not([hidden]) {
+        grid-column: 2 / 3;
+        grid-row: auto;
         width: 100%;
     }
 
