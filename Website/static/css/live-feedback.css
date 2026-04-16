@@ -97,7 +97,7 @@
 .live-feedback-form {
     position: relative;
     display: grid;
-    grid-template-columns: minmax(260px, 1.4fr) 180px minmax(130px, 0.6fr) auto auto minmax(220px, 0.9fr) auto auto;
+    grid-template-columns: minmax(260px, 1.4fr) 180px minmax(130px, 0.6fr) auto auto auto;
     align-items: end;
     gap: 12px;
     background: var(--lf-surface);
@@ -386,13 +386,134 @@
 }
 
 .live-feedback-preview {
-    border: 1px solid rgba(8, 145, 178, 0.24);
-    background: rgba(8, 145, 178, 0.07);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 18px;
+    border: 0;
+    border-radius: 16px;
+    padding: 18px 20px;
+    background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
+    color: #FFFFFF;
+    box-shadow: 0 10px 32px rgba(102, 126, 234, 0.26);
 }
 
-.live-feedback-preview span {
-    display: inline-block;
-    margin: 4px 14px 0 0;
+.live-feedback-preview-main {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.live-feedback-preview-icon {
+    width: 58px;
+    height: 58px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 58px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.20);
+}
+
+.live-feedback-preview-icon img {
+    max-width: 48px;
+    max-height: 48px;
+    image-rendering: pixelated;
+}
+
+.live-feedback-preview-icon-fallback svg {
+    width: 28px;
+    height: 28px;
+    color: #FFFFFF;
+}
+
+.live-feedback-preview-item {
+    min-width: 0;
+}
+
+.live-feedback-preview-eyebrow,
+.live-feedback-preview-price-label {
+    display: block;
+    color: #FFFFFF;
+    font-size: 0.72rem;
+    font-weight: 750;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.live-feedback-preview-eyebrow {
+    margin-bottom: 3px;
+    opacity: 0.78;
+}
+
+.live-feedback-preview-item strong {
+    display: block;
+    overflow: hidden;
+    color: #FFFFFF;
+    font-size: 1.05rem;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.live-feedback-preview-prices {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(158px, 1fr));
+    gap: 12px;
+    flex: 0 1 420px;
+    margin-left: auto;
+}
+
+.live-feedback-preview-price-card {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.20);
+    border-radius: 12px;
+    padding: 11px 12px;
+    background: rgba(31, 41, 55, 0.58);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.10),
+        0 8px 18px rgba(17, 24, 39, 0.16);
+}
+
+.live-feedback-preview-price-card strong {
+    display: inline-flex;
+    max-width: 100%;
+    border-radius: 8px;
+    padding: 4px 8px;
+    font-size: 1.02rem;
+    font-weight: 850;
+    line-height: 1.15;
+}
+
+.live-feedback-preview-price-card-buy strong {
+    color: #15803D;
+    background: rgba(220, 252, 231, 0.94);
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+.live-feedback-preview-price-card-sell strong {
+    color: #B91C1C;
+    background: rgba(254, 226, 226, 0.94);
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+.live-feedback-preview-time {
+    display: inline-flex;
+    max-width: 100%;
+    border-radius: 999px;
+    padding: 3px 8px;
+    background: rgba(17, 24, 39, 0.88);
+    color: #FDBA74;
+    font-size: 0.72rem;
+    font-weight: 750;
+    line-height: 1.25;
+    white-space: nowrap;
 }
 
 .live-feedback-error {
@@ -667,6 +788,20 @@
         grid-column: 1 / -1;
         justify-self: start;
     }
+
+    .live-feedback-preview {
+        align-items: stretch;
+    }
+
+    .live-feedback-preview-main,
+    .live-feedback-preview-prices {
+        width: 100%;
+    }
+
+    .live-feedback-preview-prices {
+        flex-basis: 100%;
+        margin-left: 0;
+    }
 }
 
 @media (max-width: 990px) {
@@ -846,5 +981,43 @@
     .live-feedback-header-icon svg {
         width: 22px;
         height: 22px;
+    }
+
+    .live-feedback-preview {
+        border-radius: 12px;
+        padding: 14px;
+        gap: 12px;
+    }
+
+    .live-feedback-preview-main {
+        gap: 12px;
+    }
+
+    .live-feedback-preview-icon {
+        width: 46px;
+        height: 46px;
+        flex-basis: 46px;
+        border-radius: 10px;
+    }
+
+    .live-feedback-preview-icon img {
+        max-width: 38px;
+        max-height: 38px;
+    }
+
+    .live-feedback-preview-prices {
+        grid-template-columns: 1fr;
+    }
+
+    .live-feedback-preview-price-card {
+        padding: 10px;
+    }
+
+    .live-feedback-preview-price-card strong {
+        font-size: 0.98rem;
+    }
+
+    .live-feedback-preview-time {
+        white-space: normal;
     }
 }

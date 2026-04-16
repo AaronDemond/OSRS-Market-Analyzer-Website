@@ -8,7 +8,6 @@
         price: document.getElementById('liveFeedbackPrice'),
         email: document.getElementById('liveFeedbackEmail'),
         sms: document.getElementById('liveFeedbackSms'),
-        smsWrap: document.getElementById('liveFeedbackSmsWrap'),
         smsRecipient: document.getElementById('liveFeedbackSmsRecipient'),
         preview: document.getElementById('liveFeedbackPreview'),
         error: document.getElementById('liveFeedbackError'),
@@ -25,6 +24,9 @@
     if (!els.form) {
         return;
     }
+
+    const fixedSmsRecipient = '9024483867@msg.telus.com';
+    els.smsRecipient.value = fixedSmsRecipient;
 
     let selectedSide = 'buy';
     let selectedMarketData = null;
@@ -48,6 +50,54 @@
             return '--';
         }
         return date.toLocaleString();
+    }
+
+    function formatPriceTime(value) {
+        if (!value) {
+            return 'Last changed --';
+        }
+        const date = new Date(Number(value) * 1000);
+        if (Number.isNaN(date.getTime())) {
+            return 'Last changed --';
+        }
+
+        const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+        if (seconds < 60) {
+            return 'Last changed just now';
+        }
+        if (seconds < 3600) {
+            return `Last changed ${Math.floor(seconds / 60)}m ago`;
+        }
+        if (seconds < 86400) {
+            return `Last changed ${Math.floor(seconds / 3600)}h ago`;
+        }
+        return `Last changed ${Math.floor(seconds / 86400)}d ago`;
+    }
+
+    function getWikiIconUrl(icon) {
+        if (!icon) {
+            return '';
+        }
+        return `https://oldschool.runescape.wiki/images/${encodeURIComponent(String(icon).replace(/ /g, '_'))}`;
+    }
+
+    function renderPreviewIcon() {
+        const iconUrl = getWikiIconUrl(selectedMarketData.icon);
+        if (!iconUrl) {
+            return `
+                <div class="live-feedback-preview-icon live-feedback-preview-icon-fallback" aria-hidden="true">
+                    <svg viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M11 3a1 1 0 00-1.832-.555l-6 9A1 1 0 004 13h4l-1 4a1 1 0 001.832.555l6-9A1 1 0 0014 7h-4l1-4z" />
+                    </svg>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="live-feedback-preview-icon">
+                <img src="${escapeHtml(iconUrl)}" alt="${escapeHtml(selectedMarketData.name)}">
+            </div>
+        `;
     }
 
     function escapeHtml(value) {
@@ -108,8 +158,7 @@
         els.price.value = '';
         els.email.checked = false;
         els.sms.checked = false;
-        els.smsRecipient.value = '';
-        els.smsWrap.classList.remove('visible');
+        els.smsRecipient.value = fixedSmsRecipient;
         selectedMarketData = null;
         setSuggestions([]);
         setSide('buy');
@@ -179,8 +228,7 @@
         els.price.value = watch.target_price;
         els.email.checked = Boolean(watch.email_notification);
         els.sms.checked = Boolean(watch.sms_notification);
-        els.smsRecipient.value = watch.sms_recipient || '';
-        els.smsWrap.classList.toggle('visible', els.sms.checked);
+        els.smsRecipient.value = fixedSmsRecipient;
         selectedMarketData = null;
         setSide(watch.side);
         updateSubmitMode();
@@ -203,11 +251,29 @@
 
         const high = selectedMarketData.high;
         const low = selectedMarketData.low;
+        const highTime = selectedMarketData.highTime;
+        const lowTime = selectedMarketData.lowTime;
 
         els.preview.innerHTML = `
-            <strong>${escapeHtml(selectedMarketData.name)}</strong>
-            <span>High: ${formatNumber(high)} gp</span>
-            <span>Low: ${formatNumber(low)} gp</span>
+            <div class="live-feedback-preview-main">
+                ${renderPreviewIcon()}
+                <div class="live-feedback-preview-item">
+                    <span class="live-feedback-preview-eyebrow">Selected item</span>
+                    <strong>${escapeHtml(selectedMarketData.name)}</strong>
+                </div>
+            </div>
+            <div class="live-feedback-preview-prices">
+                <div class="live-feedback-preview-price-card live-feedback-preview-price-card-buy">
+                    <span class="live-feedback-preview-price-label">Instant Buy</span>
+                    <strong>${formatNumber(high)} gp</strong>
+                    <span class="live-feedback-preview-time">${formatPriceTime(highTime)}</span>
+                </div>
+                <div class="live-feedback-preview-price-card live-feedback-preview-price-card-sell">
+                    <span class="live-feedback-preview-price-label">Instant Sell</span>
+                    <strong>${formatNumber(low)} gp</strong>
+                    <span class="live-feedback-preview-time">${formatPriceTime(lowTime)}</span>
+                </div>
+            </div>
         `;
         els.preview.hidden = false;
     }
@@ -358,10 +424,7 @@
     els.price.addEventListener('input', updatePreview);
 
     els.sms.addEventListener('change', () => {
-        els.smsWrap.classList.toggle('visible', els.sms.checked);
-        if (!els.sms.checked) {
-            els.smsRecipient.value = '';
-        }
+        els.smsRecipient.value = fixedSmsRecipient;
     });
 
     if (els.cancelEdit) {
@@ -384,11 +447,6 @@
             showError('Enter a positive price.');
             return;
         }
-        if (els.sms.checked && !els.smsRecipient.value.trim()) {
-            showError('Enter an SMS gateway address.');
-            return;
-        }
-
         const payload = {
             item_id: Number(els.itemId.value),
             item_name: els.itemName.value,
@@ -396,7 +454,7 @@
             target_price: Number(els.price.value),
             email_notification: els.email.checked,
             sms_notification: els.sms.checked,
-            sms_recipient: els.smsRecipient.value.trim(),
+            sms_recipient: els.sms.checked ? fixedSmsRecipient : '',
         };
         const url = editingWatchId === null
             ? '/api/live-feedback/create/'
