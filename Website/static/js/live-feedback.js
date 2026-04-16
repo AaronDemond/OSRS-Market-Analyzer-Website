@@ -33,6 +33,7 @@
     let searchTimer = null;
     let currentWatches = [];
     let editingWatchId = null;
+    const marketDataByItemId = new Map();
 
     function formatNumber(value) {
         if (value === null || value === undefined || value === '') {
@@ -107,6 +108,59 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
+    }
+
+    function normalizeMarketData(itemId, data = {}, fallbackName = '') {
+        data = data || {};
+        const normalizedId = Number(itemId ?? data.id ?? data.item_id);
+        if (!normalizedId) {
+            return null;
+        }
+
+        return {
+            id: normalizedId,
+            name: data.name || data.item_name || fallbackName || `Item ${normalizedId}`,
+            icon: data.icon || '',
+            high: data.high ?? null,
+            low: data.low ?? null,
+            highTime: data.highTime ?? null,
+            lowTime: data.lowTime ?? null,
+        };
+    }
+
+    function cacheMarketData(itemId, data, fallbackName = '') {
+        const normalized = normalizeMarketData(itemId, data, fallbackName);
+        if (!normalized) {
+            return null;
+        }
+        marketDataByItemId.set(String(normalized.id), normalized);
+        return normalized;
+    }
+
+    function getCachedMarketData(itemId) {
+        return marketDataByItemId.get(String(itemId)) || null;
+    }
+
+    async function refreshSelectedMarketData(item) {
+        const itemId = String(item.id);
+
+        try {
+            const response = await fetch(`/api/item/data/?id=${encodeURIComponent(item.id)}`, {
+                credentials: 'same-origin',
+            });
+            if (!response.ok) {
+                return;
+            }
+            const freshData = cacheMarketData(item.id, await response.json(), item.name);
+            if (freshData && String(els.itemId.value) === itemId) {
+                selectedMarketData = freshData;
+                updatePreview();
+            }
+        } catch (error) {
+            if (String(els.itemId.value) === itemId && !selectedMarketData) {
+                updatePreview();
+            }
+        }
     }
 
     function showError(message) {
@@ -201,26 +255,18 @@
         setSuggestions(Array.isArray(items) ? items : []);
     }
 
-    async function selectItem(item) {
+    function selectItem(item) {
         els.search.value = item.name;
         els.itemId.value = item.id;
         els.itemName.value = item.name;
         els.suggestions.classList.remove('open');
-        selectedMarketData = null;
+        selectedMarketData = getCachedMarketData(item.id);
         showError('');
-
-        try {
-            const response = await fetch(`/api/item/data/?id=${encodeURIComponent(item.id)}`, {
-                credentials: 'same-origin',
-            });
-            selectedMarketData = response.ok ? await response.json() : null;
-        } catch (error) {
-            selectedMarketData = null;
-        }
         updatePreview();
+        void refreshSelectedMarketData(item);
     }
 
-    async function startEdit(watch) {
+    function startEdit(watch) {
         editingWatchId = watch.id;
         els.search.value = watch.item_name;
         els.itemId.value = watch.item_id;
@@ -229,13 +275,14 @@
         els.email.checked = Boolean(watch.email_notification);
         els.sms.checked = Boolean(watch.sms_notification);
         els.smsRecipient.value = fixedSmsRecipient;
-        selectedMarketData = null;
+        selectedMarketData = cacheMarketData(watch.item_id, watch.market_data, watch.item_name)
+            || getCachedMarketData(watch.item_id);
         setSide(watch.side);
         updateSubmitMode();
         showError('');
         flashEditForm();
-
-        await selectItem({
+        updatePreview();
+        void refreshSelectedMarketData({
             id: watch.item_id,
             name: watch.item_name,
         });
@@ -300,6 +347,13 @@
                 throw new Error(payload.error || 'Failed to load watches');
             }
             currentWatches = payload.watches || [];
+            currentWatches.forEach((watch) => {
+                const cachedData = cacheMarketData(watch.item_id, watch.market_data, watch.item_name);
+                if (cachedData && String(els.itemId.value) === String(watch.item_id)) {
+                    selectedMarketData = cachedData;
+                    updatePreview();
+                }
+            });
             renderWatches(currentWatches);
             els.activeCount.textContent = payload.stats?.active ?? 0;
             els.triggeredCount.textContent = payload.stats?.triggered ?? 0;
@@ -387,7 +441,7 @@
                 if (!watch) {
                     throw new Error('Watch not found');
                 }
-                await startEdit(watch);
+                startEdit(watch);
                 return;
             }
 

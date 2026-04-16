@@ -5748,12 +5748,20 @@ def live_feedback_api(request):
         return JsonResponse({'success': False, 'error': 'GET required'}, status=405)
 
     latest_prices = get_all_current_prices()
+    item_info_by_id = _get_item_info_by_id_map()
     checked_at = timezone.now()
     watches = []
 
     for watch in LiveFeedbackWatch.objects.filter(user=user):
         evaluation = evaluate_watch(watch, latest_prices)
-        watches.append(_serialize_live_feedback_watch(watch, evaluation))
+        price_data = (latest_prices or {}).get(str(watch.item_id), {})
+        item_info = item_info_by_id.get(watch.item_id)
+        watches.append(_serialize_live_feedback_watch(
+            watch,
+            evaluation,
+            price_data=price_data,
+            item_info=item_info,
+        ))
 
     watches.sort(key=_live_feedback_sort_key)
 
@@ -6010,6 +6018,16 @@ def _get_item_info_by_id(item_id):
     return None
 
 
+def _get_item_info_by_id_map():
+    item_info_by_id = {}
+    for item in get_item_mapping().values():
+        try:
+            item_info_by_id[int(item.get('id'))] = item
+        except (TypeError, ValueError):
+            continue
+    return item_info_by_id
+
+
 def _validate_live_feedback_sms_recipient(sms_recipient):
     from django.core.exceptions import ValidationError
     from django.core.validators import validate_email
@@ -6023,12 +6041,14 @@ def _validate_live_feedback_sms_recipient(sms_recipient):
     return None
 
 
-def _serialize_live_feedback_watch(watch, evaluation=None):
+def _serialize_live_feedback_watch(watch, evaluation=None, price_data=None, item_info=None):
     if evaluation is None:
         evaluation = evaluate_watch(watch, {})
 
     status = STATUS_PAUSED if not watch.is_active else evaluation.status
     market_label = 'Highest buy' if watch.side == 'buy' else 'Lowest sell'
+    price_data = price_data or {}
+    item_info = item_info or {}
 
     return {
         'id': watch.id,
@@ -6048,6 +6068,15 @@ def _serialize_live_feedback_watch(watch, evaluation=None):
         'market_price': evaluation.market_price if watch.is_active else watch.last_market_price,
         'market_time': evaluation.market_time if watch.is_active else watch.last_market_time,
         'market_label': market_label,
+        'market_data': {
+            'id': watch.item_id,
+            'name': item_info.get('name') or watch.item_name,
+            'icon': item_info.get('icon', ''),
+            'high': price_data.get('high'),
+            'low': price_data.get('low'),
+            'highTime': price_data.get('highTime'),
+            'lowTime': price_data.get('lowTime'),
+        },
         'difference': evaluation.difference,
         'message': evaluation.message,
         'last_checked_at': watch.last_checked_at.isoformat() if watch.last_checked_at else None,
