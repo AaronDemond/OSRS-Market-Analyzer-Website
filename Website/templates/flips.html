@@ -636,6 +636,32 @@
         height: 16px;
     }
 
+    .btn-equity-chart {
+        padding: 8px 14px;
+        background: var(--surface);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+    }
+
+    .btn-equity-chart:hover {
+        background: rgba(99, 102, 241, 0.1);
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+
+    .btn-equity-chart svg {
+        width: 16px;
+        height: 16px;
+    }
+
     /* Active state when viewing historical data */
     .btn-historical.active {
         background: rgba(59, 130, 246, 0.15);
@@ -700,6 +726,129 @@
 
     .historical-modal .modal-body {
         padding: 24px;
+    }
+
+    .equity-modal .modal-content {
+        border: none;
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(99, 102, 241, 0.25);
+        overflow: hidden;
+    }
+
+    .equity-modal .modal-header {
+        background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+        color: white;
+        padding: 20px 24px;
+        border-bottom: none;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .equity-modal .modal-header-icon {
+        width: 40px;
+        height: 40px;
+        background: rgba(255, 255, 255, 0.18);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .equity-modal .modal-header-icon svg {
+        width: 22px;
+        height: 22px;
+        color: white;
+    }
+
+    .equity-modal .modal-title {
+        font-size: 18px;
+        font-weight: 600;
+        margin: 0;
+        flex-grow: 1;
+    }
+
+    .equity-modal .btn-close {
+        filter: brightness(0) invert(1);
+        opacity: 0.85;
+    }
+
+    .equity-modal .modal-body {
+        padding: 24px;
+    }
+
+    .equity-description {
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.5;
+        margin-bottom: 18px;
+    }
+
+    .equity-range-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 18px;
+    }
+
+    .equity-range-btn {
+        padding: 8px 12px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--surface-2);
+        color: var(--text);
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+
+    .equity-range-btn:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+        background: rgba(99, 102, 241, 0.08);
+    }
+
+    .equity-range-btn.active {
+        background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+        border-color: transparent;
+        color: white;
+        box-shadow: 0 10px 24px rgba(99, 102, 241, 0.22);
+    }
+
+    .equity-chart-status {
+        min-height: 320px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: var(--surface-2);
+        color: var(--muted);
+        padding: 24px;
+    }
+
+    .equity-chart-status.error {
+        color: var(--danger);
+        background: rgba(239, 68, 68, 0.06);
+        border-color: rgba(239, 68, 68, 0.22);
+    }
+
+    .equity-chart-canvas-wrap {
+        position: relative;
+        height: 360px;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
+        padding: 16px 12px 8px;
+    }
+
+    .equity-chart-summary {
+        margin-top: 12px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.45;
     }
 
     .historical-description {
@@ -2759,6 +2908,13 @@
             </svg>
             <span class="btn-text">Historical</span>
         </button>
+        <button type="button" class="btn-equity-chart" id="equityChartBtn" data-bs-toggle="modal" data-bs-target="#equityChartModal">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M3 17l6-6 4 4 7-8M14 7h6v6" />
+            </svg>
+            <span class="btn-text">Equity Chart</span>
+        </button>
         <div class="filter-sort-group">
             <div class="filter-dropdown-wrapper">
                 <button type="button" class="btn-filter" id="filterDropdownBtn">
@@ -2837,6 +2993,50 @@
     <!-- Desktop filter tags row -->
     <div class="active-filter-tags-row" id="activeFilterTagsRow">
         <div class="active-filter-tags" id="activeFilterTags"></div>
+    </div>
+</div>
+
+<!-- Equity Chart Modal -->
+<div class="modal fade equity-modal" id="equityChartModal" tabindex="-1" aria-labelledby="equityChartModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-header-icon">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 17l6-6 4 4 7-8M14 7h6v6" />
+                    </svg>
+                </div>
+                <h5 class="modal-title" id="equityChartModalLabel">Equity Chart</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="equity-description">
+                    Daily total net P&amp;L from your local 24h history. This chart is read-only, capped to one year,
+                    and starts when local 24h data becomes available for your flips.
+                </p>
+                <div class="equity-range-controls">
+                    <button type="button" class="equity-range-btn" data-range="30d">30D</button>
+                    <button type="button" class="equity-range-btn" data-range="90d">90D</button>
+                    <button type="button" class="equity-range-btn active" data-range="1y">1Y</button>
+                </div>
+                <div class="equity-chart-status" id="equityChartLoading">
+                    <div>
+                        <div class="spinner-border spinner-border-sm mb-3" role="status" style="color: var(--primary);"></div>
+                        <div>Building your daily equity series...</div>
+                    </div>
+                </div>
+                <div class="equity-chart-status error" id="equityChartError" style="display: none;"></div>
+                <div class="equity-chart-status" id="equityChartEmpty" style="display: none;">
+                    No 24h chart data is available yet for this portfolio range.
+                </div>
+                <div class="equity-chart-canvas-wrap" id="equityChartCanvasWrap" style="display: none;">
+                    <canvas id="equityChartCanvas"></canvas>
+                </div>
+                <div class="equity-chart-summary" id="equityChartSummary" style="display: none;"></div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -5285,6 +5485,205 @@
         const returnToRealtimeBtn = document.getElementById('returnToRealtimeBtn');
         const historicalViewBtn = document.getElementById('historicalViewBtn');
         const presetButtons = document.querySelectorAll('.btn-preset');
+        const equityModal = document.getElementById('equityChartModal');
+        const equityChartLoading = document.getElementById('equityChartLoading');
+        const equityChartError = document.getElementById('equityChartError');
+        const equityChartEmpty = document.getElementById('equityChartEmpty');
+        const equityChartCanvasWrap = document.getElementById('equityChartCanvasWrap');
+        const equityChartCanvas = document.getElementById('equityChartCanvas');
+        const equityChartSummary = document.getElementById('equityChartSummary');
+        const equityRangeButtons = document.querySelectorAll('.equity-range-btn');
+        let equityChartInstance = null;
+        let equityChartRange = '1y';
+        let equityChartScriptPromise = null;
+        let equityChartAbortController = null;
+        let equityChartRequestToken = 0;
+
+        function formatCompactGp(value) {
+            const absoluteValue = Math.abs(value);
+            const sign = value < 0 ? '-' : value > 0 ? '+' : '';
+
+            if (absoluteValue >= 1000000000) {
+                return sign + (absoluteValue / 1000000000).toFixed(1) + 'B gp';
+            }
+            if (absoluteValue >= 1000000) {
+                return sign + (absoluteValue / 1000000).toFixed(1) + 'M gp';
+            }
+            if (absoluteValue >= 1000) {
+                return sign + (absoluteValue / 1000).toFixed(1) + 'K gp';
+            }
+            return sign + Math.round(absoluteValue).toLocaleString() + ' gp';
+        }
+
+        function setEquityRangeButtons(activeRange) {
+            equityRangeButtons.forEach(button => {
+                button.classList.toggle('active', button.dataset.range === activeRange);
+            });
+        }
+
+        function setEquityChartState(state, message = '') {
+            equityChartLoading.style.display = state === 'loading' ? 'flex' : 'none';
+            equityChartError.style.display = state === 'error' ? 'flex' : 'none';
+            equityChartEmpty.style.display = state === 'empty' ? 'flex' : 'none';
+            equityChartCanvasWrap.style.display = state === 'ready' ? 'block' : 'none';
+            equityChartSummary.style.display = state === 'ready' ? 'block' : 'none';
+
+            if (state === 'error') {
+                equityChartError.textContent = message || 'Unable to build the equity chart right now.';
+            } else if (state === 'empty') {
+                equityChartEmpty.textContent = message || 'No 24h chart data is available yet for this portfolio range.';
+            }
+        }
+
+        function ensureChartJsLoaded() {
+            if (window.Chart) {
+                return Promise.resolve();
+            }
+
+            if (equityChartScriptPromise) {
+                return equityChartScriptPromise;
+            }
+
+            equityChartScriptPromise = new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+                script.async = true;
+                script.onload = resolve;
+                script.onerror = () => reject(new Error('Chart library failed to load.'));
+                document.head.appendChild(script);
+            });
+
+            return equityChartScriptPromise;
+        }
+
+        function renderEquityChart(data) {
+            const labels = data.points.map(point => point.label);
+            const values = data.points.map(point => point.y);
+
+            if (equityChartInstance) {
+                equityChartInstance.destroy();
+            }
+
+            const ctx = equityChartCanvas.getContext('2d');
+            const gradient = ctx.createLinearGradient(0, 0, 0, 320);
+            gradient.addColorStop(0, 'rgba(99, 102, 241, 0.28)');
+            gradient.addColorStop(1, 'rgba(99, 102, 241, 0.02)');
+
+            equityChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Total Net P&L',
+                        data: values,
+                        borderColor: '#6366F1',
+                        backgroundColor: gradient,
+                        borderWidth: 2.5,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        tension: 0.18,
+                        fill: true,
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            display: false,
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ' ' + formatCompactGp(context.parsed.y);
+                                },
+                            },
+                        },
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false,
+                            },
+                            ticks: {
+                                color: '#6B7280',
+                                maxTicksLimit: 8,
+                            },
+                        },
+                        y: {
+                            grid: {
+                                color: 'rgba(107, 114, 128, 0.12)',
+                            },
+                            ticks: {
+                                color: '#6B7280',
+                                callback: function(value) {
+                                    return formatCompactGp(value);
+                                },
+                            },
+                        },
+                    },
+                },
+            });
+
+            const startLabel = data.start_timestamp
+                ? new Date(data.start_timestamp * 1000).toLocaleDateString()
+                : 'n/a';
+            const endLabel = data.end_timestamp
+                ? new Date(data.end_timestamp * 1000).toLocaleDateString()
+                : 'n/a';
+
+            equityChartSummary.textContent =
+                `Daily 24h buckets · ${data.point_count} points · ${data.range_days} day view · ${startLabel} to ${endLabel}`;
+        }
+
+        async function fetchEquityChart(rangeKey = equityChartRange) {
+            equityChartRange = rangeKey;
+            setEquityRangeButtons(rangeKey);
+            setEquityChartState('loading');
+
+            if (equityChartAbortController) {
+                equityChartAbortController.abort();
+            }
+
+            equityChartAbortController = new AbortController();
+            const requestToken = ++equityChartRequestToken;
+
+            try {
+                const chartJsPromise = ensureChartJsLoaded();
+
+                const response = await fetch(`/api/flips/equity/?range=${encodeURIComponent(rangeKey)}`, {
+                    signal: equityChartAbortController.signal,
+                });
+
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error || 'Request failed.');
+                }
+
+                if (requestToken !== equityChartRequestToken) {
+                    return;
+                }
+
+                if (!data.points || data.points.length === 0) {
+                    setEquityChartState('empty');
+                    return;
+                }
+
+                await chartJsPromise;
+                renderEquityChart(data);
+                setEquityChartState('ready');
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    return;
+                }
+                console.error('Error loading equity chart:', error);
+                setEquityChartState('error', error.message || 'Unable to load equity chart.');
+            }
+        }
 
         /**
          * Sets the date input max to yesterday (can't view future or today's historical data)
@@ -5576,6 +5975,29 @@
                 historicalDateInput.value = '';
                 presetButtons.forEach(b => b.classList.remove('selected'));
             }
+        });
+
+        if (equityModal) {
+            equityModal.addEventListener('shown.bs.modal', function() {
+                fetchEquityChart(equityChartRange);
+            });
+
+            equityModal.addEventListener('hidden.bs.modal', function() {
+                if (equityChartAbortController) {
+                    equityChartAbortController.abort();
+                    equityChartAbortController = null;
+                }
+            });
+        }
+
+        equityRangeButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const nextRange = this.dataset.range || '1y';
+                if (nextRange === equityChartRange && equityChartCanvasWrap.style.display === 'block') {
+                    return;
+                }
+                fetchEquityChart(nextRange);
+            });
         });
 
         // Modify the auto-refresh to respect historical mode

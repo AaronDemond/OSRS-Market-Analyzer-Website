@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.db.models import Sum, F, Value
+from django.utils import timezone
 from django.db.models.functions import Coalesce
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
@@ -11,9 +12,9 @@ import requests
 import time
 import re
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from .models import Flip, FlipProfit, Alert, AlertGroup, FavoriteItem, LiveFeedbackWatch, OneHourTimeSeries
+from .models import Flip, FlipProfit, Alert, AlertGroup, FavoriteItem, LiveFeedbackWatch, OneHourTimeSeries, TwentyFourHourTimeSeries
 from .live_feedback import STATUS_PAUSED, evaluate_watch
 
 
@@ -44,6 +45,17 @@ TRENDING_VOLUME_THRESHOLD = 75_000_000
 TRENDING_LOOKBACK_SECONDS = 24 * 60 * 60
 TRENDING_TIMESTAMP_SEARCH_LIMIT = 48
 TRENDING_MAX_DATA_AGE_SECONDS = 2 * 60 * 60
+FLIPS_EQUITY_BUCKET_SECONDS = 24 * 60 * 60
+FLIPS_EQUITY_MAX_RANGE_DAYS = 365
+FLIPS_EQUITY_TIMESTAMP_SEARCH_LIMIT = 400
+FLIPS_EQUITY_RANGE_DAYS = {
+    '30d': 30,
+    '90d': 90,
+    '1y': 365,
+    'all': 365,
+}
+GE_TAX_RATE = 0.02
+GE_TAX_CAP = 5_000_000
 
 
 def get_item_mapping():
@@ -1007,6 +1019,255 @@ def calculate_position_at_date(item_id, user, cutoff_datetime, flips_qs=None):
         'item_name': item_name,
         'has_transactions': has_transactions,
     }
+
+
+def _get_twentyfour_hour_midpoint(avg_high_price, avg_low_price):
+    """
+    Resolve a 24h midpoint price from stored snapshot fields.
+
+    What: Converts a TwentyFourHourTimeSeries row into one valuation price.
+    Why: The equity chart only needs one daily mark price per item per bucket.
+    How: Prefer midpoint when both sides exist, otherwise fall back to the side
+         that is present, and return None if neither side exists.
+    """
+    if avg_high_price is not None and avg_low_price is not None:
+        return (avg_high_price + avg_low_price) / 2
+    if avg_high_price is not None:
+        return float(avg_high_price)
+    if avg_low_price is not None:
+        return float(avg_low_price)
+    return None
+
+
+def _get_equity_range_days(range_key):
+    """
+    Normalize the requested equity range to a bounded day count.
+
+    What: Maps frontend range keys to supported durations.
+    Why: The equity chart should never load more than one year of daily buckets.
+    How: Use a fixed mapping and cap all unknown values to the one-year default.
+    """
+    return FLIPS_EQUITY_RANGE_DAYS.get((range_key or '').lower(), FLIPS_EQUITY_MAX_RANGE_DAYS)
+
+
+def build_flips_equity_series(user, range_key='1y'):
+    """
+    Build an on-demand daily equity series from local 24h data and user flips.
+
+    What: Replays the user's flips across daily 24h market buckets and returns a
+          total net P&L series (`realized + unrealized`) without writing to the DB.
+    Why: The My Flips equity modal should be fast, read-only, and bounded.
+    How:
+        1. Load only the user's traded item_ids.
+        2. Read recent distinct 24h timestamps for those items and cap to one year.
+        3. Read only matching 24h price rows for those items/buckets.
+        4. Replay flips once in timestamp order while carrying forward last known prices.
+        5. Emit one point per 24h bucket starting no earlier than the user's first flip.
+
+    Notes:
+        - Buckets are driven by local TwentyFourHourTimeSeries snapshots only.
+        - If flips exist before local 24h history starts, the chart begins when
+          24h data becomes available, but prior transactions still affect the
+          starting portfolio state.
+    """
+    flips_qs = Flip.objects.filter(user=user).order_by('date', 'id')
+    item_ids = list(flips_qs.values_list('item_id', flat=True).distinct())
+    if not item_ids:
+        return {
+            'points': [],
+            'range_key': range_key,
+            'range_days': _get_equity_range_days(range_key),
+            'bucket_seconds': FLIPS_EQUITY_BUCKET_SECONDS,
+            'point_count': 0,
+            'start_timestamp': None,
+            'end_timestamp': None,
+        }
+
+    raw_timestamps = list(
+        TwentyFourHourTimeSeries.objects
+        .filter(item_id__in=item_ids)
+        .values_list('timestamp', flat=True)
+        .order_by('-timestamp')
+        .distinct()[:FLIPS_EQUITY_TIMESTAMP_SEARCH_LIMIT]
+    )
+
+    parsed_timestamps = []
+    seen_timestamps = set()
+    for raw_timestamp in raw_timestamps:
+        parsed_value = parse_snapshot_timestamp(raw_timestamp)
+        if parsed_value is None or parsed_value in seen_timestamps:
+            continue
+        seen_timestamps.add(parsed_value)
+        parsed_timestamps.append(parsed_value)
+
+    if not parsed_timestamps:
+        return {
+            'points': [],
+            'range_key': range_key,
+            'range_days': _get_equity_range_days(range_key),
+            'bucket_seconds': FLIPS_EQUITY_BUCKET_SECONDS,
+            'point_count': 0,
+            'start_timestamp': None,
+            'end_timestamp': None,
+        }
+
+    latest_timestamp = parsed_timestamps[0]
+    range_days = _get_equity_range_days(range_key)
+    earliest_allowed_timestamp = latest_timestamp - (range_days * FLIPS_EQUITY_BUCKET_SECONDS)
+    bucket_timestamps = sorted(
+        timestamp
+        for timestamp in parsed_timestamps
+        if timestamp >= earliest_allowed_timestamp
+    )
+    if not bucket_timestamps:
+        bucket_timestamps = [latest_timestamp]
+
+    first_flip = flips_qs.first()
+    if first_flip and first_flip.date:
+        first_flip_timestamp = int(first_flip.date.timestamp())
+        bucket_timestamps = [
+            timestamp for timestamp in bucket_timestamps
+            if timestamp >= first_flip_timestamp
+        ] or [timestamp for timestamp in parsed_timestamps if timestamp >= first_flip_timestamp][:1]
+
+    if not bucket_timestamps:
+        return {
+            'points': [],
+            'range_key': range_key,
+            'range_days': range_days,
+            'bucket_seconds': FLIPS_EQUITY_BUCKET_SECONDS,
+            'point_count': 0,
+            'start_timestamp': None,
+            'end_timestamp': None,
+        }
+
+    bucket_timestamp_strings = [str(timestamp) for timestamp in bucket_timestamps]
+    bucket_timestamp_set = set(bucket_timestamps)
+
+    price_rows = list(
+        TwentyFourHourTimeSeries.objects
+        .filter(item_id__in=item_ids, timestamp__in=bucket_timestamp_strings)
+        .values('item_id', 'timestamp', 'avg_high_price', 'avg_low_price')
+    )
+
+    prices_by_timestamp = {}
+    for row in price_rows:
+        parsed_timestamp = parse_snapshot_timestamp(row['timestamp'])
+        if parsed_timestamp is None or parsed_timestamp not in bucket_timestamp_set:
+            continue
+        midpoint_price = _get_twentyfour_hour_midpoint(row['avg_high_price'], row['avg_low_price'])
+        if midpoint_price is None:
+            continue
+        prices_by_timestamp.setdefault(parsed_timestamp, {})[row['item_id']] = midpoint_price
+
+    flip_events = list(
+        flips_qs
+        .values('item_id', 'price', 'quantity', 'type', 'date')
+    )
+
+    positions = {}
+    last_known_prices = {}
+    realized_total = 0.0
+    flip_index = 0
+    point_rows = []
+
+    for bucket_timestamp in bucket_timestamps:
+        while flip_index < len(flip_events):
+            flip_event = flip_events[flip_index]
+            flip_timestamp = int(flip_event['date'].timestamp())
+            if flip_timestamp > bucket_timestamp:
+                break
+
+            item_id = flip_event['item_id']
+            position = positions.setdefault(item_id, {
+                'quantity_held': 0,
+                'average_cost': 0.0,
+            })
+
+            if flip_event['type'] == 'buy':
+                if position['quantity_held'] == 0:
+                    position['average_cost'] = float(flip_event['price'])
+                    position['quantity_held'] = flip_event['quantity']
+                else:
+                    total_cost_before = position['quantity_held'] * position['average_cost']
+                    new_purchase_cost = flip_event['quantity'] * flip_event['price']
+                    new_total_quantity = position['quantity_held'] + flip_event['quantity']
+                    position['average_cost'] = (total_cost_before + new_purchase_cost) / new_total_quantity
+                    position['quantity_held'] = new_total_quantity
+            else:
+                gross_revenue = flip_event['price'] * flip_event['quantity']
+                tax = min(gross_revenue * GE_TAX_RATE, GE_TAX_CAP)
+                net_revenue = gross_revenue - tax
+                cost_basis = position['average_cost'] * flip_event['quantity']
+                realized_total += net_revenue - cost_basis
+                position['quantity_held'] -= flip_event['quantity']
+
+            flip_index += 1
+
+        for item_id, midpoint_price in prices_by_timestamp.get(bucket_timestamp, {}).items():
+            last_known_prices[item_id] = midpoint_price
+
+        unrealized_total = 0.0
+        has_chartable_state = False
+
+        for item_id, position in positions.items():
+            quantity_held = position['quantity_held']
+            if quantity_held <= 0:
+                continue
+
+            current_price = last_known_prices.get(item_id)
+            if current_price is None:
+                continue
+
+            has_chartable_state = True
+            gross_value = current_price * quantity_held
+            tax = min(gross_value * GE_TAX_RATE, GE_TAX_CAP)
+            net_value = gross_value - tax
+            unrealized_total += net_value - (position['average_cost'] * quantity_held)
+
+        if not has_chartable_state and realized_total == 0 and flip_index == 0:
+            continue
+
+        point_rows.append({
+            'timestamp': bucket_timestamp,
+            'label': datetime.fromtimestamp(bucket_timestamp, tz=timezone.get_current_timezone()).strftime('%Y-%m-%d'),
+            'y': round(realized_total + unrealized_total),
+        })
+
+    return {
+        'points': point_rows,
+        'range_key': (range_key or '1y').lower(),
+        'range_days': range_days,
+        'bucket_seconds': FLIPS_EQUITY_BUCKET_SECONDS,
+        'point_count': len(point_rows),
+        'start_timestamp': point_rows[0]['timestamp'] if point_rows else None,
+        'end_timestamp': point_rows[-1]['timestamp'] if point_rows else None,
+    }
+
+
+def flips_equity_api(request):
+    """
+    Return an on-demand equity chart series for the My Flips page.
+
+    What: Builds the user's daily total net P&L line from local 24h history.
+    Why: The equity chart should load only when requested and should never write data.
+    How: Delegate to build_flips_equity_series() and return the normalized payload.
+    """
+    user = request.user if request.user.is_authenticated else None
+    if not user:
+        return JsonResponse({
+            'points': [],
+            'range_key': '1y',
+            'range_days': FLIPS_EQUITY_MAX_RANGE_DAYS,
+            'bucket_seconds': FLIPS_EQUITY_BUCKET_SECONDS,
+            'point_count': 0,
+            'start_timestamp': None,
+            'end_timestamp': None,
+        })
+
+    range_key = request.GET.get('range', '1y')
+    payload = build_flips_equity_series(user, range_key=range_key)
+    return JsonResponse(payload)
 
 
 def flips_historical_api(request):
