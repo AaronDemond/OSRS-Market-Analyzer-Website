@@ -630,7 +630,7 @@
 }
 
 .live-feedback-item-name {
-    font-weight: 800;
+    font-weight: 400;
     overflow-wrap: anywhere;
 }
 
@@ -646,6 +646,10 @@
 
 .live-feedback-price {
     font-variant-numeric: tabular-nums;
+    font-weight: 400;
+}
+
+.live-feedback-gap-value {
     font-weight: 750;
 }
 
