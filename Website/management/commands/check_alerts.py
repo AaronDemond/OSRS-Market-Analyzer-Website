@@ -5,7 +5,7 @@ import json
 import math
 from collections import defaultdict
 from pathlib import Path
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone as dt_timezone
 
 import requests
 from django.core.management.base import BaseCommand
@@ -56,6 +56,21 @@ ALERT_STATE_FIELDS = [
     'is_dismissed', 'is_active', 'email_notification',
     'confidence_last_scores', 'dump_state',
 ]
+
+# What: Maximum age for HourlyItemVolume snapshots before they are treated as stale.
+# Why: Live alerts should only trust recent hourly GP volume; otherwise old high-volume
+#      rows can incorrectly keep low-liquidity items eligible.
+# How: get_volume_from_timeseries() compares the newest parseable snapshot against this
+#      cutoff and returns None when it is too old.
+VOLUME_RECENCY_MINUTES = 130
+
+# What: Number of recent HourlyItemVolume rows to inspect per lookup.
+# Why: The timestamp column is a CharField, so DB ordering alone is not reliable across
+#      mixed historical formats. Sampling a small recent slice lets Python choose the
+#      truly newest parseable timestamp without scanning the whole table per item.
+# How: Query the most recently inserted rows by descending id, normalize timestamps in
+#      Python, and pick the newest by real time.
+VOLUME_LOOKUP_CANDIDATE_ROWS = 12
 
 # =============================================================================
 # FLIP CONFIDENCE SCORING FUNCTIONS
@@ -436,6 +451,7 @@ class Command(BaseCommand):
                 # How: Query the HourlyItemVolume table for the latest volume snapshot.
                 #      If the volume is below the threshold, skip this item entirely.
                 # =========================================================================
+                volume = None
                 if alert.min_volume:
                     # volume: The most recent hourly trading volume in GP for this item,
                     #         or None if no volume data exists in the database yet
@@ -450,7 +466,8 @@ class Command(BaseCommand):
                     'item_name': item_name,
                     'high': high,
                     'low': low,
-                    'spread': round(spread, 2)
+                    'spread': round(spread, 2),
+                    'volume': volume,
                 })
         
         # Sort by spread descending so highest spreads appear first
@@ -1681,6 +1698,89 @@ class Command(BaseCommand):
             alert.email_notification = False
             alert.save(update_fields=ALERT_STATE_FIELDS)
 
+    def _normalize_volume_timestamp(self, raw_timestamp):
+        """
+        Normalize HourlyItemVolume.timestamp into a timezone-aware UTC datetime.
+
+        Supports:
+        - Unix epoch ints / digit strings
+        - ISO-8601 strings
+        - 'YYYY-MM-DD HH:MM:SS' strings
+        - already-materialized datetime instances
+        """
+        if raw_timestamp is None:
+            return None
+
+        if isinstance(raw_timestamp, datetime):
+            normalized = raw_timestamp
+            if timezone.is_naive(normalized):
+                normalized = timezone.make_aware(normalized, dt_timezone.utc)
+            return normalized.astimezone(dt_timezone.utc)
+
+        timestamp_str = str(raw_timestamp).strip()
+        if not timestamp_str:
+            return None
+
+        if timestamp_str.isdigit():
+            try:
+                return datetime.fromtimestamp(int(timestamp_str), tz=dt_timezone.utc)
+            except (OverflowError, OSError, ValueError):
+                return None
+
+        iso_candidate = timestamp_str
+        if iso_candidate.endswith('Z'):
+            iso_candidate = iso_candidate[:-1] + '+00:00'
+
+        try:
+            normalized = datetime.fromisoformat(iso_candidate)
+            if timezone.is_naive(normalized):
+                normalized = timezone.make_aware(normalized, dt_timezone.utc)
+            return normalized.astimezone(dt_timezone.utc)
+        except ValueError:
+            pass
+
+        for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M:%S.%f'):
+            try:
+                normalized = datetime.strptime(timestamp_str, fmt)
+                normalized = timezone.make_aware(normalized, dt_timezone.utc)
+                return normalized.astimezone(dt_timezone.utc)
+            except ValueError:
+                continue
+
+        return None
+
+    def _get_latest_fresh_volume_row(self, item_id):
+        """
+        Return the newest parseable HourlyItemVolume row if it is still fresh.
+        """
+        try:
+            recent_rows = list(
+                HourlyItemVolume.objects
+                .filter(item_id=int(item_id))
+                .order_by('-id')
+                .values_list('timestamp', 'volume')[:VOLUME_LOOKUP_CANDIDATE_ROWS]
+            )
+        except Exception:
+            return None
+
+        newest_row = None
+        for raw_timestamp, volume in recent_rows:
+            normalized_timestamp = self._normalize_volume_timestamp(raw_timestamp)
+            if normalized_timestamp is None:
+                continue
+            if newest_row is None or normalized_timestamp > newest_row[0]:
+                newest_row = (normalized_timestamp, volume)
+
+        if newest_row is None:
+            return None
+
+        newest_timestamp, newest_volume = newest_row
+        age = timezone.now() - newest_timestamp
+        if age > timedelta(minutes=VOLUME_RECENCY_MINUTES):
+            return None
+
+        return newest_timestamp, newest_volume
+
     def get_volume_from_timeseries(self, item_id, time_window_minutes):
         """
         Get the most recent hourly volume (in GP) for an item from the database.
@@ -1691,9 +1791,9 @@ class Command(BaseCommand):
              hundreds of individual API calls per check cycle. Now, volume data is pre-fetched
              by scripts/update_volumes.py every 1h5m and stored in the database, making this
              a fast DB query instead of a slow HTTP request.
-        How: Queries HourlyItemVolume filtered by item_id. The model's Meta.ordering is
-             ['-timestamp'], so .first() returns the most recent snapshot. Returns the
-             volume field (in GP) or None if no data exists for this item.
+        How: Reads a small recent slice of HourlyItemVolume rows for the item, normalizes
+             their timestamps in Python, picks the truly newest parseable snapshot, and
+             rejects it if it is older than VOLUME_RECENCY_MINUTES.
 
         Note: The time_window_minutes parameter is kept in the method signature for backwards
               compatibility with existing callers, but is no longer used — we always return
@@ -1710,13 +1810,11 @@ class Command(BaseCommand):
                   or item was skipped due to missing price data)
         """
         try:
-            # latest_volume: The most recent HourlyItemVolume record for this item.
-            # Model ordering is ['-timestamp'] so .first() gives the newest entry.
-            latest_volume = HourlyItemVolume.objects.filter(item_id=int(item_id)).first()
-            if latest_volume:
-                return latest_volume.volume
-            return None
-        except Exception as e:
+            latest_volume = self._get_latest_fresh_volume_row(item_id)
+            if latest_volume is None:
+                return None
+            return latest_volume[1]
+        except Exception:
             # Catch any unexpected DB errors (connection issues, etc.) gracefully.
             # Return None so the alert check can continue without volume data.
             return None
@@ -3288,9 +3386,11 @@ class Command(BaseCommand):
                         # =========================================================================
                         # volume: The most recent hourly trading volume in GP for this item,
                         #         or None if no volume data exists in the database yet
-                        volume = self.get_volume_from_timeseries(item_id, 0)
-                        if volume is None or volume < alert.min_volume:
-                            continue
+                        volume = None
+                        if alert.min_volume:
+                            volume = self.get_volume_from_timeseries(item_id, 0)
+                            if volume is None or volume < alert.min_volume:
+                                continue
 
                         item_name = item_mapping.get(item_id, f'Item {item_id}')
                         matching_items.append({
@@ -3298,7 +3398,8 @@ class Command(BaseCommand):
                             'item_name': item_name,
                             'high': high,
                             'low': low,
-                            'spread': round(spread, 2)
+                            'spread': round(spread, 2),
+                            'volume': volume,
                         })
                 
                 if matching_items:
