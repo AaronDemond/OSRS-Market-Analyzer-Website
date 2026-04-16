@@ -85,6 +85,7 @@
         if (els.addBtn) {
             els.addBtn.classList.toggle('editing', isEditing);
         }
+        els.form.classList.toggle('live-feedback-form-editing', isEditing);
         if (els.cancelEdit) {
             els.cancelEdit.hidden = !isEditing;
         }
