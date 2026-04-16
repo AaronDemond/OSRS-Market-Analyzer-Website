@@ -406,7 +406,7 @@
                 </div>
                 <div>
                     <span class="live-feedback-cell-label">Gap</span>
-                    <span class="live-feedback-price">${gap}</span>
+                    <span class="live-feedback-price live-feedback-gap-value">${gap}</span>
                 </div>
                 <div class="live-feedback-status-cell">
                     <span class="live-feedback-status ${status}">${statusLabel}</span>
