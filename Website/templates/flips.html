@@ -207,12 +207,12 @@
     }
 
     #flipsTable thead th {
-        background: #1F2937;
-        color: #E5E7EB;
+        background: transparent;
+        color: #FFFFFF;
         font-weight: 600;
         padding: 12px 14px;
-        border-bottom: 1px solid #374151;
-        transition: background 0.15s;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+        transition: none;
         /* Each th needs sticky positioning for it to work reliably across browsers
            What: Makes each header cell sticky at the top of scroll container
            Why: Some browsers need sticky on th, not thead, for proper behavior
@@ -230,6 +230,10 @@
         position: sticky;
         top: 0;
         z-index: 15;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        box-shadow:
+            inset 0 -1px 0 rgba(255, 255, 255, 0.18),
+            0 6px 16px rgba(102, 126, 234, 0.18);
     }
 
     #flipsTable tbody td {
@@ -247,19 +251,25 @@
         background: #F9FAFB;
     }
 
-    /* Row hover - muted orange */
+    /* Row hover - single solid indigo/lavender fill across the full row */
     #flipsTable tbody tr:hover {
-        background: linear-gradient(135deg, #FEF3E2 0%, #FDE9D0 100%) !important;
+        background: #E4E8FF !important;
     }
 
     #flipsTable tbody tr:hover>td {
-        background: inherit !important;
+        background: transparent !important;
+        box-shadow: none;
     }
 
-    /* Header hover - muted orange */
+    /* Header hover - immediate high-contrast violet highlight over the shared header band */
     .sortable:hover {
-        background: linear-gradient(135deg, #D97706 0%, #F59E0B 100%) !important;
+        background: linear-gradient(135deg, #8B5CF6 0%, #4F46E5 100%) !important;
         color: #fff;
+        box-shadow:
+            inset 0 0 0 1px rgba(243, 232, 255, 0.42),
+            inset 0 -4px 0 rgba(224, 231, 255, 0.5),
+            0 10px 20px rgba(79, 70, 229, 0.22);
+        text-shadow: 0 1px 2px rgba(49, 46, 129, 0.35);
     }
 
     #flipsTable a {
@@ -401,14 +411,25 @@
     }
 
     .btn-new-flip:hover,
-    .btn-delete-flip:hover {
-        background: var(--surface-2);
-        border-color: var(--primary);
+    .btn-new-flip:focus-visible {
+        background: rgba(17, 153, 142, 0.1);
+        border-color: #11998e;
+        color: #11998e;
+        outline: none;
     }
 
-    .btn-new-flip:active,
-    .btn-delete-flip:active {
-        transform: translateY(1px);
+    .btn-new-flip.active {
+        background: rgba(17, 153, 142, 0.15);
+        border-color: #11998e;
+        color: #11998e;
+    }
+
+    .btn-delete-flip:hover,
+    .btn-delete-flip:focus-visible {
+        background: var(--surface-2);
+        border-color: #DC2626;
+        color: #DC2626;
+        outline: none;
     }
 
     .btn-new-flip svg,
@@ -418,13 +439,13 @@
     }
 
     .btn-delete-flip.delete-mode-active {
-        background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+        background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
         border-color: transparent;
         color: #fff;
     }
 
     .btn-delete-flip.delete-mode-active:hover {
-        background: linear-gradient(135deg, #D97706 0%, #B45309 100%);
+        background: linear-gradient(135deg, #B91C1C 0%, #991B1B 100%);
     }
 
         #flipsTable {
@@ -574,68 +595,8 @@
         position: relative;
     }
 
-    .btn-filter {
-        padding: 8px 14px;
-        background: var(--surface);
-        color: var(--text);
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.15s;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-
-    .btn-filter:hover {
-        background: var(--surface-2);
-        border-color: var(--primary);
-    }
-
-    .btn-filter.has-active {
-        background: rgba(99, 102, 241, 0.1);
-        border-color: var(--primary);
-        color: var(--primary);
-    }
-
-    .btn-filter svg {
-        width: 16px;
-        height: 16px;
-    }
-
-    /* =========================================================================
-       HISTORICAL VIEW BUTTON STYLES
-       What: Styles for the Historical View button in the search/filter row
-       Why: Needs to match the filter button style but be distinguishable
-       How: Uses similar styling but with a distinct color scheme
-       ========================================================================= */
-    .btn-historical {
-        padding: 8px 14px;
-        background: var(--surface);
-        color: var(--text);
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.15s;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        white-space: nowrap;
-    }
-
-    .btn-historical:hover {
-        background: rgba(59, 130, 246, 0.1);
-        border-color: var(--info);
-        color: var(--info);
-    }
-
-    .btn-historical svg {
-        width: 16px;
-        height: 16px;
-    }
-
+    .btn-filter,
+    .btn-historical,
     .btn-equity-chart {
         padding: 8px 14px;
         background: var(--surface);
@@ -651,22 +612,62 @@
         white-space: nowrap;
     }
 
-    .btn-equity-chart:hover {
+    .btn-filter:hover,
+    .btn-filter:focus-visible {
+        background: var(--surface-2);
+        border-color: var(--primary);
+        color: var(--primary);
+        outline: none;
+    }
+
+    .btn-filter.has-active,
+    .btn-filter.is-open {
         background: rgba(99, 102, 241, 0.1);
         border-color: var(--primary);
         color: var(--primary);
     }
 
-    .btn-equity-chart svg {
-        width: 16px;
-        height: 16px;
+    .btn-historical:hover,
+    .btn-historical:focus-visible {
+        background: rgba(59, 130, 246, 0.1);
+        border-color: var(--info);
+        color: var(--info);
+        outline: none;
     }
 
-    /* Active state when viewing historical data */
     .btn-historical.active {
         background: rgba(59, 130, 246, 0.15);
         border-color: var(--info);
         color: var(--info);
+    }
+
+    .btn-equity-chart:hover,
+    .btn-equity-chart:focus-visible {
+        background: rgba(99, 102, 241, 0.1);
+        border-color: var(--primary);
+        color: var(--primary);
+        outline: none;
+    }
+
+    .btn-equity-chart.active {
+        background: rgba(99, 102, 241, 0.15);
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+
+    .btn-filter svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .btn-historical svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .btn-equity-chart svg {
+        width: 16px;
+        height: 16px;
     }
 
     /* =========================================================================
@@ -2454,13 +2455,13 @@
 
         /* Delete mode active state for mobile action button */
         .btn-mobile-actions.delete-mode-active {
-            background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+            background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
             border-color: transparent;
             color: #fff;
         }
 
         .btn-mobile-actions.delete-mode-active:hover {
-            background: linear-gradient(135deg, #D97706 0%, #B45309 100%);
+            background: linear-gradient(135deg, #B91C1C 0%, #991B1B 100%);
         }
 
         /* =====================================================================
@@ -2860,7 +2861,7 @@
         <span class="delete-mode-instruction" id="deleteModeInstruction">Tap a flip to delete</span>
         
         <!-- Desktop Action Buttons - hidden on mobile -->
-        <button type="button" class="btn-new-flip" data-bs-toggle="modal" data-bs-target="#newFlipModal">
+        <button type="button" class="btn-new-flip" id="newFlipBtn" data-bs-toggle="modal" data-bs-target="#newFlipModal">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
@@ -3662,6 +3663,7 @@
          * How: Set to true when viewing historical, false when returning to real-time
          */
         let isHistoricalMode = false;
+        let isHistoricalLoading = false;
 
         function loadFlipsData() {
             // Skip loading if in historical mode (don't overwrite historical data)
@@ -3779,6 +3781,7 @@
         const filterDropdownBtn = document.getElementById('filterDropdownBtn'); // What: main filter button; Why: opens filter dropdown; How: DOM lookup by id.
         const filterDropdownMenu = document.getElementById('filterDropdownMenu'); // What: filter dropdown menu; Why: houses filter options; How: DOM lookup.
         const filterBadge = document.getElementById('filterBadge'); // What: badge showing active filter count; Why: UX indicator; How: DOM lookup.
+        const equityChartBtn = document.getElementById('equityChartBtn');
         const tableBody = document.querySelector('#flipsTable tbody'); // What: flips table body; Why: render and filter rows; How: querySelector.
         const sortIndicator = document.getElementById('sortIndicator'); // What: desktop sort indicator; Why: shows current sort; How: DOM lookup.
         const sortIndicatorValue = document.getElementById('sortIndicatorValue'); // What: sort label; Why: display sort criteria; How: DOM lookup.
@@ -4133,7 +4136,7 @@
                     clearColumnSortStyling();
                     updateSortByOptions();
                     sortTableByFilter();
-                    filterDropdownMenu.classList.remove('show');
+                    setFilterDropdownOpen(false);
                 });
             });
 
@@ -4265,6 +4268,11 @@
             delete activeFilters[filterName];
             updateFilterUI();
             applyFilters();
+        }
+
+        function setFilterDropdownOpen(isOpen) {
+            filterDropdownMenu.classList.toggle('show', isOpen);
+            filterDropdownBtn.classList.toggle('is-open', isOpen);
         }
 
         // Apply all active filters
@@ -4417,7 +4425,7 @@
             if (filterKeys.length > 1) {
                 e.stopPropagation();
                 sortIndicatorMenu.classList.toggle('show');
-                filterDropdownMenu.classList.remove('show');
+                setFilterDropdownOpen(false);
                 sortIndicatorMenuMobile.classList.remove('show'); // Close mobile dropdown if open
             }
         });
@@ -4435,7 +4443,7 @@
                 e.stopPropagation();
                 sortIndicatorMenuMobile.classList.toggle('show');
                 sortIndicatorMenu.classList.remove('show'); // Close desktop dropdown if open
-                filterDropdownMenu.classList.remove('show');
+                setFilterDropdownOpen(false);
             }
         });
 
@@ -4455,8 +4463,9 @@
         // Toggle filter dropdown
         filterDropdownBtn.addEventListener('click', function (e) {
             e.stopPropagation();
-            filterDropdownMenu.classList.toggle('show');
+            setFilterDropdownOpen(!filterDropdownMenu.classList.contains('show'));
             sortIndicatorMenu.classList.remove('show');
+            sortIndicatorMenuMobile.classList.remove('show');
         });
 
         // Prevent dropdown from closing when clicking inside it
@@ -4469,7 +4478,7 @@
         // Why: Standard UX pattern - clicking outside a dropdown should dismiss it
         // How: Document-level click listener removes 'show' class from all dropdown menus
         document.addEventListener('click', function () {
-            filterDropdownMenu.classList.remove('show');
+            setFilterDropdownOpen(false);
             sortIndicatorMenu.classList.remove('show');
             sortIndicatorMenuMobile.classList.remove('show'); // Also close mobile sort dropdown
         });
@@ -4504,7 +4513,7 @@
                     }
                     updateFilterUI();
                     applyFilters();
-                    filterDropdownMenu.classList.remove('show');
+                    setFilterDropdownOpen(false);
                     return;
                 }
 
@@ -4528,7 +4537,7 @@
                     const modal = new bootstrap.Modal(document.getElementById('completionFilterModal'));
                     modal.show();
                 }
-                filterDropdownMenu.classList.remove('show');
+                setFilterDropdownOpen(false);
             });
         });
 
@@ -5097,6 +5106,13 @@
 
         // Set default date and auto-focus when modal opens
         const newFlipModal = document.getElementById('newFlipModal');
+        const newFlipBtn = document.getElementById('newFlipBtn');
+        newFlipModal.addEventListener('show.bs.modal', function () {
+            if (newFlipBtn) {
+                newFlipBtn.classList.add('active');
+            }
+        });
+
         newFlipModal.addEventListener('shown.bs.modal', function () {
             setDateToNow();
             input.focus();
@@ -5123,6 +5139,9 @@
 
         // Clear form when modal closes
         newFlipModal.addEventListener('hidden.bs.modal', function () {
+            if (newFlipBtn) {
+                newFlipBtn.classList.remove('active');
+            }
             input.value = '';
             document.getElementById('price').value = '';
             document.getElementById('quantity').value = '';
@@ -5748,7 +5767,6 @@
          */
         function hideHistoricalBanner() {
             historicalBanner.style.display = 'none';
-            historicalViewBtn.classList.remove('active');
         }
 
         /**
@@ -5834,6 +5852,9 @@
          * @param {string} dateStr - Date in YYYY-MM-DD format
          */
         async function fetchHistoricalData(dateStr) {
+            isHistoricalLoading = true;
+            historicalViewBtn.classList.add('active');
+
             // Close the modal immediately so the loading spinner is visible
             const modalInstance = bootstrap.Modal.getInstance(historicalModal);
             if (modalInstance) {
@@ -5882,11 +5903,16 @@
 
                 // Pause auto-refresh
                 pauseAutoRefresh();
+                isHistoricalLoading = false;
 
                 // Notify about skipped items
                 notifySkippedItems(data.skipped_items);
 
             } catch (error) {
+                isHistoricalLoading = false;
+                if (!isHistoricalMode) {
+                    historicalViewBtn.classList.remove('active');
+                }
                 console.error('Error fetching historical data:', error);
                 // What: Render a left-aligned error row if historical data fails to load.
                 // Why: Error text should follow the same alignment rules as other empty-state rows for consistency.
@@ -5917,6 +5943,8 @@
 
             // Resume auto-refresh
             resumeAutoRefresh();
+            isHistoricalLoading = false;
+            historicalViewBtn.classList.remove('active');
 
             // Restore original data or fetch fresh
             if (originalFlipsData) {
@@ -5968,21 +5996,35 @@
         // Return to real-time button handler
         returnToRealtimeBtn.addEventListener('click', returnToRealTime);
 
+        historicalModal.addEventListener('show.bs.modal', function() {
+            historicalViewBtn.classList.add('active');
+        });
+
         // Reset modal state when closed without submitting
         historicalModal.addEventListener('hidden.bs.modal', function() {
             // Only reset if not in historical mode (user cancelled)
-            if (!isHistoricalMode) {
+            if (!isHistoricalMode && !isHistoricalLoading) {
+                historicalViewBtn.classList.remove('active');
                 historicalDateInput.value = '';
                 presetButtons.forEach(b => b.classList.remove('selected'));
             }
         });
 
         if (equityModal) {
+            equityModal.addEventListener('show.bs.modal', function() {
+                if (equityChartBtn) {
+                    equityChartBtn.classList.add('active');
+                }
+            });
+
             equityModal.addEventListener('shown.bs.modal', function() {
                 fetchEquityChart(equityChartRange);
             });
 
             equityModal.addEventListener('hidden.bs.modal', function() {
+                if (equityChartBtn) {
+                    equityChartBtn.classList.remove('active');
+                }
                 if (equityChartAbortController) {
                     equityChartAbortController.abort();
                     equityChartAbortController = null;
