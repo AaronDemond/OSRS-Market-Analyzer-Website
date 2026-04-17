@@ -1,6 +1,6 @@
 # Dump Alert Volume Test Report
 
-Generated: 2026-04-16 09:53:24 UTC
+Generated: 2026-04-17 08:36:00 UTC
 
 ## Summary
 
@@ -32,9 +32,9 @@ Generated: 2026-04-16 09:53:24 UTC
   - Setup: All four tracked items are either below the floor, missing, or stale.
   - Assumptions: The all-items scan should end with no triggered rows.
   - Alert kwargs: {'is_all_items': True, 'dump_liquidity_floor': 10000000, 'dump_rel_vol_min': 0.1}
-  - Running call 1 for alert #125 (Dump Volume Test)
+  - Running call 1 for alert #2 (Dump Volume Test)
   - Call 1 result: False
-  - Running call 2 for alert #125 (Dump Volume Test)
+  - Running call 2 for alert #2 (Dump Volume Test)
   - Call 2 result: False
 - Expected: []
 - Actual: []
@@ -52,10 +52,10 @@ Generated: 2026-04-16 09:53:24 UTC
   - Setup: Item A is liquid; Item B is under the floor; Item C has no volume row; Item D is stale.
   - Assumptions: Only Item A should survive the hourly-volume gate.
   - Alert kwargs: {'is_all_items': True, 'dump_liquidity_floor': 10000000, 'dump_rel_vol_min': 0.1}
-  - Running call 1 for alert #126 (Dump Volume Test)
+  - Running call 1 for alert #3 (Dump Volume Test)
   - Call 1 result: False
-  - Running call 2 for alert #126 (Dump Volume Test)
-  - Call 2 result: [{'item_id': '4151', 'item_name': 'Abyssal whip', 'fair_value': 997.0, 'current_low': 880, 'discount_pct': 11.75, 'sell_ratio': 0.85, 'rel_vol': 1.0, 'shock_sigma': -1.0}]
+  - Running call 2 for alert #3 (Dump Volume Test)
+  - Call 2 result: [{'item_id': '4151', 'item_name': 'Abyssal whip', 'fair_value': 997.0, 'current_low': 880, 'discount_pct': 11.75, 'sell_ratio': 0.85, 'rel_vol': 1.0, 'shock_sigma': -1.0, 'volume': 20000000, 'spike_volume': 20000000}]
 - Expected: ['4151']
 - Actual: ['4151']
 - Result: PASS
@@ -72,9 +72,9 @@ Generated: 2026-04-16 09:53:24 UTC
   - Setup: Item B is below the floor, Item C is missing, and Item D is stale.
   - Assumptions: The alert should not leak any item through when no candidate is liquid enough.
   - Alert kwargs: {'item_ids': '[11802, 13576, 11832]', 'dump_liquidity_floor': 10000000, 'dump_rel_vol_min': 0.1}
-  - Running call 1 for alert #127 (Dump Volume Test)
+  - Running call 1 for alert #4 (Dump Volume Test)
   - Call 1 result: False
-  - Running call 2 for alert #127 (Dump Volume Test)
+  - Running call 2 for alert #4 (Dump Volume Test)
   - Call 2 result: False
 - Expected: []
 - Actual: []
@@ -92,10 +92,10 @@ Generated: 2026-04-16 09:53:24 UTC
   - Setup: Item A has 20M GP hourly volume; Item B has 5M GP hourly volume.
   - Assumptions: Both items otherwise satisfy dump conditions.
   - Alert kwargs: {'item_ids': '[4151, 11802]', 'dump_liquidity_floor': 10000000, 'dump_rel_vol_min': 0.1}
-  - Running call 1 for alert #128 (Dump Volume Test)
+  - Running call 1 for alert #5 (Dump Volume Test)
   - Call 1 result: False
-  - Running call 2 for alert #128 (Dump Volume Test)
-  - Call 2 result: [{'item_id': '4151', 'item_name': 'Abyssal whip', 'fair_value': 997.0, 'current_low': 880, 'discount_pct': 11.75, 'sell_ratio': 0.85, 'rel_vol': 1.0, 'shock_sigma': -1.0}]
+  - Running call 2 for alert #5 (Dump Volume Test)
+  - Call 2 result: [{'item_id': '4151', 'item_name': 'Abyssal whip', 'fair_value': 997.0, 'current_low': 880, 'discount_pct': 11.75, 'sell_ratio': 0.85, 'rel_vol': 1.0, 'shock_sigma': -1.0, 'volume': 20000000, 'spike_volume': 20000000}]
 - Expected: ['4151']
 - Actual: ['4151']
 - Result: PASS
@@ -112,9 +112,9 @@ Generated: 2026-04-16 09:53:24 UTC
   - Setup: Item A has a normal bucket volume ratio around 1.0, but the threshold is raised above that.
   - Assumptions: This checks the relative volume gate rather than the liquidity floor.
   - Alert kwargs: {'item_id': 4151, 'dump_liquidity_floor': 1, 'dump_rel_vol_min': 1.5}
-  - Running call 1 for alert #129 (Dump Volume Test)
+  - Running call 1 for alert #6 (Dump Volume Test)
   - Call 1 result: False
-  - Running call 2 for alert #129 (Dump Volume Test)
+  - Running call 2 for alert #6 (Dump Volume Test)
   - Call 2 result: False
 - Expected: False
 - Actual: False
@@ -132,9 +132,9 @@ Generated: 2026-04-16 09:53:24 UTC
   - Setup: Item B only has 5M GP hourly volume.
   - Assumptions: A low-volume item should be filtered before dump math matters.
   - Alert kwargs: {'item_id': 11802, 'dump_liquidity_floor': 10000000, 'dump_rel_vol_min': 0.1}
-  - Running call 1 for alert #130 (Dump Volume Test)
+  - Running call 1 for alert #7 (Dump Volume Test)
   - Call 1 result: False
-  - Running call 2 for alert #130 (Dump Volume Test)
+  - Running call 2 for alert #7 (Dump Volume Test)
   - Call 2 result: False
 - Expected: False
 - Actual: False
@@ -152,9 +152,9 @@ Generated: 2026-04-16 09:53:24 UTC
   - Setup: Item D has a large hourly volume row, but it is older than the freshness window.
   - Assumptions: Stale volume should be treated as missing, not eligible.
   - Alert kwargs: {'item_id': 11832, 'dump_liquidity_floor': 10000000, 'dump_rel_vol_min': 0.1}
-  - Running call 1 for alert #131 (Dump Volume Test)
+  - Running call 1 for alert #8 (Dump Volume Test)
   - Call 1 result: False
-  - Running call 2 for alert #131 (Dump Volume Test)
+  - Running call 2 for alert #8 (Dump Volume Test)
   - Call 2 result: False
 - Expected: False
 - Actual: False
@@ -172,9 +172,9 @@ Generated: 2026-04-16 09:53:24 UTC
   - Setup: Item C has no HourlyItemVolume row at all.
   - Assumptions: Missing data should behave like unavailable liquidity.
   - Alert kwargs: {'item_id': 13576, 'dump_liquidity_floor': 10000000, 'dump_rel_vol_min': 0.1}
-  - Running call 1 for alert #132 (Dump Volume Test)
+  - Running call 1 for alert #9 (Dump Volume Test)
   - Call 1 result: False
-  - Running call 2 for alert #132 (Dump Volume Test)
+  - Running call 2 for alert #9 (Dump Volume Test)
   - Call 2 result: False
 - Expected: False
 - Actual: False
@@ -192,9 +192,9 @@ Generated: 2026-04-16 09:53:24 UTC
   - Setup: Item A volume is set to exactly 10,000,000 GP.
   - Assumptions: Equality to the floor should be accepted, not rejected.
   - Alert kwargs: {'item_id': 4151, 'dump_liquidity_floor': 10000000, 'dump_rel_vol_min': 0.1}
-  - Running call 1 for alert #133 (Dump Volume Test)
+  - Running call 1 for alert #10 (Dump Volume Test)
   - Call 1 result: False
-  - Running call 2 for alert #133 (Dump Volume Test)
+  - Running call 2 for alert #10 (Dump Volume Test)
   - Call 2 result: True
 - Expected: True
 - Actual: True
@@ -212,9 +212,9 @@ Generated: 2026-04-16 09:53:24 UTC
   - Setup: Item A has fresh 20M GP hourly volume and a clear dump bucket.
   - Assumptions: All other dump thresholds are loose enough to let volume be the deciding factor.
   - Alert kwargs: {'item_id': 4151, 'dump_liquidity_floor': 10000000, 'dump_rel_vol_min': 0.1}
-  - Running call 1 for alert #134 (Dump Volume Test)
+  - Running call 1 for alert #11 (Dump Volume Test)
   - Call 1 result: False
-  - Running call 2 for alert #134 (Dump Volume Test)
+  - Running call 2 for alert #11 (Dump Volume Test)
   - Call 2 result: True
 - Expected: True
 - Actual: True
@@ -232,9 +232,9 @@ Generated: 2026-04-16 09:53:24 UTC
   - Setup: Item A has a current bucket volume that matches its expected EWMA volume.
   - Assumptions: Relative volume is intentionally loose so the alert should pass.
   - Alert kwargs: {'item_id': 4151, 'dump_liquidity_floor': 1, 'dump_rel_vol_min': 0.5}
-  - Running call 1 for alert #135 (Dump Volume Test)
+  - Running call 1 for alert #12 (Dump Volume Test)
   - Call 1 result: False
-  - Running call 2 for alert #135 (Dump Volume Test)
+  - Running call 2 for alert #12 (Dump Volume Test)
   - Call 2 result: True
 - Expected: True
 - Actual: True

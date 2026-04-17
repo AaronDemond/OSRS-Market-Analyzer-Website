@@ -28,6 +28,7 @@ from .models import (
     FlipJournalStrategy,
     FlipJournalTag,
     FlipProfit,
+    HourlyItemVolume,
     LiveFeedbackWatch,
     OneHourTimeSeries,
     TwentyFourHourTimeSeries,
@@ -4529,6 +4530,67 @@ def alert_detail(request, alert_id):
         else:
             # Unknown alert type - return unsorted
             return items
+
+    def normalize_dump_triggered_items(items):
+        """Backfill dump volume fields so legacy and new triggered_data render consistently."""
+        if not items or not isinstance(items, list):
+            return items
+
+        normalized_items = []
+        missing_volume_item_ids = set()
+
+        for item in items:
+            if not isinstance(item, dict):
+                normalized_items.append(item)
+                continue
+
+            normalized_item = dict(item)
+            volume_value = normalized_item.get('volume')
+            spike_volume_value = normalized_item.get('spike_volume')
+
+            if volume_value is None and spike_volume_value is not None:
+                volume_value = spike_volume_value
+            if spike_volume_value is None and volume_value is not None:
+                spike_volume_value = volume_value
+
+            normalized_item['volume'] = volume_value
+            normalized_item['spike_volume'] = spike_volume_value
+
+            if volume_value is None:
+                item_id = normalized_item.get('item_id')
+                try:
+                    missing_volume_item_ids.add(int(item_id))
+                except (TypeError, ValueError):
+                    pass
+
+            normalized_items.append(normalized_item)
+
+        if missing_volume_item_ids:
+            latest_volume_by_item = {}
+            latest_rows = (
+                HourlyItemVolume.objects
+                .filter(item_id__in=missing_volume_item_ids)
+                .order_by('item_id', '-id')
+                .values('item_id', 'volume')
+            )
+            for row in latest_rows:
+                if row['item_id'] not in latest_volume_by_item:
+                    latest_volume_by_item[row['item_id']] = row['volume']
+
+            for normalized_item in normalized_items:
+                if not isinstance(normalized_item, dict) or normalized_item.get('volume') is not None:
+                    continue
+                try:
+                    item_id = int(normalized_item.get('item_id'))
+                except (TypeError, ValueError):
+                    continue
+
+                fallback_volume = latest_volume_by_item.get(item_id)
+                if fallback_volume is not None:
+                    normalized_item['volume'] = fallback_volume
+                    normalized_item['spike_volume'] = fallback_volume
+
+        return normalized_items
     
     user = request.user if request.user.is_authenticated else None
     alert = get_object_or_404(Alert, id=alert_id, user=user)
@@ -4702,7 +4764,7 @@ def alert_detail(request, alert_id):
         # =============================================================================
         # What: Populate triggered_info with dump alert data for template display
         # Why: Dump alerts produce a list of items that experienced sharp sell-offs,
-        #      each with fair_value, discount_pct, sell_ratio, and spike_volume
+        #      each with fair_value, discount_pct, sell_ratio, and hourly volume
         # How: Parse triggered_data JSON (always a list for dump alerts since they
         #      monitor multiple items). Sort by discount_pct descending so the
         #      deepest sell-off appears first.
@@ -4712,17 +4774,19 @@ def alert_detail(request, alert_id):
                 try:
                     # dump_data: The raw parsed JSON from triggered_data, a list of
                     # item dicts each containing item_id, item_name, fair_value,
-                    # discount_pct, sell_ratio, spike_volume
+                    # discount_pct, sell_ratio, and volume metadata
                     dump_data = json.loads(alert.triggered_data)
                     
                     if isinstance(dump_data, list):
+                        dump_data = normalize_dump_triggered_items(dump_data)
                         # Multi-item result: sort by discount_pct descending (biggest dip first)
                         triggered_info['items'] = sort_triggered_items(dump_data, 'dump')
                         triggered_info['dump_data'] = dump_data
                     elif isinstance(dump_data, dict):
+                        dump_data = normalize_dump_triggered_items([dump_data])
                         # Single-item result: wrap in list for consistent template rendering
-                        triggered_info['items'] = [dump_data]
-                        triggered_info['dump_data'] = [dump_data]
+                        triggered_info['items'] = dump_data
+                        triggered_info['dump_data'] = dump_data
                 except json.JSONDecodeError:
                     triggered_info['dump_data'] = None
             else:
@@ -4761,6 +4825,8 @@ def alert_detail(request, alert_id):
             # Note: Sustained alerts are handled separately above because they need special field extraction
             try:
                 items = json.loads(alert.triggered_data)
+                if alert.type == 'dump':
+                    items = normalize_dump_triggered_items(items)
                 # Sort items from biggest increase to biggest decrease
                 triggered_info['items'] = sort_triggered_items(items, alert.type)
             except json.JSONDecodeError:
@@ -4784,6 +4850,8 @@ def alert_detail(request, alert_id):
                 parsed_data = json.loads(alert.triggered_data)
                 if isinstance(parsed_data, list):
                     # Multi-item: triggered_data is a list of item dicts
+                    if alert.type == 'dump':
+                        parsed_data = normalize_dump_triggered_items(parsed_data)
                     # Sort items from biggest increase to biggest decrease
                     triggered_info['items'] = sort_triggered_items(parsed_data, alert.type)
                 else:
@@ -4827,6 +4895,8 @@ def alert_detail(request, alert_id):
                             triggered_info['threshold_current_price'] = parsed_data.get('current_price')
                             triggered_info['threshold_change_percent'] = parsed_data.get('change_percent')
                             triggered_info['threshold_direction'] = parsed_data.get('direction')
+                    elif alert.type == 'dump':
+                        triggered_info['items'] = normalize_dump_triggered_items([parsed_data])
             except json.JSONDecodeError:
                 triggered_info['items'] = []
         elif not alert.is_all_items and alert.item_id:
