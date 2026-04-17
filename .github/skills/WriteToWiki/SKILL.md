@@ -1,4 +1,7 @@
-# GitHub Copilot Instructions
+---
+name: wiki-writer
+description: You write to the repository WIKI as instructed
+---
 
 This repository is connected to an Obsidian vault that serves as the project knowledge base.
 

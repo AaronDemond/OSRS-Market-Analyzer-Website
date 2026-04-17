@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.db.models import Sum, F, Value
+from django.db.models import Sum, F, Value, Max
 from django.utils import timezone
 from django.db.models.functions import Coalesce
 from django.views.decorators.csrf import csrf_exempt
@@ -8,13 +8,30 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.core.cache import cache
+from django.urls import reverse
+import bleach
 import requests
 import time
 import re
 import json
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from .models import Flip, FlipProfit, Alert, AlertGroup, FavoriteItem, LiveFeedbackWatch, OneHourTimeSeries, TwentyFourHourTimeSeries
+from urllib.parse import urlencode, quote
+from .models import (
+    Alert,
+    AlertGroup,
+    FavoriteItem,
+    Flip,
+    FlipJournal,
+    FlipJournalExit,
+    FlipJournalNote,
+    FlipJournalStrategy,
+    FlipJournalTag,
+    FlipProfit,
+    LiveFeedbackWatch,
+    OneHourTimeSeries,
+    TwentyFourHourTimeSeries,
+)
 from .live_feedback import STATUS_PAUSED, evaluate_watch
 
 
@@ -56,6 +73,13 @@ FLIPS_EQUITY_RANGE_DAYS = {
 }
 GE_TAX_RATE = 0.02
 GE_TAX_CAP = 5_000_000
+RICH_TEXT_ALLOWED_TAGS = [
+    'p', 'br', 'strong', 'em', 'u', 's', 'blockquote',
+    'ul', 'ol', 'li', 'a', 'code', 'pre', 'h1', 'h2', 'h3',
+]
+RICH_TEXT_ALLOWED_ATTRIBUTES = {
+    'a': ['href', 'title', 'target', 'rel'],
+}
 
 
 def get_item_mapping():
@@ -1712,6 +1736,519 @@ def recalculate_flip_profit(item_id, user=None):
     )
 
 
+def sanitize_rich_text(value):
+    cleaned = bleach.clean(
+        value or '',
+        tags=RICH_TEXT_ALLOWED_TAGS,
+        attributes=RICH_TEXT_ALLOWED_ATTRIBUTES,
+        protocols=['http', 'https', 'mailto'],
+        strip=True,
+    ).strip()
+    cleaned = re.sub(r'<p>(?:\s|&nbsp;|<br\s*/?>)*</p>', '', cleaned, flags=re.IGNORECASE)
+    plain_text = re.sub(r'<[^>]+>', '', cleaned).replace('&nbsp;', ' ').strip()
+    return cleaned if plain_text else ''
+
+
+def normalize_flip_journal_tag_name(name):
+    return re.sub(r'\s+', ' ', (name or '').strip())
+
+
+def parse_flip_journal_tag_names(raw_tags):
+    seen = set()
+    tag_names = []
+
+    for raw_name in (raw_tags or '').split(','):
+        name = normalize_flip_journal_tag_name(raw_name)
+        normalized = name.lower()
+        if not name or normalized in seen:
+            continue
+        seen.add(normalized)
+        tag_names.append(name)
+
+    return tag_names
+
+
+def build_flip_journal_redirect(item_id=None, item_name=None, sort_by='updated', mode='view', sort_direction=None):
+    query = {'sort': sort_by or 'updated'}
+
+    if item_id is not None:
+        query['item_id'] = item_id
+    if item_name:
+        query['item_name'] = item_name
+    if mode in {'view', 'edit'}:
+        query['mode'] = mode
+    if sort_direction in {'asc', 'desc'}:
+        query['direction'] = sort_direction
+
+    return f"{reverse('flip_journal')}?{urlencode(query)}"
+
+
+def build_item_icon_url(icon_name):
+    if not icon_name:
+        return None
+    if icon_name.startswith('http://') or icon_name.startswith('https://'):
+        return icon_name
+    return f"https://oldschool.runescape.wiki/images/{quote(icon_name.replace(' ', '_'))}"
+
+
+def get_or_create_flip_journal(user, item_id, item_name):
+    journal, created = FlipJournal.objects.get_or_create(
+        user=user,
+        item_id=item_id,
+        item_name=item_name,
+    )
+    if not created and journal.item_name != item_name:
+        journal.item_name = item_name
+        journal.save(update_fields=['item_name', 'updated_at'])
+    return journal
+
+
+def build_flip_journal_item_rows(user, sort_by='updated', sort_direction=None):
+    item_mapping = get_item_mapping()
+    flip_items = list(
+        Flip.objects
+        .filter(user=user)
+        .values('item_id', 'item_name')
+        .annotate(last_flip_date=Max('date'))
+    )
+    profits_by_item_id = {
+        profit.item_id: profit
+        for profit in FlipProfit.objects.filter(user=user)
+    }
+    journals_by_item = {
+        (journal.item_id, journal.item_name): journal
+        for journal in FlipJournal.objects.filter(user=user)
+    }
+
+    items = []
+    for item in flip_items:
+        item_id = item['item_id']
+        item_name = item['item_name']
+        profit = profits_by_item_id.get(item_id)
+        journal = journals_by_item.get((item_id, item_name))
+        item_data = item_mapping.get((item_name or '').lower()) if item_name else None
+
+        items.append({
+            'item_id': item_id,
+            'item_name': item_name,
+            'icon': item_data.get('icon') if item_data else None,
+            'icon_url': build_item_icon_url(item_data.get('icon') if item_data else None),
+            'quantity_held': profit.quantity_held if profit else 0,
+            'realized_net': round(profit.realized_net) if profit else 0,
+            'unrealized_net': round(profit.unrealized_net) if profit else 0,
+            'average_cost': int(profit.average_cost) if profit else 0,
+            'journal_exists': journal is not None,
+            'journal_updated_at': journal.updated_at if journal else None,
+            'last_flip_date': item['last_flip_date'],
+            'sort_updated_at': journal.updated_at if journal else item['last_flip_date'],
+        })
+
+    if sort_by == 'alphabetical':
+        if sort_direction not in {'asc', 'desc'}:
+            sort_direction = 'asc'
+        items.sort(
+            key=lambda row: ((row['item_name'] or '').lower(), row['item_id']),
+            reverse=sort_direction == 'desc',
+        )
+    elif sort_by == 'realized':
+        if sort_direction not in {'asc', 'desc'}:
+            sort_direction = 'desc'
+        items.sort(
+            key=lambda row: (row['realized_net'], (row['item_name'] or '').lower()),
+            reverse=sort_direction == 'desc',
+        )
+    elif sort_by == 'most_profitable':
+        items.sort(key=lambda row: (row['realized_net'], row['last_flip_date'] or timezone.now()), reverse=True)
+    elif sort_by == 'least_profitable':
+        items.sort(key=lambda row: (row['realized_net'], (row['item_name'] or '').lower()))
+    else:
+        if sort_direction not in {'asc', 'desc'}:
+            sort_direction = 'desc'
+        items.sort(
+            key=lambda row: (
+                row['sort_updated_at'] or timezone.make_aware(datetime(1970, 1, 1)),
+                row['item_name'] or '',
+            ),
+            reverse=sort_direction == 'desc',
+        )
+
+    return items
+
+
+def build_flip_journal_exit_rows(user, item_id, item_name):
+    journal = FlipJournal.objects.filter(user=user, item_id=item_id, item_name=item_name).first()
+    exit_records = {}
+    if journal:
+        exit_records = {
+            record.sell_flip_id: record
+            for record in FlipJournalExit.objects.filter(journal=journal).select_related('sell_flip')
+        }
+
+    flips = (
+        Flip.objects
+        .filter(user=user, item_id=item_id, item_name=item_name)
+        .order_by('date', 'id')
+    )
+    average_cost = 0
+    quantity_held = 0
+    exit_rows = []
+
+    for flip in flips:
+        if flip.type == 'buy':
+            if quantity_held == 0:
+                average_cost = flip.price
+                quantity_held = flip.quantity
+            else:
+                average_cost = (
+                    ((quantity_held * average_cost) + (flip.quantity * flip.price))
+                    / (quantity_held + flip.quantity)
+                )
+                quantity_held += flip.quantity
+            continue
+
+        quantity_before_sale = max(quantity_held, 0)
+        gross_revenue = flip.price * flip.quantity
+        tax = min(gross_revenue * GE_TAX_RATE, GE_TAX_CAP)
+        net_revenue = gross_revenue - tax
+        realized_pnl = round(net_revenue - (average_cost * flip.quantity))
+        exit_percentage = 0
+        if quantity_before_sale > 0:
+            exit_percentage = round(min((flip.quantity / quantity_before_sale) * 100, 100), 2)
+
+        exit_record = exit_records.get(flip.id)
+        exit_rows.append({
+            'flip_id': flip.id,
+            'flip': flip,
+            'quantity_before_sale': quantity_before_sale,
+            'exit_percentage': exit_percentage,
+            'realized_pnl': realized_pnl,
+            'reason_html': exit_record.reason_html if exit_record else '',
+            'has_note': bool(exit_record and exit_record.reason_html),
+            'updated_at': exit_record.updated_at if exit_record else None,
+        })
+        quantity_held = max(quantity_held - flip.quantity, 0)
+
+    exit_rows.reverse()
+    return exit_rows
+
+
+def build_flip_journal_timeline(journal, exit_rows):
+    timeline = []
+
+    if journal:
+        for note in journal.notes.all():
+            timeline.append({
+                'kind': 'note',
+                'timestamp': note.created_at,
+                'title': 'Journal note',
+                'content_html': note.content_html,
+                'meta': note.updated_at if note.updated_at != note.created_at else None,
+            })
+
+    for exit_row in exit_rows:
+        if not exit_row['reason_html']:
+            continue
+        timeline.append({
+            'kind': 'exit',
+            'timestamp': exit_row['updated_at'] or exit_row['flip'].date,
+            'title': f"Exit note - sold {exit_row['flip'].quantity:,}",
+            'content_html': exit_row['reason_html'],
+            'meta': (
+                f"{exit_row['exit_percentage']:.2f}% exit • "
+                f"{'+' if exit_row['realized_pnl'] >= 0 else ''}{exit_row['realized_pnl']:,} gp"
+            ),
+        })
+
+    timeline.sort(key=lambda event: event['timestamp'], reverse=True)
+    return timeline
+
+
+def flip_journal(request):
+    if not request.user.is_authenticated:
+        return redirect('auth')
+
+    sort_by = request.GET.get('sort', 'updated')
+    valid_sorts = {'updated', 'alphabetical', 'realized', 'most_profitable', 'least_profitable'}
+    if sort_by not in valid_sorts:
+        sort_by = 'updated'
+    sort_direction = request.GET.get('direction')
+    if sort_direction not in {'asc', 'desc'}:
+        if sort_by in {'updated', 'realized', 'most_profitable'}:
+            sort_direction = 'desc'
+        else:
+            sort_direction = 'asc'
+    mode = request.GET.get('mode', 'view')
+    if mode not in {'view', 'edit'}:
+        mode = 'view'
+    picker_state = request.GET.get('picker', '')
+
+    item_rows = build_flip_journal_item_rows(request.user, sort_by=sort_by, sort_direction=sort_direction)
+    selected_item_id = request.GET.get('item_id')
+    selected_item_name = request.GET.get('item_name', '')
+
+    selected_item = None
+    for item in item_rows:
+        if selected_item_id is None:
+            break
+        if str(item['item_id']) != str(selected_item_id):
+            continue
+        if selected_item_name and item['item_name'] != selected_item_name:
+            continue
+        selected_item = item
+        break
+
+    journal = None
+    exit_rows = []
+    timeline = []
+    journal_tags = []
+    strategies = FlipJournalStrategy.objects.filter(user=request.user)
+    reusable_tags = FlipJournalTag.objects.filter(user=request.user)
+
+    if selected_item:
+        journal = (
+            FlipJournal.objects
+            .filter(
+                user=request.user,
+                item_id=selected_item['item_id'],
+                item_name=selected_item['item_name'],
+            )
+            .select_related('strategy')
+            .prefetch_related('tags', 'notes')
+            .first()
+        )
+        exit_rows = build_flip_journal_exit_rows(
+            request.user,
+            selected_item['item_id'],
+            selected_item['item_name'],
+        )
+        timeline = build_flip_journal_timeline(journal, exit_rows)
+        if journal:
+            journal_tags = list(journal.tags.all())
+
+    return render(request, 'flip_journal.html', {
+        'journal_items': item_rows,
+        'selected_item': selected_item,
+        'journal': journal,
+        'journal_exists': journal is not None,
+        'journal_tags': journal_tags,
+        'journal_tags_csv': ', '.join(tag.name for tag in journal_tags),
+        'strategies': strategies,
+        'reusable_tags': reusable_tags,
+        'exit_rows': exit_rows,
+        'timeline': timeline,
+        'sort_by': sort_by,
+        'sort_direction': sort_direction,
+        'mobile_picker_open': picker_state == 'open',
+        'is_edit_mode': selected_item is not None and mode == 'edit',
+    })
+
+
+def save_flip_journal(request):
+    if request.method != 'POST':
+        return redirect('flip_journal')
+    if not request.user.is_authenticated:
+        return redirect('auth')
+
+    try:
+        item_id = int(request.POST.get('item_id'))
+    except (TypeError, ValueError):
+        messages.error(request, 'Select an item before saving a journal.')
+        return redirect('flip_journal')
+
+    item_name = (request.POST.get('item_name') or '').strip()
+    sort_by = request.POST.get('sort_by', 'updated')
+    sort_direction = request.POST.get('sort_direction')
+    mode = request.POST.get('mode', 'view')
+    if not Flip.objects.filter(user=request.user, item_id=item_id, item_name=item_name).exists():
+        messages.error(request, 'That item could not be found for your account.')
+        return redirect('flip_journal')
+
+    confidence_value = request.POST.get('confidence', '').strip()
+    confidence = None
+    if confidence_value:
+        try:
+            confidence = max(0, min(10, int(confidence_value)))
+        except ValueError:
+            messages.error(request, 'Confidence must be a number between 0 and 10.')
+            return redirect(build_flip_journal_redirect(item_id, item_name, sort_by, mode, sort_direction))
+
+    journal = get_or_create_flip_journal(request.user, item_id, item_name)
+    journal.entry_reason_html = sanitize_rich_text(request.POST.get('entry_reason_html'))
+    journal.confidence = confidence
+
+    strategy_choice = request.POST.get('strategy_choice', '').strip()
+    if strategy_choice == '__new__':
+        strategy_title = (request.POST.get('strategy_title') or '').strip()
+        strategy_content_html = sanitize_rich_text(request.POST.get('strategy_content_html'))
+        if not strategy_title:
+            messages.error(request, 'Enter a strategy title when creating a reusable strategy.')
+            return redirect(build_flip_journal_redirect(item_id, item_name, sort_by, mode, sort_direction))
+
+        strategy, created = FlipJournalStrategy.objects.get_or_create(
+            user=request.user,
+            title=strategy_title,
+            defaults={'content_html': strategy_content_html},
+        )
+        if not created:
+            strategy.content_html = strategy_content_html
+            strategy.save(update_fields=['content_html', 'updated_at'])
+        journal.strategy = strategy
+    elif strategy_choice:
+        strategy = FlipJournalStrategy.objects.filter(id=strategy_choice, user=request.user).first()
+        if strategy is None:
+            messages.error(request, 'Select a valid strategy.')
+            return redirect(build_flip_journal_redirect(item_id, item_name, sort_by, mode, sort_direction))
+        journal.strategy = strategy
+    else:
+        journal.strategy = None
+
+    journal.save()
+
+    tags = []
+    for tag_name in parse_flip_journal_tag_names(request.POST.get('tag_names')):
+        normalized_name = tag_name.lower()
+        tag = FlipJournalTag.objects.filter(
+            user=request.user,
+            normalized_name=normalized_name,
+        ).first()
+        if tag is None:
+            tag = FlipJournalTag.objects.create(
+                user=request.user,
+                name=tag_name,
+                normalized_name=normalized_name,
+            )
+        tags.append(tag)
+
+    journal.tags.set(tags)
+    messages.success(request, 'Journal saved successfully.')
+    return redirect(build_flip_journal_redirect(item_id, item_name, sort_by, 'view', sort_direction))
+
+
+def add_flip_journal_note(request):
+    if request.method != 'POST':
+        return redirect('flip_journal')
+    if not request.user.is_authenticated:
+        return redirect('auth')
+
+    try:
+        item_id = int(request.POST.get('item_id'))
+    except (TypeError, ValueError):
+        messages.error(request, 'Select an item before adding a note.')
+        return redirect('flip_journal')
+
+    item_name = (request.POST.get('item_name') or '').strip()
+    sort_by = request.POST.get('sort_by', 'updated')
+    sort_direction = request.POST.get('sort_direction')
+    mode = request.POST.get('mode', 'view')
+    note_html = sanitize_rich_text(request.POST.get('note_content_html'))
+    if not note_html:
+        messages.error(request, 'Write a note before saving it.')
+        return redirect(build_flip_journal_redirect(item_id, item_name, sort_by, mode, sort_direction))
+
+    journal = get_or_create_flip_journal(request.user, item_id, item_name)
+    FlipJournalNote.objects.create(journal=journal, content_html=note_html)
+    messages.success(request, 'Journal note added.')
+    return redirect(build_flip_journal_redirect(item_id, item_name, sort_by, 'view', sort_direction))
+
+
+def delete_flip_journal_tag(request):
+    if request.method != 'POST':
+        return redirect('flip_journal')
+    if not request.user.is_authenticated:
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'error': 'Authentication required.'}, status=403)
+        return redirect('auth')
+
+    is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
+    item_id_value = request.POST.get('item_id')
+    item_name = (request.POST.get('item_name') or '').strip()
+    sort_by = request.POST.get('sort_by', 'updated')
+    sort_direction = request.POST.get('sort_direction')
+    mode = request.POST.get('mode', 'edit')
+    redirect_item_id = None
+    try:
+        if item_id_value not in (None, ''):
+            redirect_item_id = int(item_id_value)
+    except (TypeError, ValueError):
+        redirect_item_id = None
+
+    try:
+        tag_id = int(request.POST.get('tag_id'))
+    except (TypeError, ValueError):
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': 'Select a valid tag to delete.'}, status=400)
+        messages.error(request, 'Select a valid tag to delete.')
+        return redirect(build_flip_journal_redirect(redirect_item_id, item_name, sort_by, mode, sort_direction))
+
+    tag = FlipJournalTag.objects.filter(id=tag_id, user=request.user).first()
+    if tag is None:
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': 'That tag could not be found.'}, status=404)
+        messages.error(request, 'That tag could not be found.')
+        return redirect(build_flip_journal_redirect(redirect_item_id, item_name, sort_by, mode, sort_direction))
+
+    tag_name = tag.name
+    tag.delete()
+    if is_ajax:
+        return JsonResponse({'success': True, 'tag_id': tag_id, 'tag_name': tag_name})
+    messages.success(request, f'Tag \"{tag_name}\" deleted.')
+    return redirect(build_flip_journal_redirect(redirect_item_id, item_name, sort_by, mode, sort_direction))
+
+
+def save_flip_journal_exit(request):
+    if request.method != 'POST':
+        return redirect('flip_journal')
+    if not request.user.is_authenticated:
+        return redirect('auth')
+
+    try:
+        item_id = int(request.POST.get('item_id'))
+        sell_flip_id = int(request.POST.get('sell_flip_id'))
+    except (TypeError, ValueError):
+        messages.error(request, 'Select a valid sell transaction.')
+        return redirect('flip_journal')
+
+    item_name = (request.POST.get('item_name') or '').strip()
+    sort_by = request.POST.get('sort_by', 'updated')
+    sort_direction = request.POST.get('sort_direction')
+    mode = request.POST.get('mode', 'view')
+    sell_flip = Flip.objects.filter(
+        id=sell_flip_id,
+        user=request.user,
+        item_id=item_id,
+        item_name=item_name,
+        type='sell',
+    ).first()
+    if sell_flip is None:
+        messages.error(request, 'That sell transaction could not be found.')
+        return redirect(build_flip_journal_redirect(item_id, item_name, sort_by, mode, sort_direction))
+
+    journal = get_or_create_flip_journal(request.user, item_id, item_name)
+    reason_html = sanitize_rich_text(request.POST.get('reason_html'))
+    existing_record = FlipJournalExit.objects.filter(journal=journal, sell_flip=sell_flip).first()
+
+    if not reason_html:
+        if existing_record:
+            existing_record.delete()
+            messages.success(request, 'Exit reason cleared.')
+        else:
+            messages.error(request, 'Write an exit reason before saving it.')
+        return redirect(build_flip_journal_redirect(item_id, item_name, sort_by, mode, sort_direction))
+
+    if existing_record:
+        existing_record.reason_html = reason_html
+        existing_record.save(update_fields=['reason_html', 'updated_at'])
+    else:
+        FlipJournalExit.objects.create(
+            journal=journal,
+            sell_flip=sell_flip,
+            reason_html=reason_html,
+        )
+
+    messages.success(request, 'Exit reason saved.')
+    return redirect(build_flip_journal_redirect(item_id, item_name, sort_by, mode, sort_direction))
+
+
 def delete_flip(request, item_id):
     """Delete all flips for a specific item"""
     if request.method == 'POST':
@@ -1719,6 +2256,7 @@ def delete_flip(request, item_id):
         Flip.objects.filter(user=user, item_id=item_id).delete()
         # Also delete the FlipProfit for this item
         FlipProfit.objects.filter(user=user, item_id=item_id).delete()
+        FlipJournal.objects.filter(user=user, item_id=item_id).delete()
         messages.success(request, 'Flip deleted successfully')
     return redirect('flips')
 
@@ -1740,6 +2278,7 @@ def delete_single_flip(request):
             else:
                 # No more flips, delete FlipProfit
                 FlipProfit.objects.filter(user=user, item_id=item_id).delete()
+                FlipJournal.objects.filter(user=user, item_id=item_id).delete()
     return redirect('flips')
 
 

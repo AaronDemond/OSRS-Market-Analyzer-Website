@@ -1,5 +1,21 @@
 from django.contrib import admin
-from .models import Flip, Alert, AlertGroup, FlipProfit, FavoriteItem, HourlyItemVolume, FiveMinTimeSeries, OneHourTimeSeries, SixHourTimeSeries, TwentyFourHourTimeSeries
+from .models import (
+    Alert,
+    AlertGroup,
+    FavoriteItem,
+    FiveMinTimeSeries,
+    Flip,
+    FlipJournal,
+    FlipJournalExit,
+    FlipJournalNote,
+    FlipJournalStrategy,
+    FlipJournalTag,
+    FlipProfit,
+    HourlyItemVolume,
+    OneHourTimeSeries,
+    SixHourTimeSeries,
+    TwentyFourHourTimeSeries,
+)
 
 @admin.register(FlipProfit)
 class FlipProfitAdmin(admin.ModelAdmin):
@@ -10,6 +26,37 @@ class FlipAdmin(admin.ModelAdmin):
     list_display = ('item_name', 'quantity', 'price', 'type', 'date')
     list_filter = ('type', 'date')
     search_fields = ('item_name',)
+
+
+@admin.register(FlipJournal)
+class FlipJournalAdmin(admin.ModelAdmin):
+    list_display = ('user', 'item_name', 'confidence', 'strategy', 'updated_at')
+    list_filter = ('confidence', 'updated_at')
+    search_fields = ('item_name', 'user__username')
+
+
+@admin.register(FlipJournalStrategy)
+class FlipJournalStrategyAdmin(admin.ModelAdmin):
+    list_display = ('user', 'title', 'updated_at')
+    search_fields = ('title', 'user__username')
+
+
+@admin.register(FlipJournalTag)
+class FlipJournalTagAdmin(admin.ModelAdmin):
+    list_display = ('user', 'name', 'created_at')
+    search_fields = ('name', 'user__username')
+
+
+@admin.register(FlipJournalNote)
+class FlipJournalNoteAdmin(admin.ModelAdmin):
+    list_display = ('journal', 'created_at', 'updated_at')
+    list_filter = ('created_at',)
+
+
+@admin.register(FlipJournalExit)
+class FlipJournalExitAdmin(admin.ModelAdmin):
+    list_display = ('journal', 'sell_flip', 'updated_at')
+    search_fields = ('journal__item_name',)
 
 
 @admin.register(Alert)

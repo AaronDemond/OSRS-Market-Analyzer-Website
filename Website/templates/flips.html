@@ -597,7 +597,8 @@
 
     .btn-filter,
     .btn-historical,
-    .btn-equity-chart {
+    .btn-equity-chart,
+    .btn-journal {
         padding: 8px 14px;
         background: var(--surface);
         color: var(--text);
@@ -610,6 +611,7 @@
         align-items: center;
         gap: 6px;
         white-space: nowrap;
+        text-decoration: none;
     }
 
     .btn-filter:hover,
@@ -655,6 +657,15 @@
         color: var(--primary);
     }
 
+    .btn-journal:hover,
+    .btn-journal:focus-visible {
+        background: rgba(124, 58, 237, 0.1);
+        border-color: #7C3AED;
+        color: #6D28D9;
+        outline: none;
+        text-decoration: none;
+    }
+
     .btn-filter svg {
         width: 16px;
         height: 16px;
@@ -666,6 +677,11 @@
     }
 
     .btn-equity-chart svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .btn-journal svg {
         width: 16px;
         height: 16px;
     }
@@ -2224,7 +2240,7 @@
         }
 
         /* ===== ICON-ONLY BUTTONS ON MOBILE ===== */
-        /* What: Remove text labels from Historical, Equity Chart, and Filter buttons
+        /* What: Remove text labels from Historical, Journal, Equity Chart, and Filter buttons
            Why: Save horizontal space while keeping functionality
            How: Hide text spans, ensure icons are properly sized */
         
@@ -2241,6 +2257,24 @@
         }
 
         .btn-historical svg {
+            width: 20px;
+            height: 20px;
+            margin: 0;
+        }
+
+        /* Journal button - icon only */
+        .btn-journal {
+            padding: 8px 10px;
+            min-width: 44px;
+            min-height: 44px;
+            justify-content: center;
+        }
+
+        .btn-journal .btn-text {
+            display: none;
+        }
+
+        .btn-journal svg {
             width: 20px;
             height: 20px;
             margin: 0;
@@ -2909,6 +2943,13 @@
             </svg>
             <span class="btn-text">Historical</span>
         </button>
+        <a href="{% url 'flip_journal' %}" class="btn-journal" id="journalViewBtn">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 12h6m-6 4h6M8 4h8a2 2 0 012 2v12l-4-2-4 2-4-2-4 2V6a2 2 0 012-2h8z" />
+            </svg>
+            <span class="btn-text">Journal</span>
+        </a>
         <button type="button" class="btn-equity-chart" id="equityChartBtn" data-bs-toggle="modal" data-bs-target="#equityChartModal">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
