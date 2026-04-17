@@ -3574,7 +3574,7 @@
                                           The discount % is shown on the right side of the row.
                                 ============================================================================= -->
                                 <div class="triggered-item-details">
-                                    Fair: {{ item.fair_value|intcomma }} | Sell Ratio: {{ item.sell_ratio }} | Vol: {{ item.spike_volume|intcomma }}
+                                    Fair: {{ item.fair_value|intcomma }} | Sell Ratio: {{ item.sell_ratio }} | Vol: {% if item.volume is not None %}{{ item.volume|intcomma }}{% else %}N/A{% endif %}
                                 </div>
                                 {% endif %}
                             </div>

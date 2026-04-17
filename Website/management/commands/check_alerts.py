@@ -2948,7 +2948,7 @@ class Command(BaseCommand):
 
     def _evaluate_single_item_dump(self, item_id_str, all_prices, item_state,
                                     alpha_fair, alpha_vol, alpha_var,
-                                    market_drift, alert):
+                                    market_drift, alert, hourly_volume):
         """
         Evaluate dump conditions for a single item, updating EWMA state in place.
 
@@ -2972,6 +2972,7 @@ class Command(BaseCommand):
             alpha_var: EWMA alpha for variance.
             market_drift: Current market drift value.
             alert: Alert model instance with dump configuration.
+            hourly_volume: Latest hourly GP volume for this item.
 
         Returns:
             dict: Triggered item data if all conditions met, None otherwise.
@@ -3123,6 +3124,8 @@ class Command(BaseCommand):
             'sell_ratio': round(sell_ratio, 4),
             'rel_vol': round(rel_vol, 2),
             'shock_sigma': round(shock_sigma, 2),
+            'volume': hourly_volume,
+            'spike_volume': hourly_volume,
         }
 
     def check_dump_alert(self, alert, all_prices):
@@ -3199,7 +3202,7 @@ class Command(BaseCommand):
             result = self._evaluate_single_item_dump(
                 item_id_str, all_prices, item_state,
                 alpha_fair, alpha_vol, alpha_var,
-                market_drift, alert
+                market_drift, alert, volume
             )
             if result:
                 triggered_items.append(result)
