@@ -1,0 +1,1710 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Flip Journal{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
+<style>
+    :root {
+        --journal-surface: #FFFFFF;
+        --journal-surface-2: #F8FAFC;
+        --journal-border: #E5E7EB;
+        --journal-text: #1F2937;
+        --journal-muted: #6B7280;
+        --journal-primary: #6366F1;
+        --journal-primary-deep: #5B21B6;
+        --journal-success: #16A34A;
+        --journal-danger: #DC2626;
+    }
+
+    .journal-page {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .journal-messages {
+        margin-top: -4px;
+    }
+
+    .triggered-notification {
+        background: linear-gradient(135deg, #22C55E 0%, #16A34A 100%);
+        color: white;
+        padding: 14px 40px 14px 16px;
+        border-radius: 10px;
+        margin-bottom: 12px;
+        position: relative;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        max-height: 100px;
+        overflow: hidden;
+    }
+
+    .triggered-notification.dismissing {
+        opacity: 0;
+        transform: translateX(20px);
+        max-height: 0;
+        margin-bottom: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+
+    .triggered-notification .dismiss-btn {
+        position: absolute;
+        top: 50%;
+        right: 12px;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: white;
+        font-size: 20px;
+        cursor: pointer;
+        font-weight: bold;
+        line-height: 1;
+        opacity: 0.8;
+    }
+
+    .triggered-notification .dismiss-btn:hover {
+        opacity: 1;
+    }
+
+    .triggered-notification.error-notification {
+        background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+    }
+
+    .journal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .journal-back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    .journal-back-link:hover {
+        color: #764ba2;
+    }
+
+    .journal-back-link svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .journal-title h1 {
+        margin: 0 0 6px 0;
+        font-size: 1.9rem;
+        color: #1a1a2e;
+    }
+
+    .journal-title p {
+        margin: 0;
+        color: var(--journal-muted);
+        max-width: 780px;
+    }
+
+    .journal-layout {
+        display: grid;
+        grid-template-columns: 360px minmax(0, 1fr);
+        gap: 20px;
+        align-items: start;
+    }
+
+    .journal-panel {
+        background: var(--journal-surface);
+        border: 1px solid var(--journal-border);
+        border-radius: 18px;
+        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.06);
+        overflow: hidden;
+    }
+
+    .journal-panel-header {
+        padding: 18px 20px;
+        border-bottom: 1px solid var(--journal-border);
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%);
+    }
+
+    .journal-panel-header h2,
+    .journal-panel-header h3 {
+        margin: 0;
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: var(--journal-text);
+    }
+
+    .journal-panel-header p {
+        margin: 6px 0 0 0;
+        color: var(--journal-muted);
+        font-size: 0.95rem;
+    }
+
+    .journal-sidebar-controls {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 12px;
+    }
+
+    .journal-sort-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--journal-border);
+        color: var(--journal-muted);
+        background: #fff;
+        font-size: 0.86rem;
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+    .journal-sort-pill:hover,
+    .journal-sort-pill.is-active {
+        color: var(--journal-primary);
+        border-color: rgba(99, 102, 241, 0.35);
+        background: rgba(99, 102, 241, 0.08);
+    }
+
+    .journal-items-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .journal-items-table thead {
+        background: linear-gradient(90deg, #7C3AED 0%, #6366F1 50%, #4F46E5 100%);
+    }
+
+    .journal-items-table th {
+        padding: 0;
+        color: #fff;
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .journal-sort-header {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        padding: 12px 14px;
+        color: inherit;
+        text-decoration: none;
+    }
+
+    .journal-sort-header:hover {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    .journal-sort-header.is-active {
+        background: rgba(255, 255, 255, 0.12);
+    }
+
+    .journal-sort-icon {
+        font-size: 0.85rem;
+        line-height: 1;
+        opacity: 0.9;
+    }
+
+    .journal-items-table td {
+        padding: 12px 14px;
+        border-top: 1px solid var(--journal-border);
+        font-size: 0.93rem;
+        vertical-align: middle;
+    }
+
+    .journal-items-table tbody tr {
+        transition: background-color 0.15s ease;
+    }
+
+    .journal-items-table tbody tr:hover {
+        background: #EEF2FF;
+    }
+
+    .journal-items-table tbody tr.is-selected {
+        background: rgba(99, 102, 241, 0.12);
+    }
+
+    .journal-item-link {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: inherit;
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    .journal-item-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        background: var(--journal-surface-2);
+        border: 1px solid var(--journal-border);
+        object-fit: contain;
+        padding: 4px;
+        flex-shrink: 0;
+    }
+
+    .journal-status-dot {
+        display: inline-block;
+        width: 9px;
+        height: 9px;
+        border-radius: 999px;
+        background: #D1D5DB;
+    }
+
+    .journal-status-dot.has-journal {
+        background: #8B5CF6;
+        box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.12);
+    }
+
+    .journal-main {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .mobile-journal-picker {
+        display: none;
+    }
+
+    .mobile-journal-picker details[open] summary {
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+    }
+
+    .mobile-picker-summary {
+        list-style: none;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 16px 18px;
+        border: 1px solid var(--journal-border);
+        border-radius: 16px;
+        background: var(--journal-surface);
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+        cursor: pointer;
+    }
+
+    .mobile-picker-summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .mobile-picker-summary-text {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+    }
+
+    .mobile-picker-copy {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+    }
+
+    .mobile-picker-label {
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--journal-muted);
+    }
+
+    .mobile-picker-value {
+        font-size: 0.98rem;
+        font-weight: 700;
+        color: var(--journal-text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .mobile-picker-arrow {
+        color: var(--journal-primary);
+        font-size: 1.2rem;
+        line-height: 1;
+        flex-shrink: 0;
+    }
+
+    .mobile-picker-panel {
+        margin-top: -1px;
+        padding: 16px;
+        border: 1px solid var(--journal-border);
+        border-top: none;
+        border-bottom-left-radius: 16px;
+        border-bottom-right-radius: 16px;
+        background: var(--journal-surface);
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+    }
+
+    .mobile-picker-items {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-height: 280px;
+        overflow-y: auto;
+        margin-top: 14px;
+    }
+
+    .mobile-picker-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 14px;
+        border: 1px solid var(--journal-border);
+        border-radius: 14px;
+        background: var(--journal-surface-2);
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .mobile-picker-item.is-selected {
+        border-color: rgba(99, 102, 241, 0.28);
+        background: rgba(99, 102, 241, 0.08);
+    }
+
+    .mobile-picker-item-main {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+    }
+
+    .mobile-picker-item-copy {
+        min-width: 0;
+    }
+
+    .mobile-picker-item-name {
+        font-weight: 700;
+        color: var(--journal-text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .mobile-picker-item-meta {
+        margin-top: 2px;
+        font-size: 0.84rem;
+        color: var(--journal-muted);
+    }
+
+    .mobile-picker-item-side {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+
+    .journal-summary-card {
+        padding: 20px;
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .journal-summary-item {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .journal-summary-item h2 {
+        margin: 0 0 4px 0;
+        font-size: 1.55rem;
+        color: var(--journal-text);
+    }
+
+    .journal-summary-item p {
+        margin: 0;
+        color: var(--journal-muted);
+    }
+
+    .journal-stat-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(110px, 1fr));
+        gap: 12px;
+        min-width: 320px;
+    }
+
+    .journal-stat {
+        padding: 14px;
+        border-radius: 14px;
+        background: var(--journal-surface-2);
+        border: 1px solid var(--journal-border);
+    }
+
+    .journal-stat-label {
+        display: block;
+        margin-bottom: 6px;
+        color: var(--journal-muted);
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .journal-stat-value {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--journal-text);
+    }
+
+    .journal-stat-value.positive {
+        color: var(--journal-success);
+    }
+
+    .journal-stat-value.negative {
+        color: var(--journal-danger);
+    }
+
+    .positive {
+        color: var(--journal-success);
+        font-weight: 700;
+    }
+
+    .negative {
+        color: var(--journal-danger);
+        font-weight: 700;
+    }
+
+    .journal-section {
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+    }
+
+    .journal-empty-state {
+        padding: 18px;
+        border-radius: 14px;
+        border: 1px dashed rgba(99, 102, 241, 0.35);
+        background: rgba(99, 102, 241, 0.06);
+        color: #4338CA;
+        font-weight: 600;
+    }
+
+    .journal-form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+    }
+
+    .journal-field {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .journal-field.full-width {
+        grid-column: 1 / -1;
+    }
+
+    .journal-field label {
+        font-weight: 700;
+        color: var(--journal-text);
+    }
+
+    .journal-field-hint {
+        color: var(--journal-muted);
+        font-size: 0.88rem;
+    }
+
+    .journal-input,
+    .journal-select {
+        width: 100%;
+        min-height: 44px;
+        border-radius: 10px;
+        border: 1px solid var(--journal-border);
+        padding: 10px 12px;
+        font-size: 0.96rem;
+        color: var(--journal-text);
+        background: #fff;
+    }
+
+    .journal-input:focus,
+    .journal-select:focus {
+        outline: none;
+        border-color: rgba(99, 102, 241, 0.5);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+    }
+
+    .confidence-row {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex-wrap: wrap;
+    }
+
+    .confidence-value {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 48px;
+        min-height: 36px;
+        padding: 0 10px;
+        border-radius: 999px;
+        background: rgba(99, 102, 241, 0.12);
+        color: var(--journal-primary);
+        font-weight: 700;
+    }
+
+    .journal-slider {
+        flex: 1;
+        min-width: 220px;
+        accent-color: var(--journal-primary);
+    }
+
+    .quill-shell {
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid var(--journal-border);
+        background: #fff;
+    }
+
+    .quill-editor {
+        min-height: 170px;
+        background: #fff;
+    }
+
+    .quill-editor.note-editor,
+    .quill-editor.exit-editor,
+    .quill-editor.strategy-editor {
+        min-height: 140px;
+    }
+
+    .ql-toolbar.ql-snow,
+    .ql-container.ql-snow {
+        border: none;
+    }
+
+    .journal-tags-preview,
+    .journal-chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .journal-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(99, 102, 241, 0.08);
+        color: var(--journal-primary-deep);
+        font-weight: 600;
+        font-size: 0.86rem;
+    }
+
+    .tag-field-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 260px;
+        gap: 12px;
+        align-items: start;
+    }
+
+    .tag-field {
+        margin-bottom: 12px;
+    }
+
+    .tag-library-list {
+        max-height: 148px;
+        overflow-y: auto;
+        padding: 12px;
+        border: 1px solid var(--journal-border);
+        border-radius: 12px;
+        background: var(--journal-surface-2);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .tag-library-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    .tag-checkbox-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--journal-text);
+        font-weight: 600;
+        font-size: 0.92rem;
+        cursor: pointer;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .tag-checkbox-item input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        accent-color: var(--journal-primary);
+        flex-shrink: 0;
+    }
+
+    .tag-checkbox-item span {
+        line-height: 1.4;
+    }
+
+    .tag-delete-button {
+        width: 24px;
+        height: 24px;
+        border: none;
+        border-radius: 999px;
+        background: transparent;
+        color: var(--journal-muted);
+        font-size: 16px;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+
+    .tag-delete-button:hover {
+        background: rgba(220, 38, 38, 0.1);
+        color: var(--journal-danger);
+    }
+
+    .strategy-preview,
+    .timeline-entry,
+    .exit-card {
+        padding: 16px;
+        border-radius: 16px;
+        border: 1px solid var(--journal-border);
+        background: var(--journal-surface-2);
+    }
+
+    .strategy-preview h4,
+    .timeline-entry h4,
+    .exit-card h4 {
+        margin: 0 0 8px 0;
+        font-size: 1rem;
+        color: var(--journal-text);
+    }
+
+    .journal-rich-content {
+        color: var(--journal-text);
+        line-height: 1.7;
+    }
+
+    .journal-rich-content p:last-child {
+        margin-bottom: 0;
+    }
+
+    .reader-grid {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 18px;
+    }
+
+    .timeline-list,
+    .exit-list {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .timeline-meta,
+    .exit-meta {
+        margin-bottom: 10px;
+        color: var(--journal-muted);
+        font-size: 0.88rem;
+    }
+
+    .journal-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .note-editor-shell {
+        margin-bottom: 12px;
+    }
+
+    .journal-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 44px;
+        padding: 10px 16px;
+        border-radius: 10px;
+        border: 1px solid transparent;
+        background: linear-gradient(135deg, #7C3AED 0%, #6366F1 100%);
+        color: #fff;
+        font-weight: 700;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .journal-button:hover {
+        color: #fff;
+        transform: translateY(-1px);
+        box-shadow: 0 12px 24px rgba(99, 102, 241, 0.18);
+    }
+
+    .journal-button.secondary {
+        background: #fff;
+        color: var(--journal-text);
+        border-color: var(--journal-border);
+        box-shadow: none;
+    }
+
+    .journal-button.secondary:hover {
+        color: var(--journal-primary);
+        border-color: rgba(99, 102, 241, 0.35);
+    }
+
+    .journal-button.danger {
+        background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
+    }
+
+    .journal-muted-note {
+        color: var(--journal-muted);
+        font-size: 0.9rem;
+    }
+
+    .journal-no-data {
+        padding: 18px;
+        border-radius: 14px;
+        border: 1px dashed var(--journal-border);
+        color: var(--journal-muted);
+        background: #fff;
+    }
+
+    .strategy-create-fields {
+        display: none;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .strategy-create-fields.is-visible {
+        display: flex;
+    }
+
+    #selectedStrategyPreviewBlock {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    @media (max-width: 1200px) {
+        .journal-layout,
+        .reader-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .journal-sidebar {
+            display: none;
+        }
+
+        .mobile-journal-picker {
+            display: block;
+        }
+
+        .journal-stat-grid {
+            min-width: 0;
+            width: 100%;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .journal-summary-item {
+            display: none;
+        }
+
+        .journal-summary-card {
+            justify-content: flex-start;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .journal-form-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .tag-field-row {
+            grid-template-columns: 1fr;
+        }
+
+        .journal-layout {
+            gap: 16px;
+        }
+
+        .journal-panel-header,
+        .journal-section,
+        .journal-summary-card {
+            padding: 16px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="journal-page">
+    <div class="journal-header">
+        <div class="journal-title">
+            <a class="journal-back-link" href="{% url 'flips' %}">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+                Back to My Flips
+            </a>
+            <h1>Flip Journal</h1>
+            <p>Track the thesis behind each item, reuse strategies and tags, keep timestamped notes, and attach exit reasoning directly to realized sells.</p>
+        </div>
+    </div>
+
+    {% if messages %}
+        <div class="journal-messages">
+            {% for message in messages %}
+                <div class="triggered-notification status-notification{% if 'error' in message.tags %} error-notification{% endif %}">
+                    {{ message }}
+                    <button class="dismiss-btn" onclick="dismissStatusNotification(this)">&times;</button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    {% if not journal_items %}
+        <div class="journal-panel">
+            <div class="journal-section">
+                <div class="journal-no-data">You need at least one flip before you can start journaling.</div>
+                <div class="journal-actions">
+                    <a href="{% url 'flips' %}" class="journal-button">Go to My Flips</a>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="journal-layout">
+            <aside class="journal-panel journal-sidebar">
+                <div class="journal-panel-header">
+                    <h2>Your flipped items</h2>
+                    <p>Pick an item to load its journal. Sorting lets you read the journal list by recency or profitability.</p>
+                </div>
+                <div style="overflow:auto;">
+                    <table class="journal-items-table">
+                        <thead>
+                            <tr>
+                                <th>
+                                    <a
+                                        href="{% url 'flip_journal' %}?sort=alphabetical&direction={% if sort_by == 'alphabetical' and sort_direction == 'asc' %}desc{% else %}asc{% endif %}{% if selected_item %}&item_id={{ selected_item.item_id }}&item_name={{ selected_item.item_name|urlencode }}{% endif %}{% if is_edit_mode %}&mode=edit{% endif %}"
+                                        class="journal-sort-header {% if sort_by == 'alphabetical' %}is-active{% endif %}"
+                                    >
+                                        <span>Item</span>
+                                        <span class="journal-sort-icon">
+                                            {% if sort_by == 'alphabetical' %}
+                                                {% if sort_direction == 'asc' %}↑{% else %}↓{% endif %}
+                                            {% else %}
+                                                ↕
+                                            {% endif %}
+                                        </span>
+                                    </a>
+                                </th>
+                                <th style="width: 88px;">
+                                    <a
+                                        href="{% url 'flip_journal' %}?sort=realized&direction={% if sort_by == 'realized' and sort_direction == 'desc' %}asc{% else %}desc{% endif %}{% if selected_item %}&item_id={{ selected_item.item_id }}&item_name={{ selected_item.item_name|urlencode }}{% endif %}{% if is_edit_mode %}&mode=edit{% endif %}"
+                                        class="journal-sort-header {% if sort_by == 'realized' %}is-active{% endif %}"
+                                    >
+                                        <span>Realized</span>
+                                        <span class="journal-sort-icon">
+                                            {% if sort_by == 'realized' %}
+                                                {% if sort_direction == 'asc' %}↑{% else %}↓{% endif %}
+                                            {% else %}
+                                                ↕
+                                            {% endif %}
+                                        </span>
+                                    </a>
+                                </th>
+                                <th style="width: 70px;">State</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in journal_items %}
+                                <tr class="{% if selected_item and selected_item.item_id == item.item_id and selected_item.item_name == item.item_name %}is-selected{% endif %}">
+                                    <td>
+                                        <a
+                                            href="{% url 'flip_journal' %}?item_id={{ item.item_id }}&item_name={{ item.item_name|urlencode }}&sort={{ sort_by }}&direction={{ sort_direction }}"
+                                            class="journal-item-link"
+                                        >
+                                            {% if item.icon_url %}
+                                                <img src="{{ item.icon_url }}" alt="{{ item.item_name }}" class="journal-item-icon">
+                                            {% else %}
+                                                <div class="journal-item-icon"></div>
+                                            {% endif %}
+                                            <span>{{ item.item_name }}</span>
+                                        </a>
+                                    </td>
+                                    <td class="{% if item.realized_net >= 0 %}positive{% else %}negative{% endif %}">
+                                        {% if item.realized_net >= 0 %}+{% endif %}{{ item.realized_net|intcomma }}
+                                    </td>
+                                    <td>
+                                        <span class="journal-status-dot {% if item.journal_exists %}has-journal{% endif %}" title="{% if item.journal_exists %}Journal exists{% else %}No journal yet{% endif %}"></span>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </aside>
+
+            <section class="journal-main">
+                <div class="mobile-journal-picker">
+                    <details {% if mobile_picker_open or not selected_item %}open{% endif %}>
+                        <summary class="mobile-picker-summary">
+                            <div class="mobile-picker-summary-text">
+                                {% if selected_item and selected_item.icon_url %}
+                                    <img src="{{ selected_item.icon_url }}" alt="{{ selected_item.item_name }}" class="journal-item-icon">
+                                {% else %}
+                                    <div class="journal-item-icon"></div>
+                                {% endif %}
+                                <div class="mobile-picker-copy">
+                                    <span class="mobile-picker-label">Journal item</span>
+                                    <span class="mobile-picker-value">
+                                        {% if selected_item %}
+                                            {{ selected_item.item_name }}
+                                        {% else %}
+                                            Choose an item
+                                        {% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                            <span class="mobile-picker-arrow">▾</span>
+                        </summary>
+                        <div class="mobile-picker-panel">
+                            <div class="journal-sidebar-controls">
+                                <a href="{% url 'flip_journal' %}?sort=alphabetical&direction=asc&picker=open{% if selected_item %}&item_id={{ selected_item.item_id }}&item_name={{ selected_item.item_name|urlencode }}{% endif %}{% if is_edit_mode %}&mode=edit{% endif %}" class="journal-sort-pill {% if sort_by == 'alphabetical' %}is-active{% endif %}">A-Z</a>
+                                <a href="{% url 'flip_journal' %}?sort=most_profitable&direction=desc&picker=open{% if selected_item %}&item_id={{ selected_item.item_id }}&item_name={{ selected_item.item_name|urlencode }}{% endif %}{% if is_edit_mode %}&mode=edit{% endif %}" class="journal-sort-pill {% if sort_by == 'most_profitable' %}is-active{% endif %}">Most profitable</a>
+                                <a href="{% url 'flip_journal' %}?sort=least_profitable&direction=asc&picker=open{% if selected_item %}&item_id={{ selected_item.item_id }}&item_name={{ selected_item.item_name|urlencode }}{% endif %}{% if is_edit_mode %}&mode=edit{% endif %}" class="journal-sort-pill {% if sort_by == 'least_profitable' %}is-active{% endif %}">Least profitable</a>
+                            </div>
+                            <div class="mobile-picker-items">
+                                {% for item in journal_items %}
+                                    <a
+                                        href="{% url 'flip_journal' %}?item_id={{ item.item_id }}&item_name={{ item.item_name|urlencode }}&sort={{ sort_by }}&direction={{ sort_direction }}"
+                                        class="mobile-picker-item {% if selected_item and selected_item.item_id == item.item_id and selected_item.item_name == item.item_name %}is-selected{% endif %}"
+                                    >
+                                        <div class="mobile-picker-item-main">
+                                            {% if item.icon_url %}
+                                                <img src="{{ item.icon_url }}" alt="{{ item.item_name }}" class="journal-item-icon">
+                                            {% else %}
+                                                <div class="journal-item-icon"></div>
+                                            {% endif %}
+                                            <div class="mobile-picker-item-copy">
+                                                <div class="mobile-picker-item-name">{{ item.item_name }}</div>
+                                                <div class="mobile-picker-item-meta">
+                                                    {% if item.realized_net >= 0 %}+{% endif %}{{ item.realized_net|intcomma }} gp realized
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mobile-picker-item-side">
+                                            <span class="journal-status-dot {% if item.journal_exists %}has-journal{% endif %}" title="{% if item.journal_exists %}Journal exists{% else %}No journal yet{% endif %}"></span>
+                                        </div>
+                                    </a>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </details>
+                </div>
+
+                {% if selected_item %}
+                    <div class="journal-panel">
+                        <div class="journal-summary-card">
+                            <div class="journal-summary-item">
+                                {% if selected_item.icon_url %}
+                                    <img src="{{ selected_item.icon_url }}" alt="{{ selected_item.item_name }}" class="journal-item-icon" style="width:52px;height:52px;border-radius:14px;">
+                                {% else %}
+                                    <div class="journal-item-icon" style="width:52px;height:52px;border-radius:14px;"></div>
+                                {% endif %}
+                                <div>
+                                    <h2>{{ selected_item.item_name }}</h2>
+                                    <p>
+                                        {% if journal_exists %}
+                                            Journal updated {{ journal.updated_at|date:"M j, Y g:i A" }}
+                                        {% else %}
+                                            No journal yet for this item
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="journal-stat-grid">
+                                <div class="journal-stat">
+                                    <span class="journal-stat-label">Quantity Held</span>
+                                    <span class="journal-stat-value">{{ selected_item.quantity_held|intcomma }}</span>
+                                </div>
+                                <div class="journal-stat">
+                                    <span class="journal-stat-label">Realized Net</span>
+                                    <span class="journal-stat-value {% if selected_item.realized_net >= 0 %}positive{% else %}negative{% endif %}">
+                                        {% if selected_item.realized_net >= 0 %}+{% endif %}{{ selected_item.realized_net|intcomma }}
+                                    </span>
+                                </div>
+                                <div class="journal-stat">
+                                    <span class="journal-stat-label">Unrealized Net</span>
+                                    <span class="journal-stat-value {% if selected_item.unrealized_net >= 0 %}positive{% else %}negative{% endif %}">
+                                        {% if selected_item.unrealized_net >= 0 %}+{% endif %}{{ selected_item.unrealized_net|intcomma }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if is_edit_mode %}
+                        <div class="journal-panel">
+                            <div class="journal-panel-header">
+                                <h3>Journal editor</h3>
+                                <p>Capture the entry thesis, confidence, reusable strategy, and reusable tags for this item.</p>
+                            </div>
+                            <div class="journal-section">
+                                {% if not journal_exists %}
+                                    <div class="journal-empty-state">No entry exists yet. Fill out the sections below to create this journal.</div>
+                                {% endif %}
+
+                                <div class="journal-actions">
+                                    <a class="journal-button secondary" href="{% url 'flip_journal' %}?item_id={{ selected_item.item_id }}&item_name={{ selected_item.item_name|urlencode }}&sort={{ sort_by }}&direction={{ sort_direction }}">Back to reader</a>
+                                    <a class="journal-button secondary" href="{% url 'item_detail' selected_item.item_id %}">View item flips</a>
+                                </div>
+
+                                <form method="post" action="{% url 'save_flip_journal' %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="item_id" value="{{ selected_item.item_id }}">
+                                    <input type="hidden" name="item_name" value="{{ selected_item.item_name }}">
+                                    <input type="hidden" name="sort_by" value="{{ sort_by }}">
+                                    <input type="hidden" name="sort_direction" value="{{ sort_direction }}">
+                                    <input type="hidden" name="mode" value="edit">
+                                    <input type="hidden" name="entry_reason_html" id="entryReasonInput" value="">
+                                    <input type="hidden" name="strategy_content_html" id="strategyContentInput" value="">
+
+                                    <div class="journal-form-grid">
+                                        <div class="journal-field full-width">
+                                            <label for="entryReasonEditor">Entry reason</label>
+                                            <span class="journal-field-hint">This is item-specific and stays with this journal.</span>
+                                            <div class="quill-shell">
+                                                <div
+                                                    id="entryReasonEditor"
+                                                    class="quill-editor"
+                                                    data-hidden-input="entryReasonInput"
+                                                    data-initial-html="{{ journal.entry_reason_html|default:''|escape }}"
+                                                ></div>
+                                            </div>
+                                        </div>
+
+                                        <div class="journal-field">
+                                            <label for="confidenceSlider">Confidence</label>
+                                            <div class="confidence-row">
+                                                <input
+                                                    id="confidenceSlider"
+                                                    class="journal-slider"
+                                                    type="range"
+                                                    name="confidence"
+                                                    min="0"
+                                                    max="10"
+                                                    step="1"
+                                                    value="{{ journal.confidence|default:5 }}"
+                                                >
+                                                <span class="confidence-value" id="confidenceValue">{{ journal.confidence|default:5 }}</span>
+                                            </div>
+                                            <span class="journal-field-hint">0 = weakest conviction, 10 = strongest conviction.</span>
+                                        </div>
+
+                                        <div class="journal-field">
+                                            <label for="strategyChoice">Strategy</label>
+                                            <select class="journal-select" id="strategyChoice" name="strategy_choice">
+                                                <option value="">No reusable strategy</option>
+                                                {% for strategy in strategies %}
+                                                    <option
+                                                        value="{{ strategy.id }}"
+                                                        data-content="{{ strategy.content_html|escape }}"
+                                                        {% if journal and journal.strategy_id == strategy.id %}selected{% endif %}
+                                                    >
+                                                        {{ strategy.title }}
+                                                    </option>
+                                                {% endfor %}
+                                                <option value="__new__">Create new reusable strategy</option>
+                                            </select>
+                                            <span class="journal-field-hint">Choose a saved strategy or create a new reusable rich-text strategy document.</span>
+                                        </div>
+
+                                        <div class="journal-field full-width">
+                                            <div id="selectedStrategyPreviewBlock" style="display:none;">
+                                                <label for="strategyChoice">Selected Strategy</label>
+                                                <div id="selectedStrategyPreview" class="strategy-preview">
+                                                    <h4 id="selectedStrategyPreviewTitle"></h4>
+                                                    <div class="journal-rich-content" id="selectedStrategyPreviewBody"></div>
+                                                </div>
+                                            </div>
+                                            <div id="strategyCreateFields" class="strategy-create-fields">
+                                                <label for="strategyTitle">New strategy title</label>
+                                                <input type="text" id="strategyTitle" name="strategy_title" class="journal-input" placeholder="e.g. Slow accumulation into low-volume dips">
+                                                <div class="quill-shell">
+                                                    <div
+                                                        id="strategyBodyEditor"
+                                                        class="quill-editor strategy-editor"
+                                                        data-hidden-input="strategyContentInput"
+                                                        data-initial-html=""
+                                                    ></div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="journal-field full-width tag-field">
+                                            <label for="tagNamesInput">Tags</label>
+                                            <div class="tag-field-row">
+                                                <div>
+                                                    <input
+                                                        type="text"
+                                                        id="tagNamesInput"
+                                                        name="tag_names"
+                                                        class="journal-input"
+                                                        placeholder="Type comma-separated tags like swing trade, overnight, margin rebuild"
+                                                        value="{{ journal_tags_csv }}"
+                                                    >
+                                                    <span class="journal-field-hint">Input tags as comma seperated values</span>
+                                                </div>
+                                                <div class="tag-library-list" id="tagLibraryList">
+                                                    {% for tag in reusable_tags %}
+                                                        <div class="tag-library-row" data-tag-row="{{ tag.id }}">
+                                                            <label class="tag-checkbox-item">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    class="tag-library-checkbox"
+                                                                    data-tag-name="{{ tag.name }}"
+                                                                    {% if tag in journal_tags %}checked{% endif %}
+                                                                >
+                                                                <span>{{ tag.name }}</span>
+                                                            </label>
+                                                            <button
+                                                                type="button"
+                                                                class="tag-delete-button"
+                                                                data-bs-toggle="modal"
+                                                                data-bs-target="#deleteTagModal"
+                                                                data-tag-id="{{ tag.id }}"
+                                                                data-tag-name="{{ tag.name }}"
+                                                                aria-label="Delete tag {{ tag.name }}"
+                                                            >
+                                                                &times;
+                                                            </button>
+                                                        </div>
+                                                    {% empty %}
+                                                        <div class="journal-muted-note">No reusable tags yet.</div>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                            <div class="journal-tags-preview" id="tagPreview">
+                                                {% for tag in journal_tags %}
+                                                    <span class="journal-chip">{{ tag.name }}</span>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="journal-actions">
+                                        <button type="submit" class="journal-button">Save journal</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div class="reader-grid">
+                            <div class="journal-panel">
+                                <div class="journal-panel-header">
+                                    <h3>Notes and reader view</h3>
+                                    <p>Add non-reusable timestamped notes, then read the journal back as a timeline.</p>
+                                </div>
+                                <div class="journal-section">
+                                    <form method="post" action="{% url 'add_flip_journal_note' %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="item_id" value="{{ selected_item.item_id }}">
+                                        <input type="hidden" name="item_name" value="{{ selected_item.item_name }}">
+                                        <input type="hidden" name="sort_by" value="{{ sort_by }}">
+                                        <input type="hidden" name="sort_direction" value="{{ sort_direction }}">
+                                        <input type="hidden" name="mode" value="edit">
+                                        <input type="hidden" name="note_content_html" id="noteContentInput" value="">
+
+                                        <div class="journal-field full-width">
+                                            <label for="noteEditor">Add timestamped note</label>
+                                            <div class="quill-shell note-editor-shell">
+                                                <div
+                                                    id="noteEditor"
+                                                    class="quill-editor note-editor"
+                                                    data-hidden-input="noteContentInput"
+                                                    data-initial-html=""
+                                                ></div>
+                                            </div>
+                                        </div>
+
+                                        <div class="journal-actions">
+                                            <button type="submit" class="journal-button secondary">Add note</button>
+                                        </div>
+                                    </form>
+
+                                    <div class="timeline-list">
+                                        {% if timeline %}
+                                            {% for event in timeline %}
+                                                <div class="timeline-entry">
+                                                    <div class="timeline-meta">
+                                                        {{ event.timestamp|date:"M j, Y g:i A" }}
+                                                        {% if event.meta %} • {{ event.meta }}{% endif %}
+                                                    </div>
+                                                    <h4>{{ event.title }}</h4>
+                                                    <div class="journal-rich-content">{{ event.content_html|safe }}</div>
+                                                </div>
+                                            {% endfor %}
+                                        {% else %}
+                                            <div class="journal-no-data">No timestamped notes or exit notes yet.</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="journal-panel">
+                                <div class="journal-panel-header">
+                                    <h3>Exit reasons</h3>
+                                    <p>Attach a rich-text exit reason directly to each realized sell or partial sell.</p>
+                                </div>
+                                <div class="journal-section">
+                                    <div class="exit-list">
+                                        {% if exit_rows %}
+                                            {% for exit_row in exit_rows %}
+                                                <div class="exit-card">
+                                                    <div class="exit-meta">
+                                                        {{ exit_row.flip.date|date:"M j, Y g:i A" }} • Sold {{ exit_row.flip.quantity|intcomma }}
+                                                        • Exit {{ exit_row.exit_percentage }}%
+                                                        • {% if exit_row.realized_pnl >= 0 %}+{% endif %}{{ exit_row.realized_pnl|intcomma }} gp
+                                                    </div>
+                                                    {% if exit_row.reason_html %}
+                                                        <div class="journal-rich-content" style="margin-bottom:14px;">{{ exit_row.reason_html|safe }}</div>
+                                                    {% endif %}
+                                                    <form method="post" action="{% url 'save_flip_journal_exit' %}">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="item_id" value="{{ selected_item.item_id }}">
+                                                        <input type="hidden" name="item_name" value="{{ selected_item.item_name }}">
+                                                        <input type="hidden" name="sort_by" value="{{ sort_by }}">
+                                                        <input type="hidden" name="sort_direction" value="{{ sort_direction }}">
+                                                        <input type="hidden" name="mode" value="edit">
+                                                        <input type="hidden" name="sell_flip_id" value="{{ exit_row.flip_id }}">
+                                                        <input type="hidden" name="reason_html" id="exitReasonInput-{{ exit_row.flip_id }}" value="">
+                                                        <div class="quill-shell" style="margin-bottom:12px;">
+                                                            <div
+                                                                id="exitReasonEditor-{{ exit_row.flip_id }}"
+                                                                class="quill-editor exit-editor"
+                                                                data-hidden-input="exitReasonInput-{{ exit_row.flip_id }}"
+                                                                data-initial-html="{{ exit_row.reason_html|default:''|escape }}"
+                                                            ></div>
+                                                        </div>
+                                                        <div class="journal-actions">
+                                                            <button type="submit" class="journal-button secondary">
+                                                                {% if exit_row.reason_html %}Update exit reason{% else %}Save exit reason{% endif %}
+                                                            </button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            {% endfor %}
+                                        {% else %}
+                                            <div class="journal-no-data">No sells have been recorded for this item yet.</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="journal-panel">
+                            <div class="journal-panel-header">
+                                <h3>Journal reader</h3>
+                            </div>
+                            <div class="journal-section">
+                                {% if journal_exists %}
+                                    <div class="timeline-entry">
+                                        <div class="timeline-meta">Core journal thesis{% if journal.confidence != None %} • Confidence {{ journal.confidence }}/10{% endif %}</div>
+                                        <h4>Entry reason</h4>
+                                        {% if journal.entry_reason_html %}
+                                            <div class="journal-rich-content">{{ journal.entry_reason_html|safe }}</div>
+                                        {% else %}
+                                            <div class="journal-muted-note">No entry reason has been written yet.</div>
+                                        {% endif %}
+                                        {% if journal.strategy %}
+                                            <div style="margin-top:14px;">
+                                                <h4 style="margin-bottom:6px;">Strategy: {{ journal.strategy.title }}</h4>
+                                                <div class="journal-rich-content">{{ journal.strategy.content_html|safe }}</div>
+                                            </div>
+                                        {% endif %}
+                                        {% if journal_tags %}
+                                            <div class="journal-chip-row" style="margin-top:14px;">
+                                                {% for tag in journal_tags %}
+                                                    <span class="journal-chip">{{ tag.name }}</span>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                {% else %}
+                                    <div class="journal-empty-state">No journal exits for this item yet. Click create journal to start one</div>
+                                {% endif %}
+
+                                <div class="journal-actions">
+                                    <a class="journal-button" href="{% url 'flip_journal' %}?item_id={{ selected_item.item_id }}&item_name={{ selected_item.item_name|urlencode }}&sort={{ sort_by }}&direction={{ sort_direction }}&mode=edit">
+                                        {% if journal_exists %}Edit journal{% else %}Create journal{% endif %}
+                                    </a>
+                                    <a class="journal-button secondary" href="{% url 'item_detail' selected_item.item_id %}">View item flips</a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="reader-grid">
+                            <div class="journal-panel">
+                                <div class="journal-panel-header">
+                                    <h3>Journal timeline</h3>
+                                    <p>Chronological notes and exit commentary for this item.</p>
+                                </div>
+                                <div class="journal-section">
+                                    <div class="timeline-list">
+                                        {% if timeline %}
+                                            {% for event in timeline %}
+                                                <div class="timeline-entry">
+                                                    <div class="timeline-meta">
+                                                        {{ event.timestamp|date:"M j, Y g:i A" }}
+                                                        {% if event.meta %} • {{ event.meta }}{% endif %}
+                                                    </div>
+                                                    <h4>{{ event.title }}</h4>
+                                                    <div class="journal-rich-content">{{ event.content_html|safe }}</div>
+                                                </div>
+                                            {% endfor %}
+                                        {% else %}
+                                            <div class="journal-no-data">No timestamped notes or exit notes have been saved yet.</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="journal-panel">
+                                <div class="journal-panel-header">
+                                    <h3>Exit reasons</h3>
+                                    <p>Read each recorded exit reason alongside the sale details.</p>
+                                </div>
+                                <div class="journal-section">
+                                    <div class="exit-list">
+                                        {% if exit_rows %}
+                                            {% for exit_row in exit_rows %}
+                                                <div class="exit-card">
+                                                    <div class="exit-meta">
+                                                        {{ exit_row.flip.date|date:"M j, Y g:i A" }} • Sold {{ exit_row.flip.quantity|intcomma }}
+                                                        • Exit {{ exit_row.exit_percentage }}%
+                                                        • {% if exit_row.realized_pnl >= 0 %}+{% endif %}{{ exit_row.realized_pnl|intcomma }} gp
+                                                    </div>
+                                                    {% if exit_row.reason_html %}
+                                                        <div class="journal-rich-content">{{ exit_row.reason_html|safe }}</div>
+                                                    {% else %}
+                                                        <div class="journal-muted-note">No exit reason has been saved for this sale yet.</div>
+                                                    {% endif %}
+                                                </div>
+                                            {% endfor %}
+                                        {% else %}
+                                            <div class="journal-no-data">No sells have been recorded for this item yet.</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <div class="journal-panel">
+                        <div class="journal-panel-header">
+                            <h3>Select a journal</h3>
+                            <p>Choose an item from the left table to load its journal in view mode.</p>
+                        </div>
+                        <div class="journal-section">
+                            <div class="journal-no-data">No journal is loaded yet. Click an item on the left to open its reader.</div>
+                        </div>
+                    </div>
+                {% endif %}
+            </section>
+        </div>
+    {% endif %}
+</div>
+{% if selected_item and is_edit_mode %}
+    <div class="modal fade" id="deleteTagModal" tabindex="-1" aria-labelledby="deleteTagModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteTagModalLabel">Delete tag</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="post" action="{% url 'delete_flip_journal_tag' %}" id="deleteTagForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="item_id" value="{{ selected_item.item_id }}">
+                    <input type="hidden" name="item_name" value="{{ selected_item.item_name }}">
+                    <input type="hidden" name="sort_by" value="{{ sort_by }}">
+                    <input type="hidden" name="sort_direction" value="{{ sort_direction }}">
+                    <input type="hidden" name="mode" value="edit">
+                    <input type="hidden" name="tag_id" id="deleteTagIdInput" value="">
+                    <div class="modal-body">
+                        <p id="deleteTagModalText" class="mb-0">Are you sure you want to delete this tag?</p>
+                        <div id="deleteTagModalError" class="text-danger small mt-2" style="display:none;"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="journal-button secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="journal-button danger" id="deleteTagSubmitButton">Delete tag</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        window.dismissStatusNotification = function (button) {
+            const notification = button.closest('.triggered-notification');
+            if (!notification) {
+                return;
+            }
+
+            notification.classList.add('dismissing');
+            setTimeout(function () {
+                notification.remove();
+            }, 300);
+        };
+
+        const quillToolbar = [
+            [{ header: [1, 2, 3, false] }],
+            ['bold', 'italic', 'underline', 'strike', 'blockquote'],
+            [{ list: 'ordered' }, { list: 'bullet' }],
+            ['link', 'code-block'],
+            ['clean']
+        ];
+
+        const quillEditors = [];
+        document.querySelectorAll('.quill-editor').forEach(function (editorElement) {
+            const hiddenInputId = editorElement.dataset.hiddenInput;
+            const hiddenInput = document.getElementById(hiddenInputId);
+            if (!hiddenInput) {
+                return;
+            }
+
+            const quill = new Quill(editorElement, {
+                theme: 'snow',
+                modules: {
+                    toolbar: quillToolbar
+                }
+            });
+
+            const initialHtml = editorElement.dataset.initialHtml || '';
+            if (initialHtml) {
+                quill.clipboard.dangerouslyPasteHTML(initialHtml);
+            }
+
+            quillEditors.push({ quill, hiddenInput });
+        });
+
+        document.querySelectorAll('form').forEach(function (form) {
+            form.addEventListener('submit', function () {
+                quillEditors.forEach(function (editorState) {
+                    editorState.hiddenInput.value = editorState.quill.root.innerHTML;
+                });
+            });
+        });
+
+        const confidenceSlider = document.getElementById('confidenceSlider');
+        const confidenceValue = document.getElementById('confidenceValue');
+        if (confidenceSlider && confidenceValue) {
+            const updateConfidence = function () {
+                confidenceValue.textContent = confidenceSlider.value;
+            };
+            confidenceSlider.addEventListener('input', updateConfidence);
+            updateConfidence();
+        }
+
+        const tagInput = document.getElementById('tagNamesInput');
+        const tagPreview = document.getElementById('tagPreview');
+        const tagLibraryList = document.getElementById('tagLibraryList');
+        let getCurrentTags = null;
+        let updateTagPreview = null;
+        if (tagInput && tagPreview) {
+            getCurrentTags = function () {
+                const seen = new Set();
+                return tagInput.value
+                    .split(',')
+                    .map(function (value) { return value.trim(); })
+                    .filter(function (value) {
+                        const normalized = value.toLowerCase();
+                        if (!value || seen.has(normalized)) {
+                            return false;
+                        }
+                        seen.add(normalized);
+                        return true;
+                    });
+            };
+
+            updateTagPreview = function () {
+                const tags = getCurrentTags();
+
+                tagPreview.innerHTML = '';
+                tags.forEach(function (tag) {
+                    const chip = document.createElement('span');
+                    chip.className = 'journal-chip';
+                    chip.textContent = tag;
+                    tagPreview.appendChild(chip);
+                });
+
+                if (tagLibraryList) {
+                    const selectedTags = new Set(tags.map(function (tag) { return tag.toLowerCase(); }));
+                    tagLibraryList.querySelectorAll('[data-tag-name]').forEach(function (checkbox) {
+                        const normalized = checkbox.dataset.tagName.toLowerCase();
+                        checkbox.checked = selectedTags.has(normalized);
+                    });
+                }
+            };
+
+            tagInput.addEventListener('input', updateTagPreview);
+            if (tagLibraryList) {
+                tagLibraryList.querySelectorAll('[data-tag-name]').forEach(function (checkbox) {
+                    checkbox.addEventListener('change', function () {
+                        const currentTags = getCurrentTags();
+                        const tagName = checkbox.dataset.tagName;
+                        const nextTags = currentTags.filter(function (tag) {
+                            return tag.toLowerCase() !== tagName.toLowerCase();
+                        });
+
+                        if (checkbox.checked) {
+                            nextTags.push(tagName);
+                        }
+
+                        tagInput.value = nextTags.join(', ');
+                        updateTagPreview();
+                    });
+                });
+            }
+            updateTagPreview();
+        }
+
+        const strategyChoice = document.getElementById('strategyChoice');
+        const strategyCreateFields = document.getElementById('strategyCreateFields');
+        const strategyPreviewBlock = document.getElementById('selectedStrategyPreviewBlock');
+        const strategyPreview = document.getElementById('selectedStrategyPreview');
+        const strategyPreviewTitle = document.getElementById('selectedStrategyPreviewTitle');
+        const strategyPreviewBody = document.getElementById('selectedStrategyPreviewBody');
+        if (strategyChoice && strategyCreateFields && strategyPreviewBlock && strategyPreview && strategyPreviewTitle && strategyPreviewBody) {
+            const updateStrategyState = function () {
+                const selectedOption = strategyChoice.options[strategyChoice.selectedIndex];
+                const selectedValue = strategyChoice.value;
+
+                if (selectedValue === '__new__') {
+                    strategyCreateFields.classList.add('is-visible');
+                    strategyPreviewBlock.style.display = 'none';
+                    strategyPreviewTitle.textContent = '';
+                    strategyPreviewBody.innerHTML = '';
+                    return;
+                }
+
+                strategyCreateFields.classList.remove('is-visible');
+                const bodyHtml = selectedOption ? selectedOption.dataset.content || '' : '';
+                if (selectedValue && bodyHtml) {
+                    strategyPreviewBlock.style.display = 'flex';
+                    strategyPreviewTitle.textContent = selectedOption.textContent.trim();
+                    strategyPreviewBody.innerHTML = bodyHtml;
+                } else {
+                    strategyPreviewBlock.style.display = 'none';
+                    strategyPreviewTitle.textContent = '';
+                    strategyPreviewBody.innerHTML = '';
+                }
+            };
+
+            strategyChoice.addEventListener('change', updateStrategyState);
+            updateStrategyState();
+        }
+
+        const deleteTagModal = document.getElementById('deleteTagModal');
+        const deleteTagForm = document.getElementById('deleteTagForm');
+        const deleteTagIdInput = document.getElementById('deleteTagIdInput');
+        const deleteTagModalText = document.getElementById('deleteTagModalText');
+        const deleteTagModalError = document.getElementById('deleteTagModalError');
+        const deleteTagSubmitButton = document.getElementById('deleteTagSubmitButton');
+        if (deleteTagModal && deleteTagForm && deleteTagIdInput && deleteTagModalText && deleteTagModalError && deleteTagSubmitButton) {
+            deleteTagModal.addEventListener('show.bs.modal', function (event) {
+                const trigger = event.relatedTarget;
+                if (!trigger) {
+                    return;
+                }
+
+                const tagId = trigger.getAttribute('data-tag-id') || '';
+                const tagName = trigger.getAttribute('data-tag-name') || 'this tag';
+                deleteTagIdInput.value = tagId;
+                deleteTagModalText.textContent = `Are you sure you want to delete "${tagName}"? This removes it from all of your journals.`;
+                deleteTagModalError.textContent = '';
+                deleteTagModalError.style.display = 'none';
+            });
+
+            deleteTagForm.addEventListener('submit', async function (event) {
+                event.preventDefault();
+
+                deleteTagModalError.textContent = '';
+                deleteTagModalError.style.display = 'none';
+                deleteTagSubmitButton.disabled = true;
+
+                try {
+                    const response = await fetch(deleteTagForm.action, {
+                        method: 'POST',
+                        body: new FormData(deleteTagForm),
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        credentials: 'same-origin',
+                    });
+                    const payload = await response.json();
+
+                    if (!response.ok || !payload.success) {
+                        throw new Error(payload.error || 'Unable to delete tag.');
+                    }
+
+                    if (tagLibraryList) {
+                        const tagRow = tagLibraryList.querySelector(`[data-tag-row="${payload.tag_id}"]`);
+                        if (tagRow) {
+                            tagRow.remove();
+                        }
+
+                        if (!tagLibraryList.querySelector('[data-tag-row]')) {
+                            tagLibraryList.innerHTML = '<div class="journal-muted-note">No reusable tags yet.</div>';
+                        }
+                    }
+
+                    if (tagInput && getCurrentTags && updateTagPreview) {
+                        const nextTags = getCurrentTags().filter(function (tag) {
+                            return tag.toLowerCase() !== payload.tag_name.toLowerCase();
+                        });
+                        tagInput.value = nextTags.join(', ');
+                        updateTagPreview();
+                    }
+
+                    const modalInstance = bootstrap.Modal.getInstance(deleteTagModal);
+                    if (modalInstance) {
+                        modalInstance.hide();
+                    }
+                } catch (error) {
+                    deleteTagModalError.textContent = error.message;
+                    deleteTagModalError.style.display = 'block';
+                } finally {
+                    deleteTagSubmitButton.disabled = false;
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

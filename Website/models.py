@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.core.validators import MaxValueValidator, MinValueValidator
 
 
 def get_item_price(item_id, reference):
@@ -87,6 +88,96 @@ class FlipProfit(models.Model):
         return f"FlipProfit item_id={self.item_id} qty={self.quantity_held}"
 
 
+class FlipJournalStrategy(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='flip_journal_strategies')
+    title = models.CharField(max_length=120)
+    content_html = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['user', 'title']
+        ordering = ['title']
+
+    def __str__(self):
+        return f"{self.title}"
+
+
+class FlipJournalTag(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='flip_journal_tags')
+    name = models.CharField(max_length=50)
+    normalized_name = models.CharField(max_length=50)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['user', 'normalized_name']
+        ordering = ['name']
+
+    def save(self, *args, **kwargs):
+        self.name = (self.name or '').strip()
+        self.normalized_name = self.name.lower()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+
+class FlipJournal(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='flip_journals')
+    item_id = models.IntegerField()
+    item_name = models.CharField(max_length=255)
+    entry_reason_html = models.TextField(blank=True, default='')
+    confidence = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(10)],
+    )
+    strategy = models.ForeignKey(
+        FlipJournalStrategy,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='journals',
+    )
+    tags = models.ManyToManyField(FlipJournalTag, blank=True, related_name='journals')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['user', 'item_id', 'item_name']
+        ordering = ['item_name']
+
+    def __str__(self):
+        return f"{self.item_name} journal"
+
+
+class FlipJournalNote(models.Model):
+    journal = models.ForeignKey(FlipJournal, on_delete=models.CASCADE, related_name='notes')
+    content_html = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Note for {self.journal.item_name} @ {self.created_at:%Y-%m-%d %H:%M}"
+
+
+class FlipJournalExit(models.Model):
+    journal = models.ForeignKey(FlipJournal, on_delete=models.CASCADE, related_name='exit_records')
+    sell_flip = models.OneToOneField(Flip, on_delete=models.CASCADE, related_name='journal_exit')
+    reason_html = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-sell_flip__date', '-sell_flip__id']
+
+    def __str__(self):
+        return f"Exit note for {self.journal.item_name} sell #{self.sell_flip_id}"
+
+
 class AlertGroup(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=100)
@@ -100,7 +191,7 @@ class AlertGroup(models.Model):
 
 
 class Alert(models.Model):
-    """
+    """\u003Cp\u003EFelt sick\u003C/p\u003E
     Alert Model
     ===========
     What: Represents a user-defined price alert for OSRS Grand Exchange items.
@@ -1453,5 +1544,4 @@ class TwentyFourHourTimeSeries(models.Model):
             models.Index(fields=['item_id', '-timestamp'], name='twentyfour_item_ts_desc'),
             models.Index(fields=['timestamp'], name='twentyfour_ts_idx'),
         ]
-
 
