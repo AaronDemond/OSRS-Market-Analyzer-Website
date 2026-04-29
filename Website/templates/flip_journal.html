@@ -702,6 +702,26 @@
         color: var(--journal-text);
     }
 
+    .timeline-entry h4.journal-reader-pill {
+        display: inline-flex;
+        max-width: 100%;
+        border-radius: 0;
+        padding: 3px 8px;
+        background: rgba(17, 24, 39, 0.88);
+        color: #FDBA74;
+        font-size: 0.82rem;
+        font-weight: 750;
+        line-height: 1.25;
+        white-space: nowrap;
+    }
+
+    .journal-strategy-title {
+        margin: 0 0 8px 0;
+        color: var(--journal-text);
+        font-size: 1rem;
+        font-weight: 800;
+    }
+
     .journal-rich-content {
         color: var(--journal-text);
         line-height: 1.7;
@@ -1332,7 +1352,7 @@
                                 {% if journal_exists %}
                                     <div class="timeline-entry">
                                         <div class="timeline-meta">Core journal thesis{% if journal.confidence != None %} • Confidence {{ journal.confidence }}/10{% endif %}</div>
-                                        <h4>Entry reason</h4>
+                                        <h4 class="journal-reader-pill">Entry reason</h4>
                                         {% if journal.entry_reason_html %}
                                             <div class="journal-rich-content">{{ journal.entry_reason_html|safe }}</div>
                                         {% else %}
@@ -1340,7 +1360,8 @@
                                         {% endif %}
                                         {% if journal.strategy %}
                                             <div style="margin-top:14px;">
-                                                <h4 style="margin-bottom:6px;">Strategy: {{ journal.strategy.title }}</h4>
+                                                <h4 class="journal-reader-pill">Strategy</h4>
+                                                <div class="journal-strategy-title">{{ journal.strategy.title }}</div>
                                                 <div class="journal-rich-content">{{ journal.strategy.content_html|safe }}</div>
                                             </div>
                                         {% endif %}

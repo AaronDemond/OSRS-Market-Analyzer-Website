@@ -533,12 +533,12 @@
 .live-feedback-watch-row {
     display: grid;
     grid-template-columns: 1.4fr 0.55fr 0.8fr 0.9fr 0.7fr 0.8fr 1fr;
-    gap: 12px;
+    gap: 10px;
     align-items: center;
 }
 
 .live-feedback-table-head {
-    padding: 12px 14px;
+    padding: 9px 12px;
     background: var(--lf-surface-soft);
     color: var(--lf-muted);
     font-size: 0.78rem;
@@ -614,8 +614,8 @@
 }
 
 .live-feedback-watch-row {
-    min-height: 74px;
-    padding: 14px;
+    min-height: 54px;
+    padding: 8px 12px;
     border-top: 1px solid var(--lf-border);
 }
 
@@ -658,9 +658,9 @@
     align-items: center;
     justify-content: center;
     min-width: 90px;
-    min-height: 30px;
+    min-height: 24px;
     border-radius: 999px;
-    padding: 5px 10px;
+    padding: 3px 8px;
     font-size: 0.78rem;
     font-weight: 850;
 }
@@ -689,16 +689,16 @@
 .live-feedback-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 6px;
 }
 
 .live-feedback-action {
-    min-height: 32px;
+    min-height: 26px;
     border: 1px solid var(--lf-border);
     border-radius: 8px;
     background: var(--lf-surface);
     color: var(--lf-text);
-    padding: 5px 9px;
+    padding: 3px 8px;
     font-weight: 750;
     cursor: pointer;
 }
