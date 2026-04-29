@@ -4,11 +4,21 @@
 {% block title %}Live Feedback - GE Tools{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/alerts-help-modal.css' %}">
 <link rel="stylesheet" href="{% static 'css/live-feedback.css' %}">
 {% endblock %}
 
 {% block content %}
 <section class="live-feedback-page">
+    <button
+        type="button"
+        class="live-feedback-help-fab"
+        id="liveFeedbackHelpBtn"
+        aria-label="Open Live Feedback help"
+        aria-controls="liveFeedbackHelpModal"
+        aria-expanded="false"
+    >?</button>
+
     <header class="live-feedback-header">
         <div class="live-feedback-title-group">
             <div class="live-feedback-header-icon" aria-hidden="true">
@@ -98,6 +108,101 @@
         </div>
     </section>
 </section>
+
+<div class="alert-help-modal-overlay live-feedback-help-modal-overlay" id="liveFeedbackHelpModal" aria-hidden="true">
+    <div class="alert-help-modal live-feedback-help-modal" role="dialog" aria-modal="true" aria-labelledby="liveFeedbackHelpTitle">
+        <div class="alert-help-modal-header">
+            <h2 id="liveFeedbackHelpTitle">
+                <svg viewBox="0 0 20 20" fill="currentColor" width="24" height="24" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+                </svg>
+                Understanding Live Feedback
+            </h2>
+            <button type="button" class="alert-help-modal-close" id="liveFeedbackHelpCloseBtn" aria-label="Close Live Feedback help">&times;</button>
+        </div>
+        <div class="alert-help-modal-body">
+            <div class="alert-help-content">
+                <div class="alert-help-section active">
+                    <h3>
+                        Live Feedback Watches
+                        <span class="alert-type-badge spread">Real-time Price Watch</span>
+                    </h3>
+                    <p class="subtitle">Live Feedback tracks whether your chosen buy or sell price is still competitive against the latest market price. It refreshes automatically so you can spot when you have been beaten and need to adjust.</p>
+
+                    <div class="alert-help-card">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                            </svg>
+                            How It Works
+                        </h4>
+                        <p>Choose an item, pick whether you are watching the buy side or sell side, and enter your target price. Live Feedback compares your price to the current competing market price and labels the watch so you can see whether your offer is still safe.</p>
+                        <ul>
+                            <li><strong>Buy watch:</strong> Checks whether someone is offering a higher buy price than you.</li>
+                            <li><strong>Sell watch:</strong> Checks whether someone is offering a lower sell price than you.</li>
+                            <li><strong>Gap:</strong> Shows the GP difference between your price and the competing market price.</li>
+                        </ul>
+                    </div>
+
+                    <div class="alert-help-card">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18" aria-hidden="true">
+                                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                                <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
+                            </svg>
+                            Fields And Statuses
+                        </h4>
+                        <ul>
+                            <li><strong>Item:</strong> Search and select the exact item you want to monitor.</li>
+                            <li><strong>Price:</strong> Enter the GP price you currently want to hold in the market.</li>
+                            <li><strong>Email or SMS:</strong> Choose how you want to be notified when a watch becomes triggered.</li>
+                            <li><strong>Safe:</strong> Your price is still competitive.</li>
+                            <li><strong>Undercut or Overcut:</strong> Another player has beaten your price.</li>
+                            <li><strong>No price:</strong> There is not enough current market data to compare.</li>
+                        </ul>
+                    </div>
+
+                    <div class="example-scenario">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18" aria-hidden="true">
+                                <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" />
+                            </svg>
+                            Example Scenario
+                        </h4>
+                        <p>You place a buy offer for an item at 1,250,000 gp. If another buyer moves above you, the watch flips to triggered so you know your offer is no longer leading. You can then edit the watch or adjust your offer in game.</p>
+                    </div>
+
+                    <div class="recommended-values live-feedback-help-tips">
+                        <h4>
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                            </svg>
+                            Practical Tips
+                        </h4>
+                        <div class="value-grid">
+                            <div class="recommended-value">
+                                <div class="label">Use Buy For</div>
+                                <div class="value">Checking if your buy offer is still leading</div>
+                            </div>
+                            <div class="recommended-value">
+                                <div class="label">Use Sell For</div>
+                                <div class="value">Checking if your sell listing is still cheapest</div>
+                            </div>
+                            <div class="recommended-value">
+                                <div class="label">Best Workflow</div>
+                                <div class="value">Keep a few active watches on items you are actively flipping</div>
+                            </div>
+                            <div class="recommended-value">
+                                <div class="label">Editing</div>
+                                <div class="value">Tap Edit on a watch to load it back into the top form quickly</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
