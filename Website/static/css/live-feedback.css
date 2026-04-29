@@ -21,7 +21,7 @@
 
 .live-feedback-help-fab {
     position: fixed;
-    top: 10px;
+    bottom: 10px;
     right: 10px;
     z-index: 9990;
     width: 34px;
@@ -990,7 +990,7 @@
 
 @media (max-width: 480px) {
     .live-feedback-help-fab {
-        top: 10px;
+        bottom: 10px;
         right: 10px;
         width: 32px;
         height: 32px;

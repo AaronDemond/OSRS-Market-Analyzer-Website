@@ -175,34 +175,36 @@
     }
 
     .btn-flips-help {
-        width: 44px;
-        height: 44px;
-        padding: 0;
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        background: var(--surface);
-        color: var(--primary);
-        cursor: pointer;
-        transition: all 0.15s;
+        position: fixed;
+        bottom: 10px;
+        right: 10px;
+        z-index: 9990;
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        width: 34px;
+        height: 34px;
+        border: 1px solid rgba(148, 163, 184, 0.5);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(8px);
+        color: #475569;
+        font-size: 1rem;
+        font-weight: 700;
+        line-height: 1;
+        cursor: pointer;
+        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12), 0 2px 6px rgba(15, 23, 42, 0.08);
+        transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, color 0.18s ease;
         flex-shrink: 0;
     }
 
     .btn-flips-help:hover,
     .btn-flips-help:focus-visible {
-        background: rgba(99, 102, 241, 0.1);
-        border-color: var(--primary);
-        color: var(--primary-hover);
-        outline: none;
         transform: translateY(-1px);
-        box-shadow: 0 8px 18px rgba(99, 102, 241, 0.16);
-    }
-
-    .btn-flips-help svg {
-        width: 22px;
-        height: 22px;
+        border-color: rgba(99, 102, 241, 0.45);
+        color: #4338CA;
+        box-shadow: 0 12px 22px rgba(15, 23, 42, 0.14), 0 4px 10px rgba(15, 23, 42, 0.1);
+        outline: none;
     }
 
     .flips-help-modal .modal-content {
@@ -3251,12 +3253,9 @@
 {% endblock %}
 
 {% block content %}
+<button type="button" class="btn-flips-help" id="flipsHelpBtn" aria-label="How to use My Flips" title="How to use My Flips" data-bs-toggle="modal" data-bs-target="#flipsHelpModal">?</button>
+
 <div class="flips-mobile-action-header" aria-label="Flip actions">
-    <button type="button" class="btn-flips-help" id="mobileFlipsHelpBtn" aria-label="How to use My Flips" title="How to use My Flips" data-bs-toggle="modal" data-bs-target="#flipsHelpModal">
-        <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
-        </svg>
-    </button>
     <button type="button" class="btn-new-flip header-create-style" id="mobileNewFlipBtn" data-bs-toggle="modal" data-bs-target="#newFlipModal">
         New Flip
     </button>
@@ -3284,11 +3283,6 @@
         <h1>My Flips</h1>
     </div>
     <div class="page-header-actions">
-        <button type="button" class="btn-flips-help" id="flipsHelpBtn" aria-label="How to use My Flips" title="How to use My Flips" data-bs-toggle="modal" data-bs-target="#flipsHelpModal">
-            <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
-            </svg>
-        </button>
         <button type="button" class="btn-new-flip header-create-style" id="newFlipBtn" data-bs-toggle="modal" data-bs-target="#newFlipModal">
             New Flip
         </button>
