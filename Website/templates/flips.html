@@ -523,6 +523,37 @@
         outline: none;
     }
 
+    .btn-cancel-delete {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #EF4444 0%, #B91C1C 100%);
+        color: white;
+        border: none;
+        padding: 12px 22px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 15px;
+        font-weight: 600;
+        line-height: 1.2;
+        white-space: nowrap;
+        transition: all 0.15s;
+        box-shadow: 0 4px 12px rgba(220, 38, 38, 0.22);
+    }
+
+    .btn-cancel-delete.is-visible {
+        display: inline-flex;
+    }
+
+    .btn-cancel-delete:hover,
+    .btn-cancel-delete:focus-visible {
+        background: linear-gradient(135deg, #DC2626 0%, #991B1B 100%);
+        color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 5px 14px rgba(220, 38, 38, 0.32);
+        outline: none;
+    }
+
     @media (min-width: 901px) {
         .controls-container > .buttons-row {
             display: none !important;
@@ -1700,6 +1731,82 @@
         transform: translateY(-1px);
     }
 
+    .delete-instruction-modal .modal-content {
+        border-radius: 12px;
+        border: none;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    .delete-instruction-modal .modal-header {
+        background: linear-gradient(135deg, #EF4444 0%, #B91C1C 100%);
+        color: white;
+        border-radius: 12px 12px 0 0;
+        border: none;
+        padding: 1rem 1.5rem;
+    }
+
+    .delete-instruction-modal .modal-header .btn-close {
+        filter: brightness(0) invert(1);
+        opacity: 0.8;
+    }
+
+    .delete-instruction-modal .modal-header .btn-close:hover {
+        opacity: 1;
+    }
+
+    .delete-instruction-modal .modal-body {
+        padding: 1.5rem;
+        text-align: center;
+    }
+
+    .delete-instruction-modal .delete-icon {
+        width: 64px;
+        height: 64px;
+        background: #FEE2E2;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+    }
+
+    .delete-instruction-modal .delete-icon svg {
+        width: 32px;
+        height: 32px;
+        color: #DC2626;
+    }
+
+    .delete-instruction-modal .modal-body p {
+        color: var(--text);
+        margin-bottom: 0.5rem;
+    }
+
+    .delete-instruction-modal .delete-warning-text {
+        color: var(--danger);
+        font-weight: 600;
+    }
+
+    .delete-instruction-modal .modal-footer {
+        border: none;
+        padding: 1rem 1.5rem;
+        justify-content: center;
+    }
+
+    .delete-instruction-modal .btn-understand-delete {
+        background: linear-gradient(135deg, #EF4444 0%, #B91C1C 100%);
+        border: none;
+        color: white;
+        padding: 0.55rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.15s;
+    }
+
+    .delete-instruction-modal .btn-understand-delete:hover {
+        background: linear-gradient(135deg, #DC2626 0%, #991B1B 100%);
+        transform: translateY(-1px);
+    }
+
     /* New Flip Modal styling */
     .new-flip-modal .modal-content {
         border-radius: 12px;
@@ -2411,6 +2518,12 @@
             max-width: calc(100vw - 30px);
         }
 
+        .flips-mobile-action-header .btn-new-flip.header-create-style,
+        .flips-mobile-action-header .btn-cancel-delete {
+            padding: 10px 12px;
+            font-size: 13px;
+        }
+
         @media (min-width: 769px) {
             .flips-mobile-action-header {
                 left: 15px;
@@ -2899,6 +3012,7 @@
     <button type="button" class="btn-new-flip header-create-style" id="mobileNewFlipBtn" data-bs-toggle="modal" data-bs-target="#newFlipModal">
         New Flip
     </button>
+    <button type="button" class="btn-cancel-delete js-cancel-delete">Cancel Delete</button>
     <div class="page-header-actions-menu filter-dropdown-wrapper">
         <button type="button" class="btn-flips-header-menu js-flips-actions-toggle" id="mobileFlipsHeaderActionsBtn" aria-label="More flip actions" aria-expanded="false" data-menu-target="mobileFlipsHeaderActionsMenu">...</button>
         <div class="filter-dropdown-menu js-flips-actions-menu" id="mobileFlipsHeaderActionsMenu">
@@ -2926,6 +3040,7 @@
         <button type="button" class="btn-new-flip header-create-style" id="newFlipBtn" data-bs-toggle="modal" data-bs-target="#newFlipModal">
             New Flip
         </button>
+        <button type="button" class="btn-cancel-delete js-cancel-delete">Cancel Delete</button>
         <div class="page-header-actions-menu filter-dropdown-wrapper">
             <button type="button" class="btn-flips-header-menu js-flips-actions-toggle" id="flipsHeaderActionsBtn" aria-label="More flip actions" aria-expanded="false" data-menu-target="flipsHeaderActionsMenu">...</button>
             <div class="filter-dropdown-menu js-flips-actions-menu" id="flipsHeaderActionsMenu">
@@ -3445,6 +3560,32 @@
     </div>
     {% endfor %}
     {% endif %}
+</div>
+
+<!-- Delete Mode Instruction Modal -->
+<div class="modal fade delete-instruction-modal" id="deleteInstructionModal" tabindex="-1"
+    aria-labelledby="deleteInstructionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteInstructionModalLabel">Delete Flip Mode</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="delete-icon">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                </div>
+                <p>Select an item to remove from your flips.</p>
+                <p class="delete-warning-text">All transactions of that item type will be deleted.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-understand-delete" data-bs-dismiss="modal">Got it</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Delete Confirmation Modal -->
@@ -5426,6 +5567,8 @@
         // Delete flip functionality
         const deleteBtns = Array.from(document.querySelectorAll('.js-delete-flip'));
         const deleteBtnLabels = Array.from(document.querySelectorAll('.js-delete-flip-label'));
+        const cancelDeleteBtns = Array.from(document.querySelectorAll('.js-cancel-delete'));
+        const deleteInstructionModalElement = document.getElementById('deleteInstructionModal');
         let deleteMode = false;
         let isProcessing = false;
         let selectedRow = null;
@@ -5437,6 +5580,17 @@
             deleteBtns.forEach(button => {
                 button.classList.toggle('delete-mode-active', isActive);
             });
+            cancelDeleteBtns.forEach(button => {
+                button.classList.toggle('is-visible', isActive);
+            });
+        }
+
+        function showDeleteInstructionPopup() {
+            if (!deleteInstructionModalElement) {
+                return;
+            }
+            const modal = bootstrap.Modal.getInstance(deleteInstructionModalElement) || new bootstrap.Modal(deleteInstructionModalElement);
+            modal.show();
         }
 
         // =====================================================================
@@ -5455,6 +5609,7 @@
                     deleteMode = true;
                     setDeleteButtonsActive(true, 'Click a row to delete');
                     table.classList.add('delete-mode');
+                    showDeleteInstructionPopup();
 
                     // Show inline instruction text (works on both mobile and desktop)
                     // What: Displays helper text next to Actions button
@@ -5469,6 +5624,13 @@
             });
         });
 
+        cancelDeleteBtns.forEach(button => {
+            button.addEventListener('click', function (e) {
+                e.stopPropagation();
+                cancelDeleteMode();
+            });
+        });
+
         // =====================================================================
         // Cancel Delete Mode Function
         // What: Exits delete mode and resets all related state
@@ -5478,6 +5640,12 @@
         function cancelDeleteMode() {
             deleteMode = false;
             isProcessing = false;
+            if (deleteInstructionModalElement) {
+                const modal = bootstrap.Modal.getInstance(deleteInstructionModalElement);
+                if (modal) {
+                    modal.hide();
+                }
+            }
             setDeleteButtonsActive(false, 'Delete Flip');
             table.classList.remove('delete-mode');
             
@@ -5510,9 +5678,11 @@
             // Check if click was inside the table or on delete button
             const isInsideTable = flipsTable && flipsTable.contains(e.target);
             const isDeleteButton = deleteBtns.some(button => button.contains(e.target));
+            const isCancelDeleteButton = cancelDeleteBtns.some(button => button.contains(e.target));
+            const isDeleteInstructionPopup = deleteInstructionModalElement && deleteInstructionModalElement.contains(e.target);
 
             // If click is outside all allowed elements, cancel delete mode
-            if (!isInsideTable && !isDeleteButton) {
+            if (!isInsideTable && !isDeleteButton && !isCancelDeleteButton && !isDeleteInstructionPopup) {
                 cancelDeleteMode();
             }
         });
