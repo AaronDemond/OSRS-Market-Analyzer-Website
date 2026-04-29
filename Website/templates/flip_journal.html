@@ -335,9 +335,14 @@
 
     .mobile-picker-arrow {
         color: var(--journal-primary);
-        font-size: 1.2rem;
+        font-size: 2rem;
+        font-weight: 800;
         line-height: 1;
         flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 32px;
     }
 
     .mobile-picker-panel {
@@ -993,8 +998,6 @@
                             <div class="mobile-picker-summary-text">
                                 {% if selected_item and selected_item.icon_url %}
                                     <img src="{{ selected_item.icon_url }}" alt="{{ selected_item.item_name }}" class="journal-item-icon">
-                                {% else %}
-                                    <div class="journal-item-icon"></div>
                                 {% endif %}
                                 <div class="mobile-picker-copy">
                                     <span class="mobile-picker-label">Journal item</span>
