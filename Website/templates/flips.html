@@ -121,6 +121,48 @@
         margin-bottom: 30px;
     }
 
+    .page-header.desktop-table-width-bound {
+        width: 100%;
+        max-width: var(--desktop-flips-table-width, 100%);
+    }
+
+    .page-header-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-left: auto;
+        flex-shrink: 0;
+    }
+
+    .page-header-actions-menu {
+        position: relative;
+    }
+
+    .btn-flips-header-menu {
+        min-width: 44px;
+        min-height: 44px;
+        padding: 8px 12px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--surface);
+        color: var(--text);
+        font-size: 18px;
+        font-weight: 700;
+        line-height: 1;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+    .btn-flips-header-menu:hover,
+    .btn-flips-header-menu:focus-visible,
+    .btn-flips-header-menu.is-open {
+        background: rgba(59, 130, 246, 0.1);
+        border-color: var(--info);
+        color: var(--info);
+        outline: none;
+    }
+
     .page-header-icon {
         width: 48px;
         height: 48px;
@@ -446,6 +488,34 @@
 
     .btn-delete-flip.delete-mode-active:hover {
         background: linear-gradient(135deg, #B91C1C 0%, #991B1B 100%);
+    }
+
+    .btn-new-flip.header-create-style {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        color: white;
+        border: none;
+        padding: 12px 28px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 15px;
+        font-weight: 600;
+        transition: all 0.15s;
+    }
+
+    .btn-new-flip.header-create-style:hover,
+    .btn-new-flip.header-create-style:focus-visible,
+    .btn-new-flip.header-create-style.active {
+        background: linear-gradient(135deg, #0e8377 0%, #2dd36f 100%);
+        color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(17, 153, 142, 0.3);
+        outline: none;
+    }
+
+    @media (min-width: 901px) {
+        .controls-container > .buttons-row {
+            display: none !important;
+        }
     }
 
         #flipsTable {
@@ -1156,6 +1226,10 @@
         margin: 2px 0;
         background: var(--surface-2);
         border: 1px solid transparent;
+        width: 100%;
+        color: var(--text);
+        font: inherit;
+        text-align: left;
     }
 
     .filter-dropdown-item:hover {
@@ -2317,6 +2391,10 @@
             display: none;
         }
 
+        .page-header-actions {
+            display: none;
+        }
+
         .sort-indicator-mobile-row.active,
         .sort-indicator-mobile-row.has-filters {
             display: flex;
@@ -2906,6 +2984,21 @@
         <h1>My Flips</h1>
         <p>Track your Grand Exchange flipping profits. Click on an item to get the list of individual flips for that item.</p>
     </div>
+    <div class="page-header-actions">
+        <button type="button" class="btn-new-flip header-create-style" id="newFlipBtn" data-bs-toggle="modal" data-bs-target="#newFlipModal">
+            New Flip
+        </button>
+        <div class="page-header-actions-menu filter-dropdown-wrapper">
+            <button type="button" class="btn-flips-header-menu" id="flipsHeaderActionsBtn" aria-label="More flip actions" aria-expanded="false">...</button>
+            <div class="filter-dropdown-menu" id="flipsHeaderActionsMenu">
+                <div class="filter-dropdown-header">Actions</div>
+                <button type="button" class="filter-dropdown-item btn-delete-flip" id="deleteFlipBtn">
+                    <span>Delete Flip</span>
+                    <span class="filter-check">&times;</span>
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="stats-row loading" id="statsRow">
@@ -2961,20 +3054,6 @@
              How: Hidden by default, shown via JS when delete mode activates -->
         <span class="delete-mode-instruction" id="deleteModeInstruction">Tap a flip to delete</span>
         
-        <!-- Desktop Action Buttons - hidden on mobile -->
-        <button type="button" class="btn-new-flip" id="newFlipBtn" data-bs-toggle="modal" data-bs-target="#newFlipModal">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-            New Flip
-        </button>
-        <button type="button" class="btn-delete-flip" id="deleteFlipBtn">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-            Delete Flip
-        </button>
     </div>
     <div class="d-flex gap-2 align-items-center search-filter-row">
         <!-- Desktop sort indicator (inline with search/filter) -->
@@ -4581,12 +4660,39 @@
             e.stopPropagation();
         });
 
+        const flipsHeaderActionsBtn = document.getElementById('flipsHeaderActionsBtn');
+        const flipsHeaderActionsMenu = document.getElementById('flipsHeaderActionsMenu');
+
+        function setFlipsHeaderActionsOpen(isOpen) {
+            if (!flipsHeaderActionsBtn || !flipsHeaderActionsMenu) {
+                return;
+            }
+            flipsHeaderActionsMenu.classList.toggle('show', isOpen);
+            flipsHeaderActionsBtn.classList.toggle('is-open', isOpen);
+            flipsHeaderActionsBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        }
+
+        if (flipsHeaderActionsBtn && flipsHeaderActionsMenu) {
+            flipsHeaderActionsBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                setFlipsHeaderActionsOpen(!flipsHeaderActionsMenu.classList.contains('show'));
+                setFilterDropdownOpen(false);
+                sortIndicatorMenu.classList.remove('show');
+                sortIndicatorMenuMobile.classList.remove('show');
+            });
+
+            flipsHeaderActionsMenu.addEventListener('click', function (e) {
+                e.stopPropagation();
+            });
+        }
+
         // Close dropdowns when clicking outside
         // What: Closes all open dropdown menus when clicking anywhere outside them
         // Why: Standard UX pattern - clicking outside a dropdown should dismiss it
         // How: Document-level click listener removes 'show' class from all dropdown menus
         document.addEventListener('click', function () {
             setFilterDropdownOpen(false);
+            setFlipsHeaderActionsOpen(false);
             sortIndicatorMenu.classList.remove('show');
             sortIndicatorMenuMobile.classList.remove('show'); // Also close mobile sort dropdown
         });
@@ -4596,6 +4702,9 @@
             item.addEventListener('click', function (e) {
                 e.stopPropagation();
                 const filterName = this.dataset.filter;
+                if (!filterName) {
+                    return;
+                }
 
                 // Check if clicking the clear button
                 if (e.target.classList.contains('filter-clear')) {
@@ -5421,6 +5530,7 @@
         const deleteInstructionText = document.getElementById('deleteModeInstruction');
         
         deleteBtn.addEventListener('click', function () {
+            setFlipsHeaderActionsOpen(false);
             if (!deleteMode) {
                 deleteMode = true;
                 deleteBtn.textContent = 'Click a row to delete';
@@ -6489,11 +6599,16 @@
             }
 
             wrapper.classList.add('desktop-horizontal-scroll');
+            const pageHeader = document.querySelector('.page-header');
             const controlsContainer = document.querySelector('.controls-container');
             const notificationsContainer = document.getElementById('notifications');
 
             function syncControlsToTableWidth() {
                 const tableWidth = `${table.offsetWidth}px`;
+                if (pageHeader) {
+                    pageHeader.classList.add('desktop-table-width-bound');
+                    pageHeader.style.setProperty('--desktop-flips-table-width', tableWidth);
+                }
                 if (controlsContainer) {
                     controlsContainer.classList.add('desktop-table-width-bound');
                     controlsContainer.style.setProperty('--desktop-flips-table-width', tableWidth);
