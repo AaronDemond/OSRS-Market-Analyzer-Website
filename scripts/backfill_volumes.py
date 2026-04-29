@@ -16,10 +16,11 @@ How:
        scripts.
     3. Convert each API entry into a HourlyItemVolume object.
     4. Store the API timestamp as a Unix timestamp string in the database.
-    5. Bulk insert in committed chunks with duplicates skipped.
+    5. Treat missing high/low sides as 0 contribution instead of skipping rows.
+    6. Bulk insert in committed chunks with duplicates skipped.
 
 Volume Calculation:
-    volume_gp = (highPriceVolume + lowPriceVolume) * ((avgHighPrice + avgLowPrice) // 2)
+    volume_gp = (avgHighPrice * highPriceVolume) + (avgLowPrice * lowPriceVolume)
 
 Timestamp Storage:
     HourlyItemVolume.timestamp is a CharField, so this script stores the Wiki
@@ -164,6 +165,10 @@ def build_volume_objects(
 ) -> List[HourlyItemVolume]:
     """
     Convert raw API results into HourlyItemVolume objects.
+
+    Each API datapoint becomes a row candidate. Missing price/volume values on
+    one side contribute 0 for that side, but the row is still inserted so the
+    historical series stays complete.
     """
     objects: List[HourlyItemVolume] = []
 
@@ -172,17 +177,11 @@ def build_volume_objects(
         item_name = lookup.get(item_id, "")
 
         for entry in result.get("data", []):
-            avg_high_price = entry.get("avgHighPrice")
-            avg_low_price = entry.get("avgLowPrice")
-
-            if avg_high_price is None or avg_low_price is None:
-                continue
-
+            avg_high_price = entry.get("avgHighPrice") or 0
+            avg_low_price = entry.get("avgLowPrice") or 0
             high_volume = entry.get("highPriceVolume", 0) or 0
             low_volume = entry.get("lowPriceVolume", 0) or 0
-            total_units = high_volume + low_volume
-            average_price = (avg_high_price + avg_low_price) // 2
-            volume_gp = total_units * average_price
+            volume_gp = (avg_high_price * high_volume) + (avg_low_price * low_volume)
 
             api_timestamp = entry.get("timestamp")
             if api_timestamp is None:
