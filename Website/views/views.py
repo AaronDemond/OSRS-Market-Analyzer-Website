@@ -17,7 +17,7 @@ import json
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urlencode, quote
-from .models import (
+from ..models import (
     Alert,
     AlertGroup,
     FavoriteItem,
@@ -33,7 +33,7 @@ from .models import (
     OneHourTimeSeries,
     TwentyFourHourTimeSeries,
 )
-from .live_feedback import STATUS_PAUSED, evaluate_watch
+from ..live_feedback import STATUS_PAUSED, evaluate_watch
 
 
 # =============================================================================
@@ -517,7 +517,7 @@ def test(request):
 
 
 def home(request):
-    from .models import FlipProfit, Alert, Flip
+    from ..models import FlipProfit, Alert, Flip
     from django.db.models import Sum
     
     # Get current user (or None if not authenticated)
@@ -545,7 +545,7 @@ def home(request):
 
 def dashboard_content_api(request):
     """API endpoint for dashboard content - positions, alerts, activity"""
-    from .models import FlipProfit, Alert, Flip
+    from ..models import FlipProfit, Alert, Flip
     from datetime import datetime, timedelta
     from django.utils import timezone
     import json
@@ -5874,7 +5874,7 @@ def list_item_collections(request):
         {"success": false, "error": "Authentication required"}
     """
     import json
-    from .models import ItemCollection
+    from ..models import ItemCollection
     
     # Check authentication - this feature is only for logged-in users
     # What: Verify user is authenticated before allowing access
@@ -5963,7 +5963,7 @@ def create_item_collection(request):
         {"success": false, "error": "A collection with this name already exists"}
     """
     import json
-    from .models import ItemCollection
+    from ..models import ItemCollection
     
     # Only allow POST requests
     # What: Enforce HTTP method restriction
@@ -6109,7 +6109,7 @@ def delete_item_collection(request, collection_id):
     Response (404 Not Found) - if collection doesn't exist or doesn't belong to user:
         {"success": false, "error": "Collection not found"}
     """
-    from .models import ItemCollection
+    from ..models import ItemCollection
     
     # Only allow POST requests (using POST instead of DELETE for simplicity with CSRF)
     # What: Enforce HTTP method restriction
@@ -6193,7 +6193,7 @@ def update_item_collection(request, collection_id):
         {"success": false, "error": "A collection with this name already exists"}
     """
     import json
-    from .models import ItemCollection
+    from ..models import ItemCollection
     
     # Only allow POST requests
     # What: Enforce HTTP method restriction
@@ -6333,7 +6333,7 @@ def add_favorite(request):
         return JsonResponse({'success': False, 'error': 'POST required'}, status=405)
     
     import json
-    from .models import FavoriteItem, FavoriteGroup
+    from ..models import FavoriteItem, FavoriteGroup
     
     user = request.user if request.user.is_authenticated else None
     
@@ -6382,7 +6382,7 @@ def remove_favorite(request):
         return JsonResponse({'success': False, 'error': 'POST required'}, status=405)
     
     import json
-    from .models import FavoriteItem
+    from ..models import FavoriteItem
     
     user = request.user if request.user.is_authenticated else None
     
@@ -6409,7 +6409,7 @@ def delete_favorite_group(request):
         return JsonResponse({'success': False, 'error': 'POST required'}, status=405)
     
     import json
-    from .models import FavoriteGroup, FavoriteItem
+    from ..models import FavoriteGroup, FavoriteItem
     
     user = request.user if request.user.is_authenticated else None
     if not user:
@@ -6442,7 +6442,7 @@ def update_favorite_group_name(request):
         return JsonResponse({'success': False, 'error': 'POST required'}, status=405)
     
     import json
-    from .models import FavoriteGroup
+    from ..models import FavoriteGroup
     
     user = request.user if request.user.is_authenticated else None
     if not user:
@@ -6489,7 +6489,7 @@ def update_favorite_group(request):
         return JsonResponse({'success': False, 'error': 'POST required'}, status=405)
     
     import json
-    from .models import FavoriteGroup, FavoriteItem
+    from ..models import FavoriteGroup, FavoriteItem
     
     user = request.user if request.user.is_authenticated else None
     if not user:
@@ -6534,7 +6534,7 @@ def favorites_page(request):
 
 def favorites_data_api(request):
     """API endpoint for favorites data"""
-    from .models import FavoriteGroup
+    from ..models import FavoriteGroup
     
     user = request.user if request.user.is_authenticated else None
     
@@ -7104,7 +7104,7 @@ def change_email_view(request):
 
 def request_password_reset_view(request):
     """Send password reset email"""
-    from .models import PasswordResetToken
+    from ..models import PasswordResetToken
     import secrets
     from django.core.mail import send_mail
     from django.conf import settings as django_settings
@@ -7154,7 +7154,7 @@ If you did not request this password reset, please ignore this email.
 
 def reset_password_view(request, token):
     """Handle password reset from email link"""
-    from .models import PasswordResetToken
+    from ..models import PasswordResetToken
     
     try:
         reset_token = PasswordResetToken.objects.get(token=token)
