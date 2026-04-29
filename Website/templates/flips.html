@@ -615,55 +615,27 @@
     }
 
     .btn-filter:hover,
-    .btn-filter:focus-visible {
-        background: var(--surface-2);
-        border-color: var(--primary);
-        color: var(--primary);
-        outline: none;
-    }
-
-    .btn-filter.has-active,
-    .btn-filter.is-open {
-        background: rgba(99, 102, 241, 0.1);
-        border-color: var(--primary);
-        color: var(--primary);
-    }
-
+    .btn-filter:focus-visible,
     .btn-historical:hover,
-    .btn-historical:focus-visible {
+    .btn-historical:focus-visible,
+    .btn-equity-chart:hover,
+    .btn-equity-chart:focus-visible,
+    .btn-journal:hover,
+    .btn-journal:focus-visible {
         background: rgba(59, 130, 246, 0.1);
         border-color: var(--info);
         color: var(--info);
         outline: none;
+        text-decoration: none;
     }
 
-    .btn-historical.active {
+    .btn-filter.has-active,
+    .btn-filter.is-open,
+    .btn-historical.active,
+    .btn-equity-chart.active {
         background: rgba(59, 130, 246, 0.15);
         border-color: var(--info);
         color: var(--info);
-    }
-
-    .btn-equity-chart:hover,
-    .btn-equity-chart:focus-visible {
-        background: rgba(99, 102, 241, 0.1);
-        border-color: var(--primary);
-        color: var(--primary);
-        outline: none;
-    }
-
-    .btn-equity-chart.active {
-        background: rgba(99, 102, 241, 0.15);
-        border-color: var(--primary);
-        color: var(--primary);
-    }
-
-    .btn-journal:hover,
-    .btn-journal:focus-visible {
-        background: rgba(124, 58, 237, 0.1);
-        border-color: #7C3AED;
-        color: #6D28D9;
-        outline: none;
-        text-decoration: none;
     }
 
     .btn-filter svg {

@@ -1,167 +1,167 @@
 {
   "gainers": [
     {
-      "id": 24420,
-      "name": "Inquisitor's hauberk",
-      "icon": "Inquisitor's hauberk.png",
-      "change": 6.64,
-      "price": 96037937,
-      "volume": 548216557
+      "id": 23959,
+      "name": "Enhanced crystal teleport seed",
+      "icon": "Enhanced crystal teleport seed.png",
+      "change": 6.68,
+      "price": 3502120,
+      "volume": 95724613
     },
     {
-      "id": 32115,
-      "name": "Dragon cannon barrel",
-      "icon": "Dragon cannon barrel.png",
-      "change": 6.3,
-      "price": 2445669,
-      "volume": 233255680
+      "id": 31148,
+      "name": "Virtus armour set",
+      "icon": "Virtus armour set.png",
+      "change": 4.45,
+      "price": 87214999,
+      "volume": 188965831
     },
     {
-      "id": 21028,
-      "name": "Dragon harpoon",
-      "icon": "Dragon harpoon.png",
-      "change": 6.08,
-      "price": 3344967,
-      "volume": 78467350
+      "id": 26243,
+      "name": "Virtus robe top",
+      "icon": "Virtus robe top.png",
+      "change": 4.26,
+      "price": 47117502,
+      "volume": 208102300
     },
     {
-      "id": 33012,
-      "name": "Annihilation weapon scroll",
-      "icon": "Annihilation weapon scroll.png",
-      "change": 5.54,
-      "price": 41302528,
-      "volume": 127349461
+      "id": 566,
+      "name": "Soul rune",
+      "icon": "Soul rune.png",
+      "change": 2.76,
+      "price": 372,
+      "volume": 75011893
     },
     {
-      "id": 25985,
-      "name": "Elidinis' ward",
-      "icon": "Elidinis' ward.png",
-      "change": 5.1,
-      "price": 3890002,
-      "volume": 164838834
+      "id": 27229,
+      "name": "Masori body",
+      "icon": "Masori body.png",
+      "change": 2.58,
+      "price": 49016209,
+      "volume": 130709890
     },
     {
-      "id": 13263,
-      "name": "Abyssal bludgeon",
-      "icon": "Abyssal bludgeon.png",
-      "change": 5.0,
-      "price": 18175495,
-      "volume": 534662477
+      "id": 26245,
+      "name": "Virtus robe bottom",
+      "icon": "Virtus robe bottom.png",
+      "change": 2.31,
+      "price": 31187021,
+      "volume": 136443216
+    },
+    {
+      "id": 11806,
+      "name": "Saradomin godsword",
+      "icon": "Saradomin godsword.png",
+      "change": 1.97,
+      "price": 28498269,
+      "volume": 113993076
+    },
+    {
+      "id": 27690,
+      "name": "Voidwaker",
+      "icon": "Voidwaker.png",
+      "change": 1.96,
+      "price": 36396002,
+      "volume": 552006030
+    },
+    {
+      "id": 27612,
+      "name": "Venator bow (uncharged)",
+      "icon": "Venator bow (uncharged).png",
+      "change": 1.94,
+      "price": 68653806,
+      "volume": 374735357
     },
     {
       "id": 21015,
       "name": "Dinh's bulwark",
       "icon": "Dinh's bulwark.png",
-      "change": 4.36,
-      "price": 13607512,
-      "volume": 356630210
-    },
-    {
-      "id": 21742,
-      "name": "Granite hammer",
-      "icon": "Granite hammer.png",
-      "change": 4.25,
-      "price": 3816307,
-      "volume": 115602299
-    },
-    {
-      "id": 2507,
-      "name": "Red dragon leather",
-      "icon": "Red dragon leather.png",
-      "change": 4.2,
-      "price": 2901,
-      "volume": 75864776
-    },
-    {
-      "id": 28334,
-      "name": "Awakener's orb",
-      "icon": "Awakener's orb.png",
-      "change": 3.99,
-      "price": 389120,
-      "volume": 85249706
+      "change": 1.78,
+      "price": 13554156,
+      "volume": 75677371
     }
   ],
   "losers": [
     {
-      "id": 29806,
-      "name": "Aranea boots",
-      "icon": "Aranea boots.png",
-      "change": -9.2,
-      "price": 2240548,
-      "volume": 219106923
+      "id": 21006,
+      "name": "Kodai wand",
+      "icon": "Kodai wand.png",
+      "change": -2.92,
+      "price": 73821143,
+      "volume": 338346905
     },
     {
-      "id": 24587,
-      "name": "Rune pouch note",
-      "icon": "Rune pouch note.png",
-      "change": -8.02,
-      "price": 4479585,
-      "volume": 137000641
+      "id": 26233,
+      "name": "Ancient godsword",
+      "icon": "Ancient godsword.png",
+      "change": -2.82,
+      "price": 38736822,
+      "volume": 79087678
     },
     {
-      "id": 31961,
-      "name": "Broken dragon hook",
-      "icon": "Broken dragon hook.png",
-      "change": -5.22,
-      "price": 19211750,
-      "volume": 128078333
+      "id": 13263,
+      "name": "Abyssal bludgeon",
+      "icon": "Abyssal bludgeon.png",
+      "change": -2.76,
+      "price": 20024432,
+      "volume": 117643538
     },
     {
-      "id": 31406,
-      "name": "Dragon nails",
-      "icon": "Dragon nails.png",
-      "change": -4.65,
-      "price": 35517,
-      "volume": 120269441
+      "id": 31115,
+      "name": "Eye of ayak (uncharged)",
+      "icon": "Eye of ayak (uncharged).png",
+      "change": -2.46,
+      "price": 53075186,
+      "volume": 510848665
     },
     {
-      "id": 27226,
-      "name": "Masori mask",
-      "icon": "Masori mask.png",
-      "change": -4.58,
-      "price": 10713127,
-      "volume": 195960948
+      "id": 24422,
+      "name": "Nightmare staff",
+      "icon": "Nightmare staff.png",
+      "change": -2.17,
+      "price": 38253151,
+      "volume": 146637078
     },
     {
-      "id": 11256,
-      "name": "Dragon impling jar",
-      "icon": "Dragon impling jar.png",
-      "change": -4.15,
-      "price": 410881,
-      "volume": 75396663
+      "id": 11212,
+      "name": "Dragon arrow",
+      "icon": "Dragon arrow 5.png",
+      "change": -1.95,
+      "price": 3069,
+      "volume": 86582116
     },
     {
-      "id": 11830,
-      "name": "Armadyl chainskirt",
-      "icon": "Armadyl chainskirt.png",
-      "change": -3.81,
-      "price": 25996144,
-      "volume": 200386943
+      "id": 31106,
+      "name": "Confliction gauntlets",
+      "icon": "Confliction gauntlets.png",
+      "change": -1.88,
+      "price": 82307636,
+      "volume": 596730361
     },
     {
-      "id": 29022,
-      "name": "Blood moon chestplate",
-      "icon": "Blood moon chestplate.png",
-      "change": -3.75,
-      "price": 4712947,
-      "volume": 129213296
+      "id": 29796,
+      "name": "Noxious halberd",
+      "icon": "Noxious halberd.png",
+      "change": -1.85,
+      "price": 50372566,
+      "volume": 709413637
     },
     {
-      "id": 22983,
-      "name": "Hydra leather",
-      "icon": "Hydra leather.png",
-      "change": -3.7,
-      "price": 12750333,
-      "volume": 349040365
+      "id": 6737,
+      "name": "Berserker ring",
+      "icon": "Berserker ring.png",
+      "change": -1.74,
+      "price": 3248638,
+      "volume": 81892749
     },
     {
-      "id": 11828,
-      "name": "Armadyl chestplate",
-      "icon": "Armadyl chestplate.png",
-      "change": -3.66,
-      "price": 34562353,
-      "volume": 298100294
+      "id": 22477,
+      "name": "Avernic defender hilt",
+      "icon": "Avernic defender hilt.png",
+      "change": -1.59,
+      "price": 36138877,
+      "volume": 149072867
     }
   ],
-  "last_updated": "2026-04-09T15:09:16.751266"
+  "last_updated": "2026-04-27T17:57:45.645461+00:00"
 }
