@@ -1,6 +1,6 @@
 # Collective Move Volume Test Report
 
-Updated: 2026-04-16 09:53:14 UTC
+Updated: 2026-04-29 17:13:17 UTC
 
 ## Goal
 Verify that collective_move alerts ignore HourlyItemVolume rows and still obey the price-based rules that define the alert.

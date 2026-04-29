@@ -1,6 +1,6 @@
 # Alert Volume Spike Test Report
 
-Generated at: 2026-04-16T09:53:44.390576+00:00
+Generated at: 2026-04-29T17:13:47.987314+00:00
 
 This file is rewritten by `tests/test_alert_volume_spike.py` every time the suite runs.
 
