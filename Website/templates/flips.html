@@ -119,6 +119,12 @@
         align-items: center;
         gap: 16px;
         margin-bottom: 30px;
+        flex-wrap: wrap;
+    }
+
+    .page-header-text {
+        flex: 1 1 auto;
+        min-width: 0;
     }
 
     .page-header.desktop-table-width-bound {
@@ -133,10 +139,15 @@
         gap: 8px;
         margin-left: auto;
         flex-shrink: 0;
+        max-width: 100%;
     }
 
     .page-header-actions-menu {
         position: relative;
+    }
+
+    .flips-mobile-action-header {
+        display: none;
     }
 
     .btn-flips-header-menu {
@@ -586,11 +597,6 @@
         display: flex;
         gap: 8px;
         align-items: center;
-    }
-
-    /* Mobile action dropdown - hidden on desktop */
-    .mobile-action-dropdown {
-        display: none;
     }
 
     /* Filter search bar - stretches to fill available space */
@@ -2230,27 +2236,6 @@
             gap: 0.75rem;
         }
 
-        /* ===== BUTTONS ROW - ACTION DROPDOWN ===== */
-        /* What: Group New Flip and Delete Flip into dropdown menu
-           Why: Save horizontal space on small screens
-           How: Show icon button that reveals action menu */
-        
-        .buttons-row {
-            justify-content: flex-start;
-            gap: 0.5rem;
-        }
-
-        /* Show mobile action dropdown on mobile */
-        .mobile-action-dropdown {
-            display: block;
-        }
-
-        /* Hide individual action buttons on mobile */
-        .btn-new-flip,
-        .btn-delete-flip {
-            display: none;
-        }
-
         /* ===== SEARCH/FILTER ROW MOBILE ===== */
         .search-filter-row {
             flex-direction: row;
@@ -2391,8 +2376,45 @@
             display: none;
         }
 
-        .page-header-actions {
+        .main-content {
+            padding-top: 70px !important;
+        }
+
+        .page-header {
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .page-header-text {
+            flex: 1 1 180px;
+        }
+
+        .page-header > .page-header-actions {
             display: none;
+        }
+
+        .flips-mobile-action-header {
+            position: fixed;
+            top: 15px;
+            left: 72px;
+            right: 15px;
+            z-index: 997;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+            min-height: 44px;
+        }
+
+        .flips-mobile-action-header .filter-dropdown-menu {
+            max-width: calc(100vw - 30px);
+        }
+
+        @media (min-width: 769px) {
+            .flips-mobile-action-header {
+                left: 15px;
+            }
         }
 
         .sort-indicator-mobile-row.active,
@@ -2448,106 +2470,6 @@
             min-height: 16px;
         }
 
-        /* ===== MOBILE ACTION DROPDOWN ===== */
-        /* What: Dropdown menu for New Flip and Delete Flip actions
-           Why: Conserve space by grouping actions under one button
-           How: Icon button that opens menu with action items */
-        
-        /* =====================================================================
-           MOBILE ACTION DROPDOWN BUTTON
-           =====================================================================
-           What: "Actions" button that reveals New Flip and Delete Flip options
-           Why: Groups actions to save horizontal space on mobile
-           How: Button with icon + text label, styled to match other buttons
-           ===================================================================== */
-        .mobile-action-dropdown {
-            position: relative;
-        }
-
-        .btn-mobile-actions {
-            padding: 8px 14px;         /* Match btn-historical/btn-filter padding */
-            background: var(--surface);
-            color: var(--text);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            font-weight: 500;
-            font-size: 14px;           /* Consistent font size */
-            cursor: pointer;
-            transition: all 0.15s;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            min-height: 44px;          /* Match other button heights */
-            justify-content: center;
-            white-space: nowrap;       /* Prevent text wrapping */
-        }
-
-        .btn-mobile-actions:hover {
-            background: var(--surface-2);
-            border-color: var(--primary);
-        }
-
-        .btn-mobile-actions svg {
-            width: 20px;
-            height: 20px;
-        }
-
-        .mobile-action-menu {
-            position: absolute;
-            top: calc(100% + 6px);
-            left: 0;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-            min-width: 180px;
-            z-index: 1000;
-            display: none;
-            padding: 6px;
-        }
-
-        .mobile-action-menu.show {
-            display: block;
-        }
-
-        .mobile-action-item {
-            padding: 10px 12px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            transition: all 0.15s;
-            border-radius: 6px;
-            margin: 2px 0;
-            background: var(--surface-2);
-            border: 1px solid transparent;
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--text);
-        }
-
-        .mobile-action-item:hover {
-            background: linear-gradient(135deg, rgba(234, 179, 140, 0.3), rgba(216, 155, 108, 0.25));
-            border-color: rgba(200, 140, 90, 0.3);
-        }
-
-        .mobile-action-item svg {
-            width: 18px;
-            height: 18px;
-            flex-shrink: 0;
-        }
-
-        /* Delete mode active state for mobile action button */
-        .btn-mobile-actions.delete-mode-active {
-            background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
-            border-color: transparent;
-            color: #fff;
-        }
-
-        .btn-mobile-actions.delete-mode-active:hover {
-            background: linear-gradient(135deg, #B91C1C 0%, #991B1B 100%);
-        }
-
         /* =====================================================================
            DELETE MODE INSTRUCTION TEXT
            =====================================================================
@@ -2566,7 +2488,7 @@
 
         /* Show instruction text when delete mode is active */
         .delete-mode-instruction.active {
-            display: inline-block;
+            display: inline-block !important;
         }
 
         /* Fade in animation for instruction text */
@@ -2973,6 +2895,22 @@
 {% endblock %}
 
 {% block content %}
+<div class="flips-mobile-action-header" aria-label="Flip actions">
+    <button type="button" class="btn-new-flip header-create-style" id="mobileNewFlipBtn" data-bs-toggle="modal" data-bs-target="#newFlipModal">
+        New Flip
+    </button>
+    <div class="page-header-actions-menu filter-dropdown-wrapper">
+        <button type="button" class="btn-flips-header-menu js-flips-actions-toggle" id="mobileFlipsHeaderActionsBtn" aria-label="More flip actions" aria-expanded="false" data-menu-target="mobileFlipsHeaderActionsMenu">...</button>
+        <div class="filter-dropdown-menu js-flips-actions-menu" id="mobileFlipsHeaderActionsMenu">
+            <div class="filter-dropdown-header">Actions</div>
+            <button type="button" class="filter-dropdown-item btn-delete-flip js-delete-flip" id="mobileDeleteFlipBtn">
+                <span class="js-delete-flip-label">Delete Flip</span>
+                <span class="filter-check">&times;</span>
+            </button>
+        </div>
+    </div>
+</div>
+
 <div class="page-header">
     <div class="page-header-icon">
         <svg fill="currentColor" viewBox="0 0 20 20">
@@ -2989,15 +2927,16 @@
             New Flip
         </button>
         <div class="page-header-actions-menu filter-dropdown-wrapper">
-            <button type="button" class="btn-flips-header-menu" id="flipsHeaderActionsBtn" aria-label="More flip actions" aria-expanded="false">...</button>
-            <div class="filter-dropdown-menu" id="flipsHeaderActionsMenu">
+            <button type="button" class="btn-flips-header-menu js-flips-actions-toggle" id="flipsHeaderActionsBtn" aria-label="More flip actions" aria-expanded="false" data-menu-target="flipsHeaderActionsMenu">...</button>
+            <div class="filter-dropdown-menu js-flips-actions-menu" id="flipsHeaderActionsMenu">
                 <div class="filter-dropdown-header">Actions</div>
-                <button type="button" class="filter-dropdown-item btn-delete-flip" id="deleteFlipBtn">
-                    <span>Delete Flip</span>
+                <button type="button" class="filter-dropdown-item btn-delete-flip js-delete-flip" id="deleteFlipBtn">
+                    <span class="js-delete-flip-label" id="deleteFlipBtnLabel">Delete Flip</span>
                     <span class="filter-check">&times;</span>
                 </button>
             </div>
         </div>
+        <span class="delete-mode-instruction" id="deleteModeInstruction">Tap a flip to delete</span>
     </div>
 </div>
 
@@ -3018,43 +2957,6 @@
 
 
 <div class="controls-container">
-    <div class="d-flex gap-3 align-items-center buttons-row">
-        <!-- Mobile Action Dropdown - shown only on mobile -->
-        <!-- What: Dropdown button for grouping action items on mobile
-             Why: Saves horizontal space by combining New Flip and Delete Flip into a menu
-             How: Button labeled "Actions" opens dropdown menu with action items -->
-        <div class="mobile-action-dropdown">
-            <button type="button" class="btn-mobile-actions" id="mobileActionsBtn" aria-label="Actions menu">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                        d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                </svg>
-                <span class="btn-text">Actions</span>
-            </button>
-            <div class="mobile-action-menu" id="mobileActionMenu">
-                <div class="mobile-action-item" data-action="new-flip">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                    New Flip
-                </div>
-                <div class="mobile-action-item" data-action="delete-flip">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    Delete Flip
-                </div>
-            </div>
-        </div>
-        
-        <!-- Delete Mode Instruction Text - shown when delete mode is active -->
-        <!-- What: Inline text telling user to tap a row to delete
-             Why: Replaces modal for simpler, less intrusive UX
-             How: Hidden by default, shown via JS when delete mode activates -->
-        <span class="delete-mode-instruction" id="deleteModeInstruction">Tap a flip to delete</span>
-        
-    </div>
     <div class="d-flex gap-2 align-items-center search-filter-row">
         <!-- Desktop sort indicator (inline with search/filter) -->
         <div class="sort-indicator-wrapper desktop-sort">
@@ -4660,31 +4562,38 @@
             e.stopPropagation();
         });
 
-        const flipsHeaderActionsBtn = document.getElementById('flipsHeaderActionsBtn');
-        const flipsHeaderActionsMenu = document.getElementById('flipsHeaderActionsMenu');
+        const flipsHeaderActionsBtns = Array.from(document.querySelectorAll('.js-flips-actions-toggle'));
+        const flipsHeaderActionsMenus = Array.from(document.querySelectorAll('.js-flips-actions-menu'));
 
-        function setFlipsHeaderActionsOpen(isOpen) {
-            if (!flipsHeaderActionsBtn || !flipsHeaderActionsMenu) {
-                return;
-            }
-            flipsHeaderActionsMenu.classList.toggle('show', isOpen);
-            flipsHeaderActionsBtn.classList.toggle('is-open', isOpen);
-            flipsHeaderActionsBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        function setFlipsHeaderActionsOpen(isOpen, activeMenu = null) {
+            flipsHeaderActionsMenus.forEach(menu => {
+                const shouldOpen = isOpen && menu === activeMenu;
+                menu.classList.toggle('show', shouldOpen);
+            });
+            flipsHeaderActionsBtns.forEach(button => {
+                const targetMenu = document.getElementById(button.dataset.menuTarget);
+                const shouldOpen = isOpen && targetMenu === activeMenu;
+                button.classList.toggle('is-open', shouldOpen);
+                button.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+            });
         }
 
-        if (flipsHeaderActionsBtn && flipsHeaderActionsMenu) {
-            flipsHeaderActionsBtn.addEventListener('click', function (e) {
+        flipsHeaderActionsBtns.forEach(button => {
+            button.addEventListener('click', function (e) {
                 e.stopPropagation();
-                setFlipsHeaderActionsOpen(!flipsHeaderActionsMenu.classList.contains('show'));
+                const targetMenu = document.getElementById(button.dataset.menuTarget);
+                setFlipsHeaderActionsOpen(targetMenu && !targetMenu.classList.contains('show'), targetMenu);
                 setFilterDropdownOpen(false);
                 sortIndicatorMenu.classList.remove('show');
                 sortIndicatorMenuMobile.classList.remove('show');
             });
+        });
 
-            flipsHeaderActionsMenu.addEventListener('click', function (e) {
+        flipsHeaderActionsMenus.forEach(menu => {
+            menu.addEventListener('click', function (e) {
                 e.stopPropagation();
             });
-        }
+        });
 
         // Close dropdowns when clicking outside
         // What: Closes all open dropdown menus when clicking anywhere outside them
@@ -5515,10 +5424,20 @@
         }
 
         // Delete flip functionality
-        const deleteBtn = document.getElementById('deleteFlipBtn');
+        const deleteBtns = Array.from(document.querySelectorAll('.js-delete-flip'));
+        const deleteBtnLabels = Array.from(document.querySelectorAll('.js-delete-flip-label'));
         let deleteMode = false;
         let isProcessing = false;
         let selectedRow = null;
+
+        function setDeleteButtonsActive(isActive, labelText) {
+            deleteBtnLabels.forEach(label => {
+                label.textContent = labelText;
+            });
+            deleteBtns.forEach(button => {
+                button.classList.toggle('delete-mode-active', isActive);
+            });
+        }
 
         // =====================================================================
         // Delete Mode Activation
@@ -5529,24 +5448,25 @@
         // =====================================================================
         const deleteInstructionText = document.getElementById('deleteModeInstruction');
         
-        deleteBtn.addEventListener('click', function () {
-            setFlipsHeaderActionsOpen(false);
-            if (!deleteMode) {
-                deleteMode = true;
-                deleteBtn.textContent = 'Click a row to delete';
-                deleteBtn.classList.add('delete-mode-active');
-                table.classList.add('delete-mode');
+        deleteBtns.forEach(button => {
+            button.addEventListener('click', function () {
+                setFlipsHeaderActionsOpen(false);
+                if (!deleteMode) {
+                    deleteMode = true;
+                    setDeleteButtonsActive(true, 'Click a row to delete');
+                    table.classList.add('delete-mode');
 
-                // Show inline instruction text (works on both mobile and desktop)
-                // What: Displays helper text next to Actions button
-                // Why: Users need guidance that they should tap/click a row
-                // How: Add 'active' class to show the instruction text
-                if (deleteInstructionText) {
-                    deleteInstructionText.classList.add('active');
+                    // Show inline instruction text (works on both mobile and desktop)
+                    // What: Displays helper text next to Actions button
+                    // Why: Users need guidance that they should tap/click a row
+                    // How: Add 'active' class to show the instruction text
+                    if (deleteInstructionText) {
+                        deleteInstructionText.classList.add('active');
+                    }
+                } else {
+                    cancelDeleteMode();
                 }
-            } else {
-                cancelDeleteMode();
-            }
+            });
         });
 
         // =====================================================================
@@ -5558,8 +5478,7 @@
         function cancelDeleteMode() {
             deleteMode = false;
             isProcessing = false;
-            deleteBtn.textContent = 'Delete Flip';
-            deleteBtn.classList.remove('delete-mode-active');
+            setDeleteButtonsActive(false, 'Delete Flip');
             table.classList.remove('delete-mode');
             
             // Hide inline instruction text
@@ -5587,17 +5506,13 @@
 
             // Get the elements we want to allow clicks on (table and delete button)
             const flipsTable = document.getElementById('flipsTable');
-            const mobileActionsBtn = document.getElementById('mobileActionsBtn');
-            const mobileActionMenu = document.getElementById('mobileActionMenu');
 
-            // Check if click was inside the table, on delete button, or on mobile action elements
+            // Check if click was inside the table or on delete button
             const isInsideTable = flipsTable && flipsTable.contains(e.target);
-            const isDeleteButton = deleteBtn.contains(e.target);
-            const isMobileActions = (mobileActionsBtn && mobileActionsBtn.contains(e.target)) ||
-                                   (mobileActionMenu && mobileActionMenu.contains(e.target));
+            const isDeleteButton = deleteBtns.some(button => button.contains(e.target));
 
             // If click is outside all allowed elements, cancel delete mode
-            if (!isInsideTable && !isDeleteButton && !isMobileActions) {
+            if (!isInsideTable && !isDeleteButton) {
                 cancelDeleteMode();
             }
         });
@@ -6252,116 +6167,6 @@
         // =========================================================================
         // MOBILE-SPECIFIC FUNCTIONALITY
         // =========================================================================
-
-        /**
-         * Mobile Action Dropdown Menu
-         * What: Dropdown menu for New Flip and Delete Flip on mobile devices
-         * Why: Conserve horizontal space on small screens by grouping actions
-         * How: Toggle menu visibility, delegate click events to actual buttons
-         */
-        const mobileActionsBtn = document.getElementById('mobileActionsBtn');
-        const mobileActionMenu = document.getElementById('mobileActionMenu');
-        
-        if (mobileActionsBtn && mobileActionMenu) {
-            // Toggle action menu on button click
-            mobileActionsBtn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                mobileActionMenu.classList.toggle('show');
-            });
-
-            // Handle action menu item clicks
-            mobileActionMenu.addEventListener('click', function(e) {
-                const item = e.target.closest('.mobile-action-item');
-                if (!item) return;
-
-                const action = item.dataset.action;
-                mobileActionMenu.classList.remove('show');
-
-                if (action === 'new-flip') {
-                    // Trigger the New Flip modal with proper instance management
-                    // What: Opens new flip modal safely without creating duplicate instances
-                    // Why: Prevents memory leaks from multiple modal instances
-                    // How: Reuse existing instance or create new one only if needed
-                    const newFlipModalElement = document.getElementById('newFlipModal');
-                    if (newFlipModalElement) {
-                        let modal = bootstrap.Modal.getInstance(newFlipModalElement);
-                        if (!modal) {
-                            modal = new bootstrap.Modal(newFlipModalElement);
-                        }
-                        modal.show();
-                    }
-                } else if (action === 'delete-flip') {
-                    // Trigger the delete flip button click with null check
-                    const deleteBtn = document.getElementById('deleteFlipBtn');
-                    if (deleteBtn) {
-                        deleteBtn.click();
-                    }
-                }
-            });
-
-            // Close menu when clicking outside (only on mobile)
-            // What: Closes action menu when user clicks elsewhere
-            // Why: Standard dropdown behavior
-            // How: Single event listener, managed based on viewport
-            function handleOutsideClick(e) {
-                if (!mobileActionsBtn.contains(e.target) && !mobileActionMenu.contains(e.target)) {
-                    mobileActionMenu.classList.remove('show');
-                }
-            }
-
-            // Track if listener is active to prevent duplicates
-            let isListenerActive = false;
-            
-            // Add listener if on mobile
-            if (window.matchMedia('(max-width: 900px)').matches) {
-                document.addEventListener('click', handleOutsideClick);
-                isListenerActive = true;
-            }
-
-            // Handle viewport resize - add/remove listener as needed
-            // What: Manages click listener lifecycle based on viewport
-            // Why: Prevent memory leaks and unnecessary event handling on desktop
-            // How: Add listener on mobile, remove on desktop, prevent duplicates
-            window.addEventListener('resize', function() {
-                const isMobileNow = window.matchMedia('(max-width: 900px)').matches;
-                
-                if (isMobileNow && !isListenerActive) {
-                    // Switched to mobile - add listener
-                    document.addEventListener('click', handleOutsideClick);
-                    isListenerActive = true;
-                } else if (!isMobileNow && isListenerActive) {
-                    // Switched to desktop - remove listener
-                    document.removeEventListener('click', handleOutsideClick);
-                    isListenerActive = false;
-                    mobileActionMenu.classList.remove('show'); // Close menu if resizing to desktop
-                }
-            });
-
-            // Sync delete mode active state to mobile button
-            // What: Keep mobile action button styling in sync with desktop delete button
-            // Why: Visual feedback when delete mode is active
-            // How: Use MutationObserver to watch for class changes, optimized
-            const deleteBtn = document.getElementById('deleteFlipBtn');
-            if (deleteBtn) {
-                const observer = new MutationObserver(function() {
-                    // Optimized: Check class directly without iterating mutations
-                    // What: Update mobile button state based on desktop button
-                    // Why: Synchronize visual state across both button implementations
-                    // How: Check current class, update mobile button accordingly
-                    if (deleteBtn.classList.contains('delete-mode-active')) {
-                        mobileActionsBtn.classList.add('delete-mode-active');
-                    } else {
-                        mobileActionsBtn.classList.remove('delete-mode-active');
-                    }
-                });
-
-                // Only watch for class attribute changes to optimize performance
-                observer.observe(deleteBtn, { 
-                    attributes: true,
-                    attributeFilter: ['class']
-                });
-            }
-        }
 
         /**
          * Search Bar - Scroll Into View on Mobile Focus
