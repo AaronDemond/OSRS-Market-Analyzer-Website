@@ -22,3 +22,7 @@ response.md
 changes.txt
 ui.png
 notepad
+test_output/*
+*.log
+db_BACKUP_BEFORE_RESTORE.sqlite3
+sqlite_data.json

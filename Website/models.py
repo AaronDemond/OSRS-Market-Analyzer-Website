@@ -277,7 +277,8 @@ class Alert(models.Model):
     # What: Stores which alert evaluation strategy to use (spread/spike/sustained/threshold).
     # Why: We removed legacy above/below alert types; default must be a supported type to avoid invalid forms.
     # How: Default is set to 'threshold' because it is the closest modern replacement for value/percentage triggers.
-    type = models.CharField(max_length=25, null=True, choices=ALERT_CHOICES, default='threshold')
+    # Indexed because the alert checker filters/groups alerts by type every cycle.
+    type = models.CharField(max_length=25, null=True, choices=ALERT_CHOICES, default='threshold', db_index=True)
     direction = models.CharField(max_length=10, choices=DIRECTION_CHOICES, blank=True, null=True)
     # unused field
     above_below = models.CharField(max_length=10, choices=ABOVE_BELOW_CHOICES, blank=True, null=True)
@@ -293,7 +294,9 @@ class Alert(models.Model):
     # Note: max_length=7 to accommodate 'average' (the longest choice value)
     reference = models.CharField(max_length=7, choices=REFERENCE_CHOICES, blank=True, null=True, default=None)
     is_triggered = models.BooleanField(default=False, blank=True, null=True)
-    is_active = models.BooleanField(default=True, blank=True, null=True)
+    # is_active is indexed because every check_alerts cycle filters Alert.objects.filter(is_active=True);
+    # without an index this is a full table scan that grows with the alert table.
+    is_active = models.BooleanField(default=True, blank=True, null=True, db_index=True)
     is_dismissed = models.BooleanField(default=False, blank=True, null=True)
     
     # show_notification: Controls whether this alert shows a notification banner when triggered
@@ -722,7 +725,16 @@ class Alert(models.Model):
     @property
     def time_frame_display(self):
         return self._format_time_frame()
-    
+
+    class Meta:
+        # Composite index for the per-cycle "fetch all active alerts, group by type" query
+        # in the alert checker. Single-column db_index=True on `is_active` and `type`
+        # already covers most simple lookups; this composite covers the combined
+        # filter+group pattern used in handle().
+        indexes = [
+            models.Index(fields=['is_active', 'type'], name='alert_active_type_idx'),
+        ]
+
     def __str__(self):
         """
         Returns a concise, human-readable string representation of the alert.

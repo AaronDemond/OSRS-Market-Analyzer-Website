@@ -1757,6 +1757,54 @@ class Command(BaseCommand):
 
         return None
 
+    def _build_cycle_volume_cache(self):
+        """
+        Build a per-cycle map of item_id -> (newest aware UTC datetime, volume).
+
+        What: Single batched query that pulls the newest HourlyItemVolume row for
+              every item the table knows about, normalizes the timestamp once, and
+              stores the (timestamp, volume) tuple keyed by item_id.
+        Why: Without this cache, every call to _get_latest_fresh_volume_row hits
+             the DB once per item per cycle. For "all items" alerts that fan out
+             over thousands of items per alert, this becomes the dominant cost of
+             the check_alerts loop. One cycle ≈ one query instead of N×alerts.
+        How: Uses Max('id') subquery to identify the newest row per item_id (id is
+             monotonic in the ingestion script, so newest id == newest snapshot).
+             Items whose newest row has an unparseable timestamp are simply absent
+             from the cache; with the cache active, callers treat absence as
+             "no fresh volume" (the same behavior as if the row were stale).
+
+        Returns:
+            dict[int, tuple[datetime, int]]: Mapping of item_id -> (timestamp, volume).
+            Empty dict on any DB error (graceful degradation: callers still work,
+            they just see no cached data and treat every item as missing volume).
+        """
+        from django.db.models import Max
+        cache = {}
+        try:
+            latest_ids = (
+                HourlyItemVolume.objects
+                .values('item_id')
+                .annotate(latest_id=Max('id'))
+                .values('latest_id')
+            )
+            rows = (
+                HourlyItemVolume.objects
+                .filter(id__in=latest_ids)
+                .values_list('item_id', 'timestamp', 'volume')
+            )
+            for item_id, raw_timestamp, volume in rows.iterator():
+                normalized = self._normalize_volume_timestamp(raw_timestamp)
+                if normalized is None:
+                    continue
+                try:
+                    cache[int(item_id)] = (normalized, volume)
+                except (TypeError, ValueError):
+                    continue
+        except Exception:
+            return {}
+        return cache
+
     def _get_latest_fresh_volume_row(self, item_id, max_age_minutes=None):
         """
         Return the newest parseable HourlyItemVolume row if it is still fresh.
@@ -1765,13 +1813,39 @@ class Command(BaseCommand):
             item_id: The OSRS item ID.
             max_age_minutes: Optional override for the staleness cutoff. Defaults
                 to VOLUME_RECENCY_MINUTES so existing callers keep their behavior.
+
+        Behavior:
+            * If self._cycle_volume_cache is set (populated by handle() at the start
+              of each cycle), the cache is treated as authoritative — one dict
+              lookup, no DB query. Items absent from the cache are treated as
+              having no fresh volume.
+            * Otherwise (e.g. unit tests, or before the first cycle finishes
+              building the cache), falls back to the original per-item DB query
+              that scans up to VOLUME_LOOKUP_CANDIDATE_ROWS recent rows for the
+              item and picks the newest parseable one.
         """
         if max_age_minutes is None:
             max_age_minutes = VOLUME_RECENCY_MINUTES
+
+        try:
+            normalized_item_id = int(item_id)
+        except (TypeError, ValueError):
+            return None
+
+        cycle_cache = getattr(self, '_cycle_volume_cache', None)
+        if cycle_cache is not None:
+            cached = cycle_cache.get(normalized_item_id)
+            if cached is None:
+                return None
+            cached_timestamp, cached_volume = cached
+            if timezone.now() - cached_timestamp > timedelta(minutes=max_age_minutes):
+                return None
+            return cached_timestamp, cached_volume
+
         try:
             recent_rows = list(
                 HourlyItemVolume.objects
-                .filter(item_id=int(item_id))
+                .filter(item_id=normalized_item_id)
                 .order_by('-id')
                 .values_list('timestamp', 'volume')[:VOLUME_LOOKUP_CANDIDATE_ROWS]
             )
@@ -2230,6 +2304,25 @@ class Command(BaseCommand):
                   f"falling back to HTTP API for item {item_id}")
             return self.fetch_timeseries_data(item_id, timestep, lookback_count)
 
+        # Per-cycle memoization: when the alert checker is mid-cycle (signaled by
+        # _cycle_volume_cache being a dict), cache results by (timestep, item_id,
+        # lookback_count). Multiple alerts evaluating the same item with the same
+        # parameters in one cycle will share the result. Outside a cycle (unit
+        # tests, ad-hoc calls), the cache is bypassed.
+        in_cycle = getattr(self, '_cycle_volume_cache', None) is not None
+        ts_cache_key = None
+        if in_cycle:
+            ts_cache = getattr(self, '_cycle_timeseries_cache', None)
+            if ts_cache is None:
+                ts_cache = {}
+                self._cycle_timeseries_cache = ts_cache
+            try:
+                ts_cache_key = (timestep, int(item_id), int(lookback_count))
+            except (TypeError, ValueError):
+                ts_cache_key = None
+            if ts_cache_key is not None and ts_cache_key in ts_cache:
+                return ts_cache[ts_cache_key]
+
         try:
             # effective_lookback: How many rows to fetch from the DB.
             # This is the same as lookback_count — each row in the DB represents one
@@ -2302,13 +2395,18 @@ class Command(BaseCommand):
             # may have produced slightly more than needed)
             result = result[-lookback_count:]
 
+            if ts_cache_key is not None:
+                self._cycle_timeseries_cache[ts_cache_key] = result
             return result
 
         except Exception as e:
             # On any DB error, fall back to the HTTP API as a safety net
             print(f"[FLIP CONFIDENCE DB] Error querying DB for item {item_id}: {e}, "
                   f"falling back to HTTP API")
-            return self.fetch_timeseries_data(item_id, timestep, lookback_count)
+            fallback = self.fetch_timeseries_data(item_id, timestep, lookback_count)
+            if ts_cache_key is not None:
+                self._cycle_timeseries_cache[ts_cache_key] = fallback
+            return fallback
 
     def fetch_timeseries_data(self, item_id, timestep, lookback_count):
         """
@@ -2906,13 +3004,53 @@ class Command(BaseCommand):
             # No valid returns yet (first cycle) — drift is 0
             self.dump_market_state['market_drift'] = 0.0
 
+    def _build_cycle_5m_latest_cache(self):
+        """
+        Build a per-cycle map of item_id -> newest FiveMinTimeSeries row.
+
+        What: Single batched query that fetches the latest 5-minute bucket for
+              every item present in FiveMinTimeSeries.
+        Why: Dump alerts evaluate every monitored item per cycle and call
+             _get_latest_5m_bucket once per item. For "all items" dump alerts
+             that becomes one DB query per item per cycle. One query per cycle
+             replaces them all.
+        How: Same Max('id') subquery pattern as _build_cycle_volume_cache.
+             Returns full model instances because callers read multiple
+             attributes (high_price_volume, low_price_volume, avg_low_price).
+
+        Returns:
+            dict[int, FiveMinTimeSeries]: Mapping of item_id -> latest row.
+            Empty dict on any DB error (graceful degradation).
+        """
+        from django.db.models import Max
+        cache = {}
+        try:
+            latest_ids = (
+                FiveMinTimeSeries.objects
+                .values('item_id')
+                .annotate(latest_id=Max('id'))
+                .values('latest_id')
+            )
+            rows = FiveMinTimeSeries.objects.filter(id__in=latest_ids)
+            for row in rows.iterator():
+                try:
+                    cache[int(row.item_id)] = row
+                except (TypeError, ValueError):
+                    continue
+        except Exception:
+            return {}
+        return cache
+
     def _get_latest_5m_bucket(self, item_id):
         """
         Get the most recent FiveMinTimeSeries row for an item.
 
         What: Returns the latest 5-minute time series data point for an item.
         Why: Provides sell ratio and bucket volume data for dump evaluation.
-        How: Queries FiveMinTimeSeries ordered by -timestamp and returns first result.
+        How: When the per-cycle cache is active (handle() has populated
+             self._cycle_volume_cache), consults a lazily-built dict of
+             newest-row-per-item. Otherwise falls back to a per-item DB query
+             (preserves behavior for unit tests and ad-hoc callers).
 
         Args:
             item_id: Integer or string item ID.
@@ -2920,8 +3058,21 @@ class Command(BaseCommand):
         Returns:
             FiveMinTimeSeries instance, or None if no data exists.
         """
+        try:
+            normalized_item_id = int(item_id)
+        except (TypeError, ValueError):
+            return None
+
+        in_cycle = getattr(self, '_cycle_volume_cache', None) is not None
+        if in_cycle:
+            cache = getattr(self, '_cycle_5m_latest_cache', None)
+            if cache is None:
+                cache = self._build_cycle_5m_latest_cache()
+                self._cycle_5m_latest_cache = cache
+            return cache.get(normalized_item_id)
+
         return FiveMinTimeSeries.objects.filter(
-            item_id=int(item_id)
+            item_id=normalized_item_id
         ).first()
 
     def _compute_sell_ratio(self, bucket):
@@ -3941,8 +4092,28 @@ class Command(BaseCommand):
             if alerts_to_check:
                 self.stdout.write(f'Checking {len(alerts_to_check)} alerts...')
                 
+                # cycle_start: Wall-clock start of this evaluation cycle. Logged at the
+                # end so operators can monitor whether the per-cycle caches and indexes
+                # are actually keeping the loop fast as the alert and item counts grow.
+                cycle_start = time.monotonic()
+                
                 # Fetch all prices once
                 all_prices = self.get_all_prices()
+                
+                # =============================================================================
+                # BUILD PER-CYCLE VOLUME CACHE (one batched query per cycle)
+                # =============================================================================
+                # What: Pre-fetch the newest HourlyItemVolume row for every item into
+                #       a dict so per-item volume lookups during this cycle are O(1).
+                # Why: Without the cache, every alert that needs volume data hits the
+                #      DB at least once per item. "All items" alerts amplify this into
+                #      thousands of queries per cycle. One query per cycle replaces all
+                #      of them.
+                # How: _build_cycle_volume_cache() runs the batched query and returns a
+                #      dict; _get_latest_fresh_volume_row() consults it transparently.
+                # Note: Cleared at the end of the cycle so unit tests and the fallback
+                #       per-item path remain unaffected by cycle state.
+                self._cycle_volume_cache = self._build_cycle_volume_cache()
                 
                 if all_prices:
                     # =============================================================================
@@ -4159,6 +4330,23 @@ class Command(BaseCommand):
                                     alert.save(update_fields=ALERT_STATE_FIELDS)
             else:
                 self.stdout.write('No alerts to check.')
+            
+            # Log cycle wall-clock duration when there were alerts to evaluate. This
+            # gives operators visibility into per-cycle cost so the impact of the
+            # per-cycle caches and Alert indexes can be observed in production.
+            if alerts_to_check:
+                cycle_elapsed = time.monotonic() - cycle_start
+                self.stdout.write(
+                    f'Cycle finished in {cycle_elapsed:.2f}s '
+                    f'({len(alerts_to_check)} alerts).'
+                )
+            
+            # Clear the per-cycle volume cache so the next cycle (or any code path
+            # that runs between cycles) does not see stale data, and so unit tests
+            # / direct method calls fall back to the per-item DB path.
+            self._cycle_volume_cache = None
+            self._cycle_5m_latest_cache = None
+            self._cycle_timeseries_cache = None
             
             # Wait 30 seconds before next check
             time.sleep(5)
