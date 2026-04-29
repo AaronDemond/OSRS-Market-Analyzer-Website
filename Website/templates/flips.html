@@ -2796,9 +2796,52 @@
         min-width: 0;  /* Allow text truncation if needed */
     }
 
+    @media (max-width: 1100px) {
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 6px;
+            width: 100%;
+            margin-bottom: 0.9rem;
+            align-self: stretch;
+        }
+
+        .stat-card {
+            min-width: 0;
+            padding: 8px 6px;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            border-radius: 10px;
+        }
+
+        .stat-label {
+            width: 100%;
+            margin-bottom: 0;
+            font-size: 0.58rem;
+            line-height: 1.15;
+            letter-spacing: 0.02em;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .stat-value {
+            width: 100%;
+            min-width: 0;
+            font-size: clamp(0.56rem, 2vw, 0.82rem);
+            line-height: 1.15;
+            font-variant-numeric: tabular-nums;
+            text-align: center;
+            white-space: nowrap;
+        }
+    }
+
     @media (hover: hover) and (pointer: fine) {
         .table-scroll-wrapper.desktop-horizontal-scroll {
             position: relative;
+            width: fit-content;
+            max-width: 100%;
             overflow-x: auto;
             overflow-y: auto;
             height: auto;
@@ -2813,8 +2856,8 @@
 
         .table-scroll-wrapper.desktop-horizontal-scroll::-webkit-scrollbar {
             display: block;
-            width: 14px;
-            height: 14px;
+            width: 18px;
+            height: 18px;
         }
 
         .table-scroll-wrapper.desktop-horizontal-scroll::-webkit-scrollbar-track {
@@ -2833,7 +2876,18 @@
         }
 
         .table-scroll-wrapper.desktop-horizontal-scroll #flipsTable {
+            width: max-content;
             min-width: 1120px;
+        }
+
+        .controls-container.desktop-table-width-bound {
+            width: 100%;
+            max-width: var(--desktop-flips-table-width, 100%);
+        }
+
+        #notifications.desktop-table-width-bound {
+            width: 100%;
+            max-width: var(--desktop-flips-table-width, 100%);
         }
     }
 
@@ -6435,9 +6489,34 @@
             }
 
             wrapper.classList.add('desktop-horizontal-scroll');
+            const controlsContainer = document.querySelector('.controls-container');
+            const notificationsContainer = document.getElementById('notifications');
+
+            function syncControlsToTableWidth() {
+                const tableWidth = `${table.offsetWidth}px`;
+                if (controlsContainer) {
+                    controlsContainer.classList.add('desktop-table-width-bound');
+                    controlsContainer.style.setProperty('--desktop-flips-table-width', tableWidth);
+                }
+                if (notificationsContainer) {
+                    notificationsContainer.classList.add('desktop-table-width-bound');
+                    notificationsContainer.style.setProperty('--desktop-flips-table-width', tableWidth);
+                }
+            }
+
+            syncControlsToTableWidth();
 
             if (wrapper._desktopHorizontalScrollbarInitialized) {
                 return;
+            }
+
+            window.addEventListener('resize', syncControlsToTableWidth);
+
+            const tableBody = document.getElementById('flipsTableBody');
+            if (tableBody) {
+                const controlsWidthObserver = new MutationObserver(syncControlsToTableWidth);
+                controlsWidthObserver.observe(tableBody, { childList: true, subtree: true });
+                wrapper._desktopControlsWidthObserver = controlsWidthObserver;
             }
 
             wrapper._desktopHorizontalScrollbarInitialized = true;
