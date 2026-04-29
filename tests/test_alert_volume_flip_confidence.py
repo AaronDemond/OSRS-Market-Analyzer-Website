@@ -8,7 +8,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 
 from Website.management.commands.check_alerts import Command
-from Website.models import Alert
+from Website.models import Alert, HourlyItemVolume
 
 
 REPORT_PATH = Path(__file__).resolve().parents[1] / "test_output" / "alert_volume_flip_confidence.md"
@@ -156,6 +156,18 @@ class FlipConfidenceVolumeRestrictionTests(TestCase):
     def _make_all_prices(self, item_ids, *, high=110, low=100):
         return {str(item_id): {"high": high, "low": low} for item_id in item_ids}
 
+    def _seed_volume(self, item_id, volume_gp):
+        """
+        Create a fresh HourlyItemVolume row for `item_id` so the confidence
+        min-volume gate has a recent snapshot to read.
+        """
+        HourlyItemVolume.objects.create(
+            item_id=int(item_id),
+            item_name=self.default_item_names.get(str(item_id), f"Item {item_id}"),
+            volume=int(volume_gp),
+            timestamp=datetime.now(dt_timezone.utc).isoformat(),
+        )
+
     def _make_alert(self, **overrides):
         defaults = {
             "user": self.user,
@@ -209,6 +221,7 @@ class FlipConfidenceVolumeRestrictionTests(TestCase):
                 item_id=4151,
                 item_name="Abyssal whip",
             )
+            self._seed_volume(4151, 50_000)
             series_map = {
                 "4151": self._make_series([
                     {"high_price": 100, "low_price": 100, "high_volume": 50, "low_volume": 50},
@@ -248,6 +261,7 @@ class FlipConfidenceVolumeRestrictionTests(TestCase):
                 confidence_min_volume=10_000,
                 item_id=4151,
             )
+            self._seed_volume(4151, 200)
             series_map = {
                 "4151": self._make_series([
                     {"high_price": 100, "low_price": 100, "high_volume": 1, "low_volume": 1},
@@ -284,6 +298,8 @@ class FlipConfidenceVolumeRestrictionTests(TestCase):
                 item_ids=json.dumps([4151, 11802]),
                 item_name=None,
             )
+            self._seed_volume(4151, 50_000)
+            self._seed_volume(11802, 200)
             series_map = {
                 "4151": self._make_series([
                     {"high_price": 100, "low_price": 100, "high_volume": 40, "low_volume": 40},
@@ -329,6 +345,9 @@ class FlipConfidenceVolumeRestrictionTests(TestCase):
                 maximum_price=100_000_000,
                 item_name="All items",
             )
+            self._seed_volume(4151, 50_000)
+            self._seed_volume(11802, 200)
+            self._seed_volume(11212, 50_000)
             all_prices = self._make_all_prices([4151, 11802, 11212], high=110, low=100)
             series_map = {
                 "4151": self._make_series([
@@ -374,6 +393,9 @@ class FlipConfidenceVolumeRestrictionTests(TestCase):
                 confidence_min_volume=None,
                 item_id=4151,
             )
+            # A fresh HourlyItemVolume row is still required for confidence
+            # alerts even when no min-volume floor is configured.
+            self._seed_volume(4151, 1)
             series_map = {
                 "4151": self._make_series([
                     {"high_price": 100, "low_price": 100, "high_volume": 0, "low_volume": 0},
@@ -434,6 +456,7 @@ class FlipConfidenceVolumeRestrictionTests(TestCase):
                 confidence_filter_vol_concentration=75.0,
                 item_id=4151,
             )
+            self._seed_volume(4151, 50_000)
             series_map = {
                 "4151": self._make_series([
                     {"high_price": 100, "low_price": 100, "high_volume": 1_000, "low_volume": 0},
@@ -468,6 +491,7 @@ class FlipConfidenceVolumeRestrictionTests(TestCase):
                 confidence_filter_vol_concentration=75.0,
                 item_id=4151,
             )
+            self._seed_volume(4151, 50_000)
             series_map = {
                 "4151": self._make_series([
                     {"high_price": 100, "low_price": 100, "high_volume": 350, "low_volume": 0},
@@ -503,6 +527,7 @@ class FlipConfidenceVolumeRestrictionTests(TestCase):
                 confidence_last_scores=json.dumps({"4151": {"score": 40.0, "consecutive": 0, "last_eval": 0}}),
                 item_id=4151,
             )
+            self._seed_volume(4151, 50_000)
             series_map = {
                 "4151": self._make_series([
                     {"high_price": 100, "low_price": 100, "high_volume": 100, "low_volume": 100},
@@ -537,6 +562,7 @@ class FlipConfidenceVolumeRestrictionTests(TestCase):
                 confidence_min_volume=1_000,
                 item_id=4151,
             )
+            self._seed_volume(4151, 50_000)
             series_map = {
                 "4151": self._make_series([
                     {"high_price": 100, "low_price": 100, "high_volume": 100, "low_volume": 100},
@@ -571,6 +597,7 @@ class FlipConfidenceVolumeRestrictionTests(TestCase):
                 confidence_min_volume=1_000,
                 item_id=4151,
             )
+            self._seed_volume(4151, 50_000)
             series_map = {
                 "4151": self._make_series([
                     {"high_price": 100, "low_price": 100, "high_volume": 80, "low_volume": 80},

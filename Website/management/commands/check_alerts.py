@@ -64,6 +64,14 @@ ALERT_STATE_FIELDS = [
 #      cutoff and returns None when it is too old.
 VOLUME_RECENCY_MINUTES = 130
 
+# What: Maximum age for HourlyItemVolume snapshots when gating flip-confidence alerts.
+# Why: Confidence alerts should only fire on items that traded recently. The window is
+#      slightly more permissive than the shared `VOLUME_RECENCY_MINUTES` to allow for
+#      occasional ingestion delays, but still strict enough to keep stale rows out.
+# How: `check_flip_confidence_alert` compares the latest HourlyItemVolume row's age
+#      against this cutoff before checking `confidence_min_volume`.
+CONFIDENCE_VOLUME_RECENCY_MINUTES = 180
+
 # What: Number of recent HourlyItemVolume rows to inspect per lookup.
 # Why: The timestamp column is a CharField, so DB ordering alone is not reliable across
 #      mixed historical formats. Sampling a small recent slice lets Python choose the
@@ -1749,10 +1757,17 @@ class Command(BaseCommand):
 
         return None
 
-    def _get_latest_fresh_volume_row(self, item_id):
+    def _get_latest_fresh_volume_row(self, item_id, max_age_minutes=None):
         """
         Return the newest parseable HourlyItemVolume row if it is still fresh.
+
+        Args:
+            item_id: The OSRS item ID.
+            max_age_minutes: Optional override for the staleness cutoff. Defaults
+                to VOLUME_RECENCY_MINUTES so existing callers keep their behavior.
         """
+        if max_age_minutes is None:
+            max_age_minutes = VOLUME_RECENCY_MINUTES
         try:
             recent_rows = list(
                 HourlyItemVolume.objects
@@ -1776,7 +1791,7 @@ class Command(BaseCommand):
 
         newest_timestamp, newest_volume = newest_row
         age = timezone.now() - newest_timestamp
-        if age > timedelta(minutes=VOLUME_RECENCY_MINUTES):
+        if age > timedelta(minutes=max_age_minutes):
             return None
 
         return newest_timestamp, newest_volume
@@ -2591,30 +2606,40 @@ class Command(BaseCommand):
                 continue
 
             # =============================================================================
-            # PRE-FILTER: Check minimum GP volume across the lookback window
+            # PRE-FILTER: Require a fresh HourlyItemVolume row (and check min volume)
             # =============================================================================
-            # What: Computes the total gold-piece value of all trades in the lookback
-            #       window and skips items that fall below the user's threshold
-            # Why: GP volume is a better activity proxy than raw trade count because it
-            #      normalises across price tiers — 500 trades of a 10gp item (5,000 GP)
-            #      is negligible, while 500 trades of a 10M item (5B GP) is massive.
-            # How: For each timeseries bucket, multiply trade count by average price:
-            #        gp_vol = SUM(highPriceVolume * avgHighPrice + lowPriceVolume * avgLowPrice)
-            #      If the total is below min_vol, the item is skipped entirely.
-            if min_vol is not None and min_vol > 0:
-                # total_gp_vol: The sum of (quantity * price) for every buy and sell
-                #               across all timeseries buckets in the lookback window
-                total_gp_vol = sum(
-                    (p.get('highPriceVolume') or 0) * (p.get('avgHighPrice') or 0)
-                    + (p.get('lowPriceVolume') or 0) * (p.get('avgLowPrice') or 0)
-                    for p in timeseries_data
-                )
-                if total_gp_vol < min_vol:
-                    item_state['last_eval'] = now_ts
-                    item_state['consecutive'] = 0
-                    last_scores[item_id_str] = item_state
-                    state_changed = True
-                    continue
+            # What: A flip-confidence alert may only trigger when there is a
+            #       HourlyItemVolume row for the item recorded within the last
+            #       CONFIDENCE_VOLUME_RECENCY_MINUTES (180) minutes. If
+            #       confidence_min_volume is also set, that row's GP value must meet
+            #       or exceed the threshold.
+            # Why: Confidence alerts should only fire on items that are *currently*
+            #      liquid. Aggregating GP across the lookback window let stale,
+            #      illiquid items pass on the strength of historical activity. The
+            #      latest hourly volume snapshot is the truest measure of "right now"
+            #      liquidity, and a missing/stale snapshot means we cannot prove
+            #      liquidity at all.
+            # How: _get_latest_fresh_volume_row() returns the newest parseable
+            #      HourlyItemVolume row younger than the supplied cutoff, or None.
+            #      If None, or if the volume is below min_vol (when configured),
+            #      skip the item.
+            latest_fresh_row = self._get_latest_fresh_volume_row(
+                int(item_id_str),
+                max_age_minutes=CONFIDENCE_VOLUME_RECENCY_MINUTES,
+            )
+            if latest_fresh_row is None:
+                item_state['last_eval'] = now_ts
+                item_state['consecutive'] = 0
+                last_scores[item_id_str] = item_state
+                state_changed = True
+                continue
+            latest_hourly_vol_gp = latest_fresh_row[1]
+            if min_vol is not None and min_vol > 0 and latest_hourly_vol_gp < min_vol:
+                item_state['last_eval'] = now_ts
+                item_state['consecutive'] = 0
+                last_scores[item_id_str] = item_state
+                state_changed = True
+                continue
 
             # =============================================================================
             # PRE-FILTER: Volume Concentration Check

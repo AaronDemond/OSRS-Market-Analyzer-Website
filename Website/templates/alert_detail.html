@@ -4080,6 +4080,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script defer src="{% static 'js/alerts-int-validation.js' %}"></script>
 <script>
 const alertId = {{ alert.id }};
 const csrfToken = '{{ csrf_token }}';
