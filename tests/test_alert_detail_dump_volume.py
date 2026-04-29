@@ -20,7 +20,7 @@ class AlertDetailDumpVolumeTests(TestCase):
     def setUp(self):
         self.client.force_login(self.user)
 
-    @patch('Website.views.get_all_current_prices', return_value={})
+    @patch('Website.views.views.get_all_current_prices', return_value={})
     def test_dump_alert_detail_backfills_hourly_volume_for_legacy_triggered_rows(self, _mock_prices):
         item_id = 4151
         item_name = 'Abyssal whip'

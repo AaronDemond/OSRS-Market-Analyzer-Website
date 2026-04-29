@@ -65,7 +65,7 @@ class LiveFeedbackApiTests(TestCase):
     def login(self, user=None):
         self.client.force_login(user or self.user)
 
-    @patch('Website.views.get_item_mapping')
+    @patch('Website.views.views.get_item_mapping')
     def test_create_requires_sms_recipient_when_sms_enabled(self, mock_mapping):
         mock_mapping.return_value = self.item_mapping
         self.login()
@@ -84,7 +84,7 @@ class LiveFeedbackApiTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(LiveFeedbackWatch.objects.count(), 0)
 
-    @patch('Website.views.get_item_mapping')
+    @patch('Website.views.views.get_item_mapping')
     def test_create_accepts_email_to_sms_gateway(self, mock_mapping):
         mock_mapping.return_value = self.item_mapping
         self.login()
@@ -108,7 +108,7 @@ class LiveFeedbackApiTests(TestCase):
         self.assertTrue(watch.sms_notification)
         self.assertEqual(watch.sms_recipient, '15551234567@example-sms.test')
 
-    @patch('Website.views.get_item_mapping')
+    @patch('Website.views.views.get_item_mapping')
     def test_update_changes_parameters_and_resets_runtime_state(self, mock_mapping):
         mock_mapping.return_value = self.item_mapping
         self.login()
@@ -158,8 +158,8 @@ class LiveFeedbackApiTests(TestCase):
         self.assertIsNone(watch.last_market_time)
         self.assertIsNone(watch.triggered_at)
 
-    @patch('Website.views.get_item_mapping')
-    @patch('Website.views.get_all_current_prices')
+    @patch('Website.views.views.get_item_mapping')
+    @patch('Website.views.views.get_all_current_prices')
     def test_list_returns_current_trigger_status(self, mock_prices, mock_mapping):
         mock_prices.return_value = {'4151': {'high': 110, 'low': 90, 'highTime': 123, 'lowTime': 120}}
         mock_mapping.return_value = self.item_mapping

@@ -23,7 +23,7 @@ def get_item_price(item_id, reference):
         int: The price value, or None if not found
     """
     # Import here to avoid circular imports (views imports models)
-    from Website.views import get_all_current_prices
+    from Website.views.views import get_all_current_prices
     
     # Use the cached price data - this has a 5-second cache so won't hit API repeatedly
     all_prices = get_all_current_prices()
@@ -49,7 +49,7 @@ def get_all_current_prices():
         dict: Dictionary mapping item_id (str) to {'high': int, 'low': int, ...}
     """
     # Import here to avoid circular imports (views imports models)
-    from Website.views import get_all_current_prices as _get_all_prices
+    from Website.views.views import get_all_current_prices as _get_all_prices
     return _get_all_prices()
 
 
