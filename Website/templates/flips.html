@@ -2796,6 +2796,47 @@
         min-width: 0;  /* Allow text truncation if needed */
     }
 
+    @media (hover: hover) and (pointer: fine) {
+        .table-scroll-wrapper.desktop-horizontal-scroll {
+            position: relative;
+            overflow-x: auto;
+            overflow-y: auto;
+            height: auto;
+            min-height: 260px;
+            max-height: min(650px, calc(100vh - 260px));
+            margin-bottom: 16px;
+            border-radius: 14px;
+            overscroll-behavior: contain;
+            scrollbar-width: auto;
+            -ms-overflow-style: auto;
+        }
+
+        .table-scroll-wrapper.desktop-horizontal-scroll::-webkit-scrollbar {
+            display: block;
+            width: 14px;
+            height: 14px;
+        }
+
+        .table-scroll-wrapper.desktop-horizontal-scroll::-webkit-scrollbar-track {
+            background: var(--surface-2);
+            border-radius: 999px;
+        }
+
+        .table-scroll-wrapper.desktop-horizontal-scroll::-webkit-scrollbar-thumb {
+            background: #9CA3AF;
+            border: 3px solid var(--surface-2);
+            border-radius: 999px;
+        }
+
+        .table-scroll-wrapper.desktop-horizontal-scroll::-webkit-scrollbar-thumb:hover {
+            background: var(--primary);
+        }
+
+        .table-scroll-wrapper.desktop-horizontal-scroll #flipsTable {
+            min-width: 1120px;
+        }
+    }
+
 </style>
 {% endblock %}
 
@@ -6368,6 +6409,41 @@
             // Store handler on wrapper for potential future cleanup
             wrapper._resizeHandler = resizeHandler;
         }
+
+        /**
+         * Desktop Table Horizontal Scrollbars
+         * What: Adds a contained desktop table viewport with native bottom horizontal
+         *       and right-side vertical scrollbars.
+         * Why: Non-touch users should scroll the table with its scrollbars rather
+         *      than borrowing the mobile swipe/drag behavior or scrolling the page.
+         * How: Reuses the table-scroll-wrapper class for layout, but only adds the
+         *      desktop-horizontal-scroll modifier on fine-pointer devices.
+         */
+        function setupDesktopTableScrollbars() {
+            const isNonTouchPointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+            const table = document.getElementById('flipsTable');
+            if (!isNonTouchPointer || !table) {
+                return;
+            }
+
+            let wrapper = table.closest('.table-scroll-wrapper');
+            if (!wrapper) {
+                wrapper = document.createElement('div');
+                wrapper.className = 'table-scroll-wrapper';
+                table.parentNode.insertBefore(wrapper, table);
+                wrapper.appendChild(table);
+            }
+
+            wrapper.classList.add('desktop-horizontal-scroll');
+
+            if (wrapper._desktopHorizontalScrollbarInitialized) {
+                return;
+            }
+
+            wrapper._desktopHorizontalScrollbarInitialized = true;
+        }
+
+        setupDesktopTableScrollbars();
 
         // Setup table scroll wrapper on mobile
         if (window.matchMedia('(max-width: 900px)').matches) {
