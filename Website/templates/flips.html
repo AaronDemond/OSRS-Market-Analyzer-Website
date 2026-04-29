@@ -1493,7 +1493,12 @@
        Why: Allows absolute positioning of dropdown relative to the indicator
        How: position: relative creates positioning context for the dropdown */
     .sort-indicator-wrapper-mobile {
+        display: none;
         position: relative;
+    }
+
+    .sort-indicator-mobile-row.active .sort-indicator-wrapper-mobile {
+        display: block;
     }
 
     /* Mobile sort indicator should always display when row is visible */
@@ -4117,7 +4122,11 @@
             columnSortActive = true;
             currentSortFilter = null;
             sortIndicator.classList.remove('active');
+            sortIndicator.classList.remove('clickable');
             sortIndicatorMenu.classList.remove('show');
+            sortIndicatorMenuMobile.classList.remove('show');
+            sortIndicatorOptions.innerHTML = '';
+            sortIndicatorOptionsMobile.innerHTML = '';
             syncMobileSortIndicator();
             updateSortByOptions();
         }
@@ -4153,7 +4162,7 @@
             // Why: Mobile users need the same sort switching functionality
             // How: Copies the innerHTML from desktop options and re-attaches click handlers
             const filterKeys = Object.keys(activeFilters);
-            if (filterKeys.length > 1 && sortIndicatorOptionsMobile) {
+            if (sortIndicator.classList.contains('active') && filterKeys.length > 1 && sortIndicatorOptionsMobile) {
                 sortIndicatorOptionsMobile.innerHTML = filterKeys.map(filterName => `
                     <div class="sort-by-item ${filterName === currentSortFilter ? 'active' : ''}" data-sort="${filterName}">
                         <span>${filterDisplayNames[filterName]}</span>
