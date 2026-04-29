@@ -77,9 +77,9 @@ class FlipProfit(models.Model):
     item_id = models.IntegerField()
     item_name = models.CharField(max_length=255, blank=True, null=True, default=None)
     average_cost = models.FloatField(default=0)
-    unrealized_net = models.FloatField(default=0)
-    realized_net = models.FloatField(default=0)
-    quantity_held = models.IntegerField(default=0)
+    unrealized_net = models.BigIntegerField(default=0)
+    realized_net = models.BigIntegerField(default=0)
+    quantity_held = models.BigIntegerField(default=0)
 
     class Meta:
         unique_together = ['user', 'item_id']

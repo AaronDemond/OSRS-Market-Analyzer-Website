@@ -1,8 +1,8 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.db.models import Sum, F, Value, Max
+from django.db.models import Sum, F, Value, Max, BigIntegerField, ExpressionWrapper, FloatField
 from django.utils import timezone
-from django.db.models.functions import Coalesce
+from django.db.models.functions import Coalesce, Cast
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
@@ -527,7 +527,14 @@ def home(request):
     flip_profits = FlipProfit.objects.filter(user=user) if user else FlipProfit.objects.none()
     total_unrealized = flip_profits.aggregate(total=Sum('unrealized_net'))['total'] or 0
     total_realized = flip_profits.aggregate(total=Sum('realized_net'))['total'] or 0
-    position_size = flip_profits.aggregate(total=Sum(F('quantity_held') * F('average_cost')))['total'] or 0
+    position_size = flip_profits.aggregate(
+        total=Sum(
+            ExpressionWrapper(
+                Cast(F('quantity_held'), BigIntegerField()) * F('average_cost'),
+                output_field=FloatField(),
+            )
+        )
+    )['total'] or 0
     
     # Get total alerts stats (filtered by user) - fast DB queries only
     alerts_qs = Alert.objects.filter(user=user) if user else Alert.objects.none()
@@ -650,7 +657,14 @@ def flips_stats_api(request):
     # Use cached values from database - no external API calls
     total_unrealized = flip_profits_qs.aggregate(total=Sum('unrealized_net'))['total'] or 0
     total_realized = flip_profits_qs.aggregate(total=Sum('realized_net'))['total'] or 0
-    position_size = flip_profits_qs.aggregate(total=Sum(F('quantity_held') * F('average_cost')))['total'] or 0
+    position_size = flip_profits_qs.aggregate(
+        total=Sum(
+            ExpressionWrapper(
+                Cast(F('quantity_held'), BigIntegerField()) * F('average_cost'),
+                output_field=FloatField(),
+            )
+        )
+    )['total'] or 0
     
     return JsonResponse({
         'total_unrealized': total_unrealized,
@@ -718,7 +732,14 @@ def flips_data_api(request):
     # Calculate totals from FlipProfit for this user
     total_unrealized = flip_profits_qs.aggregate(total=Sum('unrealized_net'))['total'] or 0
     total_realized = flip_profits_qs.aggregate(total=Sum('realized_net'))['total'] or 0
-    position_size = flip_profits_qs.aggregate(total=Sum(F('quantity_held') * F('average_cost')))['total'] or 0
+    position_size = flip_profits_qs.aggregate(
+        total=Sum(
+            ExpressionWrapper(
+                Cast(F('quantity_held'), BigIntegerField()) * F('average_cost'),
+                output_field=FloatField(),
+            )
+        )
+    )['total'] or 0
     
     for item_id in item_ids:
         item_flips = flips_qs.filter(item_id=item_id)
@@ -736,7 +757,14 @@ def flips_data_api(request):
         # Calculate total bought and spent
         buys = item_flips.filter(type='buy')
         total_bought = buys.aggregate(total=Sum('quantity'))['total'] or 0
-        total_spent = buys.aggregate(total=Sum(F('quantity') * F('price')))['total'] or 0
+        total_spent = buys.aggregate(
+            total=Sum(
+                ExpressionWrapper(
+                    Cast(F('quantity'), BigIntegerField()) * Cast(F('price'), BigIntegerField()),
+                    output_field=BigIntegerField(),
+                )
+            )
+        )['total'] or 0
         
         # Calculate total sold and revenue (with tax)
         sells = item_flips.filter(type='sell')
@@ -1731,8 +1759,8 @@ def recalculate_flip_profit(item_id, user=None):
         user=user,
         item_id=item_id,
         average_cost=average_cost,
-        unrealized_net=unrealized_net,
-        realized_net=realized_net,
+        unrealized_net=round(unrealized_net),
+        realized_net=round(realized_net),
         quantity_held=quantity_held
     )
 
