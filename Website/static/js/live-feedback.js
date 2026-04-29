@@ -19,6 +19,9 @@
         addBtn: document.getElementById('liveFeedbackAddBtn'),
         addBtnLabel: document.querySelector('#liveFeedbackAddBtn span'),
         cancelEdit: document.getElementById('liveFeedbackCancelEdit'),
+        helpBtn: document.getElementById('liveFeedbackHelpBtn'),
+        helpModal: document.getElementById('liveFeedbackHelpModal'),
+        helpCloseBtn: document.getElementById('liveFeedbackHelpCloseBtn'),
     };
 
     if (!els.form) {
@@ -218,6 +221,30 @@
         setSide('buy');
         updatePreview();
         updateSubmitMode();
+    }
+
+    function openHelpModal() {
+        if (!els.helpModal) {
+            return;
+        }
+        els.helpModal.classList.add('open');
+        els.helpModal.setAttribute('aria-hidden', 'false');
+        if (els.helpBtn) {
+            els.helpBtn.setAttribute('aria-expanded', 'true');
+        }
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeHelpModal() {
+        if (!els.helpModal) {
+            return;
+        }
+        els.helpModal.classList.remove('open');
+        els.helpModal.setAttribute('aria-hidden', 'true');
+        if (els.helpBtn) {
+            els.helpBtn.setAttribute('aria-expanded', 'false');
+        }
+        document.body.style.overflow = '';
     }
 
     function setSuggestions(items) {
@@ -488,6 +515,28 @@
             resetForm();
         });
     }
+
+    if (els.helpBtn) {
+        els.helpBtn.addEventListener('click', openHelpModal);
+    }
+
+    if (els.helpCloseBtn) {
+        els.helpCloseBtn.addEventListener('click', closeHelpModal);
+    }
+
+    if (els.helpModal) {
+        els.helpModal.addEventListener('click', (event) => {
+            if (event.target === els.helpModal) {
+                closeHelpModal();
+            }
+        });
+    }
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && els.helpModal?.classList.contains('open')) {
+            closeHelpModal();
+        }
+    });
 
     els.form.addEventListener('submit', async (event) => {
         event.preventDefault();
