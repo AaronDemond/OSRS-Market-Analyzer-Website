@@ -33,6 +33,10 @@ class FlipFinderPageTests(TestCase):
         self.assertContains(response, 'ffChartModalCloseButton')
         self.assertContains(response, 'Previous page')
         self.assertContains(response, 'Next page')
+        self.assertContains(response, 'data-sort="current"')
+        self.assertContains(response, 'data-sort="volume"')
+        self.assertContains(response, '<option value="current">Current</option>', html=True)
+        self.assertContains(response, '<option value="volume">Volume GP</option>', html=True)
         self.assertContains(response, 'ffSelectedTitleRow')
         self.assertContains(response, 'ffSelectedIconSlot')
         self.assertContains(response, 'Select an item to view its chart.')
@@ -98,6 +102,42 @@ class FlipFinderApiTests(TestCase):
         self.assertEqual(payload['results'][0]['periodLow'], 102)
         self.assertEqual(payload['results'][0]['periodHigh'], 130)
         self.assertEqual(payload['results'][0]['volume'], 5100)
+
+    def test_results_support_current_price_sort(self):
+        self.create_twentyfour_snapshot(120, 'Lower current', 130, self.earlier_timestamp)
+        self.create_twentyfour_snapshot(120, 'Lower current', 100, self.latest_timestamp, volume=25)
+        self.create_twentyfour_snapshot(121, 'Higher current', 150, self.earlier_timestamp)
+        self.create_twentyfour_snapshot(121, 'Higher current', 120, self.latest_timestamp, volume=25)
+
+        response = self.client.get(reverse('flip_finder_results_api'), {
+            'timeframe': '24h',
+            'percent': '5',
+            'signal': 'low',
+            'sort': 'current',
+            'sortDirection': 'asc',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual([result['name'] for result in payload['results']], ['Lower current', 'Higher current'])
+
+    def test_results_support_volume_sort(self):
+        self.create_twentyfour_snapshot(130, 'Lower volume', 130, self.earlier_timestamp, volume=5)
+        self.create_twentyfour_snapshot(130, 'Lower volume', 100, self.latest_timestamp, volume=10)
+        self.create_twentyfour_snapshot(131, 'Higher volume', 130, self.earlier_timestamp, volume=5)
+        self.create_twentyfour_snapshot(131, 'Higher volume', 100, self.latest_timestamp, volume=30)
+
+        response = self.client.get(reverse('flip_finder_results_api'), {
+            'timeframe': '24h',
+            'percent': '5',
+            'signal': 'low',
+            'sort': 'volume',
+            'sortDirection': 'desc',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual([result['name'] for result in payload['results']], ['Higher volume', 'Lower volume'])
 
     def test_results_are_paginated_at_50(self):
         # Every seeded item is exactly at its latest low, so all 105 match while

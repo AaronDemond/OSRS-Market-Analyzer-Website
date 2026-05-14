@@ -33,7 +33,7 @@ FLIP_FINDER_TIMEFRAME_SECONDS = {
 }
 FLIP_FINDER_SUPPORTED_TIMEFRAMES = set(FLIP_FINDER_TIMEFRAME_SECONDS) | {'all', 'custom'}
 FLIP_FINDER_SUPPORTED_SIGNALS = {'low', 'high', 'both'}
-FLIP_FINDER_SUPPORTED_SORTS = {'closest', 'name', 'signal', 'low', 'high'}
+FLIP_FINDER_SUPPORTED_SORTS = {'closest', 'name', 'signal', 'low', 'high', 'current', 'volume'}
 FLIP_FINDER_SUPPORTED_DIRECTIONS = {'asc', 'desc'}
 FLIP_FINDER_MAX_MIN_PRICE = 2_147_483_647
 FLIP_FINDER_MAX_MIN_VOLUME = 9_000_000_000_000_000
@@ -640,6 +640,14 @@ def _sort_results(results, params):
     sort_direction = params['sortDirection']
     reverse = sort_direction == 'desc'
     results.sort(key=lambda result: result['name'].lower())
+
+    if params['sort'] == 'volume':
+        # Keep items without volume at the end for either direction so `All`
+        # and `custom` remain predictable when their rows show `--`.
+        results.sort(key=lambda result: result['volume'] if result['volume'] is not None else -1, reverse=reverse)
+        results.sort(key=lambda result: result['volume'] is None)
+        return
+
     results.sort(key=lambda result: _sort_value(result, params['sort'], params['signal']), reverse=reverse)
 
 
@@ -653,6 +661,10 @@ def _sort_value(result, sort_key, signal):
         return result['distanceFromLow']
     if sort_key == 'high':
         return result['distanceFromHigh']
+    if sort_key == 'current':
+        return result['currentPrice']
+    if sort_key == 'volume':
+        return result['volume'] if result['volume'] is not None else -1
     if signal == 'high':
         return result['distanceFromHigh']
     if signal == 'low':

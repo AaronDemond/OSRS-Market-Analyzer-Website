@@ -106,6 +106,8 @@
         name: 'asc',
         low: 'asc',
         high: 'asc',
+        current: 'asc',
+        volume: 'desc',
     };
 
     function escapeHtml(value) {
