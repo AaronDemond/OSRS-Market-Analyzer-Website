@@ -1575,6 +1575,7 @@ class AllTimeData(models.Model):
     item_id = models.IntegerField(db_index=True)
     item_name = models.CharField(max_length=255)
     item_price = models.BigIntegerField()
+    volume = models.BigIntegerField(null=True, blank=True)
     timestamp = models.BigIntegerField()
 
     class Meta:

@@ -10,7 +10,9 @@ How: Use TwentyFourHourTimeSeries for bounded timeframes and AllTimeData for
 
 from datetime import datetime, timezone
 
-from django.db.models import Max, Min, OuterRef, Subquery
+from django.db import connection
+from django.db.models import F, Max, Min, Window
+from django.db.models.functions import RowNumber
 
 from .models import AllTimeData, TwentyFourHourTimeSeries
 
@@ -113,18 +115,17 @@ def build_flip_finder_history(query_params):
     item_id = params['item_id']
 
     if params['timeframe'] == 'all':
-        # All-time history is intentionally unbounded. Population/backfill is a
-        # separate concern; an empty table should still return a valid payload.
+        # All-time history is intentionally unbounded, but the database can drop
+        # non-positive prices before Chart.js ever sees them.
         rows = list(
             AllTimeData.objects
-            .filter(item_id=item_id)
+            .filter(item_id=item_id, item_price__gt=0)
             .order_by('timestamp')
             .values('item_id', 'item_name', 'item_price', 'timestamp')
         )
         points = [
             _serialize_history_point(row['timestamp'], row['item_price'])
             for row in rows
-            if _valid_price(row['item_price']) is not None
         ]
         item_name = rows[-1]['item_name'] if rows else None
         return _build_history_payload(
@@ -394,39 +395,79 @@ def _get_all_time_summaries(params):
     What: Compute current price and full-table low/high from AllTimeData.
     Why: The all-time range uses a dedicated storage model with numeric prices
         and timestamps instead of the 24h midpoint series.
-    How: Aggregate by item_id and use subqueries to pull the latest saved row
-        for each item as the current price/name.
+    How: Aggregate extrema once per item, then fetch latest rows in a second
+        query. This keeps PostgreSQL from repeating correlated latest-row
+        subqueries for item name, current price, and timestamp.
     """
-    rows = AllTimeData.objects.all()
+    rows = AllTimeData.objects.filter(item_price__gt=0)
     if params['search']:
-        rows = rows.filter(item_name__icontains=params['search'])
+        # Search picks the item set, while low/high comparisons still use that
+        # item's full all-time history so the selected timeframe remains honest.
+        matching_item_ids = rows.filter(item_name__icontains=params['search']).values('item_id').distinct()
+        rows = rows.filter(item_id__in=matching_item_ids)
 
-    latest_item_rows = AllTimeData.objects.filter(item_id=OuterRef('item_id')).order_by('-timestamp')
-    summaries = (
+    extrema_rows = (
         rows.values('item_id')
         .annotate(
-            item_name=Subquery(latest_item_rows.values('item_name')[:1]),
-            current_price=Subquery(latest_item_rows.values('item_price')[:1]),
-            current_timestamp=Subquery(latest_item_rows.values('timestamp')[:1]),
             period_low=Min('item_price'),
             period_high=Max('item_price'),
         )
     )
-    return [
-        {
+    summaries_by_item = {
+        row['item_id']: {
             'item_id': row['item_id'],
-            'item_name': row['item_name'],
-            'current_price': row['current_price'],
-            'current_timestamp': row['current_timestamp'],
+            'item_name': None,
+            'current_price': None,
+            'current_timestamp': None,
             'period_low': row['period_low'],
             'period_high': row['period_high'],
             'volume': None,
         }
-        for row in summaries
-        if row['current_price'] is not None
-        and row['period_low'] is not None
-        and row['period_high'] is not None
+        for row in extrema_rows
+        if row['period_low'] is not None and row['period_high'] is not None
+    }
+
+    for row in _get_latest_all_time_rows(summaries_by_item.keys()):
+        summary = summaries_by_item.get(row['item_id'])
+        if summary is None:
+            continue
+        summary['item_name'] = row['item_name']
+        summary['current_price'] = row['item_price']
+        summary['current_timestamp'] = row['timestamp']
+
+    return [
+        summary
+        for summary in summaries_by_item.values()
+        if summary['current_price'] is not None
     ]
+
+
+def _get_latest_all_time_rows(item_ids):
+    """
+    Return the latest valid AllTimeData row for each requested item.
+
+    PostgreSQL can use DISTINCT ON with the existing (item_id, -timestamp)
+    index, which is cheaper than asking for three correlated subqueries per
+    item. The window-function fallback keeps tests and local non-PostgreSQL
+    environments exercising the same behavior.
+    """
+    item_ids = list(item_ids)
+    if not item_ids:
+        return []
+
+    latest_rows = AllTimeData.objects.filter(item_id__in=item_ids, item_price__gt=0)
+    if connection.vendor == 'postgresql':
+        latest_rows = latest_rows.order_by('item_id', '-timestamp').distinct('item_id')
+    else:
+        latest_rows = latest_rows.annotate(
+            row_number=Window(
+                expression=RowNumber(),
+                partition_by=[F('item_id')],
+                order_by=F('timestamp').desc(),
+            )
+        ).filter(row_number=1)
+
+    return latest_rows.values('item_id', 'item_name', 'item_price', 'timestamp')
 
 
 def _build_results_payload(summaries, params, metadata_by_id, source, price_basis, range_start, range_end):
