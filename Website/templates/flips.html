@@ -830,6 +830,41 @@
         color: white !important;
     }
 
+    #flipsTable.flip-alert-select-mode tbody tr[data-selectable-for-alert="true"] {
+        cursor: pointer;
+    }
+
+    #flipsTable.flip-alert-select-mode tbody tr[data-selectable-for-alert="true"]:hover {
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.14) 0%, rgba(59, 130, 246, 0.2) 100%) !important;
+    }
+
+    #flipsTable.flip-alert-select-mode tbody tr[data-selectable-for-alert="true"]:hover td,
+    #flipsTable.flip-alert-select-mode tbody tr[data-selectable-for-alert="true"]:hover a {
+        color: var(--info);
+    }
+
+    #flipsTable.flip-alert-select-mode tbody tr.flip-alert-row-disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+    }
+
+    #flipsTable tbody tr.selected-for-flip-alert,
+    #flipsTable tbody tr.selected-for-flip-alert:hover {
+        background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
+    }
+
+    #flipsTable.flip-alert-select-mode tbody tr.selected-for-flip-alert:hover {
+        background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%) !important;
+    }
+
+    #flipsTable tbody tr.selected-for-flip-alert td,
+    #flipsTable tbody tr.selected-for-flip-alert:hover td,
+    #flipsTable tbody tr.selected-for-flip-alert a,
+    #flipsTable tbody tr.selected-for-flip-alert:hover a {
+        color: white !important;
+        background: transparent !important;
+    }
+
     /* Controls container - stacks buttons row and search/filter row */
     .controls-container {
         display: flex;
@@ -849,6 +884,11 @@
         display: flex;
         gap: 8px;
         align-items: center;
+    }
+
+    .search-filter-row.is-flip-alert-selecting {
+        flex-wrap: wrap;
+        align-items: flex-start;
     }
 
     /* Filter search bar - stretches to fill available space */
@@ -924,6 +964,7 @@
     }
 
     .btn-filter,
+    .btn-flip-alerts,
     .btn-historical,
     .btn-equity-chart,
     .btn-journal {
@@ -944,6 +985,8 @@
 
     .btn-filter:hover,
     .btn-filter:focus-visible,
+    .btn-flip-alerts:hover,
+    .btn-flip-alerts:focus-visible,
     .btn-historical:hover,
     .btn-historical:focus-visible,
     .btn-equity-chart:hover,
@@ -959,6 +1002,8 @@
 
     .btn-filter.has-active,
     .btn-filter.is-open,
+    .btn-flip-alerts.active,
+    .btn-flip-alerts.is-open,
     .btn-historical.active,
     .btn-equity-chart.active {
         background: rgba(59, 130, 246, 0.15);
@@ -967,6 +1012,11 @@
     }
 
     .btn-filter svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .btn-flip-alerts svg {
         width: 16px;
         height: 16px;
     }
@@ -984,6 +1034,115 @@
     .btn-journal svg {
         width: 16px;
         height: 16px;
+    }
+
+    .flip-alert-selection-actions {
+        display: none;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .flip-alert-selection-actions.is-visible {
+        display: flex;
+    }
+
+    .flip-alert-selection-note {
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .flip-alert-selection-note[hidden] {
+        display: none !important;
+    }
+
+    .btn-flip-alert-continue,
+    .btn-flip-alert-cancel {
+        padding: 8px 14px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 14px;
+        border: 1px solid var(--border);
+        transition: all 0.15s;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+    }
+
+    .btn-flip-alert-continue {
+        background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+        border-color: transparent;
+        color: white;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.24);
+    }
+
+    .btn-flip-alert-continue:hover,
+    .btn-flip-alert-continue:focus-visible {
+        background: linear-gradient(135deg, #1D4ED8 0%, #1E40AF 100%);
+        color: white;
+        outline: none;
+        transform: translateY(-1px);
+    }
+
+    .btn-flip-alert-continue:disabled {
+        background: #CBD5E1;
+        color: white;
+        box-shadow: none;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .btn-flip-alert-cancel {
+        background: var(--surface);
+        color: var(--text);
+    }
+
+    .btn-flip-alert-cancel:hover,
+    .btn-flip-alert-cancel:focus-visible {
+        background: rgba(239, 68, 68, 0.08);
+        border-color: var(--danger);
+        color: var(--danger);
+        outline: none;
+    }
+
+    .flip-alert-selection-header-actions {
+        display: none;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .flip-alert-selection-header-actions.is-visible {
+        display: inline-flex;
+    }
+
+    .flip-alert-selection-header-actions .btn-flip-alert-continue,
+    .flip-alert-selection-header-actions .btn-flip-alert-cancel {
+        min-height: 44px;
+        padding: 12px 18px;
+        border-radius: 10px;
+        font-size: 14px;
+        line-height: 1.2;
+        white-space: nowrap;
+    }
+
+    body.flip-alert-selection-lock .btn-flips-help,
+    body.flip-alert-selection-lock .page-header-actions > :not(.flip-alert-selection-header-actions),
+    body.flip-alert-selection-lock .flips-mobile-action-header > :not(.flip-alert-selection-header-actions),
+    body.flip-alert-selection-lock .search-filter-row {
+        pointer-events: none;
+        opacity: 0.45;
+    }
+
+    body.flip-alert-selection-lock .flip-alert-selection-header-actions,
+    body.flip-alert-selection-lock #flipsTable.flip-alert-select-mode tbody,
+    body.flip-alert-selection-lock #flipsTable.flip-alert-select-mode tbody tr,
+    body.flip-alert-selection-lock #flipsTable.flip-alert-select-mode tbody td,
+    body.flip-alert-selection-lock #flipsTable.flip-alert-select-mode tbody a {
+        pointer-events: auto;
+        opacity: 1;
     }
 
     /* =========================================================================
@@ -1462,6 +1621,250 @@
         display: block;
     }
 
+    .flip-alert-modal .modal-content {
+        border: none;
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(37, 99, 235, 0.18);
+        overflow: hidden;
+        position: relative;
+        background: white;
+    }
+
+    .flip-alert-modal .modal-header {
+        background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+        color: white;
+        border-bottom: none;
+        padding: 20px 24px;
+    }
+
+    .flip-alert-modal .btn-close {
+        filter: brightness(0) invert(1);
+        opacity: 0.85;
+    }
+
+    .flip-alert-modal .modal-body {
+        padding: 20px 24px;
+    }
+
+    .flip-alert-modal .modal-footer {
+        padding: 18px 24px 24px;
+        border-top: 1px solid rgba(148, 163, 184, 0.18);
+        gap: 12px;
+        justify-content: flex-end;
+    }
+
+    .flip-alert-btn-secondary,
+    .flip-alert-btn-primary,
+    .flip-alert-btn-danger {
+        min-width: 132px;
+        min-height: 48px;
+        padding: 12px 22px;
+        border-radius: 12px;
+        font-size: 15px;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.18s ease;
+        border: 1px solid transparent;
+        cursor: pointer;
+    }
+
+    .flip-alert-btn-secondary {
+        background: linear-gradient(180deg, #F8FAFC 0%, #E2E8F0 100%);
+        border-color: #CBD5E1;
+        color: #475569;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+    }
+
+    .flip-alert-btn-secondary:hover,
+    .flip-alert-btn-secondary:focus-visible {
+        background: linear-gradient(180deg, #FFFFFF 0%, #E2E8F0 100%);
+        border-color: #94A3B8;
+        color: #334155;
+        outline: none;
+        transform: translateY(-1px);
+    }
+
+    .flip-alert-btn-primary {
+        background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);
+        color: white;
+        box-shadow: 0 10px 24px rgba(37, 99, 235, 0.22);
+    }
+
+    .flip-alert-btn-primary:hover,
+    .flip-alert-btn-primary:focus-visible {
+        background: linear-gradient(135deg, #2563EB 0%, #1E40AF 100%);
+        color: white;
+        outline: none;
+        transform: translateY(-1px);
+    }
+
+    .flip-alert-btn-danger {
+        background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
+        color: white;
+        box-shadow: 0 10px 24px rgba(220, 38, 38, 0.2);
+    }
+
+    .flip-alert-btn-danger:hover,
+    .flip-alert-btn-danger:focus-visible {
+        background: linear-gradient(135deg, #B91C1C 0%, #991B1B 100%);
+        color: white;
+        outline: none;
+        transform: translateY(-1px);
+    }
+
+    .flip-alert-btn-primary:disabled,
+    .flip-alert-btn-danger:disabled,
+    .flip-alert-btn-secondary:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    .flip-alert-intro-copy {
+        margin: 0;
+        color: var(--text-muted);
+        font-size: 15px;
+        line-height: 1.7;
+    }
+
+    .flip-alert-selected-summary {
+        margin-bottom: 18px;
+    }
+
+    .flip-alert-selected-label {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-bottom: 8px;
+    }
+
+    .flip-alert-selected-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .flip-alert-selected-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(37, 99, 235, 0.1);
+        color: var(--info);
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .flip-alert-channel-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 12px;
+    }
+
+    .flip-alert-channel-option {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: var(--surface-2);
+        cursor: pointer;
+    }
+
+    .flip-alert-channel-option input {
+        margin-top: 3px;
+    }
+
+    .flip-alert-channel-option-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 3px;
+    }
+
+    .flip-alert-channel-option-copy {
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.45;
+    }
+
+    .flip-alert-form-error {
+        margin-top: 14px;
+        font-size: 13px;
+        color: var(--danger);
+        display: none;
+    }
+
+    .flip-alert-delete-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-height: 340px;
+        overflow-y: auto;
+    }
+
+    .flip-alert-delete-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: var(--surface-2);
+    }
+
+    .flip-alert-delete-item input {
+        margin-top: 4px;
+    }
+
+    .flip-alert-delete-item-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 4px;
+    }
+
+    .flip-alert-delete-item-copy {
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.45;
+    }
+
+    .flip-alert-loading-state {
+        position: absolute;
+        inset: 0;
+        background: rgba(255, 255, 255, 0.98);
+        z-index: 5;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .flip-alert-loading-state.is-visible {
+        display: flex;
+    }
+
+    .flip-alert-loading-state .spinner-border {
+        width: 3rem;
+        height: 3rem;
+        color: var(--info);
+    }
+
+    .flip-alert-loading-copy {
+        color: var(--text);
+        font-size: 15px;
+        font-weight: 600;
+    }
+
     .filter-dropdown-header {
         padding: 8px 10px 6px;
         font-size: 11px;
@@ -1834,6 +2237,10 @@
         transition: opacity 0.3s ease, transform 0.3s ease, max-height 0.3s ease, margin 0.3s ease, padding 0.3s ease;
         max-height: 100px;
         overflow: hidden;
+    }
+
+    .success-notification.error {
+        background-color: #DC2626;
     }
 
     .success-notification.dismissing {
@@ -2608,7 +3015,8 @@
            Why: Save horizontal space while keeping functionality
            How: Hide text spans, ensure icons are properly sized */
         
-        /* Historical button - icon only */
+        /* Historical and alert buttons - icon only */
+        .btn-flip-alerts,
         .btn-historical {
             padding: 8px 10px;
             min-width: 44px;
@@ -2616,14 +3024,46 @@
             justify-content: center;
         }
 
+        .btn-flip-alerts .btn-text,
         .btn-historical .btn-text {
             display: none;
         }
 
+        .btn-flip-alerts svg,
         .btn-historical svg {
             width: 20px;
             height: 20px;
             margin: 0;
+        }
+
+        .flip-alert-selection-actions {
+            width: 100%;
+            justify-content: flex-end;
+        }
+
+        .flip-alert-selection-note {
+            width: 100%;
+            white-space: normal;
+        }
+
+        .flip-alert-modal .modal-footer {
+            flex-wrap: wrap;
+        }
+
+        .flip-alert-btn-secondary,
+        .flip-alert-btn-primary,
+        .flip-alert-btn-danger {
+            flex: 1 1 100%;
+            width: 100%;
+        }
+
+        .btn-flip-alert-continue,
+        .btn-flip-alert-cancel {
+            min-height: 44px;
+        }
+
+        .flip-alert-channel-grid {
+            grid-template-columns: 1fr;
         }
 
         /* Journal button - icon only */
@@ -2743,7 +3183,9 @@
         }
 
         .flips-mobile-action-header .btn-new-flip.header-create-style,
-        .flips-mobile-action-header .btn-cancel-delete {
+        .flips-mobile-action-header .btn-cancel-delete,
+        .flips-mobile-action-header .btn-flip-alert-continue,
+        .flips-mobile-action-header .btn-flip-alert-cancel {
             padding: 10px 12px;
             font-size: 13px;
         }
@@ -3262,6 +3704,10 @@
 <button type="button" class="btn-flips-help" id="flipsHelpBtn" aria-label="How to use My Flips" title="How to use My Flips" data-bs-toggle="modal" data-bs-target="#flipsHelpModal">?</button>
 
 <div class="flips-mobile-action-header" aria-label="Flip actions">
+    <div class="flip-alert-selection-header-actions js-flip-alert-selection-header-actions" id="mobileFlipAlertSelectionActions">
+        <button type="button" class="btn-flip-alert-cancel" id="mobileCancelFlipAlertSelectionBtn">Cancel Alert</button>
+        <button type="button" class="btn-flip-alert-continue" id="mobileContinueFlipAlertSelectionBtn" disabled>Continue</button>
+    </div>
     <button type="button" class="btn-new-flip header-create-style" id="mobileNewFlipBtn" data-bs-toggle="modal" data-bs-target="#newFlipModal">
         New Flip
     </button>
@@ -3289,6 +3735,10 @@
         <h1>My Flips</h1>
     </div>
     <div class="page-header-actions">
+        <div class="flip-alert-selection-header-actions js-flip-alert-selection-header-actions" id="desktopFlipAlertSelectionActions">
+            <button type="button" class="btn-flip-alert-cancel" id="cancelFlipAlertSelectionBtn">Cancel Alert</button>
+            <button type="button" class="btn-flip-alert-continue" id="continueFlipAlertSelectionBtn" disabled>Continue</button>
+        </div>
         <button type="button" class="btn-new-flip header-create-style" id="newFlipBtn" data-bs-toggle="modal" data-bs-target="#newFlipModal">
             New Flip
         </button>
@@ -3346,6 +3796,24 @@
             </span>
             <input type="text" class="filter-search-input" id="filterSearchInput" placeholder="Search...">
             <button type="button" class="filter-search-clear" id="filterSearchClear">&times;</button>
+        </div>
+        <div class="filter-dropdown-wrapper">
+            <button type="button" class="btn-flip-alerts" id="flipAlertsBtn" aria-expanded="false">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0a3 3 0 11-6 0m6 0H9" />
+                </svg>
+                <span class="btn-text">Alerts</span>
+            </button>
+            <div class="filter-dropdown-menu" id="flipAlertsMenu">
+                <div class="filter-dropdown-header">Flip Alerts</div>
+                <button type="button" class="filter-dropdown-item" id="newFlipAlertBtn">
+                    <span>New alert</span>
+                </button>
+                <button type="button" class="filter-dropdown-item" id="deleteFlipAlertsBtn">
+                    <span>Delete alert</span>
+                </button>
+            </div>
         </div>
         <!-- Historical View Button -->
         <!-- What: Button to open the Historical View modal for viewing past portfolio performance -->
@@ -4074,6 +4542,104 @@
     </div>
 </div>
 
+<div class="modal fade flip-alert-modal" id="flipAlertSelectionIntroModal" tabindex="-1" aria-labelledby="flipAlertSelectionIntroModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="flipAlertSelectionIntroModalLabel">Build a Flip Alert</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="flip-alert-intro-copy">Select items to form an alert. Click continue when you are ready, or cancel to abort.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="flip-alert-btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="flip-alert-btn-primary" id="startFlipAlertSelectionBtn">Continue</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade flip-alert-modal" id="createFlipAlertModal" tabindex="-1" aria-labelledby="createFlipAlertModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createFlipAlertModalLabel">New Flip Alert</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="createFlipAlertForm">
+                <div class="modal-body">
+                    <p class="historical-description">Create a held-position alert from the items you selected in the table. Alerts evaluate current position profit and loss using quantity held and GE tax.</p>
+                    <div class="flip-alert-selected-summary">
+                        <div class="flip-alert-selected-label">Selected items</div>
+                        <div class="flip-alert-selected-list" id="flipAlertSelectedItems"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="flipAlertThresholdKind" class="form-label">Threshold Type</label>
+                            <select class="form-select" id="flipAlertThresholdKind" required>
+                                <option value="percent_profit">% Profit</option>
+                                <option value="percent_loss">% Loss</option>
+                                <option value="gp_profit">GP Profit</option>
+                                <option value="gp_loss">GP Loss</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="flipAlertThresholdValue" class="form-label">Threshold Value</label>
+                            <input type="number" class="form-control" id="flipAlertThresholdValue" min="0.01" step="0.01" placeholder="Enter a threshold" required>
+                        </div>
+                    </div>
+                    <div class="flip-alert-channel-grid">
+                        <label class="flip-alert-channel-option" for="flipAlertEmailNotification">
+                            <input type="checkbox" id="flipAlertEmailNotification" checked>
+                            <div>
+                                <div class="flip-alert-channel-option-title">Email</div>
+                                <div class="flip-alert-channel-option-copy">Use the current alert delivery path with email enabled.</div>
+                            </div>
+                        </label>
+                        <label class="flip-alert-channel-option" for="flipAlertSmsNotification">
+                            <input type="checkbox" id="flipAlertSmsNotification">
+                            <div>
+                                <div class="flip-alert-channel-option-title">SMS</div>
+                                <div class="flip-alert-channel-option-copy">Use the same delivery mechanism with the SMS channel flag enabled.</div>
+                            </div>
+                        </label>
+                    </div>
+                    <div class="flip-alert-form-error" id="flipAlertFormError"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="flip-alert-btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="flip-alert-btn-primary" id="submitFlipAlertBtn">Create Alert</button>
+                </div>
+            </form>
+            <div class="flip-alert-loading-state" id="flipAlertCreateLoadingState" aria-hidden="true">
+                <div class="spinner-border" role="status"></div>
+                <div class="flip-alert-loading-copy">Creating alert...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade flip-alert-modal" id="deleteFlipAlertsModal" tabindex="-1" aria-labelledby="deleteFlipAlertsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteFlipAlertsModalLabel">Delete Flip Alerts</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="historical-description">Only alerts created from My Flips appear here.</p>
+                <div class="flip-alert-delete-list" id="flipAlertDeleteList"></div>
+                <div class="flip-alert-form-error" id="flipAlertDeleteError"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="flip-alert-btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="flip-alert-btn-danger" id="confirmDeleteFlipAlertsBtn">Delete Selected</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Historical View Modal -->
 <!-- What: Modal for selecting a historical date to view past portfolio performance -->
 <!-- Why: Allows users to see what their unrealized P&L would have been at a specific date -->
@@ -4166,17 +4732,16 @@
     <thead>
         <tr>
             <th class="sortable" data-col="0" data-type="string">Item <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="1" data-type="number">Price Paid<span class="sort-icon"></span></th>
-            <th class="sortable" data-col="2" data-type="number"><span class="d-none d-md-inline">Quantity
+        <th class="sortable" data-col="1" data-type="number"><span class="d-none d-md-inline">Unrealized
+            Net</span><span class="d-md-none">Unreal.</span> <span class="sort-icon"></span></th>
+        <th class="sortable" data-col="2" data-type="number"><span class="d-none d-md-inline">Realized
+            Net</span><span class="d-md-none">Real.</span> <span class="sort-icon"></span></th>
+        <th class="sortable" data-col="3" data-type="number"><span class="d-none d-md-inline">Position
+            Size</span><span class="d-md-none">Pos.</span> <span class="sort-icon"></span></th>
+        <th class="sortable" data-col="4" data-type="number"><span class="d-none d-md-inline">Quantity
                     Holding</span><span class="d-md-none">Qty</span> <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="3" data-type="number"><span class="d-none d-md-inline">Position
-                    Size</span><span class="d-md-none">Pos.</span> <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="4" data-type="number">High Price <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="5" data-type="number">Low Price <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="6" data-type="number"><span class="d-none d-md-inline">Unrealized
-                    Net</span><span class="d-md-none">Unreal.</span> <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="7" data-type="number"><span class="d-none d-md-inline">Realized
-                    Net</span><span class="d-md-none">Real.</span> <span class="sort-icon"></span></th>
+        <th class="sortable" data-col="5" data-type="number">High Price <span class="sort-icon"></span></th>
+        <th class="sortable" data-col="6" data-type="number">Low Price <span class="sort-icon"></span></th>
         </tr>
     </thead>
     <tbody id="flipsTableBody">
@@ -4187,7 +4752,7 @@
             How: Apply Bootstrap's text-start class and set the flex container to justify-content: flex-start.
         -->
         <tr class="skeleton-row">
-            <td colspan="8" class="text-start" style="padding: 20px; color: var(--muted);">
+            <td colspan="7" class="text-start" style="padding: 20px; color: var(--muted);">
                 <div style="display: flex; align-items: center; justify-content: flex-start; gap: 10px;">
                     <div class="spinner-border spinner-border-sm" role="status" style="color: var(--primary);"></div>
                     <span>Loading flip data...</span>
@@ -4272,7 +4837,7 @@
                 // What: Render a left-aligned empty-state row when the user has no flips.
                 // Why: The table should keep consistent left alignment even when no data exists, matching the UI expectation.
                 // How: Inject a single-row tbody with Bootstrap's text-start class so the message anchors to the left.
-                tbody.innerHTML = '<tr><td colspan="8" class="text-start">No flips recorded yet.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="text-start">No flips recorded yet.</td></tr>';
                 return;
             }
 
@@ -4295,7 +4860,7 @@
                 }
                 
                 html += `
-            <tr data-item-id="${item.item_id}" data-item-name="${item.name}" data-first-buy="${item.first_buy_timestamp || ''}" data-position-size="${item.position_size}">
+            <tr data-item-id="${item.item_id}" data-item-name="${item.name}" data-first-buy="${item.first_buy_timestamp || ''}" data-position-size="${item.position_size}" data-quantity-held="${item.quantity_holding}">
                 <td>
                     <div class="flip-item-cell">
                         ${iconHtml}
@@ -4306,13 +4871,12 @@
                         </div>
                     </div>
                 </td>
-                <td data-value="${item.avg_price}">${formatNumber(item.avg_price)}</td>
-                <td data-value="${item.quantity_holding}">${formatNumber(item.quantity_holding)}</td>
-                <td data-value="${item.position_size}">${formatNumber(item.position_size)}</td>
-                <td data-value="${item.high_price || 0}">${item.high_price ? formatNumber(item.high_price) : '-'}</td>
-                <td data-value="${item.low_price || 0}">${item.low_price ? formatNumber(item.low_price) : '-'}</td>
                 <td data-value="${item.unrealized_net}" class="${getPnlClass(item.unrealized_net)}">${formatNumberWithSign(item.unrealized_net)}</td>
                 <td data-value="${item.realized_net}" class="${getPnlClass(item.realized_net)}">${formatNumberWithSign(item.realized_net)}</td>
+                <td data-value="${item.position_size}">${formatNumber(item.position_size)}</td>
+                <td data-value="${item.quantity_holding}">${formatNumber(item.quantity_holding)}</td>
+                <td data-value="${item.high_price || 0}">${item.high_price ? formatNumber(item.high_price) : '-'}</td>
+                <td data-value="${item.low_price || 0}">${item.low_price ? formatNumber(item.low_price) : '-'}</td>
             </tr>`;
             });
 
@@ -4327,6 +4891,9 @@
 
             // Apply initial sort by time held
             triggerInitialSort();
+
+            syncFlipAlertRowSelectionState();
+            updateFlipAlertSelectionUi();
         }
 
         function loadFlipsStats() {
@@ -4375,7 +4942,7 @@
                     // Why: Error messaging should align with normal table text so users can scan it like other rows.
                     // How: Inject a single table row using text-start so the error message anchors to the left.
                     document.getElementById('flipsTableBody').innerHTML =
-                        '<tr><td colspan="8" class="text-start text-danger">Error loading data. Please refresh the page.</td></tr>';
+                        '<tr><td colspan="7" class="text-start text-danger">Error loading data. Please refresh the page.</td></tr>';
                 });
         }
 
@@ -4429,8 +4996,8 @@
                     posCell.textContent = isMobile ? formatNumberMobileNoSign(value) : value.toLocaleString();
                 }
 
-                // Unrealized Net (column 7)
-                const unrealCell = row.querySelector('td:nth-child(7)');
+                // Unrealized Net (column 2)
+                const unrealCell = row.querySelector('td:nth-child(2)');
                 if (unrealCell) {
                     const value = parseFloat(unrealCell.dataset.value) || 0;
                     if (isMobile) {
@@ -4440,8 +5007,8 @@
                     }
                 }
 
-                // Realized Net (column 8)
-                const realCell = row.querySelector('td:nth-child(8)');
+                // Realized Net (column 3)
+                const realCell = row.querySelector('td:nth-child(3)');
                 if (realCell) {
                     const value = parseFloat(realCell.dataset.value) || 0;
                     if (isMobile) {
@@ -4706,19 +5273,19 @@
             if (filterName === 'time-held') {
                 return getTimeHeldDays(row) || 0;
             } else if (filterName === 'unrealized-range') {
-                const cell = row.querySelector('td:nth-child(7)');
+                const cell = row.querySelector('td:nth-child(2)');
                 return parseFloat(cell?.dataset.value) || 0;
             } else if (filterName === 'realized-range') {
-                const cell = row.querySelector('td:nth-child(8)');
+                const cell = row.querySelector('td:nth-child(3)');
                 return parseFloat(cell?.dataset.value) || 0;
             } else if (filterName === 'position-size') {
                 const cell = row.querySelector('td:nth-child(4)');
                 return parseFloat(cell?.dataset.value) || 0;
             } else if (filterName === 'quantity') {
-                const cell = row.querySelector('td:nth-child(3)');
+                const cell = row.querySelector('td:nth-child(5)');
                 return parseFloat(cell?.dataset.value) || 0;
             } else if (filterName === 'completion-state') {
-                const cell = row.querySelector('td:nth-child(3)');
+                const cell = row.querySelector('td:nth-child(5)');
                 return parseFloat(cell?.dataset.value) || 0;
             }
             return 0;
@@ -5017,7 +5584,7 @@
 
                 // Unrealized range filter
                 if (show && unrealizedActive) {
-                    const cell = row.querySelector('td:nth-child(7)');
+                    const cell = row.querySelector('td:nth-child(2)');
                     const value = parseFloat(cell?.dataset.value) || 0;
                     const min = unrealizedActive.min !== null ? unrealizedActive.min : -Infinity;
                     const max = unrealizedActive.max !== null ? unrealizedActive.max : Infinity;
@@ -5028,7 +5595,7 @@
 
                 // Realized range filter
                 if (show && realizedActive) {
-                    const cell = row.querySelector('td:nth-child(8)');
+                    const cell = row.querySelector('td:nth-child(3)');
                     const value = parseFloat(cell?.dataset.value) || 0;
                     const min = realizedActive.min !== null ? realizedActive.min : -Infinity;
                     const max = realizedActive.max !== null ? realizedActive.max : Infinity;
@@ -5061,7 +5628,7 @@
 
                 // Quantity filter
                 if (show && quantityActive) {
-                    const cell = row.querySelector('td:nth-child(3)');
+                    const cell = row.querySelector('td:nth-child(5)');
                     const value = parseFloat(cell?.dataset.value) || 0;
                     const min = quantityActive.min !== null ? quantityActive.min : -Infinity;
                     const max = quantityActive.max !== null ? quantityActive.max : Infinity;
@@ -5072,7 +5639,7 @@
 
                 // Completion filter (completed = quantity held == 0, uncompleted = quantity held > 1)
                 if (show && completionActive) {
-                    const cell = row.querySelector('td:nth-child(3)');
+                    const cell = row.querySelector('td:nth-child(5)');
                     const value = parseFloat(cell?.dataset.value) || 0;
                     if (completionActive === 'completed' && value !== 0) {
                         show = false;
@@ -5156,6 +5723,7 @@
         filterDropdownBtn.addEventListener('click', function (e) {
             e.stopPropagation();
             setFilterDropdownOpen(!filterDropdownMenu.classList.contains('show'));
+            setFlipAlertsMenuOpen(false);
             sortIndicatorMenu.classList.remove('show');
             sortIndicatorMenuMobile.classList.remove('show');
         });
@@ -5187,6 +5755,7 @@
                 const targetMenu = document.getElementById(button.dataset.menuTarget);
                 setFlipsHeaderActionsOpen(targetMenu && !targetMenu.classList.contains('show'), targetMenu);
                 setFilterDropdownOpen(false);
+                setFlipAlertsMenuOpen(false);
                 sortIndicatorMenu.classList.remove('show');
                 sortIndicatorMenuMobile.classList.remove('show');
             });
@@ -5204,6 +5773,7 @@
         // How: Document-level click listener removes 'show' class from all dropdown menus
         document.addEventListener('click', function () {
             setFilterDropdownOpen(false);
+            setFlipAlertsMenuOpen(false);
             setFlipsHeaderActionsOpen(false);
             sortIndicatorMenu.classList.remove('show');
             sortIndicatorMenuMobile.classList.remove('show'); // Also close mobile sort dropdown
@@ -5511,7 +6081,7 @@
 
             // Unrealized range filter
             if (activeFilters['unrealized-range']) {
-                const cell = row.querySelector('td:nth-child(7)');
+                const cell = row.querySelector('td:nth-child(2)');
                 const value = parseFloat(cell?.dataset.value) || 0;
                 const min = activeFilters['unrealized-range'].min !== null ? activeFilters['unrealized-range'].min : -Infinity;
                 const max = activeFilters['unrealized-range'].max !== null ? activeFilters['unrealized-range'].max : Infinity;
@@ -5520,7 +6090,7 @@
 
             // Realized range filter
             if (activeFilters['realized-range']) {
-                const cell = row.querySelector('td:nth-child(8)');
+                const cell = row.querySelector('td:nth-child(3)');
                 const value = parseFloat(cell?.dataset.value) || 0;
                 const min = activeFilters['realized-range'].min !== null ? activeFilters['realized-range'].min : -Infinity;
                 const max = activeFilters['realized-range'].max !== null ? activeFilters['realized-range'].max : Infinity;
@@ -5538,7 +6108,7 @@
 
             // Quantity filter
             if (activeFilters['quantity']) {
-                const cell = row.querySelector('td:nth-child(3)');
+                const cell = row.querySelector('td:nth-child(5)');
                 const value = parseFloat(cell?.dataset.value) || 0;
                 const min = activeFilters['quantity'].min !== null ? activeFilters['quantity'].min : -Infinity;
                 const max = activeFilters['quantity'].max !== null ? activeFilters['quantity'].max : Infinity;
@@ -5547,7 +6117,7 @@
 
                 // Completion filter
             if (activeFilters['completion-state']) {
-                const cell = row.querySelector('td:nth-child(3)');
+                const cell = row.querySelector('td:nth-child(5)');
                 const value = parseFloat(cell?.dataset.value) || 0;
                 const state = activeFilters['completion-state'];
                 if (state === 'completed' && value !== 0) return false;
@@ -6026,6 +6596,490 @@
             rows.forEach(row => tbody.appendChild(row));
         }
 
+        const notificationsContainer = document.getElementById('notifications');
+        const flipAlertsBtn = document.getElementById('flipAlertsBtn');
+        const flipAlertsMenu = document.getElementById('flipAlertsMenu');
+        const newFlipAlertBtn = document.getElementById('newFlipAlertBtn');
+        const deleteFlipAlertsBtn = document.getElementById('deleteFlipAlertsBtn');
+        const flipAlertSelectionIntroModalElement = document.getElementById('flipAlertSelectionIntroModal');
+        const startFlipAlertSelectionBtn = document.getElementById('startFlipAlertSelectionBtn');
+        const flipAlertSelectionActionContainers = Array.from(document.querySelectorAll('.js-flip-alert-selection-header-actions'));
+        const continueFlipAlertSelectionBtns = [
+            document.getElementById('continueFlipAlertSelectionBtn'),
+            document.getElementById('mobileContinueFlipAlertSelectionBtn'),
+        ].filter(Boolean);
+        const cancelFlipAlertSelectionBtns = [
+            document.getElementById('cancelFlipAlertSelectionBtn'),
+            document.getElementById('mobileCancelFlipAlertSelectionBtn'),
+        ].filter(Boolean);
+        const createFlipAlertModalElement = document.getElementById('createFlipAlertModal');
+        const deleteFlipAlertsModalElement = document.getElementById('deleteFlipAlertsModal');
+        const createFlipAlertForm = document.getElementById('createFlipAlertForm');
+        const flipAlertSelectedItems = document.getElementById('flipAlertSelectedItems');
+        const flipAlertThresholdKind = document.getElementById('flipAlertThresholdKind');
+        const flipAlertThresholdValue = document.getElementById('flipAlertThresholdValue');
+        const flipAlertEmailNotification = document.getElementById('flipAlertEmailNotification');
+        const flipAlertSmsNotification = document.getElementById('flipAlertSmsNotification');
+        const flipAlertFormError = document.getElementById('flipAlertFormError');
+        const flipAlertCreateLoadingState = document.getElementById('flipAlertCreateLoadingState');
+        const submitFlipAlertBtn = document.getElementById('submitFlipAlertBtn');
+        const flipAlertDeleteList = document.getElementById('flipAlertDeleteList');
+        const flipAlertDeleteError = document.getElementById('flipAlertDeleteError');
+        const confirmDeleteFlipAlertsBtn = document.getElementById('confirmDeleteFlipAlertsBtn');
+
+        let flipAlertSelectionMode = false;
+        const selectedFlipAlertItemIds = new Set();
+        let flipAlertsCache = [];
+
+        function dismissNotificationElement(notification) {
+            if (!notification) {
+                return;
+            }
+            notification.classList.add('dismissing');
+            setTimeout(() => notification.remove(), 300);
+        }
+
+        function showFlipsNotification(message, kind = 'success') {
+            if (!notificationsContainer) {
+                return;
+            }
+
+            const notification = document.createElement('div');
+            notification.className = `success-notification${kind === 'error' ? ' error' : ''}`;
+            notification.innerHTML = `
+                <span>${message}</span>
+                <button type="button" class="dismiss-btn">&times;</button>
+            `;
+
+            const dismissBtn = notification.querySelector('.dismiss-btn');
+            dismissBtn.addEventListener('click', function () {
+                dismissNotificationElement(notification);
+            });
+
+            notificationsContainer.prepend(notification);
+
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    dismissNotificationElement(notification);
+                }
+            }, 5000);
+        }
+
+        function setFlipAlertsMenuOpen(isOpen) {
+            if (!flipAlertsBtn || !flipAlertsMenu) {
+                return;
+            }
+
+            flipAlertsMenu.classList.toggle('show', isOpen);
+            flipAlertsBtn.classList.toggle('is-open', isOpen);
+            flipAlertsBtn.classList.toggle('active', isOpen || flipAlertSelectionMode);
+            flipAlertsBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        }
+
+        function getFlipItemDataById(itemId) {
+            if (!flipsData || !Array.isArray(flipsData.items)) {
+                return null;
+            }
+
+            return flipsData.items.find(item => Number(item.item_id) === Number(itemId)) || null;
+        }
+
+        function isFlipAlertSelectableItemData(item) {
+            return !!item && Number(item.quantity_holding) > 0;
+        }
+
+        function updateFlipAlertSelectionUi() {
+            const selectedCount = selectedFlipAlertItemIds.size;
+
+            flipAlertSelectionActionContainers.forEach(container => {
+                container.classList.toggle('is-visible', flipAlertSelectionMode);
+            });
+            continueFlipAlertSelectionBtns.forEach(button => {
+                button.disabled = selectedCount === 0;
+                button.textContent = 'Continue';
+            });
+
+            document.body.classList.toggle('flip-alert-selection-lock', flipAlertSelectionMode);
+
+            table.classList.toggle('flip-alert-select-mode', flipAlertSelectionMode);
+            if (flipAlertsBtn) {
+                flipAlertsBtn.classList.toggle('active', flipAlertSelectionMode || (flipAlertsMenu && flipAlertsMenu.classList.contains('show')));
+            }
+        }
+
+        function syncFlipAlertRowSelectionState() {
+            const rows = table.querySelectorAll('tbody tr[data-item-id]');
+            let removedSelection = false;
+
+            rows.forEach(row => {
+                const itemId = Number(row.dataset.itemId);
+                const itemData = getFlipItemDataById(itemId);
+                const selectable = isFlipAlertSelectableItemData(itemData);
+
+                if (!selectable && selectedFlipAlertItemIds.has(itemId)) {
+                    selectedFlipAlertItemIds.delete(itemId);
+                    removedSelection = true;
+                }
+
+                row.dataset.selectableForAlert = selectable ? 'true' : 'false';
+                row.classList.toggle('selected-for-flip-alert', flipAlertSelectionMode && selectedFlipAlertItemIds.has(itemId));
+                row.classList.toggle('flip-alert-row-disabled', flipAlertSelectionMode && !selectable);
+            });
+
+            if (removedSelection) {
+                updateFlipAlertSelectionUi();
+            }
+        }
+
+        function populateCreateFlipAlertModal() {
+            const selectedItems = Array.from(selectedFlipAlertItemIds)
+                .map(itemId => getFlipItemDataById(itemId))
+                .filter(Boolean);
+
+            if (flipAlertSelectedItems) {
+                flipAlertSelectedItems.innerHTML = selectedItems.map(item => (
+                    `<span class="flip-alert-selected-pill">${item.name}</span>`
+                )).join('');
+            }
+            if (flipAlertThresholdKind) {
+                flipAlertThresholdKind.value = 'percent_profit';
+            }
+            if (flipAlertThresholdValue) {
+                flipAlertThresholdValue.value = '';
+            }
+            if (flipAlertEmailNotification) {
+                flipAlertEmailNotification.checked = true;
+            }
+            if (flipAlertSmsNotification) {
+                flipAlertSmsNotification.checked = false;
+            }
+            if (flipAlertFormError) {
+                flipAlertFormError.textContent = '';
+                flipAlertFormError.style.display = 'none';
+            }
+        }
+
+        function setCreateFlipAlertLoading(isLoading) {
+            if (flipAlertCreateLoadingState) {
+                flipAlertCreateLoadingState.classList.toggle('is-visible', isLoading);
+                flipAlertCreateLoadingState.setAttribute('aria-hidden', isLoading ? 'false' : 'true');
+            }
+            if (submitFlipAlertBtn) {
+                submitFlipAlertBtn.disabled = isLoading;
+            }
+        }
+
+        function enterFlipAlertSelectionMode() {
+            if (deleteMode) {
+                cancelDeleteMode();
+            }
+
+            flipAlertSelectionMode = true;
+            selectedFlipAlertItemIds.clear();
+            setFlipAlertsMenuOpen(false);
+            syncFlipAlertRowSelectionState();
+            updateFlipAlertSelectionUi();
+        }
+
+        function cancelFlipAlertSelectionMode() {
+            flipAlertSelectionMode = false;
+            selectedFlipAlertItemIds.clear();
+            setFlipAlertsMenuOpen(false);
+            syncFlipAlertRowSelectionState();
+            updateFlipAlertSelectionUi();
+
+            if (flipAlertFormError) {
+                flipAlertFormError.textContent = '';
+                flipAlertFormError.style.display = 'none';
+            }
+        }
+
+        async function loadFlipAlerts() {
+            const response = await fetch('/api/flips/alerts/');
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Unable to load Flip Alerts.');
+            }
+
+            flipAlertsCache = Array.isArray(data.alerts) ? data.alerts : [];
+            return flipAlertsCache;
+        }
+
+        function renderFlipAlertDeleteList() {
+            if (!flipAlertDeleteList || !confirmDeleteFlipAlertsBtn) {
+                return;
+            }
+
+            if (!flipAlertsCache.length) {
+                flipAlertDeleteList.innerHTML = '<div class="text-muted">No Flip Alerts have been created yet.</div>';
+                confirmDeleteFlipAlertsBtn.disabled = true;
+                return;
+            }
+
+            flipAlertDeleteList.innerHTML = flipAlertsCache.map(alert => {
+                const channels = [
+                    alert.email_notification ? 'Email' : null,
+                    alert.sms_notification ? 'SMS' : null,
+                ].filter(Boolean).join(' + ') || 'No channels';
+                return `
+                    <label class="flip-alert-delete-item" for="flipAlertDelete-${alert.id}">
+                        <input type="checkbox" id="flipAlertDelete-${alert.id}" value="${alert.id}" name="flip-alert-delete-selection">
+                        <div>
+                            <div class="flip-alert-delete-item-title">${alert.text}</div>
+                            <div class="flip-alert-delete-item-copy">${channels}</div>
+                        </div>
+                    </label>
+                `;
+            }).join('');
+            confirmDeleteFlipAlertsBtn.disabled = false;
+        }
+
+        async function openDeleteFlipAlertsModal() {
+            if (!flipAlertDeleteList || !deleteFlipAlertsModalElement) {
+                return;
+            }
+
+            if (flipAlertDeleteError) {
+                flipAlertDeleteError.textContent = '';
+                flipAlertDeleteError.style.display = 'none';
+            }
+
+            flipAlertDeleteList.innerHTML = '<div class="text-muted">Loading Flip Alerts...</div>';
+
+            try {
+                await loadFlipAlerts();
+                renderFlipAlertDeleteList();
+                const modal = bootstrap.Modal.getInstance(deleteFlipAlertsModalElement) || new bootstrap.Modal(deleteFlipAlertsModalElement);
+                modal.show();
+            } catch (error) {
+                flipAlertDeleteList.innerHTML = '<div class="text-danger">Unable to load Flip Alerts right now.</div>';
+                if (flipAlertDeleteError) {
+                    flipAlertDeleteError.textContent = error.message;
+                    flipAlertDeleteError.style.display = 'block';
+                }
+            }
+        }
+
+        if (flipAlertsBtn) {
+            flipAlertsBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+
+                if (flipAlertSelectionMode) {
+                    cancelFlipAlertSelectionMode();
+                    return;
+                }
+
+                const shouldOpen = !flipAlertsMenu.classList.contains('show');
+                setFlipAlertsMenuOpen(shouldOpen);
+                setFilterDropdownOpen(false);
+                setFlipsHeaderActionsOpen(false);
+                sortIndicatorMenu.classList.remove('show');
+                sortIndicatorMenuMobile.classList.remove('show');
+            });
+        }
+
+        if (flipAlertsMenu) {
+            flipAlertsMenu.addEventListener('click', function (e) {
+                e.stopPropagation();
+            });
+        }
+
+        if (newFlipAlertBtn) {
+            newFlipAlertBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                setFlipAlertsMenuOpen(false);
+                const modal = bootstrap.Modal.getInstance(flipAlertSelectionIntroModalElement) || new bootstrap.Modal(flipAlertSelectionIntroModalElement);
+                modal.show();
+            });
+        }
+
+        if (startFlipAlertSelectionBtn) {
+            startFlipAlertSelectionBtn.addEventListener('click', function () {
+                const modal = bootstrap.Modal.getInstance(flipAlertSelectionIntroModalElement);
+                if (modal) {
+                    modal.hide();
+                }
+                enterFlipAlertSelectionMode();
+            });
+        }
+
+        if (deleteFlipAlertsBtn) {
+            deleteFlipAlertsBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                setFlipAlertsMenuOpen(false);
+                openDeleteFlipAlertsModal();
+            });
+        }
+
+        continueFlipAlertSelectionBtns.forEach(button => {
+            button.addEventListener('click', function () {
+                if (!selectedFlipAlertItemIds.size) {
+                    showFlipsNotification('Select at least one active position before continuing.', 'error');
+                    return;
+                }
+
+                populateCreateFlipAlertModal();
+                const modal = bootstrap.Modal.getInstance(createFlipAlertModalElement) || new bootstrap.Modal(createFlipAlertModalElement);
+                modal.show();
+            });
+        });
+
+        cancelFlipAlertSelectionBtns.forEach(button => {
+            button.addEventListener('click', function () {
+                cancelFlipAlertSelectionMode();
+            });
+        });
+
+        if (createFlipAlertForm) {
+            createFlipAlertForm.addEventListener('submit', async function (e) {
+                e.preventDefault();
+
+                const payload = {
+                    item_ids: Array.from(selectedFlipAlertItemIds),
+                    threshold_kind: flipAlertThresholdKind ? flipAlertThresholdKind.value : 'percent_profit',
+                    threshold_value: flipAlertThresholdValue ? flipAlertThresholdValue.value : '',
+                    email_notification: flipAlertEmailNotification ? flipAlertEmailNotification.checked : false,
+                    sms_notification: flipAlertSmsNotification ? flipAlertSmsNotification.checked : false,
+                };
+
+                if (flipAlertFormError) {
+                    flipAlertFormError.textContent = '';
+                    flipAlertFormError.style.display = 'none';
+                }
+
+                setCreateFlipAlertLoading(true);
+
+                try {
+                    const response = await fetch('/api/flips/alerts/create/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(payload),
+                    });
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Unable to create the Flip Alert.');
+                    }
+
+                    if (data.alert) {
+                        flipAlertsCache.unshift(data.alert);
+                    }
+
+                    const modal = bootstrap.Modal.getInstance(createFlipAlertModalElement);
+                    if (modal) {
+                        const handleHidden = function () {
+                            createFlipAlertModalElement.removeEventListener('hidden.bs.modal', handleHidden);
+                            cancelFlipAlertSelectionMode();
+                            showFlipsNotification('Flip Alert created.', 'success');
+                        };
+                        createFlipAlertModalElement.addEventListener('hidden.bs.modal', handleHidden);
+                        modal.hide();
+                    } else {
+                        setCreateFlipAlertLoading(false);
+                        cancelFlipAlertSelectionMode();
+                        showFlipsNotification('Flip Alert created.', 'success');
+                    }
+                } catch (error) {
+                    setCreateFlipAlertLoading(false);
+                    if (flipAlertFormError) {
+                        flipAlertFormError.textContent = error.message;
+                        flipAlertFormError.style.display = 'block';
+                    } else {
+                        showFlipsNotification(error.message, 'error');
+                    }
+                }
+            });
+        }
+
+        if (createFlipAlertModalElement) {
+            createFlipAlertModalElement.addEventListener('hidden.bs.modal', function () {
+                setCreateFlipAlertLoading(false);
+            });
+        }
+
+        if (confirmDeleteFlipAlertsBtn) {
+            confirmDeleteFlipAlertsBtn.addEventListener('click', async function () {
+                const selectedAlertIds = Array.from(
+                    document.querySelectorAll('input[name="flip-alert-delete-selection"]:checked')
+                ).map(input => Number(input.value));
+
+                if (!selectedAlertIds.length) {
+                    if (flipAlertDeleteError) {
+                        flipAlertDeleteError.textContent = 'Select at least one Flip Alert to delete.';
+                        flipAlertDeleteError.style.display = 'block';
+                    }
+                    return;
+                }
+
+                if (flipAlertDeleteError) {
+                    flipAlertDeleteError.textContent = '';
+                    flipAlertDeleteError.style.display = 'none';
+                }
+
+                try {
+                    const response = await fetch('/api/flips/alerts/delete/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ alert_ids: selectedAlertIds }),
+                    });
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Unable to delete the selected Flip Alerts.');
+                    }
+
+                    flipAlertsCache = flipAlertsCache.filter(alert => !selectedAlertIds.includes(Number(alert.id)));
+                    const modal = bootstrap.Modal.getInstance(deleteFlipAlertsModalElement);
+                    if (modal) {
+                        modal.hide();
+                    }
+                    showFlipsNotification('Selected Flip Alerts deleted.', 'success');
+                } catch (error) {
+                    if (flipAlertDeleteError) {
+                        flipAlertDeleteError.textContent = error.message;
+                        flipAlertDeleteError.style.display = 'block';
+                    }
+                }
+            });
+        }
+
+        table.querySelector('tbody').addEventListener('click', function (e) {
+            if (!flipAlertSelectionMode) {
+                return;
+            }
+
+            const row = e.target.closest('tr');
+            if (!row || !row.dataset.itemId) {
+                return;
+            }
+
+            e.preventDefault();
+            e.stopImmediatePropagation();
+
+            const itemId = Number(row.dataset.itemId);
+            const itemData = getFlipItemDataById(itemId);
+            if (!isFlipAlertSelectableItemData(itemData)) {
+                showFlipsNotification('Flip Alerts can only track items with an active held position.', 'error');
+                return;
+            }
+
+            if (selectedFlipAlertItemIds.has(itemId)) {
+                selectedFlipAlertItemIds.delete(itemId);
+            } else {
+                selectedFlipAlertItemIds.add(itemId);
+            }
+
+            syncFlipAlertRowSelectionState();
+            updateFlipAlertSelectionUi();
+        });
+
         // Delete flip functionality
         const deleteBtns = Array.from(document.querySelectorAll('.js-delete-flip'));
         const deleteBtnLabels = Array.from(document.querySelectorAll('.js-delete-flip-label'));
@@ -6067,6 +7121,9 @@
         deleteBtns.forEach(button => {
             button.addEventListener('click', function () {
                 setFlipsHeaderActionsOpen(false);
+                if (flipAlertSelectionMode) {
+                    cancelFlipAlertSelectionMode();
+                }
                 if (!deleteMode) {
                     deleteMode = true;
                     setDeleteButtonsActive(true, 'Click a row to delete');
@@ -6158,6 +7215,9 @@
         window.addEventListener('beforeunload', function() {
             if (deleteMode) {
                 cancelDeleteMode();
+            }
+            if (flipAlertSelectionMode) {
+                cancelFlipAlertSelectionMode();
             }
         });
 
@@ -6278,6 +7338,37 @@
         const equityChartSummary = document.getElementById('equityChartSummary');
         const equityRangeButtons = document.querySelectorAll('.equity-range-btn');
         let equityChartInstance = null;
+
+        function clearHistoricalViewportWidth() {
+            [historicalBanner, ...document.querySelectorAll('.historical-skipped-notification')].forEach((element) => {
+                if (!element) {
+                    return;
+                }
+
+                element.style.removeProperty('width');
+                element.style.removeProperty('max-width');
+            });
+        }
+
+        function syncHistoricalViewportWidth(wrapperOverride = null) {
+            const table = document.getElementById('flipsTable');
+            const wrapper = wrapperOverride || table?.closest('.table-scroll-wrapper');
+
+            if (!wrapper || !wrapper.classList.contains('desktop-horizontal-scroll')) {
+                clearHistoricalViewportWidth();
+                return;
+            }
+
+            const viewportWidth = `${wrapper.clientWidth}px`;
+            [historicalBanner, ...document.querySelectorAll('.historical-skipped-notification')].forEach((element) => {
+                if (!element) {
+                    return;
+                }
+
+                element.style.width = viewportWidth;
+                element.style.maxWidth = viewportWidth;
+            });
+        }
         let equityChartRange = '1y';
         let equityChartScriptPromise = null;
         let equityChartAbortController = null;
@@ -6524,6 +7615,7 @@
         function showHistoricalBanner(dateStr) {
             historicalBannerDate.textContent = formatDateForDisplay(dateStr);
             historicalBanner.style.display = 'block';
+            syncHistoricalViewportWidth();
             historicalViewBtn.classList.add('active');
         }
 
@@ -6563,6 +7655,7 @@
 
             // Insert notification after the banner
             historicalBanner.insertAdjacentElement('afterend', notification);
+            syncHistoricalViewportWidth();
 
             // Add dismiss functionality
             notification.querySelector('.notification-dismiss').addEventListener('click', () => {
@@ -6620,7 +7713,7 @@
             // How: Use text-start on the cell and justify-content: flex-start to keep the spinner/text on the left.
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="8" class="text-start" style="padding: 20px; color: var(--muted);">
+                    <td colspan="7" class="text-start" style="padding: 20px; color: var(--muted);">
                         <div style="display: flex; align-items: center; justify-content: flex-start; gap: 10px;">
                             <div class="spinner-border spinner-border-sm" role="status" style="color: var(--info);"></div>
                             <span>Loading historical data for ${formatDateForDisplay(dateStr)}...</span>
@@ -6663,7 +7756,7 @@
                 // How: Inject a single row with text-start so the message anchors to the table's left edge.
                 tableBody.innerHTML = `
                     <tr>
-                        <td colspan="8" class="text-start text-danger" style="padding: 20px;">
+                        <td colspan="7" class="text-start text-danger" style="padding: 20px;">
                             Error loading historical data: ${error.message}. Please try again.
                         </td>
                     </tr>
@@ -7054,6 +8147,8 @@
                     notificationsContainer.classList.add('desktop-table-width-bound');
                     notificationsContainer.style.setProperty('--desktop-flips-table-width', tableWidth);
                 }
+
+                syncHistoricalViewportWidth(wrapper);
             }
 
             syncControlsToTableWidth();

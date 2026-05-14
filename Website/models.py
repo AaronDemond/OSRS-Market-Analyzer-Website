@@ -53,6 +53,97 @@ def get_all_current_prices():
     return _get_all_prices()
 
 
+FLIP_ALERT_TAX_RATE = 0.02
+FLIP_ALERT_TAX_CAP = 5_000_000
+
+
+def get_flip_alert_market_price(price_data):
+    """Return the My Flips market price basis for alert evaluation."""
+    if not isinstance(price_data, dict):
+        return None
+
+    high = price_data.get('high')
+    low = price_data.get('low')
+
+    if high is not None and low is not None:
+        return (high + low) / 2
+    if high is not None:
+        return high
+    if low is not None:
+        return low
+    return None
+
+
+def calculate_flip_alert_gp_profit(average_cost, quantity_held, current_price):
+    """Calculate unrealized held-position P/L with GE tax applied to the exit value."""
+    if average_cost is None or current_price is None or quantity_held is None or quantity_held <= 0:
+        return 0
+
+    gross_value = current_price * quantity_held
+    tax = min(gross_value * FLIP_ALERT_TAX_RATE, FLIP_ALERT_TAX_CAP)
+    net_value = gross_value - tax
+    return net_value - (average_cost * quantity_held)
+
+
+def calculate_flip_alert_percent_profit(average_cost, quantity_held, current_price):
+    """Calculate held-position P/L percentage from current market value and cost basis."""
+    if average_cost is None or quantity_held is None or quantity_held <= 0:
+        return 0
+
+    cost_basis = average_cost * quantity_held
+    if cost_basis <= 0:
+        return 0
+
+    gp_profit = calculate_flip_alert_gp_profit(average_cost, quantity_held, current_price)
+    return (gp_profit / cost_basis) * 100
+
+
+def build_flip_alert_position_snapshot(flip_profit, price_data):
+    """Build a held-position snapshot used by the FlipAlert APIs and checker."""
+    quantity_held = int(flip_profit.quantity_held or 0)
+    if quantity_held <= 0:
+        return None
+
+    current_price = get_flip_alert_market_price(price_data)
+    if current_price is None:
+        return None
+
+    average_cost = float(flip_profit.average_cost or 0)
+    gp_profit = calculate_flip_alert_gp_profit(average_cost, quantity_held, current_price)
+    percent_profit = calculate_flip_alert_percent_profit(average_cost, quantity_held, current_price)
+
+    return {
+        'item_id': int(flip_profit.item_id),
+        'item_name': flip_profit.item_name or f'Item {flip_profit.item_id}',
+        'quantity_held': quantity_held,
+        'average_cost': round(average_cost, 2),
+        'current_price': round(current_price),
+        'position_cost': round(average_cost * quantity_held),
+        'gp_profit': round(gp_profit),
+        'percent_profit': round(percent_profit, 2),
+    }
+
+
+def flip_alert_threshold_is_met(snapshot, threshold_kind, threshold_value):
+    """Return whether a position snapshot meets a FlipAlert threshold."""
+    if not snapshot:
+        return False
+
+    absolute_threshold = abs(float(threshold_value))
+    gp_profit = float(snapshot.get('gp_profit') or 0)
+    percent_profit = float(snapshot.get('percent_profit') or 0)
+
+    if threshold_kind == 'percent_profit':
+        return percent_profit >= absolute_threshold
+    if threshold_kind == 'percent_loss':
+        return percent_profit <= -absolute_threshold
+    if threshold_kind == 'gp_profit':
+        return gp_profit >= absolute_threshold
+    if threshold_kind == 'gp_loss':
+        return gp_profit <= -absolute_threshold
+    return False
+
+
 
 class Flip(models.Model):
     TYPE_CHOICES = [
@@ -86,6 +177,63 @@ class FlipProfit(models.Model):
 
     def __str__(self):
         return f"FlipProfit item_id={self.item_id} qty={self.quantity_held}"
+
+
+class FlipAlert(models.Model):
+    """User-configured alert thresholds for current held positions on My Flips."""
+
+    THRESHOLD_CHOICES = [
+        ('percent_profit', '% Profit'),
+        ('percent_loss', '% Loss'),
+        ('gp_profit', 'GP Profit'),
+        ('gp_loss', 'GP Loss'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='flip_alerts')
+    tracked_items = models.JSONField(default=list, blank=True)
+    threshold_kind = models.CharField(max_length=20, choices=THRESHOLD_CHOICES)
+    threshold_value = models.FloatField()
+    email_notification = models.BooleanField(default=False)
+    sms_notification = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True, db_index=True)
+    is_triggered = models.BooleanField(default=False, db_index=True)
+    active_item_ids = models.JSONField(default=list, blank=True)
+    triggered_items = models.JSONField(default=list, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    triggered_at = models.DateTimeField(blank=True, null=True, default=None)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'is_active'], name='flip_alert_user_active_idx'),
+        ]
+
+    def tracked_item_ids(self):
+        item_ids = []
+        for item in self.tracked_items or []:
+            if not isinstance(item, dict):
+                continue
+            try:
+                item_ids.append(int(item.get('item_id')))
+            except (TypeError, ValueError):
+                continue
+        return item_ids
+
+    def tracked_item_label(self):
+        tracked_items = [item for item in (self.tracked_items or []) if isinstance(item, dict)]
+        if len(tracked_items) == 1:
+            return tracked_items[0].get('item_name') or '1 item'
+        return f'{len(tracked_items)} items'
+
+    def threshold_label(self):
+        label = dict(self.THRESHOLD_CHOICES).get(self.threshold_kind, self.threshold_kind)
+        if self.threshold_kind.startswith('gp_'):
+            return f'{label} {int(round(self.threshold_value)):,} gp'
+        return f'{label} {self.threshold_value:g}%'
+
+    def __str__(self):
+        return f'{self.tracked_item_label()} {self.threshold_label()}'
 
 
 class FlipJournalStrategy(models.Model):

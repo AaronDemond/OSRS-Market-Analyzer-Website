@@ -16,6 +16,7 @@ from .models import (
     OneHourTimeSeries,
     SixHourTimeSeries,
     TwentyFourHourTimeSeries,
+    FlipAlert,
 )
 
 @admin.register(FlipProfit)
@@ -107,3 +108,10 @@ class AllTimeDataAdmin(admin.ModelAdmin):
     list_display = ('item_id', 'item_name', 'item_price', 'timestamp', 'volume')
     search_fields = ('item_name', 'item_id')
     list_filter = ('timestamp',)
+
+@admin.register(FlipAlert)
+class FlipAlertAdmin(admin.ModelAdmin):
+    """Expose all-time Flip Finder snapshots for spot checks and cleanup."""
+
+    list_display = ('user', 'tracked_items', 'triggered_items')
+
