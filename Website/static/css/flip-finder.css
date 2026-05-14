@@ -1,17 +1,19 @@
 .flip-finder-page {
     container-type: inline-size;
-    --ff-bg: #F8FAFC;
+    --ff-bg: #F3F7FC;
     --ff-surface: #FFFFFF;
-    --ff-soft: #F1F5F9;
-    --ff-border: #DDE3EA;
-    --ff-text: #1F2937;
-    --ff-muted: #64748B;
-    --ff-primary: #2563EB;
-    --ff-primary-dark: #1D4ED8;
+    --ff-soft: #F4F8FD;
+    --ff-border: #D9E4F0;
+    --ff-text: #1E293B;
+    --ff-muted: #708197;
+    --ff-primary: #2E7DFF;
+    --ff-primary-dark: #255FD3;
+    --ff-accent: #20DEFF;
+    --ff-accent-dark: #11C7EA;
     --ff-low: #0F766E;
     --ff-high: #B45309;
     --ff-danger: #DC2626;
-    --ff-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+    --ff-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
     max-width: 1480px;
     margin: 0 auto;
     padding: 24px;
@@ -45,9 +47,9 @@
     justify-content: center;
     flex: 0 0 48px;
     border-radius: 8px;
-    background: linear-gradient(135deg, #2563EB 0%, #0F766E 100%);
+    background: linear-gradient(145deg, #3182FF 0%, #14DFFF 100%);
     color: #FFFFFF;
-    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.24);
+    box-shadow: 0 8px 18px rgba(49, 130, 255, 0.24);
 }
 
 .ff-header-icon svg {
@@ -324,35 +326,88 @@
     min-height: 100px;
     border-bottom: 0;
     border-radius: 8px 8px 0 0;
-    background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
+    background:
+        radial-gradient(circle at top left, rgba(96, 116, 148, 0.34) 0%, rgba(96, 116, 148, 0) 34%),
+        linear-gradient(180deg, #273447 0%, #1B2534 100%);
     color: #FFFFFF;
-    box-shadow: 0 10px 32px rgba(102, 126, 234, 0.26);
+    box-shadow: inset 0 -3px 0 var(--ff-accent), 0 12px 28px rgba(12, 21, 34, 0.18);
 }
 
 .ff-gradient-header .ff-control-label,
 .ff-gradient-header h2,
 .ff-gradient-header .ff-panel-meta {
-    color: #FFFFFF;
+    color: var(--ff-accent);
+    opacity: 1;
 }
 
-.ff-gradient-header .ff-control-label,
 .ff-gradient-header .ff-panel-meta {
-    opacity: 0.82;
+    color: #FFFFFF;
+    opacity: 0.96;
 }
 
 .ff-gradient-header .ff-search-control input,
-.ff-gradient-header .ff-sort-control select,
-.ff-gradient-header .ff-page-button {
-    border-color: rgba(255, 255, 255, 0.36);
-    background: rgba(255, 255, 255, 0.96);
-    box-shadow: 0 8px 18px rgba(17, 24, 39, 0.12);
+.ff-gradient-header .ff-sort-control select {
+    border-color: rgba(93, 111, 141, 0.72);
+    background: #2A3445;
+    color: #F8FBFF;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 8px 18px rgba(9, 14, 24, 0.16);
 }
 
 .ff-gradient-header .ff-search-control input:focus,
 .ff-gradient-header .ff-sort-control select:focus,
 .ff-gradient-header .ff-page-button:focus-visible {
-    border-color: rgba(255, 255, 255, 0.72);
-    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.20), 0 8px 18px rgba(17, 24, 39, 0.14);
+    border-color: rgba(32, 222, 255, 0.95);
+    box-shadow: 0 0 0 3px rgba(32, 222, 255, 0.16), 0 8px 18px rgba(9, 14, 24, 0.20);
+}
+
+.ff-gradient-header .ff-search-control input {
+    padding-right: 40px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M14.167 14.167L17.5 17.5' stroke='%23D5E3F4' stroke-width='1.75' stroke-linecap='round'/%3E%3Ccircle cx='8.75' cy='8.75' r='4.792' stroke='%23D5E3F4' stroke-width='1.75'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px 16px;
+}
+
+.ff-gradient-header .ff-search-control input::placeholder {
+    color: rgba(217, 230, 244, 0.52);
+}
+
+.ff-gradient-header .ff-page-button {
+    border-color: rgba(86, 102, 129, 0.78);
+    background: #41495D;
+    color: #D6E2F1;
+    box-shadow: 0 8px 18px rgba(9, 14, 24, 0.18);
+}
+
+.ff-gradient-header .ff-page-button:hover:not(:disabled),
+.ff-gradient-header .ff-page-button:focus-visible:not(:disabled) {
+    background: #505A71;
+    color: #FFFFFF;
+}
+
+.ff-gradient-header .ff-next-page-button {
+    border-color: var(--ff-accent);
+    background: linear-gradient(180deg, #46E6FF 0%, #1AD9FC 100%);
+    color: #082537;
+    box-shadow: 0 10px 20px rgba(32, 222, 255, 0.30);
+}
+
+.ff-gradient-header .ff-next-page-button:hover:not(:disabled),
+.ff-gradient-header .ff-next-page-button:focus-visible:not(:disabled) {
+    background: linear-gradient(180deg, #68ECFF 0%, #29DCFC 100%);
+    color: #041A28;
+}
+
+.ff-gradient-header .ff-page-button:disabled {
+    border-color: rgba(86, 102, 129, 0.74);
+    background: #4A5266;
+    color: #BAC7D8;
+    opacity: 1;
+}
+
+.ff-results-header .ff-control-label,
+.ff-selected-header h2 {
+    color: var(--ff-accent);
 }
 
 .ff-results-header {
@@ -388,6 +443,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    color: #FFFFFF;
 }
 
 .ff-selected-icon-slot {
@@ -402,8 +458,8 @@
     height: 52px;
     flex-basis: 52px;
     border-radius: 12px;
-    background: rgba(255, 255, 255, 0.16);
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+    background: #FFFFFF;
+    box-shadow: 0 8px 18px rgba(8, 18, 32, 0.24);
 }
 
 .ff-selected-icon-slot .ff-item-icon img {
@@ -461,10 +517,10 @@
 
 .ff-results-custom-range {
     padding: 11px 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.18);
+    border-top: 1px solid rgba(32, 222, 255, 0.12);
     border-bottom: 1px solid var(--ff-border);
-    background: linear-gradient(180deg, rgba(239, 246, 255, 0.9) 0%, rgba(248, 250, 252, 0.98) 100%);
-    color: var(--ff-primary-dark);
+    background: linear-gradient(180deg, rgba(32, 222, 255, 0.08) 0%, rgba(255, 255, 255, 0.98) 100%);
+    color: #0F5B73;
     font-size: 0.79rem;
     font-weight: 720;
 }
@@ -624,8 +680,8 @@
 }
 
 .ff-result-row.selected {
-    background: #EFF6FF;
-    box-shadow: inset 3px 0 0 var(--ff-primary);
+    background: #FFFFFF;
+    box-shadow: inset 4px 0 0 var(--ff-accent);
 }
 
 .ff-results-head > :first-child,
@@ -661,7 +717,7 @@
 }
 
 .ff-result-row.selected .ff-item-cell {
-    box-shadow: inset 3px 0 0 var(--ff-primary), 1px 0 0 var(--ff-border), 12px 0 18px rgba(15, 23, 42, 0.08);
+    box-shadow: inset 4px 0 0 var(--ff-accent), 1px 0 0 var(--ff-border), 12px 0 18px rgba(15, 23, 42, 0.08);
 }
 
 @keyframes ff-loading-spin {
@@ -769,7 +825,7 @@
     color: var(--ff-muted);
     font-size: 0.75rem;
     font-weight: 820;
-    box-shadow: 0 3px 8px rgba(15, 23, 42, 0.10);
+    box-shadow: 0 3px 8px rgba(15, 23, 42, 0.08);
     white-space: nowrap;
 }
 
@@ -786,9 +842,9 @@
 }
 
 .ff-signal-badge.both {
-    border-color: rgba(100, 116, 139, 0.28);
-    background: #E5E7EB;
-    color: #111827;
+    border-color: rgba(32, 222, 255, 0.42);
+    background: linear-gradient(180deg, #7DEFFF 0%, #39DDFF 100%);
+    color: #0A243A;
 }
 
 .ff-chart-timeframe-control {

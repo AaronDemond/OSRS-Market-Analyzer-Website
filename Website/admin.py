@@ -104,6 +104,6 @@ class TwentyFourHourTimeSeriesAdmin(admin.ModelAdmin):
 class AllTimeDataAdmin(admin.ModelAdmin):
     """Expose all-time Flip Finder snapshots for spot checks and cleanup."""
 
-    list_display = ('item_id', 'item_name', 'item_price', 'timestamp')
+    list_display = ('item_id', 'item_name', 'item_price', 'timestamp', 'volume')
     search_fields = ('item_name', 'item_id')
     list_filter = ('timestamp',)
