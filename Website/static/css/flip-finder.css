@@ -424,14 +424,27 @@
 .ff-selected-summary {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 14px;
     min-width: 0;
     flex: 1 1 auto;
 }
 
 .ff-selected-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
     min-width: 0;
+}
+
+.ff-selected-title-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.ff-selected-title-row h2 {
+    margin: 0;
 }
 
 .ff-selected-copy .ff-panel-meta {
@@ -657,24 +670,27 @@
     color: var(--ff-text);
     text-align: left;
     cursor: pointer;
-    transition: background 0.16s ease, box-shadow 0.16s ease;
+    transition: background 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
 }
 
 .ff-result-row:hover,
 .ff-result-row:focus-visible {
-    background: #F8FBFF;
+    border-bottom-color: rgba(32, 222, 255, 0.34);
+    background: linear-gradient(180deg, #F4FBFF 0%, #E6F8FF 100%);
+    box-shadow: inset 0 0 0 1px rgba(32, 222, 255, 0.24);
     outline: none;
 }
 
 .ff-result-row.selected {
-    background: #FFFFFF;
-    box-shadow: inset 4px 0 0 var(--ff-accent);
+    border-bottom-color: rgba(32, 222, 255, 0.42);
+    background: linear-gradient(180deg, #E7F9FF 0%, #D9F5FF 100%);
+    box-shadow: inset 4px 0 0 var(--ff-accent), inset 0 0 0 1px rgba(32, 222, 255, 0.28);
 }
 
 .ff-results-head > :first-child,
 .ff-item-cell {
     position: sticky;
-    left: 0;
+    left: 6px;
     box-sizing: border-box;
     min-width: 0;
     padding-left: 16px;
@@ -695,16 +711,24 @@
     align-self: stretch;
     background: #FFFFFF;
     box-shadow: 1px 0 0 var(--ff-border), 12px 0 18px rgba(15, 23, 42, 0.08);
+    transition: background 0.16s ease, box-shadow 0.16s ease;
 }
 
 .ff-result-row:hover .ff-item-cell,
-.ff-result-row:focus-visible .ff-item-cell,
-.ff-result-row.selected .ff-item-cell {
+.ff-result-row:focus-visible .ff-item-cell {
     background: #FFFFFF;
+    box-shadow: 1px 0 0 var(--ff-border), 12px 0 18px rgba(15, 23, 42, 0.10);
 }
 
 .ff-result-row.selected .ff-item-cell {
-    box-shadow: inset 4px 0 0 var(--ff-accent), 1px 0 0 var(--ff-border), 12px 0 18px rgba(15, 23, 42, 0.08);
+    background: #FFFFFF;
+    box-shadow: 1px 0 0 var(--ff-border), 12px 0 18px rgba(15, 23, 42, 0.10);
+}
+
+.ff-result-row:hover .ff-item-name,
+.ff-result-row:focus-visible .ff-item-name,
+.ff-result-row.selected .ff-item-name {
+    color: #0C3A54;
 }
 
 @keyframes ff-loading-spin {

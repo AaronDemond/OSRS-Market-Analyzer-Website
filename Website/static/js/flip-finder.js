@@ -572,11 +572,18 @@
             return;
         }
 
-        selectedResult = results.find((result) => result.id === state.selectedItemId) || results[0];
+        selectedResult = results.find((result) => result.id === state.selectedItemId) || null;
+
+        if (!selectedResult) {
+            selectedHistory = null;
+            state.selectedItemId = null;
+            return;
+        }
+
         state.selectedItemId = selectedResult.id;
     }
 
-    function resetSelectedPanel(message = 'Select a result.') {
+    function resetSelectedPanel(message = 'Select an item to view its chart.') {
         elements.selectedMeta.textContent = '--';
         if (elements.selectedIconSlot) {
             elements.selectedIconSlot.innerHTML = '<span class="ff-item-icon ff-selected-item-icon fallback">?</span>';

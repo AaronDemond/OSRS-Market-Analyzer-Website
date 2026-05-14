@@ -134,11 +134,13 @@
                 <div class="ff-panel-header ff-selected-header ff-gradient-header">
                     <div class="ff-selected-summary">
                         <div class="ff-selected-copy">
-                            <h2 id="ffSelectedHeading">Selected Item</h2>
+                            <div class="ff-selected-title-row" id="ffSelectedTitleRow">
+                                <h2 id="ffSelectedHeading">Selected Item</h2>
+                                <div class="ff-selected-icon-slot" id="ffSelectedIconSlot" aria-hidden="true">
+                                    <span class="ff-item-icon ff-selected-item-icon fallback">?</span>
+                                </div>
+                            </div>
                             <span class="ff-panel-meta" id="ffSelectedMeta">--</span>
-                        </div>
-                        <div class="ff-selected-icon-slot" id="ffSelectedIconSlot" aria-hidden="true">
-                            <span class="ff-item-icon ff-selected-item-icon fallback">?</span>
                         </div>
                     </div>
                     <span class="ff-signal-badge" id="ffSelectedSignal">--</span>
@@ -178,7 +180,7 @@
 
                 <div class="ff-chart-wrap">
                     <canvas id="ffPriceChart" aria-label="Selected item price history"></canvas>
-                    <div class="ff-chart-empty" id="ffPriceChartEmpty" hidden>Select a result.</div>
+                    <div class="ff-chart-empty" id="ffPriceChartEmpty" hidden>Select an item to view its chart.</div>
                 </div>
             </section>
         </aside>

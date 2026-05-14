@@ -29,7 +29,9 @@ class FlipFinderPageTests(TestCase):
         self.assertContains(response, 'ffCustomDateModal')
         self.assertContains(response, 'ffResultsPanel')
         self.assertContains(response, 'ffChartPanel')
+        self.assertContains(response, 'ffSelectedTitleRow')
         self.assertContains(response, 'ffSelectedIconSlot')
+        self.assertContains(response, 'Select an item to view its chart.')
 
 
 class FlipFinderApiTests(TestCase):
