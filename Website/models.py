@@ -1554,6 +1554,44 @@ class TwentyFourHourTimeSeries(models.Model):
         ]
         indexes = [
             models.Index(fields=['item_id', '-timestamp'], name='twentyfour_item_ts_desc'),
+            # Flip Finder filters by item and compares against period lows/highs;
+            # these indexes keep those source scans cheap as the 24h table grows.
+            models.Index(fields=['item_id', 'avg_low_price'], name='twentyfour_item_low_idx'),
+            models.Index(fields=['item_id', 'avg_high_price'], name='twentyfour_item_high_idx'),
             models.Index(fields=['timestamp'], name='twentyfour_ts_idx'),
+        ]
+
+
+class AllTimeData(models.Model):
+    """
+    Long-range item price snapshots for Flip Finder all-time comparisons.
+
+    What: Stores a normalized item price at a Unix timestamp.
+    Why: Existing 24h data is suitable for ranges up to one year, while all-time
+         comparisons need a separate table that can grow independently.
+    How: One row represents one item at one timestamp; uniqueness prevents a
+         backfill/import job from duplicating the same snapshot.
+    """
+    item_id = models.IntegerField(db_index=True)
+    item_name = models.CharField(max_length=255)
+    item_price = models.BigIntegerField()
+    timestamp = models.BigIntegerField()
+
+    class Meta:
+        ordering = ['-timestamp', 'item_name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['item_id', 'timestamp'],
+                name='uniq_all_time_item_ts',
+            ),
+        ]
+        indexes = [
+            # Flip Finder groups by item and compares against extrema, so the
+            # item/price index supports low/high aggregation paths.
+            models.Index(fields=['item_id', 'item_price'], name='alltime_item_price_idx'),
+            # The latest-row lookup is the hot path for current price/name.
+            models.Index(fields=['item_id', '-timestamp'], name='alltime_item_ts_desc'),
+            # Timestamp-only scans support diagnostics and future backfill jobs.
+            models.Index(fields=['timestamp'], name='alltime_ts_idx'),
         ]
 

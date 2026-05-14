@@ -2,6 +2,7 @@ from django.contrib import admin
 from .models import (
     Alert,
     AlertGroup,
+    AllTimeData,
     FavoriteItem,
     FiveMinTimeSeries,
     Flip,
@@ -97,3 +98,12 @@ class SixHourTimeSeriesAdmin(admin.ModelAdmin):
 class TwentyFourHourTimeSeriesAdmin(admin.ModelAdmin):
     list_display = ('item_id', 'item_name', 'avg_low_price', 'avg_high_price', 'high_price_volume',
                     'low_price_volume', 'timestamp')
+
+
+@admin.register(AllTimeData)
+class AllTimeDataAdmin(admin.ModelAdmin):
+    """Expose all-time Flip Finder snapshots for spot checks and cleanup."""
+
+    list_display = ('item_id', 'item_name', 'item_price', 'timestamp')
+    search_fields = ('item_name', 'item_id')
+    list_filter = ('timestamp',)

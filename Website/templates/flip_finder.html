@@ -18,7 +18,7 @@
             </div>
             <div>
                 <h1>Flip Finder</h1>
-                <div class="ff-meta" id="ffUpdatedAt">Mock market scan</div>
+                <div class="ff-meta" id="ffUpdatedAt">Loading local market data...</div>
             </div>
         </div>
         <button type="button" class="ff-icon-button" id="ffResetButton" aria-label="Reset filters" title="Reset filters">
@@ -32,8 +32,6 @@
         <div class="ff-control ff-timeframe-control">
             <span class="ff-control-label">Timeframe</span>
             <div class="ff-segmented" id="ffTimeframeGroup" role="group" aria-label="Timeframe">
-                <button type="button" data-timeframe="1h">1h</button>
-                <button type="button" data-timeframe="6h">6h</button>
                 <button type="button" data-timeframe="24h" class="active" aria-pressed="true">24h</button>
                 <button type="button" data-timeframe="7d">7d</button>
                 <button type="button" data-timeframe="30d">30d</button>
@@ -64,6 +62,26 @@
         </div>
     </section>
 
+    <section class="ff-filters" aria-label="Flip Finder minimum filters">
+        <div class="ff-filter-controls">
+            <div class="ff-control ff-filter-control">
+                <label class="ff-control-label" for="ffMinVolumeInput">Min volume</label>
+                <div class="ff-number-input-wrap">
+                    <input id="ffMinVolumeInput" type="number" min="0" step="1" inputmode="numeric" placeholder="0">
+                    <span>gp</span>
+                </div>
+            </div>
+
+            <div class="ff-control ff-filter-control">
+                <label class="ff-control-label" for="ffMinPriceInput">Min price</label>
+                <div class="ff-number-input-wrap">
+                    <input id="ffMinPriceInput" type="number" min="0" step="1" inputmode="numeric" placeholder="0">
+                    <span>gp</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <div class="ff-workspace">
         <section class="ff-results-panel" aria-label="Flip Finder results">
             <span id="ffResultsMeta" hidden>0 items</span>
@@ -79,11 +97,13 @@
                         <select id="ffSortSelect">
                             <option value="closest">Closest match</option>
                             <option value="name">Item name</option>
-                            <option value="signal">Signal</option>
                             <option value="low">From Low</option>
                             <option value="high">From High</option>
                         </select>
                     </div>
+
+                    <button type="button" class="ff-page-button ff-previous-page-button" id="ffPreviousPageButton" disabled>Previous</button>
+                    <button type="button" class="ff-page-button ff-next-page-button" id="ffNextPageButton" disabled>Next Page</button>
                 </div>
             </div>
 
@@ -98,10 +118,10 @@
                     <div class="ff-results-head" role="row">
                         <button type="button" class="ff-sort-header" data-sort="name" role="columnheader" aria-sort="none">Item</button>
                         <button type="button" class="ff-sort-header" data-sort="signal" role="columnheader" aria-sort="none">Signal</button>
-                        <span role="columnheader">Current</span>
                         <button type="button" class="ff-sort-header" data-sort="low" role="columnheader" aria-sort="none">From Low</button>
                         <button type="button" class="ff-sort-header" data-sort="high" role="columnheader" aria-sort="none">From High</button>
-                        <span role="columnheader">Volume</span>
+                        <span role="columnheader">Current</span>
+                        <span role="columnheader">Volume GP</span>
                     </div>
                     <div class="ff-results-body" id="ffResultsBody"></div>
                 </div>
@@ -116,6 +136,18 @@
                         <span class="ff-panel-meta" id="ffSelectedMeta">--</span>
                     </div>
                     <span class="ff-signal-badge" id="ffSelectedSignal">--</span>
+                </div>
+
+                <div class="ff-chart-timeframe-control">
+                    <span class="ff-control-label">Chart range</span>
+                    <div class="ff-segmented ff-chart-timeframe-group" id="ffChartTimeframeGroup" role="group" aria-label="Selected item chart range">
+                        <button type="button" data-timeframe="24h" class="active" aria-pressed="true">24h</button>
+                        <button type="button" data-timeframe="7d">7d</button>
+                        <button type="button" data-timeframe="30d">30d</button>
+                        <button type="button" data-timeframe="90d">90d</button>
+                        <button type="button" data-timeframe="1y">1yr</button>
+                        <button type="button" data-timeframe="all">All</button>
+                    </div>
                 </div>
 
                 <div class="ff-selected-metrics">
@@ -140,19 +172,6 @@
                 <div class="ff-chart-wrap">
                     <canvas id="ffPriceChart" aria-label="Selected item price history"></canvas>
                     <div class="ff-chart-empty" id="ffPriceChartEmpty" hidden>Select a result.</div>
-                </div>
-            </section>
-
-            <section class="ff-chart-panel" aria-labelledby="ffDistributionHeading">
-                <div class="ff-panel-header">
-                    <div>
-                        <h2 id="ffDistributionHeading">Signals</h2>
-                        <span class="ff-panel-meta" id="ffDistributionMeta">Current filter</span>
-                    </div>
-                </div>
-                <div class="ff-chart-wrap ff-distribution-wrap">
-                    <canvas id="ffDistributionChart" aria-label="Signal distribution"></canvas>
-                    <div class="ff-chart-empty" id="ffDistributionEmpty" hidden>No data.</div>
                 </div>
             </section>
         </aside>

@@ -97,6 +97,7 @@
 }
 
 .ff-controls,
+.ff-filters,
 .ff-results-panel,
 .ff-chart-panel {
     background: var(--ff-surface);
@@ -112,6 +113,21 @@
     align-items: end;
     padding: 16px;
     margin-bottom: 14px;
+}
+
+.ff-filters {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: end;
+    padding: 14px 16px 16px;
+    margin-bottom: 14px;
+}
+
+.ff-filter-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(180px, 260px));
+    gap: 12px;
+    justify-content: start;
 }
 
 .ff-control {
@@ -220,6 +236,7 @@
     font-weight: 720;
 }
 
+.ff-filter-control input,
 .ff-search-control input,
 .ff-sort-control select {
     width: 100%;
@@ -231,8 +248,39 @@
     background: var(--ff-surface);
 }
 
+.ff-number-input-wrap {
+    display: flex;
+    align-items: center;
+    height: 42px;
+    border: 1px solid var(--ff-border);
+    border-radius: 8px;
+    background: var(--ff-surface);
+    overflow: hidden;
+}
+
+.ff-number-input-wrap input {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    padding: 0 6px 0 12px;
+    color: var(--ff-text);
+    background: transparent;
+}
+
+.ff-number-input-wrap input:focus {
+    outline: none;
+}
+
+.ff-number-input-wrap span {
+    padding-right: 12px;
+    color: var(--ff-muted);
+    font-weight: 720;
+}
+
+.ff-filter-control input:focus,
 .ff-search-control input:focus,
 .ff-sort-control select:focus,
+.ff-number-input-wrap:focus-within,
 .ff-percent-input-wrap:focus-within {
     border-color: var(--ff-primary);
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.13);
@@ -293,14 +341,16 @@
 }
 
 .ff-gradient-header .ff-search-control input,
-.ff-gradient-header .ff-sort-control select {
+.ff-gradient-header .ff-sort-control select,
+.ff-gradient-header .ff-page-button {
     border-color: rgba(255, 255, 255, 0.36);
     background: rgba(255, 255, 255, 0.96);
     box-shadow: 0 8px 18px rgba(17, 24, 39, 0.12);
 }
 
 .ff-gradient-header .ff-search-control input:focus,
-.ff-gradient-header .ff-sort-control select:focus {
+.ff-gradient-header .ff-sort-control select:focus,
+.ff-gradient-header .ff-page-button:focus-visible {
     border-color: rgba(255, 255, 255, 0.72);
     box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.20), 0 8px 18px rgba(17, 24, 39, 0.14);
 }
@@ -316,11 +366,37 @@
 
 .ff-results-actions {
     display: grid;
-    grid-template-columns: minmax(220px, 1fr) 180px;
+    grid-template-columns: minmax(220px, 1fr) 180px 104px 116px;
     gap: 12px;
     flex: 1 1 100%;
     max-width: none;
     margin-left: 0;
+}
+
+.ff-page-button {
+    align-self: end;
+    height: 42px;
+    border: 1px solid var(--ff-border);
+    border-radius: 8px;
+    color: var(--ff-primary);
+    font-size: 0.82rem;
+    font-weight: 780;
+    cursor: pointer;
+    transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.ff-page-button:hover:not(:disabled),
+.ff-page-button:focus-visible:not(:disabled) {
+    color: var(--ff-primary-dark);
+    transform: translateY(-1px);
+    outline: none;
+}
+
+.ff-page-button:disabled {
+    color: var(--ff-muted);
+    cursor: not-allowed;
+    opacity: 0.58;
+    transform: none;
 }
 
 .ff-panel-header h2 {
@@ -345,31 +421,67 @@
 }
 
 .ff-table-scrollbar {
-    height: 16px;
+    height: 12px;
     overflow-x: auto;
     overflow-y: hidden;
     border-bottom: 1px solid var(--ff-border);
     background: var(--ff-bg);
+    scrollbar-color: #CBD5E1 var(--ff-bg);
+    scrollbar-width: thin;
 }
 
 .ff-table-scrollbar-track {
     height: 1px;
 }
 
-.ff-results-scroll {
-    width: 100%;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-width: none;
+.ff-table-scrollbar::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
 }
 
-.ff-results-scroll::-webkit-scrollbar {
+.ff-table-scrollbar::-webkit-scrollbar-track {
+    background: var(--ff-bg);
+}
+
+.ff-table-scrollbar::-webkit-scrollbar-thumb {
+    border: 3px solid var(--ff-bg);
+    border-radius: 999px;
+    background: #CBD5E1;
+}
+
+.ff-table-scrollbar::-webkit-scrollbar-button,
+.ff-results-scroll::-webkit-scrollbar-button {
+    width: 0;
+    height: 0;
     display: none;
 }
 
+.ff-results-scroll {
+    width: 100%;
+    max-height: 708px;
+    overflow: auto;
+    scrollbar-color: #CBD5E1 var(--ff-bg);
+    scrollbar-width: thin;
+}
+
+.ff-results-scroll::-webkit-scrollbar {
+    width: 12px;
+    height: 0;
+}
+
+.ff-results-scroll::-webkit-scrollbar-track {
+    background: var(--ff-bg);
+}
+
+.ff-results-scroll::-webkit-scrollbar-thumb {
+    border: 3px solid var(--ff-bg);
+    border-radius: 999px;
+    background: #CBD5E1;
+}
+
 .ff-results-table {
-    --ff-results-grid: minmax(420px, 2fr) 128px 150px 132px 132px 120px;
-    min-width: 1110px;
+    --ff-results-grid: minmax(294px, 1.4fr) 128px 132px 132px 150px 120px;
+    min-width: 984px;
     width: 100%;
 }
 
@@ -382,8 +494,11 @@
 }
 
 .ff-results-head {
+    position: sticky;
+    top: 0;
+    z-index: 20;
     min-height: 42px;
-    padding: 0 16px;
+    padding: 0 16px 0 0;
     border-bottom: 1px solid var(--ff-border);
     background: var(--ff-bg);
     color: var(--ff-muted);
@@ -435,7 +550,7 @@
 .ff-result-row {
     min-height: 74px;
     width: 100%;
-    padding: 12px 16px;
+    padding: 12px 16px 12px 0;
     border: 0;
     border-bottom: 1px solid var(--ff-border);
     background: var(--ff-surface);
@@ -456,11 +571,68 @@
     box-shadow: inset 3px 0 0 var(--ff-primary);
 }
 
+.ff-results-head > :first-child,
+.ff-item-cell {
+    position: sticky;
+    left: 0;
+    box-sizing: border-box;
+    min-width: 0;
+    padding-left: 16px;
+    padding-right: 12px;
+}
+
+.ff-results-head > :first-child {
+    z-index: 30;
+    align-self: stretch;
+    background: var(--ff-bg);
+}
+
 .ff-item-cell {
     display: flex;
     align-items: center;
     gap: 12px;
-    min-width: 0;
+    z-index: 10;
+    align-self: stretch;
+    background: #FFFFFF;
+    box-shadow: 1px 0 0 var(--ff-border), 12px 0 18px rgba(15, 23, 42, 0.08);
+}
+
+.ff-result-row:hover .ff-item-cell,
+.ff-result-row:focus-visible .ff-item-cell,
+.ff-result-row.selected .ff-item-cell {
+    background: #FFFFFF;
+}
+
+.ff-result-row.selected .ff-item-cell {
+    box-shadow: inset 3px 0 0 var(--ff-primary), 1px 0 0 var(--ff-border), 12px 0 18px rgba(15, 23, 42, 0.08);
+}
+
+@keyframes ff-loading-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.ff-results-loading {
+    position: sticky;
+    left: 0;
+    display: grid;
+    place-items: center;
+    width: var(--ff-results-viewport-width, 100%);
+    min-height: 666px;
+    box-sizing: border-box;
+    background: linear-gradient(180deg, #FFFFFF 0%, #F8FBFF 100%);
+}
+
+.ff-loading-spinner {
+    width: 56px;
+    height: 56px;
+    border: 5px solid rgba(37, 99, 235, 0.16);
+    border-top-color: var(--ff-primary);
+    border-right-color: #14B8A6;
+    border-radius: 999px;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.10);
+    animation: ff-loading-spin 0.8s linear infinite;
 }
 
 .ff-item-cell > span:last-child {
@@ -562,6 +734,20 @@
     color: #111827;
 }
 
+.ff-chart-timeframe-control {
+    padding: 14px 16px 0;
+}
+
+.ff-chart-timeframe-group {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    width: 100%;
+}
+
+.ff-chart-timeframe-group button {
+    padding: 0 8px;
+}
+
 .ff-selected-metrics {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -597,10 +783,6 @@
     padding: 14px 16px 16px;
 }
 
-.ff-distribution-wrap {
-    height: 260px;
-}
-
 .ff-chart-empty {
     position: absolute;
     inset: 14px 16px 16px;
@@ -624,7 +806,7 @@
     }
 
     .ff-insight-column {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: 1fr;
     }
 }
 
@@ -642,6 +824,7 @@
     }
 
     .ff-controls,
+    .ff-filters,
     .ff-results-panel,
     .ff-chart-panel {
         border-left: 0;
@@ -651,6 +834,14 @@
 
     .ff-controls {
         grid-template-columns: 1fr;
+    }
+
+    .ff-filters {
+        grid-template-columns: 1fr;
+    }
+
+    .ff-filter-controls {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .ff-results-actions {
@@ -680,6 +871,7 @@
     }
 
     .ff-percent-row,
+    .ff-filter-controls,
     .ff-results-actions,
     .ff-selected-metrics {
         grid-template-columns: 1fr;

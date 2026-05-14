@@ -33,6 +33,11 @@ from ..models import (
     OneHourTimeSeries,
     TwentyFourHourTimeSeries,
 )
+from ..flip_finder import (
+    FlipFinderParamError,
+    build_flip_finder_history,
+    build_flip_finder_results,
+)
 from ..live_feedback import STATUS_PAUSED, evaluate_watch
 
 
@@ -2391,8 +2396,82 @@ def item_search(request):
 
 
 def flip_finder(request):
-    """Render the client-side Flip Finder mockup."""
+    """Render the Flip Finder page."""
     return render(request, 'flip_finder.html')
+
+
+def flip_finder_results_api(request):
+    """
+    Return local Flip Finder candidates for the selected range and filters.
+
+    What: Thin HTTP wrapper around the Flip Finder service module.
+    Why: The endpoint should not call external APIs or duplicate market logic in
+        the view layer.
+    How: Pass normalized query params into the service and attach optional local
+        item metadata for icons and buy limits when available.
+    """
+    try:
+        payload = build_flip_finder_results(
+            request.GET,
+            metadata_by_id=get_flip_finder_metadata_by_id(),
+        )
+    except FlipFinderParamError as error:
+        return JsonResponse({'error': str(error)}, status=400)
+    return JsonResponse(payload)
+
+
+def flip_finder_history_api(request):
+    """
+    Return local price history for the selected Flip Finder item.
+
+    What: Provides the selected-item chart data used by the frontend.
+    Why: Chart points must use the same source and timeframe rules as the result
+         table to avoid conflicting lows/highs.
+    How: Delegate request validation and data shaping to the Flip Finder service.
+    """
+    try:
+        payload = build_flip_finder_history(request.GET)
+    except FlipFinderParamError as error:
+        return JsonResponse({'error': str(error)}, status=400)
+    return JsonResponse(payload)
+
+
+def get_flip_finder_metadata_by_id():
+    """
+    Load optional item metadata without making network requests.
+
+    What: Return a mapping of item_id -> metadata from cache or local JSON.
+    Why: Flip Finder rows can show icons and buy limits when available, but the
+        page should remain fast and local-data-only if the mapping is missing.
+    How: Prefer the shared item mapping cache, then fall back to the static
+        item-mapping.json file, and silently omit metadata on read errors.
+    """
+    cached_mapping = cache.get(ITEM_MAPPING_CACHE_KEY)
+    if cached_mapping is None:
+        import os
+        from django.conf import settings
+
+        json_file_path = os.path.join(settings.BASE_DIR, 'Website', 'static', 'item-mapping.json')
+        if not os.path.exists(json_file_path):
+            return {}
+        try:
+            with open(json_file_path, 'r', encoding='utf-8') as item_mapping_file:
+                cached_mapping = json.load(item_mapping_file)
+        except (OSError, json.JSONDecodeError):
+            return {}
+
+    # Existing mapping helpers cache a name-keyed dict, while the static file is
+    # an array. This normalization keeps both shapes supported.
+    items = cached_mapping.values() if isinstance(cached_mapping, dict) else cached_mapping
+    metadata_by_id = {}
+    for item in items:
+        if not isinstance(item, dict) or 'id' not in item:
+            continue
+        try:
+            metadata_by_id[int(item['id'])] = item
+        except (TypeError, ValueError):
+            continue
+    return metadata_by_id
 
 
 def item_data_api(request):

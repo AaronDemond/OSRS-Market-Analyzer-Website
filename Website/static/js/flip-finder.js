@@ -1,28 +1,37 @@
 (function () {
+    /**
+     * Flip Finder client controller.
+     *
+     * What: Wires the Django-rendered UI to the local Flip Finder JSON APIs.
+     * Why: The original page was a client-only mockup; the real page should now
+     *      render database-backed candidates, charts, filters, and sort states.
+     * How: Fetch result rows whenever filter state changes, then fetch selected
+     *      item history separately so row selection stays quick and focused.
+     */
     const app = document.getElementById('flipFinderApp');
 
     if (!app) {
         return;
     }
 
-    const timeframeConfig = {
-        '1h': {label: '1h', points: 13, stepMinutes: 5},
-        '6h': {label: '6h', points: 13, stepMinutes: 30},
-        '24h': {label: '24h', points: 13, stepHours: 2},
-        '7d': {label: '7d', points: 15, stepDays: 0.5},
-        '30d': {label: '30d', points: 16, stepDays: 2},
-        '90d': {label: '90d', points: 19, stepDays: 5},
-        '1y': {label: '1y', points: 25, stepDays: 15},
-        all: {label: 'All', points: 31, stepDays: 45},
+    const endpoints = {
+        results: '/api/flip-finder/results/',
+        history: '/api/flip-finder/history/',
     };
+
+    const supportedTimeframes = new Set(['24h', '7d', '30d', '90d', '1y', 'all']);
 
     const defaultState = {
         timeframe: '24h',
+        chartTimeframe: '24h',
+        page: 1,
         percent: 5,
         signal: 'low',
         search: '',
         sort: 'closest',
         sortDirection: 'asc',
+        minVolume: '',
+        minPrice: '',
         selectedItemId: null,
     };
 
@@ -32,12 +41,17 @@
         updatedAt: document.getElementById('ffUpdatedAt'),
         resetButton: document.getElementById('ffResetButton'),
         timeframeButtons: Array.from(document.querySelectorAll('#ffTimeframeGroup button')),
+        chartTimeframeButtons: Array.from(document.querySelectorAll('#ffChartTimeframeGroup button')),
         signalButtons: Array.from(document.querySelectorAll('#ffSignalGroup button')),
         sortHeaders: Array.from(document.querySelectorAll('.ff-sort-header')),
         percentRange: document.getElementById('ffPercentRange'),
         percentInput: document.getElementById('ffPercentInput'),
+        minVolumeInput: document.getElementById('ffMinVolumeInput'),
+        minPriceInput: document.getElementById('ffMinPriceInput'),
         searchInput: document.getElementById('ffSearchInput'),
         sortSelect: document.getElementById('ffSortSelect'),
+        previousPageButton: document.getElementById('ffPreviousPageButton'),
+        nextPageButton: document.getElementById('ffNextPageButton'),
         resultsMeta: document.getElementById('ffResultsMeta'),
         resultsBody: document.getElementById('ffResultsBody'),
         resultsTable: document.getElementById('ffResultsTable'),
@@ -53,257 +67,26 @@
         selectedRange: document.getElementById('ffSelectedRange'),
         priceChartCanvas: document.getElementById('ffPriceChart'),
         priceChartEmpty: document.getElementById('ffPriceChartEmpty'),
-        distributionChartCanvas: document.getElementById('ffDistributionChart'),
-        distributionEmpty: document.getElementById('ffDistributionEmpty'),
     };
-
-    const mockItems = [
-        {
-            id: 20997,
-            name: 'Twisted bow',
-            icon: 'Twisted bow.png',
-            currentPrice: 1725000000,
-            volume: 985000000,
-            spread: 4500000,
-            buyLimit: 8,
-            members: true,
-            phase: 0.4,
-            trend: 0.18,
-            distances: {default: {low: 3.2, high: 10.8}, '7d': {low: 6.8, high: 2.9}, all: {low: 19.4, high: 3.6}},
-        },
-        {
-            id: 27277,
-            name: "Tumeken's shadow",
-            icon: "Tumeken's shadow.png",
-            currentPrice: 1284000000,
-            volume: 802000000,
-            spread: 3200000,
-            buyLimit: 8,
-            members: true,
-            phase: 1.1,
-            trend: -0.06,
-            distances: {default: {low: 8.4, high: 2.1}, '1h': {low: 2.6, high: 1.4}, '90d': {low: 16.2, high: 5.5}},
-        },
-        {
-            id: 22486,
-            name: 'Scythe of vitur',
-            icon: 'Scythe of vitur.png',
-            currentPrice: 1439000000,
-            volume: 615000000,
-            spread: 3850000,
-            buyLimit: 8,
-            members: true,
-            phase: 2.2,
-            trend: 0.1,
-            distances: {default: {low: 2.2, high: 4.4}, '30d': {low: 9.7, high: 3.4}, all: {low: 28.5, high: 7.6}},
-        },
-        {
-            id: 25862,
-            name: 'Bow of faerdhinen',
-            icon: 'Bow of faerdhinen (inactive).png',
-            currentPrice: 138300000,
-            volume: 611000000,
-            spread: 410000,
-            buyLimit: 8,
-            members: true,
-            phase: 1.7,
-            trend: -0.12,
-            distances: {default: {low: 1.5, high: 7.9}, '6h': {low: 4.7, high: 2.3}, '1y': {low: 12.8, high: 10.4}},
-        },
-        {
-            id: 26219,
-            name: "Osmumten's fang",
-            icon: "Osmumten's fang.png",
-            currentPrice: 17150000,
-            volume: 292000000,
-            spread: 68000,
-            buyLimit: 8,
-            members: true,
-            phase: 0.9,
-            trend: -0.2,
-            distances: {default: {low: 5.8, high: 1.7}, '24h': {low: 4.8, high: 1.2}, '7d': {low: 10.9, high: 2.6}},
-        },
-        {
-            id: 22978,
-            name: 'Dragon hunter lance',
-            icon: 'Dragon hunter lance.png',
-            currentPrice: 64200000,
-            volume: 188000000,
-            spread: 225000,
-            buyLimit: 8,
-            members: true,
-            phase: 2.9,
-            trend: 0.08,
-            distances: {default: {low: 9.9, high: 3.8}, '1h': {low: 2.1, high: 4.8}, '30d': {low: 4.1, high: 8.7}},
-        },
-        {
-            id: 11785,
-            name: 'Armadyl crossbow',
-            icon: 'Armadyl crossbow.png',
-            currentPrice: 31630000,
-            volume: 254000000,
-            spread: 122000,
-            buyLimit: 8,
-            members: true,
-            phase: 0.2,
-            trend: 0.14,
-            distances: {default: {low: 2.8, high: 2.6}, '90d': {low: 8.8, high: 12.1}, all: {low: 21.5, high: 6.8}},
-        },
-        {
-            id: 4151,
-            name: 'Abyssal whip',
-            icon: 'Abyssal whip.png',
-            currentPrice: 1580000,
-            volume: 144000000,
-            spread: 9200,
-            buyLimit: 70,
-            members: true,
-            phase: 2.4,
-            trend: -0.05,
-            distances: {default: {low: 7.1, high: 1.9}, '6h': {low: 1.8, high: 4.6}, '1y': {low: 13.2, high: 14.4}},
-        },
-        {
-            id: 12934,
-            name: 'Zulrah scales',
-            icon: 'Zulrah scales 5.png',
-            currentPrice: 188,
-            volume: 2200000000,
-            spread: 2,
-            buyLimit: 30000,
-            members: true,
-            phase: 1.9,
-            trend: -0.16,
-            distances: {default: {low: 1.1, high: 6.7}, '24h': {low: 0.9, high: 4.8}, '7d': {low: 5.4, high: 2.0}},
-        },
-        {
-            id: 565,
-            name: 'Blood rune',
-            icon: 'Blood rune.png',
-            currentPrice: 221,
-            volume: 1480000000,
-            spread: 1,
-            buyLimit: 25000,
-            members: false,
-            phase: 0.7,
-            trend: 0.2,
-            distances: {default: {low: 4.4, high: 1.3}, '30d': {low: 3.1, high: 7.9}, all: {low: 18.2, high: 5.1}},
-        },
-        {
-            id: 6685,
-            name: 'Saradomin brew(4)',
-            icon: 'Saradomin brew(4).png',
-            currentPrice: 7989,
-            volume: 104900000,
-            spread: 18,
-            buyLimit: 2000,
-            members: true,
-            phase: 2.0,
-            trend: -0.11,
-            distances: {default: {low: 2.4, high: 5.2}, '1h': {low: 1.3, high: 2.8}, '90d': {low: 12.6, high: 2.7}},
-        },
-        {
-            id: 3024,
-            name: 'Super restore(4)',
-            icon: 'Super restore(4).png',
-            currentPrice: 9672,
-            volume: 98000000,
-            spread: 22,
-            buyLimit: 2000,
-            members: true,
-            phase: 3.3,
-            trend: 0.03,
-            distances: {default: {low: 6.1, high: 2.4}, '24h': {low: 3.7, high: 2.0}, '30d': {low: 2.9, high: 7.1}},
-        },
-        {
-            id: 11959,
-            name: 'Black chinchompa',
-            icon: 'Black chinchompa.png',
-            currentPrice: 3617,
-            volume: 84000000,
-            spread: 31,
-            buyLimit: 11000,
-            members: true,
-            phase: 2.7,
-            trend: 0.17,
-            distances: {default: {low: 2.0, high: 8.6}, '7d': {low: 6.4, high: 3.2}, '1y': {low: 16.8, high: 11.2}},
-        },
-        {
-            id: 1513,
-            name: 'Magic logs',
-            icon: 'Magic logs.png',
-            currentPrice: 1056,
-            volume: 62000000,
-            spread: 4,
-            buyLimit: 12000,
-            members: false,
-            phase: 1.2,
-            trend: -0.08,
-            distances: {default: {low: 8.3, high: 2.2}, '6h': {low: 3.2, high: 4.0}, all: {low: 11.5, high: 18.4}},
-        },
-        {
-            id: 453,
-            name: 'Coal',
-            icon: 'Coal.png',
-            currentPrice: 173,
-            volume: 49000000,
-            spread: 1,
-            buyLimit: 13000,
-            members: false,
-            phase: 0.5,
-            trend: 0.07,
-            distances: {default: {low: 3.6, high: 3.0}, '1h': {low: 0.8, high: 1.7}, '30d': {low: 9.6, high: 8.1}},
-        },
-        {
-            id: 23959,
-            name: 'Enhanced crystal teleport seed',
-            icon: 'Enhanced crystal teleport seed.png',
-            currentPrice: 3247703,
-            volume: 128700000,
-            spread: 16200,
-            buyLimit: 70,
-            members: true,
-            phase: 2.5,
-            trend: -0.18,
-            distances: {default: {low: 11.5, high: 1.1}, '24h': {low: 7.2, high: 1.0}, '7d': {low: 4.7, high: 6.0}},
-        },
-        {
-            id: 29025,
-            name: 'Blood moon tassets',
-            icon: 'Blood moon tassets.png',
-            currentPrice: 10250320,
-            volume: 84990000,
-            spread: 78000,
-            buyLimit: 8,
-            members: true,
-            phase: 3.0,
-            trend: 0.21,
-            distances: {default: {low: 1.7, high: 9.0}, '6h': {low: 4.8, high: 2.2}, '90d': {low: 24.6, high: 4.8}},
-        },
-        {
-            id: 24514,
-            name: 'Volatile orb',
-            icon: 'Volatile orb.png',
-            currentPrice: 40304521,
-            volume: 82290000,
-            spread: 185000,
-            buyLimit: 8,
-            members: true,
-            phase: 1.4,
-            trend: 0.1,
-            distances: {default: {low: 4.6, high: 4.3}, '1h': {low: 6.4, high: 1.8}, all: {low: 30.0, high: 12.8}},
-        },
-    ];
 
     let filteredResults = [];
     let selectedResult = null;
+    let selectedHistory = null;
+    let resultError = null;
+    let historyError = null;
+    let hasPreviousPage = false;
+    let hasNextPage = false;
+    let isLoadingResults = false;
+    let isLoadingHistory = false;
     let priceChart = null;
-    let distributionChart = null;
     let isSyncingHorizontalScroll = false;
+    let resultsRequestId = 0;
+    let historyRequestId = 0;
+    let refreshTimer = null;
 
     const defaultSortDirections = {
         closest: 'asc',
         name: 'asc',
-        signal: 'asc',
         low: 'asc',
         high: 'asc',
     };
@@ -321,15 +104,29 @@
         return Math.min(maxValue, Math.max(minValue, Number(value) || minValue));
     }
 
+    function hasValue(value) {
+        return value !== null && value !== undefined && value !== '';
+    }
+
     function formatInteger(value) {
+        if (!hasValue(value)) {
+            return '--';
+        }
         return Number(value).toLocaleString();
     }
 
     function formatGp(value) {
+        if (!hasValue(value)) {
+            return '--';
+        }
         return `${formatInteger(value)} gp`;
     }
 
-    function formatCompactGp(value) {
+    function formatCompactNumber(value) {
+        if (!hasValue(value)) {
+            return '--';
+        }
+
         const amount = Number(value) || 0;
         if (Math.abs(amount) >= 1000000000) {
             return `${(amount / 1000000000).toFixed(2)}b`;
@@ -343,11 +140,29 @@
         return formatInteger(amount);
     }
 
+    function formatCompactGp(value) {
+        const compactValue = formatCompactNumber(value);
+        return compactValue === '--' ? compactValue : `${compactValue} gp`;
+    }
+
     function formatPercent(value) {
+        if (!hasValue(value)) {
+            return '--';
+        }
         return `${Number(value).toFixed(1)}%`;
     }
 
+    function formatScanTime(meta) {
+        if (!meta || !meta.rangeEndIso) {
+            return 'No local data for this range';
+        }
+        return `Local scan · ${new Date(meta.rangeEndIso).toLocaleString()}`;
+    }
+
     function getWikiIconUrl(icon) {
+        if (!icon) {
+            return null;
+        }
         return `https://oldschool.runescape.wiki/images/${encodeURIComponent(String(icon).replace(/ /g, '_'))}`;
     }
 
@@ -360,156 +175,59 @@
             .join('');
     }
 
-    function getDistanceProfile(item, timeframeKey) {
-        return {
-            ...item.distances.default,
-            ...(item.distances[timeframeKey] || {}),
-        };
-    }
-
-    function getHistoryLabel(timeframeKey, pointIndex, totalPoints) {
-        const remaining = totalPoints - pointIndex - 1;
-        if (remaining === 0) {
-            return 'Now';
-        }
-
-        const config = timeframeConfig[timeframeKey];
-        if (config.stepMinutes) {
-            return `${remaining * config.stepMinutes}m ago`;
-        }
-        if (config.stepHours) {
-            return `${remaining * config.stepHours}h ago`;
-        }
-
-        const days = remaining * config.stepDays;
-        if (days < 1) {
-            return `${Math.round(days * 24)}h ago`;
-        }
-        if (days >= 365) {
-            return `${(days / 365).toFixed(1)}y ago`;
-        }
-        return `${Math.round(days)}d ago`;
-    }
-
-    function buildHistory(item, timeframeKey) {
-        const config = timeframeConfig[timeframeKey];
-        const profile = getDistanceProfile(item, timeframeKey);
-        const periodLow = Math.max(1, Math.round(item.currentPrice / (1 + profile.low / 100)));
-        const periodHigh = Math.max(item.currentPrice, Math.round(item.currentPrice / Math.max(0.05, 1 - profile.high / 100)));
-        const range = Math.max(1, periodHigh - periodLow);
-        const lowIndex = Math.max(1, Math.min(config.points - 3, Math.round(config.points * 0.28 + (item.id % 3))));
-        const highIndex = Math.max(1, Math.min(config.points - 3, Math.round(config.points * 0.62 - (item.id % 2))));
-        const points = [];
-
-        for (let pointIndex = 0; pointIndex < config.points; pointIndex += 1) {
-            const progress = pointIndex / (config.points - 1);
-            const wave = Math.sin((progress * Math.PI * 2) + item.phase);
-            const smallerWave = Math.cos((progress * Math.PI * 4) + item.phase) * 0.09;
-            const trend = (progress - 0.5) * range * item.trend;
-            let price = item.currentPrice + (wave * range * 0.18) + (smallerWave * range) + trend;
-
-            if (pointIndex === lowIndex) {
-                price = periodLow;
-            } else if (pointIndex === highIndex) {
-                price = periodHigh;
-            } else if (pointIndex === config.points - 1) {
-                price = item.currentPrice;
-            } else {
-                price = Math.max(periodLow, Math.min(periodHigh, Math.round(price)));
+    function buildQueryString(params) {
+        const query = new URLSearchParams();
+        Object.entries(params).forEach(([key, value]) => {
+            if (hasValue(value)) {
+                query.set(key, value);
             }
-
-            points.push({
-                label: getHistoryLabel(timeframeKey, pointIndex, config.points),
-                price: Math.round(price),
-            });
-        }
-
-        return {
-            points,
-            periodLow,
-            periodHigh,
-        };
-    }
-
-    function buildResult(item) {
-        const history = buildHistory(item, state.timeframe);
-        const distanceFromLow = ((item.currentPrice - history.periodLow) / history.periodLow) * 100;
-        const distanceFromHigh = ((history.periodHigh - item.currentPrice) / history.periodHigh) * 100;
-        const nearLow = distanceFromLow <= state.percent;
-        const nearHigh = distanceFromHigh <= state.percent;
-        let signal = 'none';
-
-        if (nearLow && nearHigh) {
-            signal = 'both';
-        } else if (nearLow) {
-            signal = 'low';
-        } else if (nearHigh) {
-            signal = 'high';
-        }
-
-        return {
-            ...item,
-            history,
-            distanceFromLow,
-            distanceFromHigh,
-            closestDistance: Math.min(distanceFromLow, distanceFromHigh),
-            nearLow,
-            nearHigh,
-            signal,
-        };
-    }
-
-    function resultMatchesSignal(result) {
-        if (state.signal === 'low') {
-            return result.nearLow;
-        }
-        if (state.signal === 'high') {
-            return result.nearHigh;
-        }
-        return result.nearLow || result.nearHigh;
-    }
-
-    function getClosestSortDistance(result) {
-        if (state.signal === 'low') {
-            return result.distanceFromLow;
-        }
-        if (state.signal === 'high') {
-            return result.distanceFromHigh;
-        }
-        return result.closestDistance;
-    }
-
-    function getFilteredResults() {
-        const searchTerm = state.search.trim().toLowerCase();
-        const results = mockItems
-            .map(buildResult)
-            .filter((result) => resultMatchesSignal(result))
-            .filter((result) => !searchTerm || result.name.toLowerCase().includes(searchTerm));
-
-        results.sort((firstResult, secondResult) => {
-            let comparison = 0;
-
-            if (state.sort === 'name') {
-                comparison = firstResult.name.localeCompare(secondResult.name);
-            } else if (state.sort === 'signal') {
-                const signalOrder = {low: 1, high: 2, both: 3, none: 4};
-                comparison = signalOrder[firstResult.signal] - signalOrder[secondResult.signal];
-            } else if (state.sort === 'low') {
-                comparison = firstResult.distanceFromLow - secondResult.distanceFromLow;
-            } else if (state.sort === 'high') {
-                comparison = firstResult.distanceFromHigh - secondResult.distanceFromHigh;
-            } else {
-                comparison = getClosestSortDistance(firstResult) - getClosestSortDistance(secondResult);
-            }
-
-            if (comparison === 0) {
-                comparison = firstResult.name.localeCompare(secondResult.name);
-            }
-
-            return state.sortDirection === 'desc' ? -comparison : comparison;
         });
+        return query.toString();
+    }
 
-        return results;
+    async function fetchJson(url, params) {
+        /**
+         * Fetch JSON with consistent error extraction.
+         *
+         * The backend returns `{error: "..."}` for validation failures. Reading
+         * the body before throwing keeps the UI message useful without exposing
+         * raw response text or stack traces.
+         */
+        const response = await fetch(`${url}?${buildQueryString(params)}`, {
+            headers: {'Accept': 'application/json'},
+        });
+        const payload = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(payload.error || 'Flip Finder request failed.');
+        }
+
+        return payload;
+    }
+
+    function fetchResults() {
+        return fetchJson(endpoints.results, {
+            timeframe: state.timeframe,
+            percent: state.percent,
+            signal: state.signal,
+            search: state.search,
+            sort: state.sort,
+            sortDirection: state.sortDirection,
+            page: state.page,
+            minVolume: state.minVolume,
+            minPrice: state.minPrice,
+        });
+    }
+
+    function fetchSelectedHistory() {
+        if (!selectedResult) {
+            return Promise.resolve(null);
+        }
+
+        return fetchJson(endpoints.history, {
+            timeframe: state.chartTimeframe,
+            itemId: selectedResult.id,
+        });
     }
 
     function setSort(sortKey, shouldToggleDirection = false) {
@@ -519,7 +237,8 @@
             state.sort = sortKey;
             state.sortDirection = defaultSortDirections[sortKey] || 'asc';
         }
-        renderAll();
+        state.page = 1;
+        refreshResults();
     }
 
     function updateSortHeaders() {
@@ -537,6 +256,7 @@
             return;
         }
 
+        syncResultsViewportWidth();
         const hasOverflow = !elements.resultsTable.hidden && elements.resultsScroll.scrollWidth > elements.resultsScroll.clientWidth + 1;
         elements.tableScrollbar.hidden = !hasOverflow;
         elements.tableScrollbarTrack.style.width = `${elements.resultsScroll.scrollWidth}px`;
@@ -544,6 +264,13 @@
         if (hasOverflow) {
             elements.tableScrollbar.scrollLeft = elements.resultsScroll.scrollLeft;
         }
+    }
+
+    function syncResultsViewportWidth() {
+        if (!elements.resultsScroll || !elements.resultsBody) {
+            return;
+        }
+        elements.resultsBody.style.setProperty('--ff-results-viewport-width', `${elements.resultsScroll.clientWidth}px`);
     }
 
     function syncHorizontalScroll(source, target) {
@@ -586,18 +313,40 @@
         return signal === 'both' ? 'both' : signal;
     }
 
+    function getMemberText(result) {
+        if (result.members === true) {
+            return 'Members';
+        }
+        if (result.members === false) {
+            return 'Free';
+        }
+        return null;
+    }
+
+    function renderItemIcon(result) {
+        const fallback = escapeHtml(getInitials(result.name) || '?');
+        const iconUrl = getWikiIconUrl(result.icon);
+        if (!iconUrl) {
+            return `<span class="ff-item-icon fallback">${fallback}</span>`;
+        }
+        return `<span class="ff-item-icon" data-fallback="${fallback}"><img src="${escapeHtml(iconUrl)}" alt="${escapeHtml(result.name)}"></span>`;
+    }
+
     function renderResult(result) {
         const selectedClass = selectedResult && selectedResult.id === result.id ? ' selected' : '';
         const signalClass = getSignalClass(result.signal);
-        const memberText = result.members ? 'Members' : 'Free';
+        const itemDetails = [
+            hasValue(result.buyLimit) ? `Limit ${formatInteger(result.buyLimit)}` : null,
+            getMemberText(result),
+        ].filter(Boolean).join(' · ') || `Item ${formatInteger(result.id)}`;
 
         return `
             <button type="button" class="ff-result-row${selectedClass}" data-item-id="${result.id}" role="row" aria-label="${escapeHtml(result.name)}">
                 <span class="ff-item-cell" role="cell">
-                    <span class="ff-item-icon" data-fallback="${escapeHtml(getInitials(result.name))}"><img src="${escapeHtml(getWikiIconUrl(result.icon))}" alt="${escapeHtml(result.name)}"></span>
+                    ${renderItemIcon(result)}
                     <span>
                         <span class="ff-item-name">${escapeHtml(result.name)}</span>
-                        <span class="ff-item-subtext">Limit ${formatInteger(result.buyLimit)} · ${memberText}</span>
+                        <span class="ff-item-subtext">${escapeHtml(itemDetails)}</span>
                     </span>
                 </span>
                 <span class="ff-signal-cell" role="cell">
@@ -605,21 +354,21 @@
                     <span class="ff-signal-badge ${signalClass}">${getSignalLabel(result.signal)}</span>
                 </span>
                 <span role="cell">
-                    <span class="ff-cell-label">Current</span>
-                    <span class="ff-price">${formatGp(result.currentPrice)}</span>
-                </span>
-                <span role="cell">
                     <span class="ff-cell-label">From Low</span>
                     <span class="ff-distance">${formatPercent(result.distanceFromLow)}</span>
-                    <span class="ff-muted-value">${formatCompactGp(result.history.periodLow)}</span>
+                    <span class="ff-muted-value">${formatCompactGp(result.periodLow)}</span>
                 </span>
                 <span role="cell">
                     <span class="ff-cell-label">From High</span>
                     <span class="ff-distance">${formatPercent(result.distanceFromHigh)}</span>
-                    <span class="ff-muted-value">${formatCompactGp(result.history.periodHigh)}</span>
+                    <span class="ff-muted-value">${formatCompactGp(result.periodHigh)}</span>
                 </span>
                 <span role="cell">
-                    <span class="ff-cell-label">Volume</span>
+                    <span class="ff-cell-label">Current</span>
+                    <span class="ff-price">${formatGp(result.currentPrice)}</span>
+                </span>
+                <span role="cell">
+                    <span class="ff-cell-label">Volume GP</span>
                     <span class="ff-volume">${formatCompactGp(result.volume)}</span>
                 </span>
             </button>
@@ -634,20 +383,78 @@
         });
     }
 
-    function renderResultsMeta(results) {
-        elements.resultsMeta.textContent = `${formatInteger(results.length)} item${results.length === 1 ? '' : 's'}`;
+    function renderResultsMeta(payload) {
+        if (!payload) {
+            const visibleCount = filteredResults.length;
+            elements.resultsMeta.textContent = `${formatInteger(visibleCount)} item${visibleCount === 1 ? '' : 's'}`;
+            return;
+        }
+
+        const totalMatches = payload.totalMatches || 0;
+        if (!totalMatches) {
+            elements.resultsMeta.textContent = '0 items';
+            return;
+        }
+
+        const visibleCount = filteredResults.length;
+        const firstVisible = ((payload.page - 1) * payload.pageSize) + 1;
+        const lastVisible = firstVisible + visibleCount - 1;
+        elements.resultsMeta.textContent = `${formatInteger(firstVisible)}-${formatInteger(lastVisible)} of ${formatInteger(totalMatches)} items`;
+    }
+
+    function renderLoadingIndicator() {
+        return `
+            <div class="ff-results-loading" role="status" aria-label="Loading results">
+                <span class="ff-loading-spinner" aria-hidden="true"></span>
+            </div>
+        `;
+    }
+
+    function updatePageButtons() {
+        if (elements.previousPageButton) {
+            elements.previousPageButton.disabled = isLoadingResults || !hasPreviousPage;
+        }
+        if (!elements.nextPageButton) {
+            return;
+        }
+        elements.nextPageButton.disabled = isLoadingResults || !hasNextPage;
     }
 
     function renderResults(results) {
+        if (isLoadingResults) {
+            elements.emptyState.hidden = true;
+            elements.resultsTable.hidden = false;
+            syncResultsViewportWidth();
+            elements.resultsBody.innerHTML = renderLoadingIndicator();
+            updatePageButtons();
+            syncHorizontalScrollbarVisibility();
+            window.requestAnimationFrame(syncHorizontalScrollbarVisibility);
+            return;
+        }
+
+        if (resultError) {
+            elements.emptyState.textContent = resultError.message;
+            elements.emptyState.hidden = false;
+            elements.resultsTable.hidden = true;
+            elements.resultsBody.innerHTML = '';
+            updatePageButtons();
+            syncHorizontalScrollbarVisibility();
+            return;
+        }
+
+        elements.emptyState.textContent = 'No matching items.';
         elements.emptyState.hidden = results.length > 0;
         elements.resultsTable.hidden = results.length === 0;
         elements.resultsBody.innerHTML = results.map(renderResult).join('');
+        updatePageButtons();
 
         elements.resultsBody.querySelectorAll('.ff-result-row').forEach((button) => {
             button.addEventListener('click', () => {
                 state.selectedItemId = Number(button.dataset.itemId);
                 selectedResult = filteredResults.find((result) => result.id === state.selectedItemId) || null;
-                renderAll();
+                selectedHistory = null;
+                renderResults(filteredResults);
+                refreshSelectedHistory();
             });
         });
 
@@ -666,11 +473,15 @@
                 showFallback();
             }
         });
+
+        syncHorizontalScrollbarVisibility();
+        window.requestAnimationFrame(syncHorizontalScrollbarVisibility);
     }
 
     function syncSelectedResult(results) {
         if (!results.length) {
             selectedResult = null;
+            selectedHistory = null;
             state.selectedItemId = null;
             return;
         }
@@ -679,7 +490,7 @@
         state.selectedItemId = selectedResult.id;
     }
 
-    function resetSelectedPanel() {
+    function resetSelectedPanel(message = 'Select a result.') {
         elements.selectedMeta.textContent = '--';
         elements.selectedSignal.textContent = '--';
         elements.selectedSignal.className = 'ff-signal-badge';
@@ -687,6 +498,7 @@
         elements.selectedLowDistance.textContent = '--';
         elements.selectedHighDistance.textContent = '--';
         elements.selectedRange.textContent = '--';
+        elements.priceChartEmpty.textContent = message;
         elements.priceChartEmpty.hidden = false;
 
         if (priceChart) {
@@ -702,14 +514,29 @@
         }
 
         const signalClass = getSignalClass(selectedResult.signal);
+        const historyRangeLow = selectedHistory && hasValue(selectedHistory.periodLow) ? selectedHistory.periodLow : selectedResult.periodLow;
+        const historyRangeHigh = selectedHistory && hasValue(selectedHistory.periodHigh) ? selectedHistory.periodHigh : selectedResult.periodHigh;
+
         elements.selectedMeta.textContent = selectedResult.name;
         elements.selectedSignal.textContent = getSignalLabel(selectedResult.signal);
         elements.selectedSignal.className = `ff-signal-badge ${signalClass}`;
         elements.selectedPrice.textContent = formatGp(selectedResult.currentPrice);
         elements.selectedLowDistance.textContent = formatPercent(selectedResult.distanceFromLow);
         elements.selectedHighDistance.textContent = formatPercent(selectedResult.distanceFromHigh);
-        elements.selectedRange.textContent = `${formatCompactGp(selectedResult.history.periodLow)} - ${formatCompactGp(selectedResult.history.periodHigh)}`;
-        elements.priceChartEmpty.hidden = true;
+        elements.selectedRange.textContent = `${formatCompactGp(historyRangeLow)} - ${formatCompactGp(historyRangeHigh)}`;
+
+        if (isLoadingHistory) {
+            elements.priceChartEmpty.textContent = 'Loading item history...';
+            elements.priceChartEmpty.hidden = false;
+        } else if (historyError) {
+            elements.priceChartEmpty.textContent = historyError.message;
+            elements.priceChartEmpty.hidden = false;
+        } else if (!selectedHistory || !selectedHistory.points.length) {
+            elements.priceChartEmpty.textContent = 'No history for this item and timeframe.';
+            elements.priceChartEmpty.hidden = false;
+        } else {
+            elements.priceChartEmpty.hidden = true;
+        }
     }
 
     function renderPriceChart() {
@@ -722,14 +549,16 @@
             priceChart = null;
         }
 
-        if (!selectedResult) {
+        if (!selectedResult || !selectedHistory || !selectedHistory.points.length || isLoadingHistory || historyError) {
             return;
         }
 
-        const labels = selectedResult.history.points.map((point) => point.label);
-        const prices = selectedResult.history.points.map((point) => point.price);
-        const lowLine = selectedResult.history.points.map(() => selectedResult.history.periodLow);
-        const highLine = selectedResult.history.points.map(() => selectedResult.history.periodHigh);
+        const labels = selectedHistory.points.map((point) => point.label || point.isoTimestamp || '');
+        const prices = selectedHistory.points.map((point) => point.price);
+        const periodLow = selectedHistory.periodLow;
+        const periodHigh = selectedHistory.periodHigh;
+        const lowLine = selectedHistory.points.map(() => periodLow);
+        const highLine = selectedHistory.points.map(() => periodHigh);
         const context = elements.priceChartCanvas.getContext('2d');
         const gradient = context.createLinearGradient(0, 0, 0, 260);
         gradient.addColorStop(0, 'rgba(37, 99, 235, 0.22)');
@@ -791,94 +620,155 @@
         });
     }
 
-    function getDistribution(results) {
-        return {
-            lowOnly: results.filter((result) => result.nearLow && !result.nearHigh).length,
-            highOnly: results.filter((result) => result.nearHigh && !result.nearLow).length,
-            both: results.filter((result) => result.nearLow && result.nearHigh).length,
-        };
-    }
-
-    function renderDistributionChart(results) {
-        if (!window.Chart || !elements.distributionChartCanvas) {
-            return;
-        }
-
-        if (distributionChart) {
-            distributionChart.destroy();
-            distributionChart = null;
-        }
-
-        const distribution = getDistribution(results);
-        const values = [distribution.lowOnly, distribution.highOnly, distribution.both];
-        const hasValues = values.some((value) => value > 0);
-        elements.distributionEmpty.hidden = hasValues;
-
-        if (!hasValues) {
-            return;
-        }
-
-        distributionChart = new Chart(elements.distributionChartCanvas.getContext('2d'), {
-            type: 'doughnut',
-            data: {
-                labels: ['Near low', 'Near high', 'Near both'],
-                datasets: [{
-                    data: values,
-                    backgroundColor: ['#0F766E', '#B45309', '#2563EB'],
-                    borderWidth: 0,
-                    hoverOffset: 4,
-                }],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '62%',
-                plugins: {
-                    legend: {position: 'bottom', labels: {boxWidth: 10, usePointStyle: true}},
-                },
-            },
-        });
-    }
-
     function updateControlStates() {
         updateSegmentedButtons(elements.timeframeButtons, state.timeframe, 'timeframe');
+        updateSegmentedButtons(elements.chartTimeframeButtons, state.chartTimeframe, 'timeframe');
         updateSegmentedButtons(elements.signalButtons, state.signal, 'signal');
         updateSortHeaders();
         elements.percentRange.value = String(state.percent);
         elements.percentInput.value = String(state.percent);
+        elements.minVolumeInput.value = state.minVolume;
+        elements.minPriceInput.value = state.minPrice;
         elements.searchInput.value = state.search;
         elements.sortSelect.value = state.sort;
+        updatePageButtons();
     }
 
-    function renderAll() {
+    async function refreshResults() {
+        /**
+         * Refresh the result table from the backend.
+         *
+         * Each call gets a monotonically increasing request id. Late responses
+         * are ignored so fast typing or slider movement cannot overwrite newer
+         * results with stale payloads.
+         */
+        const requestId = resultsRequestId + 1;
+        resultsRequestId = requestId;
+        isLoadingResults = true;
+        resultError = null;
         updateControlStates();
-        filteredResults = getFilteredResults();
-        syncSelectedResult(filteredResults);
-        renderResultsMeta(filteredResults);
         renderResults(filteredResults);
+
+        try {
+            const payload = await fetchResults();
+            if (requestId !== resultsRequestId) {
+                return;
+            }
+
+            isLoadingResults = false;
+            filteredResults = payload.results || [];
+            state.page = payload.page || state.page;
+            hasPreviousPage = Boolean(payload.hasPreviousPage);
+            hasNextPage = Boolean(payload.hasNextPage);
+            syncSelectedResult(filteredResults);
+            elements.updatedAt.textContent = formatScanTime(payload.meta);
+            renderResultsMeta(payload);
+            renderResults(filteredResults);
+            refreshSelectedHistory();
+        } catch (error) {
+            if (requestId !== resultsRequestId) {
+                return;
+            }
+
+            isLoadingResults = false;
+            resultError = error;
+            filteredResults = [];
+            selectedResult = null;
+            selectedHistory = null;
+            hasPreviousPage = false;
+            hasNextPage = false;
+            elements.updatedAt.textContent = 'Flip Finder unavailable';
+            renderResultsMeta(null);
+            renderResults(filteredResults);
+            renderSelectedPanel();
+            renderPriceChart();
+        }
+    }
+
+    async function refreshSelectedHistory() {
+        const requestId = historyRequestId + 1;
+        historyRequestId = requestId;
+
+        if (!selectedResult) {
+            isLoadingHistory = false;
+            historyError = null;
+            selectedHistory = null;
+            renderSelectedPanel();
+            renderPriceChart();
+            return;
+        }
+
+        isLoadingHistory = true;
+        historyError = null;
+        selectedHistory = null;
         renderSelectedPanel();
         renderPriceChart();
-        renderDistributionChart(filteredResults);
-        syncHorizontalScrollbarVisibility();
-        window.requestAnimationFrame(syncHorizontalScrollbarVisibility);
+
+        try {
+            const payload = await fetchSelectedHistory();
+            if (requestId !== historyRequestId) {
+                return;
+            }
+
+            isLoadingHistory = false;
+            selectedHistory = payload || null;
+            renderSelectedPanel();
+            renderPriceChart();
+        } catch (error) {
+            if (requestId !== historyRequestId) {
+                return;
+            }
+
+            isLoadingHistory = false;
+            historyError = error;
+            selectedHistory = null;
+            renderSelectedPanel();
+            renderPriceChart();
+        }
+    }
+
+    function queueResultsRefresh(delay = 0) {
+        window.clearTimeout(refreshTimer);
+        refreshTimer = window.setTimeout(refreshResults, delay);
+    }
+
+    function queueFirstPageRefresh(delay = 0) {
+        state.page = 1;
+        queueResultsRefresh(delay);
     }
 
     function setPercent(value) {
         state.percent = Math.round(clampNumber(value, 0.1, 25) * 10) / 10;
-        renderAll();
+        updateControlStates();
+        queueFirstPageRefresh(180);
     }
 
     elements.timeframeButtons.forEach((button) => {
         button.addEventListener('click', () => {
+            if (!supportedTimeframes.has(button.dataset.timeframe)) {
+                return;
+            }
             state.timeframe = button.dataset.timeframe;
-            renderAll();
+            state.chartTimeframe = state.timeframe;
+            queueFirstPageRefresh();
+        });
+    });
+
+    elements.chartTimeframeButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            if (!supportedTimeframes.has(button.dataset.timeframe)) {
+                return;
+            }
+            state.chartTimeframe = button.dataset.timeframe;
+            updateControlStates();
+            refreshSelectedHistory();
         });
     });
 
     elements.signalButtons.forEach((button) => {
         button.addEventListener('click', () => {
             state.signal = button.dataset.signal;
-            renderAll();
+            queueFirstPageRefresh();
         });
     });
 
@@ -890,19 +780,50 @@
 
     elements.percentRange.addEventListener('input', () => setPercent(elements.percentRange.value));
     elements.percentInput.addEventListener('input', () => setPercent(elements.percentInput.value));
+    elements.minVolumeInput.addEventListener('input', () => {
+        state.minVolume = elements.minVolumeInput.value;
+        queueFirstPageRefresh(250);
+    });
+    elements.minPriceInput.addEventListener('input', () => {
+        state.minPrice = elements.minPriceInput.value;
+        queueFirstPageRefresh(250);
+    });
     elements.searchInput.addEventListener('input', () => {
         state.search = elements.searchInput.value;
-        renderAll();
+        queueFirstPageRefresh(250);
     });
     elements.sortSelect.addEventListener('change', () => {
         setSort(elements.sortSelect.value, false);
     });
     elements.resetButton.addEventListener('click', () => {
         Object.assign(state, defaultState);
-        renderAll();
+        selectedHistory = null;
+        hasPreviousPage = false;
+        hasNextPage = false;
+        queueFirstPageRefresh();
+    });
+    elements.previousPageButton.addEventListener('click', () => {
+        if (!hasPreviousPage || isLoadingResults) {
+            return;
+        }
+        state.page = Math.max(1, state.page - 1);
+        if (elements.resultsScroll) {
+            elements.resultsScroll.scrollTop = 0;
+        }
+        refreshResults();
+    });
+    elements.nextPageButton.addEventListener('click', () => {
+        if (!hasNextPage || isLoadingResults) {
+            return;
+        }
+        state.page += 1;
+        if (elements.resultsScroll) {
+            elements.resultsScroll.scrollTop = 0;
+        }
+        refreshResults();
     });
 
-    elements.updatedAt.textContent = `Mock scan · ${new Date().toLocaleString()}`;
+    elements.updatedAt.textContent = 'Loading local market data...';
     bindHorizontalScrollbar();
-    renderAll();
+    refreshResults();
 }());

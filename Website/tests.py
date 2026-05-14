@@ -15,7 +15,7 @@ from Website.live_feedback import (
     STATUS_WATCHING,
     evaluate_live_feedback,
 )
-from Website.models import LiveFeedbackWatch
+from Website.models import AllTimeData, LiveFeedbackWatch, TwentyFourHourTimeSeries
 
 
 class FlipFinderPageTests(TestCase):
@@ -25,6 +25,257 @@ class FlipFinderPageTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'flip_finder.html')
         self.assertContains(response, 'Flip Finder')
+
+
+class FlipFinderApiTests(TestCase):
+    """
+    Verify the database-backed Flip Finder API contract.
+
+    What: Exercises the result and history endpoints with small local fixtures.
+    Why: The frontend depends on stable local-data payloads now that mock items
+         have been removed.
+    How: Seed the exact time-series models used by each timeframe source and
+         assert the API chooses, filters, sorts, and caps rows correctly.
+    """
+
+    latest_timestamp = 1_700_000_000
+    earlier_timestamp = latest_timestamp - 86_400
+
+    def create_twentyfour_snapshot(self, item_id, item_name, price, timestamp, volume=10):
+        """Create a 24h row whose midpoint equals price and volume is per side."""
+        return TwentyFourHourTimeSeries.objects.create(
+            item_id=item_id,
+            item_name=item_name,
+            avg_low_price=price - 1,
+            avg_high_price=price + 1,
+            high_price_volume=volume,
+            low_price_volume=volume,
+            timestamp=str(timestamp),
+        )
+
+    def test_results_use_twentyfour_midpoints_for_bounded_ranges(self):
+        self.create_twentyfour_snapshot(100, 'Low rune', 130, self.earlier_timestamp)
+        self.create_twentyfour_snapshot(100, 'Low rune', 102, self.latest_timestamp, volume=25)
+        self.create_twentyfour_snapshot(101, 'High rune', 200, self.earlier_timestamp)
+        self.create_twentyfour_snapshot(101, 'High rune', 250, self.latest_timestamp)
+
+        response = self.client.get(reverse('flip_finder_results_api'), {
+            'timeframe': '24h',
+            'percent': '5',
+            'signal': 'low',
+            'sort': 'closest',
+            'sortDirection': 'asc',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['meta']['source'], 'twenty_four_hour_time_series')
+        self.assertEqual(payload['meta']['priceBasis'], 'midpoint')
+        self.assertEqual(payload['totalMatches'], 1)
+        self.assertEqual(payload['results'][0]['name'], 'Low rune')
+        self.assertEqual(payload['results'][0]['currentPrice'], 102)
+        self.assertEqual(payload['results'][0]['periodLow'], 102)
+        self.assertEqual(payload['results'][0]['periodHigh'], 130)
+        self.assertEqual(payload['results'][0]['volume'], 5100)
+
+    def test_results_are_paginated_at_50(self):
+        # Every seeded item is exactly at its latest low, so all 105 match while
+        # the response body still stays bounded for the UI table.
+        for item_number in range(105):
+            item_id = 1_000 + item_number
+            item_name = f'Bulk item {item_number:03d}'
+            self.create_twentyfour_snapshot(item_id, item_name, 150, self.earlier_timestamp)
+            self.create_twentyfour_snapshot(item_id, item_name, 100, self.latest_timestamp)
+
+        response = self.client.get(reverse('flip_finder_results_api'), {
+            'timeframe': '24h',
+            'percent': '1',
+            'signal': 'low',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['totalMatches'], 105)
+        self.assertEqual(len(payload['results']), 50)
+        self.assertEqual(payload['page'], 1)
+        self.assertEqual(payload['pageSize'], 50)
+        self.assertTrue(payload['hasNextPage'])
+        self.assertTrue(payload['truncated'])
+
+        page_two_response = self.client.get(reverse('flip_finder_results_api'), {
+            'timeframe': '24h',
+            'percent': '1',
+            'signal': 'low',
+            'page': '2',
+        })
+
+        self.assertEqual(page_two_response.status_code, 200)
+        page_two_payload = page_two_response.json()
+        self.assertEqual(page_two_payload['totalMatches'], 105)
+        self.assertEqual(len(page_two_payload['results']), 50)
+        self.assertEqual(page_two_payload['page'], 2)
+        self.assertTrue(page_two_payload['hasNextPage'])
+        self.assertTrue(page_two_payload['hasPreviousPage'])
+
+    def test_results_exclude_items_without_names(self):
+        self.create_twentyfour_snapshot(260, '', 150, self.earlier_timestamp)
+        self.create_twentyfour_snapshot(260, '', 100, self.latest_timestamp)
+        self.create_twentyfour_snapshot(261, 'Named item', 150, self.earlier_timestamp)
+        self.create_twentyfour_snapshot(261, 'Named item', 100, self.latest_timestamp)
+
+        response = self.client.get(reverse('flip_finder_results_api'), {
+            'timeframe': '24h',
+            'percent': '1',
+            'signal': 'low',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['totalMatches'], 1)
+        self.assertEqual(payload['results'][0]['name'], 'Named item')
+
+    def test_all_time_results_use_all_time_source(self):
+        AllTimeData.objects.create(item_id=200, item_name='All-time shard', item_price=50, timestamp=10)
+        AllTimeData.objects.create(item_id=200, item_name='All-time shard', item_price=90, timestamp=20)
+
+        response = self.client.get(reverse('flip_finder_results_api'), {
+            'timeframe': 'all',
+            'percent': '1',
+            'signal': 'high',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['meta']['source'], 'all_time_data')
+        self.assertEqual(payload['meta']['priceBasis'], 'item_price')
+        self.assertEqual(payload['results'][0]['name'], 'All-time shard')
+        self.assertEqual(payload['results'][0]['currentPrice'], 90)
+        self.assertEqual(payload['results'][0]['periodLow'], 50)
+        self.assertEqual(payload['results'][0]['periodHigh'], 90)
+
+    def test_min_volume_filters_by_latest_twentyfour_snapshot_gp_volume(self):
+        self.create_twentyfour_snapshot(210, 'Thin volume', 150, self.earlier_timestamp, volume=500)
+        self.create_twentyfour_snapshot(210, 'Thin volume', 100, self.latest_timestamp, volume=20)
+        self.create_twentyfour_snapshot(211, 'Deep volume', 150, self.earlier_timestamp, volume=5)
+        self.create_twentyfour_snapshot(211, 'Deep volume', 100, self.latest_timestamp, volume=30)
+
+        response = self.client.get(reverse('flip_finder_results_api'), {
+            'timeframe': '24h',
+            'percent': '1',
+            'signal': 'low',
+            'minVolume': '5000',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['meta']['minVolume'], 5000)
+        self.assertTrue(payload['meta']['volumeFilterApplied'])
+        self.assertEqual(payload['totalMatches'], 1)
+        self.assertEqual(payload['results'][0]['name'], 'Deep volume')
+        self.assertEqual(payload['results'][0]['volume'], 6000)
+
+    def test_min_price_filters_by_current_price(self):
+        self.create_twentyfour_snapshot(220, 'Cheap current', 180, self.earlier_timestamp)
+        self.create_twentyfour_snapshot(220, 'Cheap current', 100, self.latest_timestamp)
+        self.create_twentyfour_snapshot(221, 'Priced current', 180, self.earlier_timestamp)
+        self.create_twentyfour_snapshot(221, 'Priced current', 125, self.latest_timestamp)
+
+        response = self.client.get(reverse('flip_finder_results_api'), {
+            'timeframe': '24h',
+            'percent': '1',
+            'signal': 'low',
+            'min_price': '120',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['meta']['minPrice'], 120)
+        self.assertEqual(payload['totalMatches'], 1)
+        self.assertEqual(payload['results'][0]['name'], 'Priced current')
+        self.assertEqual(payload['results'][0]['currentPrice'], 125)
+
+    def test_all_time_min_price_filters_current_price(self):
+        AllTimeData.objects.create(item_id=230, item_name='Low all current', item_price=50, timestamp=10)
+        AllTimeData.objects.create(item_id=230, item_name='Low all current', item_price=90, timestamp=20)
+        AllTimeData.objects.create(item_id=231, item_name='High all current', item_price=80, timestamp=10)
+        AllTimeData.objects.create(item_id=231, item_name='High all current', item_price=120, timestamp=20)
+
+        response = self.client.get(reverse('flip_finder_results_api'), {
+            'timeframe': 'all',
+            'percent': '1',
+            'signal': 'high',
+            'minPrice': '100',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['meta']['minPrice'], 100)
+        self.assertEqual(payload['totalMatches'], 1)
+        self.assertEqual(payload['results'][0]['name'], 'High all current')
+        self.assertEqual(payload['results'][0]['currentPrice'], 120)
+
+    def test_all_time_ignores_min_volume_filter(self):
+        AllTimeData.objects.create(item_id=240, item_name='Volume-free all', item_price=50, timestamp=10)
+        AllTimeData.objects.create(item_id=240, item_name='Volume-free all', item_price=90, timestamp=20)
+
+        response = self.client.get(reverse('flip_finder_results_api'), {
+            'timeframe': 'all',
+            'percent': '1',
+            'signal': 'high',
+            'minVolume': '9999999999',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['meta']['minVolume'], 9_999_999_999)
+        self.assertFalse(payload['meta']['volumeFilterApplied'])
+        self.assertEqual(payload['totalMatches'], 1)
+        self.assertEqual(payload['results'][0]['name'], 'Volume-free all')
+        self.assertIsNone(payload['results'][0]['volume'])
+
+    def test_invalid_filter_values_default_without_error(self):
+        self.create_twentyfour_snapshot(250, 'Safe defaults', 150, self.earlier_timestamp)
+        self.create_twentyfour_snapshot(250, 'Safe defaults', 100, self.latest_timestamp)
+
+        response = self.client.get(reverse('flip_finder_results_api'), {
+            'timeframe': '24h',
+            'percent': '1',
+            'signal': 'low',
+            'minVolume': 'not-a-number',
+            'minPrice': '-5',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['meta']['minVolume'], 0)
+        self.assertEqual(payload['meta']['minPrice'], 0)
+        self.assertEqual(payload['totalMatches'], 1)
+        self.assertEqual(payload['results'][0]['name'], 'Safe defaults')
+
+    def test_history_returns_points_in_timestamp_order(self):
+        self.create_twentyfour_snapshot(300, 'History seed', 150, self.earlier_timestamp)
+        self.create_twentyfour_snapshot(300, 'History seed', 120, self.latest_timestamp)
+
+        response = self.client.get(reverse('flip_finder_history_api'), {
+            'timeframe': '24h',
+            'itemId': '300',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['itemName'], 'History seed')
+        self.assertEqual([point['timestamp'] for point in payload['points']], [
+            self.earlier_timestamp,
+            self.latest_timestamp,
+        ])
+        self.assertEqual(payload['periodLow'], 120)
+        self.assertEqual(payload['periodHigh'], 150)
+
+    def test_unsupported_timeframe_returns_400(self):
+        response = self.client.get(reverse('flip_finder_results_api'), {'timeframe': '1h'})
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('Unsupported timeframe', response.json()['error'])
 
 
 class LiveFeedbackEvaluationTests(TestCase):
