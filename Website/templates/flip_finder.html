@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Flip Finder - GE Tools{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/flip-finder.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="flip-finder-page" id="flipFinderApp">
+    <header class="ff-header">
+        <div class="ff-title-group">
+            <div class="ff-header-icon" aria-hidden="true">
+                <svg fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M4 3a1 1 0 011-1h10a1 1 0 011 1v2a1 1 0 11-2 0V4H6v12h3a1 1 0 110 2H5a1 1 0 01-1-1V3zm8.293 5.293a1 1 0 011.414 0L16 10.586l2.293-2.293a1 1 0 111.414 1.414L17.414 12l2.293 2.293a1 1 0 01-1.414 1.414L16 13.414l-2.293 2.293a1 1 0 01-1.414-1.414L14.586 12l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+            </div>
+            <div>
+                <h1>Flip Finder</h1>
+                <div class="ff-meta" id="ffUpdatedAt">Mock market scan</div>
+            </div>
+        </div>
+        <button type="button" class="ff-icon-button" id="ffResetButton" aria-label="Reset filters" title="Reset filters">
+            <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101A7.002 7.002 0 0117 10a1 1 0 11-2 0 5 5 0 00-8.584-3.49l1.293 1.293A1 1 0 016 9.5H2.5a1 1 0 01-1-1V5a1 1 0 011.707-.707l1.188 1.188A6.978 6.978 0 014 3a1 1 0 011-1zm11.5 8.5a1 1 0 011 1V15a1 1 0 01-1.707.707l-1.188-1.188A7.002 7.002 0 013 10a1 1 0 112 0 5 5 0 008.584 3.49l-1.293-1.293A1 1 0 0114 10.5h1.5z" clip-rule="evenodd" />
+            </svg>
+        </button>
+    </header>
+
+    <section class="ff-controls" aria-label="Flip Finder filters">
+        <div class="ff-control ff-timeframe-control">
+            <span class="ff-control-label">Timeframe</span>
+            <div class="ff-segmented" id="ffTimeframeGroup" role="group" aria-label="Timeframe">
+                <button type="button" data-timeframe="1h">1h</button>
+                <button type="button" data-timeframe="6h">6h</button>
+                <button type="button" data-timeframe="24h" class="active" aria-pressed="true">24h</button>
+                <button type="button" data-timeframe="7d">7d</button>
+                <button type="button" data-timeframe="30d">30d</button>
+                <button type="button" data-timeframe="90d">90d</button>
+                <button type="button" data-timeframe="1y">1y</button>
+                <button type="button" data-timeframe="all">All</button>
+            </div>
+        </div>
+
+        <div class="ff-control ff-threshold-control">
+            <label class="ff-control-label" for="ffPercentRange">Percent</label>
+            <div class="ff-percent-row">
+                <input id="ffPercentRange" type="range" min="0.1" max="25" value="5" step="0.1">
+                <div class="ff-percent-input-wrap">
+                    <input id="ffPercentInput" type="number" min="0.1" max="25" value="5" step="0.1" inputmode="decimal">
+                    <span>%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="ff-control">
+            <span class="ff-control-label">Signal</span>
+            <div class="ff-segmented ff-signal-group" id="ffSignalGroup" role="group" aria-label="Signal type">
+                <button type="button" data-signal="low" class="active" aria-pressed="true">Near Low</button>
+                <button type="button" data-signal="high">Near High</button>
+                <button type="button" data-signal="both">Both</button>
+            </div>
+        </div>
+    </section>
+
+    <div class="ff-workspace">
+        <section class="ff-results-panel" aria-label="Flip Finder results">
+            <span id="ffResultsMeta" hidden>0 items</span>
+            <div class="ff-panel-header ff-results-header ff-gradient-header">
+                <div class="ff-results-actions">
+                    <div class="ff-control ff-search-control">
+                        <label class="ff-control-label" for="ffSearchInput">Search</label>
+                        <input id="ffSearchInput" type="search" placeholder="Item name" autocomplete="off">
+                    </div>
+
+                    <div class="ff-control ff-sort-control">
+                        <label class="ff-control-label" for="ffSortSelect">Sort</label>
+                        <select id="ffSortSelect">
+                            <option value="closest">Closest match</option>
+                            <option value="name">Item name</option>
+                            <option value="signal">Signal</option>
+                            <option value="low">From Low</option>
+                            <option value="high">From High</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ff-empty-state" id="ffEmptyState" hidden>No matching items.</div>
+
+            <div class="ff-table-scrollbar" id="ffTableScrollbar" aria-hidden="true" hidden>
+                <div class="ff-table-scrollbar-track" id="ffTableScrollbarTrack"></div>
+            </div>
+
+            <div class="ff-results-scroll" id="ffResultsScroll">
+                <div class="ff-results-table" id="ffResultsTable" role="table" aria-label="Flip Finder results">
+                    <div class="ff-results-head" role="row">
+                        <button type="button" class="ff-sort-header" data-sort="name" role="columnheader" aria-sort="none">Item</button>
+                        <button type="button" class="ff-sort-header" data-sort="signal" role="columnheader" aria-sort="none">Signal</button>
+                        <span role="columnheader">Current</span>
+                        <button type="button" class="ff-sort-header" data-sort="low" role="columnheader" aria-sort="none">From Low</button>
+                        <button type="button" class="ff-sort-header" data-sort="high" role="columnheader" aria-sort="none">From High</button>
+                        <span role="columnheader">Volume</span>
+                    </div>
+                    <div class="ff-results-body" id="ffResultsBody"></div>
+                </div>
+            </div>
+        </section>
+
+        <aside class="ff-insight-column" aria-label="Flip Finder charts">
+            <section class="ff-chart-panel" aria-labelledby="ffSelectedHeading">
+                <div class="ff-panel-header ff-selected-header ff-gradient-header">
+                    <div>
+                        <h2 id="ffSelectedHeading">Selected Item</h2>
+                        <span class="ff-panel-meta" id="ffSelectedMeta">--</span>
+                    </div>
+                    <span class="ff-signal-badge" id="ffSelectedSignal">--</span>
+                </div>
+
+                <div class="ff-selected-metrics">
+                    <div>
+                        <span>Current</span>
+                        <strong id="ffSelectedPrice">--</strong>
+                    </div>
+                    <div>
+                        <span>From low</span>
+                        <strong id="ffSelectedLowDistance">--</strong>
+                    </div>
+                    <div>
+                        <span>From high</span>
+                        <strong id="ffSelectedHighDistance">--</strong>
+                    </div>
+                    <div>
+                        <span>Range</span>
+                        <strong id="ffSelectedRange">--</strong>
+                    </div>
+                </div>
+
+                <div class="ff-chart-wrap">
+                    <canvas id="ffPriceChart" aria-label="Selected item price history"></canvas>
+                    <div class="ff-chart-empty" id="ffPriceChartEmpty" hidden>Select a result.</div>
+                </div>
+            </section>
+
+            <section class="ff-chart-panel" aria-labelledby="ffDistributionHeading">
+                <div class="ff-panel-header">
+                    <div>
+                        <h2 id="ffDistributionHeading">Signals</h2>
+                        <span class="ff-panel-meta" id="ffDistributionMeta">Current filter</span>
+                    </div>
+                </div>
+                <div class="ff-chart-wrap ff-distribution-wrap">
+                    <canvas id="ffDistributionChart" aria-label="Signal distribution"></canvas>
+                    <div class="ff-chart-empty" id="ffDistributionEmpty" hidden>No data.</div>
+                </div>
+            </section>
+        </aside>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script defer src="{% static 'js/flip-finder.js' %}"></script>
+{% endblock %}

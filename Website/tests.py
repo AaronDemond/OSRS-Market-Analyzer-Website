@@ -18,6 +18,15 @@ from Website.live_feedback import (
 from Website.models import LiveFeedbackWatch
 
 
+class FlipFinderPageTests(TestCase):
+    def test_flip_finder_page_renders_public_mockup(self):
+        response = self.client.get(reverse('flip_finder'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'flip_finder.html')
+        self.assertContains(response, 'Flip Finder')
+
+
 class LiveFeedbackEvaluationTests(TestCase):
     def test_sell_triggers_only_when_low_is_below_target(self):
         result = evaluate_live_feedback('sell', 100, {'low': 99, 'lowTime': 123})

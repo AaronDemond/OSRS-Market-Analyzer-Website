@@ -43,6 +43,7 @@ urlpatterns = [
     path('api/items/', views.item_search_api, name='item_search_api'),
     path('api/items/random/', views.random_item_api, name='random_item_api'),
     path('item_search/', views.item_search, name='item_search'),
+    path('flip-finder/', views.flip_finder, name='flip_finder'),
     path('api/item/data/', views.item_data_api, name='item_data_api'),
     path('api/item/history/', views.item_history_api, name='item_history_api'),
     path('alerts/', views.alerts, name='alerts'),

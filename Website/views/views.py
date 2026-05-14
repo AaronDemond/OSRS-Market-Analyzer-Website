@@ -2390,6 +2390,11 @@ def item_search(request):
     })
 
 
+def flip_finder(request):
+    """Render the client-side Flip Finder mockup."""
+    return render(request, 'flip_finder.html')
+
+
 def item_data_api(request):
     """API endpoint to get detailed item data including current prices, volume, and GE limit"""
     item_id = request.GET.get('id')
