@@ -6278,6 +6278,37 @@
         const equityChartSummary = document.getElementById('equityChartSummary');
         const equityRangeButtons = document.querySelectorAll('.equity-range-btn');
         let equityChartInstance = null;
+
+        function clearHistoricalViewportWidth() {
+            [historicalBanner, ...document.querySelectorAll('.historical-skipped-notification')].forEach((element) => {
+                if (!element) {
+                    return;
+                }
+
+                element.style.removeProperty('width');
+                element.style.removeProperty('max-width');
+            });
+        }
+
+        function syncHistoricalViewportWidth(wrapperOverride = null) {
+            const table = document.getElementById('flipsTable');
+            const wrapper = wrapperOverride || table?.closest('.table-scroll-wrapper');
+
+            if (!wrapper || !wrapper.classList.contains('desktop-horizontal-scroll')) {
+                clearHistoricalViewportWidth();
+                return;
+            }
+
+            const viewportWidth = `${wrapper.clientWidth}px`;
+            [historicalBanner, ...document.querySelectorAll('.historical-skipped-notification')].forEach((element) => {
+                if (!element) {
+                    return;
+                }
+
+                element.style.width = viewportWidth;
+                element.style.maxWidth = viewportWidth;
+            });
+        }
         let equityChartRange = '1y';
         let equityChartScriptPromise = null;
         let equityChartAbortController = null;
@@ -6524,6 +6555,7 @@
         function showHistoricalBanner(dateStr) {
             historicalBannerDate.textContent = formatDateForDisplay(dateStr);
             historicalBanner.style.display = 'block';
+            syncHistoricalViewportWidth();
             historicalViewBtn.classList.add('active');
         }
 
@@ -6563,6 +6595,7 @@
 
             // Insert notification after the banner
             historicalBanner.insertAdjacentElement('afterend', notification);
+            syncHistoricalViewportWidth();
 
             // Add dismiss functionality
             notification.querySelector('.notification-dismiss').addEventListener('click', () => {
@@ -7054,6 +7087,8 @@
                     notificationsContainer.classList.add('desktop-table-width-bound');
                     notificationsContainer.style.setProperty('--desktop-flips-table-width', tableWidth);
                 }
+
+                syncHistoricalViewportWidth(wrapper);
             }
 
             syncControlsToTableWidth();
