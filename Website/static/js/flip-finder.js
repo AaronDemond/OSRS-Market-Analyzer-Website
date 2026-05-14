@@ -505,7 +505,7 @@
                 <span class="ff-item-cell" role="cell">
                     ${itemIconMarkup}
                     <span>
-                        <span class="ff-item-name">${escapeHtml(result.name)}</span>
+                        <span class="ff-item-name" title="${escapeHtml(result.name)}">${escapeHtml(result.name)}</span>
                         <span class="ff-item-subtext">${escapeHtml(itemDetails)}</span>
                     </span>
                 </span>

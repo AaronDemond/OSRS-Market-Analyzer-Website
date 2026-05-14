@@ -103,8 +103,22 @@
                         </select>
                     </div>
 
-                    <button type="button" class="ff-page-button ff-previous-page-button" id="ffPreviousPageButton" disabled>Previous</button>
-                    <button type="button" class="ff-page-button ff-next-page-button" id="ffNextPageButton" disabled>Next Page</button>
+                    <button type="button" class="ff-page-button ff-previous-page-button" id="ffPreviousPageButton" aria-label="Previous page" title="Previous page" disabled>
+                        <span class="ff-page-button-icon" aria-hidden="true">
+                            <svg viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M12.707 4.293a1 1 0 010 1.414L8.414 10l4.293 4.293a1 1 0 01-1.414 1.414l-5-5a1 1 0 010-1.414l5-5a1 1 0 011.414 0z" clip-rule="evenodd" />
+                            </svg>
+                        </span>
+                        <span class="ff-page-button-label">Previous</span>
+                    </button>
+                    <button type="button" class="ff-page-button ff-next-page-button" id="ffNextPageButton" aria-label="Next page" title="Next page" disabled>
+                        <span class="ff-page-button-icon" aria-hidden="true">
+                            <svg viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M7.293 15.707a1 1 0 010-1.414L11.586 10 7.293 5.707a1 1 0 011.414-1.414l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                            </svg>
+                        </span>
+                        <span class="ff-page-button-label">Next Page</span>
+                    </button>
                 </div>
             </div>
 

@@ -31,6 +31,8 @@ class FlipFinderPageTests(TestCase):
         self.assertContains(response, 'ffChartPanel')
         self.assertContains(response, 'ffChartModal')
         self.assertContains(response, 'ffChartModalCloseButton')
+        self.assertContains(response, 'Previous page')
+        self.assertContains(response, 'Next page')
         self.assertContains(response, 'ffSelectedTitleRow')
         self.assertContains(response, 'ffSelectedIconSlot')
         self.assertContains(response, 'Select an item to view its chart.')
