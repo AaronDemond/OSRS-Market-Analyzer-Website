@@ -22,6 +22,7 @@ from ..models import (
     AlertGroup,
     FavoriteItem,
     Flip,
+    FlipAlert,
     FlipJournal,
     FlipJournalExit,
     FlipJournalNote,
@@ -32,6 +33,8 @@ from ..models import (
     LiveFeedbackWatch,
     OneHourTimeSeries,
     TwentyFourHourTimeSeries,
+    build_flip_alert_position_snapshot,
+    flip_alert_threshold_is_met,
 )
 from ..flip_finder import (
     FlipFinderParamError,
@@ -644,6 +647,283 @@ def flips(request):
     return render(request, 'flips.html', {
         'time_filter': time_filter,
     })
+
+
+def get_flip_alert_snapshots_for_user(user, item_ids=None):
+    """Return held-position snapshots keyed by item_id for a user's current flips."""
+    if not user:
+        return {}
+
+    flip_profits = FlipProfit.objects.filter(user=user)
+    if item_ids is not None:
+        flip_profits = flip_profits.filter(item_id__in=item_ids)
+
+    all_prices = get_all_current_prices()
+    snapshots = {}
+
+    for flip_profit in flip_profits:
+        snapshot = build_flip_alert_position_snapshot(
+            flip_profit,
+            all_prices.get(str(flip_profit.item_id)),
+        )
+        if snapshot:
+            snapshots[int(flip_profit.item_id)] = snapshot
+
+    return snapshots
+
+
+GENERIC_FLIP_ALERT_ITEM_NAME_RE = re.compile(r'^Item\s+\d+$', re.IGNORECASE)
+
+
+def get_resolved_flip_alert_tracked_items(alert):
+    """Return tracked items with generic placeholder names replaced by real item names when available."""
+    raw_items = [item for item in (alert.tracked_items or []) if isinstance(item, dict)]
+    normalized_items = []
+    needs_name_lookup = False
+
+    for raw_item in raw_items:
+        try:
+            item_id = int(raw_item.get('item_id'))
+        except (TypeError, ValueError):
+            continue
+
+        item_name = str(raw_item.get('item_name') or '').strip()
+        if not item_name or GENERIC_FLIP_ALERT_ITEM_NAME_RE.fullmatch(item_name):
+            needs_name_lookup = True
+
+        normalized_items.append({
+            'item_id': item_id,
+            'item_name': item_name,
+        })
+
+    item_name_mapping = get_item_id_to_name_mapping() if needs_name_lookup else {}
+    resolved_items = []
+
+    for item in normalized_items:
+        item_name = item['item_name']
+        if not item_name or GENERIC_FLIP_ALERT_ITEM_NAME_RE.fullmatch(item_name):
+            item_name = item_name_mapping.get(str(item['item_id']), f'Item {item["item_id"]}')
+
+        resolved_items.append({
+            'item_id': item['item_id'],
+            'item_name': item_name,
+        })
+
+    return resolved_items
+
+
+def build_flip_alert_tracked_item_label(tracked_items):
+    """Return a readable tracked-item label for FlipAlert UI payloads."""
+    item_names = [item.get('item_name') for item in tracked_items if item.get('item_name')]
+    return ', '.join(item_names) if item_names else 'No items'
+
+
+def build_flip_alert_threshold_label(threshold_kind, threshold_value):
+    """Return the user-facing threshold copy for FlipAlert UI payloads."""
+    absolute_threshold = abs(float(threshold_value))
+
+    if threshold_kind == 'percent_profit':
+        return f'profit {absolute_threshold:g}%'
+    if threshold_kind == 'percent_loss':
+        return f'loss {absolute_threshold:g}%'
+    if threshold_kind == 'gp_profit':
+        return f'GP Profit {int(round(absolute_threshold)):,} gp'
+    if threshold_kind == 'gp_loss':
+        return f'GP Loss {int(round(absolute_threshold)):,} gp'
+    return str(threshold_value)
+
+
+def serialize_flip_alert(alert):
+    """Return a FlipAlert JSON payload for the My Flips UI."""
+    tracked_items = get_resolved_flip_alert_tracked_items(alert)
+    tracked_item_label = build_flip_alert_tracked_item_label(tracked_items)
+    threshold_label = build_flip_alert_threshold_label(alert.threshold_kind, alert.threshold_value)
+
+    return {
+        'id': alert.id,
+        'text': f'{tracked_item_label} {threshold_label}'.strip(),
+        'tracked_items': tracked_items,
+        'tracked_item_ids': [item['item_id'] for item in tracked_items],
+        'tracked_item_label': tracked_item_label,
+        'threshold_kind': alert.threshold_kind,
+        'threshold_value': alert.threshold_value,
+        'threshold_label': threshold_label,
+        'email_notification': alert.email_notification,
+        'sms_notification': alert.sms_notification,
+        'is_active': alert.is_active,
+        'is_triggered': alert.is_triggered,
+        'active_item_ids': alert.active_item_ids or [],
+        'triggered_items': alert.triggered_items or [],
+        'created_at': alert.created_at.isoformat(),
+        'updated_at': alert.updated_at.isoformat(),
+        'triggered_at': alert.triggered_at.isoformat() if alert.triggered_at else None,
+    }
+
+
+def send_flip_alert_creation_notification(alert):
+    """Send an immediate notification when a new FlipAlert is already triggered."""
+    if not alert or not alert.triggered_items or not (alert.email_notification or alert.sms_notification):
+        return
+
+    from Website.management.commands.check_flip_alerts import Command as FlipAlertNotificationCommand
+
+    notification_command = FlipAlertNotificationCommand()
+    notification_command.send_alert_notification(
+        alert,
+        notification_command.build_flip_alert_notification_message(alert, alert.triggered_items),
+    )
+
+
+def get_authenticated_flip_alert_user(request):
+    """Return the authenticated user or a 403 JsonResponse for FlipAlert endpoints."""
+    user = request.user if request.user.is_authenticated else None
+    if user:
+        return user, None
+    return None, JsonResponse({'error': 'Authentication required.'}, status=403)
+
+
+def flip_alerts_api(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Invalid method'}, status=405)
+
+    user, error_response = get_authenticated_flip_alert_user(request)
+    if error_response:
+        return error_response
+
+    alerts = [
+        serialize_flip_alert(alert)
+        for alert in FlipAlert.objects.filter(user=user).order_by('-created_at')
+    ]
+    return JsonResponse({'alerts': alerts})
+
+
+@csrf_exempt
+def create_flip_alert(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Invalid method'}, status=405)
+
+    user, error_response = get_authenticated_flip_alert_user(request)
+    if error_response:
+        return error_response
+
+    try:
+        data = json.loads(request.body or b'{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+    raw_item_ids = data.get('item_ids', [])
+    if not isinstance(raw_item_ids, list):
+        return JsonResponse({'error': 'item_ids must be a list.'}, status=400)
+
+    normalized_item_ids = []
+    seen_item_ids = set()
+    for raw_item_id in raw_item_ids:
+        try:
+            item_id = int(raw_item_id)
+        except (TypeError, ValueError):
+            return JsonResponse({'error': 'item_ids must contain only integers.'}, status=400)
+        if item_id in seen_item_ids:
+            continue
+        seen_item_ids.add(item_id)
+        normalized_item_ids.append(item_id)
+
+    if not normalized_item_ids:
+        return JsonResponse({'error': 'Select at least one item.'}, status=400)
+
+    threshold_kind = data.get('threshold_kind')
+    valid_threshold_kinds = {choice[0] for choice in FlipAlert.THRESHOLD_CHOICES}
+    if threshold_kind not in valid_threshold_kinds:
+        return JsonResponse({'error': 'Invalid threshold type.'}, status=400)
+
+    try:
+        threshold_value = float(data.get('threshold_value'))
+    except (TypeError, ValueError):
+        return JsonResponse({'error': 'Threshold value must be numeric.'}, status=400)
+
+    if threshold_value <= 0:
+        return JsonResponse({'error': 'Threshold value must be greater than 0.'}, status=400)
+
+    email_notification = bool(data.get('email_notification'))
+    sms_notification = bool(data.get('sms_notification'))
+    if not email_notification and not sms_notification:
+        return JsonResponse({'error': 'Select at least one notification method.'}, status=400)
+
+    snapshots_by_item_id = get_flip_alert_snapshots_for_user(user, normalized_item_ids)
+    missing_item_ids = [item_id for item_id in normalized_item_ids if item_id not in snapshots_by_item_id]
+    if missing_item_ids:
+        return JsonResponse(
+            {
+                'error': 'FlipAlerts can only track items with an active held position and current price data.',
+                'invalid_item_ids': missing_item_ids,
+            },
+            status=400,
+        )
+
+    tracked_items = []
+    triggered_items = []
+    active_item_ids = []
+
+    for item_id in normalized_item_ids:
+        snapshot = snapshots_by_item_id[item_id]
+        tracked_items.append({
+            'item_id': snapshot['item_id'],
+            'item_name': snapshot['item_name'],
+        })
+
+        if flip_alert_threshold_is_met(snapshot, threshold_kind, threshold_value):
+            active_item_ids.append(snapshot['item_id'])
+            triggered_items.append(snapshot)
+
+    alert = FlipAlert.objects.create(
+        user=user,
+        tracked_items=tracked_items,
+        threshold_kind=threshold_kind,
+        threshold_value=threshold_value,
+        email_notification=email_notification,
+        sms_notification=sms_notification,
+        is_active=True,
+        is_triggered=bool(active_item_ids),
+        active_item_ids=active_item_ids,
+        triggered_items=triggered_items,
+        triggered_at=timezone.now() if active_item_ids else None,
+    )
+
+    if active_item_ids:
+        send_flip_alert_creation_notification(alert)
+
+    return JsonResponse({'success': True, 'alert': serialize_flip_alert(alert)}, status=201)
+
+
+@csrf_exempt
+def delete_flip_alerts(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Invalid method'}, status=405)
+
+    user, error_response = get_authenticated_flip_alert_user(request)
+    if error_response:
+        return error_response
+
+    try:
+        data = json.loads(request.body or b'{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+    raw_alert_ids = data.get('alert_ids', [])
+    if not isinstance(raw_alert_ids, list):
+        return JsonResponse({'error': 'alert_ids must be a list.'}, status=400)
+
+    normalized_alert_ids = []
+    for raw_alert_id in raw_alert_ids:
+        try:
+            normalized_alert_ids.append(int(raw_alert_id))
+        except (TypeError, ValueError):
+            return JsonResponse({'error': 'alert_ids must contain only integers.'}, status=400)
+
+    if not normalized_alert_ids:
+        return JsonResponse({'error': 'Select at least one alert to delete.'}, status=400)
+
+    deleted_count, _ = FlipAlert.objects.filter(user=user, id__in=normalized_alert_ids).delete()
+    return JsonResponse({'success': True, 'deleted_count': deleted_count})
 
 
 def flips_stats_api(request):
