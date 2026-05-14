@@ -5,7 +5,8 @@ r"""
 ================================================================================
 What:
     - Polls the OSRS Wiki 24-hour price snapshot endpoint and inserts a single
-      TwentyFourHourTimeSeries row per item for each snapshot timestamp.
+    TwentyFourHourTimeSeries row and one AllTimeData row per item for each
+    snapshot timestamp.
 Why:
     - The alert system needs fast, local access to short-interval price data.
     - Storing each snapshot avoids repeated API calls and supports historical analysis.
@@ -14,8 +15,11 @@ How:
     - Fetch the /24h snapshot (single API call).
     - If rows already exist for the snapshot timestamp, continue anyway and let
       row-level duplicate skipping handle only the conflicting items.
-    - Build TwentyFourHourTimeSeries objects, leaving missing fields blank (None or 0 when
-      the model does not permit NULL), and bulk-insert in a transaction.
+        - Build TwentyFourHourTimeSeries objects, leaving missing fields blank (None or 0 when
+            the model does not permit NULL).
+        - Build AllTimeData objects using the weighted average traded price and GP
+            volume derived from the same 24h payload.
+        - Bulk-insert both model batches in a transaction.
     - Loop forever: fetch immediately, then sleep for 24 hours between cycles.
 ================================================================================
 """
@@ -64,7 +68,7 @@ django.setup()
 
 # Now we can safely import Django models
 from django.db import transaction  # noqa: E402
-from Website.models import TwentyFourHourTimeSeries  # noqa: E402
+from Website.models import AllTimeData, TwentyFourHourTimeSeries  # noqa: E402
 
 # =============================================================================
 # CONFIGURATION
@@ -385,6 +389,73 @@ def build_timeseries_objects(snapshot_data, lookup, snapshot_timestamp):
     return objects_to_insert
 
 
+def build_all_time_objects(snapshot_data, lookup, snapshot_timestamp):
+    """
+    Build AllTimeData objects from 24h snapshot data.
+
+    What: Converts API "data" dict into AllTimeData model instances.
+    Why: Flip Finder all/custom ranges rely on AllTimeData for long-range
+         comparisons and should be refreshed alongside each 24h fetch.
+    How:
+        - Iterate each item ID in the snapshot.
+        - Treat missing numeric fields as 0 so GP volume math stays stable.
+        - Compute weighted average traded price from buy/sell sides.
+        - Store GP volume as (high volume * high price) + (low volume * low price).
+
+    Args:
+        snapshot_data: Dict of item_id -> price/volume payload.
+        lookup: Dict mapping item IDs to names.
+        snapshot_timestamp: Integer snapshot timestamp for all rows.
+
+    Returns:
+        list: List of AllTimeData objects ready for bulk_create.
+    """
+    objects_to_insert = []
+
+    for item_id_raw, item_payload in snapshot_data.items():
+        try:
+            item_id = int(item_id_raw)
+        except (TypeError, ValueError):
+            log(f"WARNING: Invalid item_id '{item_id_raw}', skipping.")
+            continue
+
+        if not isinstance(item_payload, dict) or not item_payload:
+            log(f"INFO: No data for item_id={item_id}; skipping row.")
+            continue
+
+        avg_high_price = item_payload.get("avgHighPrice")
+        if avg_high_price is None:
+            avg_high_price = 0
+
+        avg_low_price = item_payload.get("avgLowPrice")
+        if avg_low_price is None:
+            avg_low_price = 0
+
+        high_price_volume = item_payload.get("highPriceVolume")
+        if high_price_volume is None:
+            high_price_volume = 0
+
+        low_price_volume = item_payload.get("lowPriceVolume")
+        if low_price_volume is None:
+            low_price_volume = 0
+
+        total_traded_quantity = high_price_volume + low_price_volume
+        volume_gp = (high_price_volume * avg_high_price) + (low_price_volume * avg_low_price)
+        true_avg_price = round(volume_gp / total_traded_quantity) if total_traded_quantity > 0 else 0
+
+        item_name = name_from_id(item_id, lookup) or ""
+
+        objects_to_insert.append(AllTimeData(
+            item_id=item_id,
+            item_name=item_name,
+            item_price=int(true_avg_price),
+            volume=volume_gp,
+            timestamp=snapshot_timestamp,
+        ))
+
+    return objects_to_insert
+
+
 def fetch_and_store_snapshot(lookup):
     """
     Fetch a single 24h snapshot and insert it into the database (if new).
@@ -408,9 +479,19 @@ def fetch_and_store_snapshot(lookup):
     if snapshot is None:
         return 0
 
+    # snapshot_timestamp_raw: Original snapshot timestamp from the API payload.
+    snapshot_timestamp_raw = snapshot.get("timestamp")
+
     # snapshot_timestamp: Canonical snapshot timestamp as a string.
     # Why: TwentyFourHourTimeSeries.timestamp is a CharField, and we need stable comparison.
-    snapshot_timestamp = str(snapshot.get("timestamp"))
+    snapshot_timestamp = str(snapshot_timestamp_raw)
+
+    try:
+        # all_time_snapshot_timestamp: Numeric timestamp used by AllTimeData.
+        all_time_snapshot_timestamp = int(snapshot_timestamp_raw)
+    except (TypeError, ValueError):
+        log(f"ERROR: Snapshot timestamp '{snapshot_timestamp_raw}' is not numeric.")
+        return 0
 
     if snapshot_already_ingested(snapshot_timestamp):
         existing_rows = TwentyFourHourTimeSeries.objects.filter(timestamp=snapshot_timestamp).count()
@@ -429,20 +510,38 @@ def fetch_and_store_snapshot(lookup):
         snapshot_timestamp=snapshot_timestamp,
     )
 
+    all_time_objects_to_insert = build_all_time_objects(
+        snapshot_data=snapshot_data,
+        lookup=lookup,
+        snapshot_timestamp=all_time_snapshot_timestamp,
+    )
+
     if not objects_to_insert:
         log("INFO: Snapshot contained no insertable item data.")
         return 0
 
-    attempted_count, inserted_count, duplicate_count = bulk_insert_with_counts(
-        TwentyFourHourTimeSeries,
-        objects_to_insert,
-        "TwentyFourHourTimeSeries",
-    )
+    with transaction.atomic():
+        attempted_count, inserted_count, duplicate_count = bulk_insert_with_counts(
+            TwentyFourHourTimeSeries,
+            objects_to_insert,
+            "TwentyFourHourTimeSeries",
+        )
+
+        all_time_attempted_count, all_time_inserted_count, all_time_duplicate_count = bulk_insert_with_counts(
+            AllTimeData,
+            all_time_objects_to_insert,
+            "AllTimeData",
+        )
 
     log(
         f"Snapshot {snapshot_timestamp}: attempted {attempted_count} "
         f"TwentyFourHourTimeSeries rows, inserted {inserted_count}, "
         f"duplicates skipped {duplicate_count}"
+    )
+    log(
+        f"Snapshot {snapshot_timestamp}: attempted {all_time_attempted_count} "
+        f"AllTimeData rows, inserted {all_time_inserted_count}, "
+        f"duplicates skipped {all_time_duplicate_count}"
     )
     return inserted_count
 
