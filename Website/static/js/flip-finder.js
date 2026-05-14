@@ -54,7 +54,6 @@
         previousPageButton: document.getElementById('ffPreviousPageButton'),
         nextPageButton: document.getElementById('ffNextPageButton'),
         resultsMeta: document.getElementById('ffResultsMeta'),
-        resultsCustomRange: document.getElementById('ffResultsCustomRange'),
         resultsBody: document.getElementById('ffResultsBody'),
         resultsTable: document.getElementById('ffResultsTable'),
         resultsScroll: document.getElementById('ffResultsScroll'),
@@ -92,7 +91,6 @@
     let resultsRequestId = 0;
     let historyRequestId = 0;
     let refreshTimer = null;
-    let lastResultsMeta = null;
     let customDateTarget = 'results';
     let customDateReturnFocus = null;
 
@@ -169,23 +167,6 @@
             return '--';
         }
         return String(value).split('T')[0];
-    }
-
-    function formatDisplayDateOnly(value) {
-        if (!value) {
-            return '--';
-        }
-
-        const normalizedValue = String(value).includes('T') ? value : `${value}T00:00:00Z`;
-        const parsedDate = new Date(normalizedValue);
-        if (Number.isNaN(parsedDate.getTime())) {
-            return formatIsoDateOnly(value);
-        }
-        return parsedDate.toLocaleDateString(undefined, {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-        });
     }
 
     function formatScanTime(meta) {
@@ -465,24 +446,6 @@
         elements.resultsMeta.textContent = `${formatInteger(firstVisible)}-${formatInteger(lastVisible)} of ${formatInteger(totalMatches)} items`;
     }
 
-    function updateCustomRangeNotice() {
-        if (!elements.resultsCustomRange) {
-            return;
-        }
-
-        if (state.timeframe !== 'custom' || !state.customDate) {
-            elements.resultsCustomRange.hidden = true;
-            elements.resultsCustomRange.textContent = '';
-            return;
-        }
-
-        const rangeStart = lastResultsMeta && lastResultsMeta.timeframe === 'custom'
-            ? (lastResultsMeta.rangeStartIso || lastResultsMeta.customStartIso || state.customDate)
-            : state.customDate;
-        elements.resultsCustomRange.textContent = `Custom timeframe: scanning from ${formatDisplayDateOnly(rangeStart)} onward.`;
-        elements.resultsCustomRange.hidden = false;
-    }
-
     function renderLoadingIndicator() {
         return `
             <div class="ff-results-loading" role="status" aria-label="Loading results">
@@ -705,7 +668,6 @@
         elements.minPriceInput.value = state.minPrice;
         elements.searchInput.value = state.search;
         elements.sortSelect.value = state.sort;
-        updateCustomRangeNotice();
         updatePageButtons();
     }
 
@@ -732,14 +694,12 @@
 
             isLoadingResults = false;
             filteredResults = payload.results || [];
-            lastResultsMeta = payload.meta || null;
             state.page = payload.page || state.page;
             hasPreviousPage = Boolean(payload.hasPreviousPage);
             hasNextPage = Boolean(payload.hasNextPage);
             syncSelectedResult(filteredResults);
             elements.updatedAt.textContent = formatScanTime(payload.meta);
             renderResultsMeta(payload);
-            updateCustomRangeNotice();
             renderResults(filteredResults);
             refreshSelectedHistory();
         } catch (error) {
@@ -752,12 +712,10 @@
             filteredResults = [];
             selectedResult = null;
             selectedHistory = null;
-            lastResultsMeta = null;
             hasPreviousPage = false;
             hasNextPage = false;
             elements.updatedAt.textContent = 'Flip Finder unavailable';
             renderResultsMeta(null);
-            updateCustomRangeNotice();
             renderResults(filteredResults);
             renderSelectedPanel();
             renderPriceChart();

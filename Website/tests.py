@@ -28,7 +28,6 @@ class FlipFinderPageTests(TestCase):
         self.assertContains(response, 'data-timeframe="custom"')
         self.assertContains(response, 'ffCustomDateModal')
         self.assertContains(response, 'ffSelectedIconSlot')
-        self.assertContains(response, 'ffResultsCustomRange')
 
 
 class FlipFinderApiTests(TestCase):

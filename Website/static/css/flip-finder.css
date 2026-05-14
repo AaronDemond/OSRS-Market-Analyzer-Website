@@ -291,7 +291,7 @@
 
 .ff-workspace {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(420px, 480px);
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 420px);
     gap: 14px;
     align-items: start;
 }
@@ -330,7 +330,7 @@
         radial-gradient(circle at top left, rgba(96, 116, 148, 0.34) 0%, rgba(96, 116, 148, 0) 34%),
         linear-gradient(180deg, #273447 0%, #1B2534 100%);
     color: #FFFFFF;
-    box-shadow: inset 0 -3px 0 var(--ff-accent), 0 12px 28px rgba(12, 21, 34, 0.18);
+    box-shadow: 0 12px 28px rgba(12, 21, 34, 0.18);
 }
 
 .ff-gradient-header .ff-control-label,
@@ -422,19 +422,13 @@
 .ff-selected-summary {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 14px;
     min-width: 0;
     flex: 1 1 auto;
 }
 
 .ff-selected-copy {
-    min-width: 0;
-}
-
-.ff-selected-title-row {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
     min-width: 0;
 }
 
@@ -447,24 +441,24 @@
 }
 
 .ff-selected-icon-slot {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     justify-content: center;
     flex: 0 0 auto;
 }
 
 .ff-selected-item-icon {
-    width: 52px;
-    height: 52px;
-    flex-basis: 52px;
+    width: 46px;
+    height: 46px;
+    flex-basis: 46px;
     border-radius: 12px;
     background: #FFFFFF;
     box-shadow: 0 8px 18px rgba(8, 18, 32, 0.24);
 }
 
 .ff-selected-icon-slot .ff-item-icon img {
-    max-width: 40px;
-    max-height: 40px;
+    max-width: 36px;
+    max-height: 36px;
 }
 
 .ff-results-actions {
@@ -513,16 +507,6 @@
 .ff-chart-empty {
     color: var(--ff-muted);
     text-align: center;
-}
-
-.ff-results-custom-range {
-    padding: 11px 16px;
-    border-top: 1px solid rgba(32, 222, 255, 0.12);
-    border-bottom: 1px solid var(--ff-border);
-    background: linear-gradient(180deg, rgba(32, 222, 255, 0.08) 0%, rgba(255, 255, 255, 0.98) 100%);
-    color: #0F5B73;
-    font-size: 0.79rem;
-    font-weight: 720;
 }
 
 .ff-empty-state {
@@ -825,7 +809,7 @@
     color: var(--ff-muted);
     font-size: 0.75rem;
     font-weight: 820;
-    box-shadow: 0 3px 8px rgba(15, 23, 42, 0.08);
+    box-shadow: 0 3px 8px rgba(15, 23, 42, 0.10);
     white-space: nowrap;
 }
 
