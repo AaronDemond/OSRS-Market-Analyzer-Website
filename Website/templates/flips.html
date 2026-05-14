@@ -4732,17 +4732,16 @@
     <thead>
         <tr>
             <th class="sortable" data-col="0" data-type="string">Item <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="1" data-type="number">Price Paid<span class="sort-icon"></span></th>
-            <th class="sortable" data-col="2" data-type="number"><span class="d-none d-md-inline">Quantity
+        <th class="sortable" data-col="1" data-type="number"><span class="d-none d-md-inline">Unrealized
+            Net</span><span class="d-md-none">Unreal.</span> <span class="sort-icon"></span></th>
+        <th class="sortable" data-col="2" data-type="number"><span class="d-none d-md-inline">Realized
+            Net</span><span class="d-md-none">Real.</span> <span class="sort-icon"></span></th>
+        <th class="sortable" data-col="3" data-type="number"><span class="d-none d-md-inline">Position
+            Size</span><span class="d-md-none">Pos.</span> <span class="sort-icon"></span></th>
+        <th class="sortable" data-col="4" data-type="number"><span class="d-none d-md-inline">Quantity
                     Holding</span><span class="d-md-none">Qty</span> <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="3" data-type="number"><span class="d-none d-md-inline">Position
-                    Size</span><span class="d-md-none">Pos.</span> <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="4" data-type="number">High Price <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="5" data-type="number">Low Price <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="6" data-type="number"><span class="d-none d-md-inline">Unrealized
-                    Net</span><span class="d-md-none">Unreal.</span> <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="7" data-type="number"><span class="d-none d-md-inline">Realized
-                    Net</span><span class="d-md-none">Real.</span> <span class="sort-icon"></span></th>
+        <th class="sortable" data-col="5" data-type="number">High Price <span class="sort-icon"></span></th>
+        <th class="sortable" data-col="6" data-type="number">Low Price <span class="sort-icon"></span></th>
         </tr>
     </thead>
     <tbody id="flipsTableBody">
@@ -4753,7 +4752,7 @@
             How: Apply Bootstrap's text-start class and set the flex container to justify-content: flex-start.
         -->
         <tr class="skeleton-row">
-            <td colspan="8" class="text-start" style="padding: 20px; color: var(--muted);">
+            <td colspan="7" class="text-start" style="padding: 20px; color: var(--muted);">
                 <div style="display: flex; align-items: center; justify-content: flex-start; gap: 10px;">
                     <div class="spinner-border spinner-border-sm" role="status" style="color: var(--primary);"></div>
                     <span>Loading flip data...</span>
@@ -4838,7 +4837,7 @@
                 // What: Render a left-aligned empty-state row when the user has no flips.
                 // Why: The table should keep consistent left alignment even when no data exists, matching the UI expectation.
                 // How: Inject a single-row tbody with Bootstrap's text-start class so the message anchors to the left.
-                tbody.innerHTML = '<tr><td colspan="8" class="text-start">No flips recorded yet.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="text-start">No flips recorded yet.</td></tr>';
                 return;
             }
 
@@ -4872,13 +4871,12 @@
                         </div>
                     </div>
                 </td>
-                <td data-value="${item.avg_price}">${formatNumber(item.avg_price)}</td>
-                <td data-value="${item.quantity_holding}">${formatNumber(item.quantity_holding)}</td>
-                <td data-value="${item.position_size}">${formatNumber(item.position_size)}</td>
-                <td data-value="${item.high_price || 0}">${item.high_price ? formatNumber(item.high_price) : '-'}</td>
-                <td data-value="${item.low_price || 0}">${item.low_price ? formatNumber(item.low_price) : '-'}</td>
                 <td data-value="${item.unrealized_net}" class="${getPnlClass(item.unrealized_net)}">${formatNumberWithSign(item.unrealized_net)}</td>
                 <td data-value="${item.realized_net}" class="${getPnlClass(item.realized_net)}">${formatNumberWithSign(item.realized_net)}</td>
+                <td data-value="${item.position_size}">${formatNumber(item.position_size)}</td>
+                <td data-value="${item.quantity_holding}">${formatNumber(item.quantity_holding)}</td>
+                <td data-value="${item.high_price || 0}">${item.high_price ? formatNumber(item.high_price) : '-'}</td>
+                <td data-value="${item.low_price || 0}">${item.low_price ? formatNumber(item.low_price) : '-'}</td>
             </tr>`;
             });
 
@@ -4944,7 +4942,7 @@
                     // Why: Error messaging should align with normal table text so users can scan it like other rows.
                     // How: Inject a single table row using text-start so the error message anchors to the left.
                     document.getElementById('flipsTableBody').innerHTML =
-                        '<tr><td colspan="8" class="text-start text-danger">Error loading data. Please refresh the page.</td></tr>';
+                        '<tr><td colspan="7" class="text-start text-danger">Error loading data. Please refresh the page.</td></tr>';
                 });
         }
 
@@ -4998,8 +4996,8 @@
                     posCell.textContent = isMobile ? formatNumberMobileNoSign(value) : value.toLocaleString();
                 }
 
-                // Unrealized Net (column 7)
-                const unrealCell = row.querySelector('td:nth-child(7)');
+                // Unrealized Net (column 2)
+                const unrealCell = row.querySelector('td:nth-child(2)');
                 if (unrealCell) {
                     const value = parseFloat(unrealCell.dataset.value) || 0;
                     if (isMobile) {
@@ -5009,8 +5007,8 @@
                     }
                 }
 
-                // Realized Net (column 8)
-                const realCell = row.querySelector('td:nth-child(8)');
+                // Realized Net (column 3)
+                const realCell = row.querySelector('td:nth-child(3)');
                 if (realCell) {
                     const value = parseFloat(realCell.dataset.value) || 0;
                     if (isMobile) {
@@ -5275,19 +5273,19 @@
             if (filterName === 'time-held') {
                 return getTimeHeldDays(row) || 0;
             } else if (filterName === 'unrealized-range') {
-                const cell = row.querySelector('td:nth-child(7)');
+                const cell = row.querySelector('td:nth-child(2)');
                 return parseFloat(cell?.dataset.value) || 0;
             } else if (filterName === 'realized-range') {
-                const cell = row.querySelector('td:nth-child(8)');
+                const cell = row.querySelector('td:nth-child(3)');
                 return parseFloat(cell?.dataset.value) || 0;
             } else if (filterName === 'position-size') {
                 const cell = row.querySelector('td:nth-child(4)');
                 return parseFloat(cell?.dataset.value) || 0;
             } else if (filterName === 'quantity') {
-                const cell = row.querySelector('td:nth-child(3)');
+                const cell = row.querySelector('td:nth-child(5)');
                 return parseFloat(cell?.dataset.value) || 0;
             } else if (filterName === 'completion-state') {
-                const cell = row.querySelector('td:nth-child(3)');
+                const cell = row.querySelector('td:nth-child(5)');
                 return parseFloat(cell?.dataset.value) || 0;
             }
             return 0;
@@ -5586,7 +5584,7 @@
 
                 // Unrealized range filter
                 if (show && unrealizedActive) {
-                    const cell = row.querySelector('td:nth-child(7)');
+                    const cell = row.querySelector('td:nth-child(2)');
                     const value = parseFloat(cell?.dataset.value) || 0;
                     const min = unrealizedActive.min !== null ? unrealizedActive.min : -Infinity;
                     const max = unrealizedActive.max !== null ? unrealizedActive.max : Infinity;
@@ -5597,7 +5595,7 @@
 
                 // Realized range filter
                 if (show && realizedActive) {
-                    const cell = row.querySelector('td:nth-child(8)');
+                    const cell = row.querySelector('td:nth-child(3)');
                     const value = parseFloat(cell?.dataset.value) || 0;
                     const min = realizedActive.min !== null ? realizedActive.min : -Infinity;
                     const max = realizedActive.max !== null ? realizedActive.max : Infinity;
@@ -5630,7 +5628,7 @@
 
                 // Quantity filter
                 if (show && quantityActive) {
-                    const cell = row.querySelector('td:nth-child(3)');
+                    const cell = row.querySelector('td:nth-child(5)');
                     const value = parseFloat(cell?.dataset.value) || 0;
                     const min = quantityActive.min !== null ? quantityActive.min : -Infinity;
                     const max = quantityActive.max !== null ? quantityActive.max : Infinity;
@@ -5641,7 +5639,7 @@
 
                 // Completion filter (completed = quantity held == 0, uncompleted = quantity held > 1)
                 if (show && completionActive) {
-                    const cell = row.querySelector('td:nth-child(3)');
+                    const cell = row.querySelector('td:nth-child(5)');
                     const value = parseFloat(cell?.dataset.value) || 0;
                     if (completionActive === 'completed' && value !== 0) {
                         show = false;
@@ -6083,7 +6081,7 @@
 
             // Unrealized range filter
             if (activeFilters['unrealized-range']) {
-                const cell = row.querySelector('td:nth-child(7)');
+                const cell = row.querySelector('td:nth-child(2)');
                 const value = parseFloat(cell?.dataset.value) || 0;
                 const min = activeFilters['unrealized-range'].min !== null ? activeFilters['unrealized-range'].min : -Infinity;
                 const max = activeFilters['unrealized-range'].max !== null ? activeFilters['unrealized-range'].max : Infinity;
@@ -6092,7 +6090,7 @@
 
             // Realized range filter
             if (activeFilters['realized-range']) {
-                const cell = row.querySelector('td:nth-child(8)');
+                const cell = row.querySelector('td:nth-child(3)');
                 const value = parseFloat(cell?.dataset.value) || 0;
                 const min = activeFilters['realized-range'].min !== null ? activeFilters['realized-range'].min : -Infinity;
                 const max = activeFilters['realized-range'].max !== null ? activeFilters['realized-range'].max : Infinity;
@@ -6110,7 +6108,7 @@
 
             // Quantity filter
             if (activeFilters['quantity']) {
-                const cell = row.querySelector('td:nth-child(3)');
+                const cell = row.querySelector('td:nth-child(5)');
                 const value = parseFloat(cell?.dataset.value) || 0;
                 const min = activeFilters['quantity'].min !== null ? activeFilters['quantity'].min : -Infinity;
                 const max = activeFilters['quantity'].max !== null ? activeFilters['quantity'].max : Infinity;
@@ -6119,7 +6117,7 @@
 
                 // Completion filter
             if (activeFilters['completion-state']) {
-                const cell = row.querySelector('td:nth-child(3)');
+                const cell = row.querySelector('td:nth-child(5)');
                 const value = parseFloat(cell?.dataset.value) || 0;
                 const state = activeFilters['completion-state'];
                 if (state === 'completed' && value !== 0) return false;
@@ -7715,7 +7713,7 @@
             // How: Use text-start on the cell and justify-content: flex-start to keep the spinner/text on the left.
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="8" class="text-start" style="padding: 20px; color: var(--muted);">
+                    <td colspan="7" class="text-start" style="padding: 20px; color: var(--muted);">
                         <div style="display: flex; align-items: center; justify-content: flex-start; gap: 10px;">
                             <div class="spinner-border spinner-border-sm" role="status" style="color: var(--info);"></div>
                             <span>Loading historical data for ${formatDateForDisplay(dateStr)}...</span>
@@ -7758,7 +7756,7 @@
                 // How: Inject a single row with text-start so the message anchors to the table's left edge.
                 tableBody.innerHTML = `
                     <tr>
-                        <td colspan="8" class="text-start text-danger" style="padding: 20px;">
+                        <td colspan="7" class="text-start text-danger" style="padding: 20px;">
                             Error loading historical data: ${error.message}. Please try again.
                         </td>
                     </tr>
