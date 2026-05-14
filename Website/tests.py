@@ -27,6 +27,8 @@ class FlipFinderPageTests(TestCase):
         self.assertContains(response, 'Flip Finder')
         self.assertContains(response, 'data-timeframe="custom"')
         self.assertContains(response, 'ffCustomDateModal')
+        self.assertContains(response, 'ffResultsPanel')
+        self.assertContains(response, 'ffChartPanel')
         self.assertContains(response, 'ffSelectedIconSlot')
 
 

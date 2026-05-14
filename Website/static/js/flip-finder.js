@@ -41,6 +41,7 @@
     const elements = {
         updatedAt: document.getElementById('ffUpdatedAt'),
         resetButton: document.getElementById('ffResetButton'),
+        resultsPanel: document.getElementById('ffResultsPanel'),
         timeframeButtons: Array.from(document.querySelectorAll('#ffTimeframeGroup button')),
         chartTimeframeButtons: Array.from(document.querySelectorAll('#ffChartTimeframeGroup button')),
         signalButtons: Array.from(document.querySelectorAll('#ffSignalGroup button')),
@@ -60,6 +61,7 @@
         tableScrollbar: document.getElementById('ffTableScrollbar'),
         tableScrollbarTrack: document.getElementById('ffTableScrollbarTrack'),
         emptyState: document.getElementById('ffEmptyState'),
+        chartPanel: document.getElementById('ffChartPanel'),
         selectedMeta: document.getElementById('ffSelectedMeta'),
         selectedIconSlot: document.getElementById('ffSelectedIconSlot'),
         selectedSignal: document.getElementById('ffSelectedSignal'),
@@ -93,6 +95,7 @@
     let refreshTimer = null;
     let customDateTarget = 'results';
     let customDateReturnFocus = null;
+    let resultsPanelHeightFrame = 0;
 
     const defaultSortDirections = {
         closest: 'asc',
@@ -304,6 +307,44 @@
         isSyncingHorizontalScroll = false;
     }
 
+    function syncResultsPanelHeight() {
+        /**
+         * Keep the results card capped to the chart card's natural desktop height.
+         *
+         * The chart card should define the row size. The results list then scrolls
+         * inside its own card instead of forcing the chart card to stretch taller.
+         */
+        if (!elements.resultsPanel || !elements.chartPanel) {
+            return;
+        }
+
+        if (window.innerWidth <= 1100) {
+            elements.resultsPanel.style.height = '';
+            syncHorizontalScrollbarVisibility();
+            return;
+        }
+
+        const chartPanelHeight = Math.ceil(elements.chartPanel.getBoundingClientRect().height);
+        elements.resultsPanel.style.height = chartPanelHeight > 0 ? `${chartPanelHeight}px` : '';
+        syncHorizontalScrollbarVisibility();
+    }
+
+    function queueResultsPanelHeightSync() {
+        if (resultsPanelHeightFrame) {
+            window.cancelAnimationFrame(resultsPanelHeightFrame);
+        }
+
+        resultsPanelHeightFrame = window.requestAnimationFrame(() => {
+            resultsPanelHeightFrame = 0;
+            syncResultsPanelHeight();
+        });
+    }
+
+    function handleViewportResize() {
+        syncHorizontalScrollbarVisibility();
+        queueResultsPanelHeightSync();
+    }
+
     function bindHorizontalScrollbar() {
         if (!elements.resultsScroll || !elements.tableScrollbar) {
             return;
@@ -315,7 +356,22 @@
         elements.tableScrollbar.addEventListener('scroll', () => {
             syncHorizontalScroll(elements.tableScrollbar, elements.resultsScroll);
         });
-        window.addEventListener('resize', syncHorizontalScrollbarVisibility);
+        window.addEventListener('resize', handleViewportResize);
+    }
+
+    function bindResultsPanelHeightSync() {
+        if (!elements.resultsPanel || !elements.chartPanel) {
+            return;
+        }
+
+        if ('ResizeObserver' in window) {
+            const chartPanelObserver = new ResizeObserver(() => {
+                queueResultsPanelHeightSync();
+            });
+            chartPanelObserver.observe(elements.chartPanel);
+        }
+
+        queueResultsPanelHeightSync();
     }
 
     function getSignalLabel(signal) {
@@ -957,5 +1013,6 @@
 
     elements.updatedAt.textContent = 'Loading local market data...';
     bindHorizontalScrollbar();
+    bindResultsPanelHeightSync();
     refreshResults();
 }());
