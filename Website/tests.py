@@ -25,6 +25,10 @@ class FlipFinderPageTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'flip_finder.html')
         self.assertContains(response, 'Flip Finder')
+        self.assertContains(response, 'data-timeframe="custom"')
+        self.assertContains(response, 'ffCustomDateModal')
+        self.assertContains(response, 'ffSelectedIconSlot')
+        self.assertContains(response, 'ffResultsCustomRange')
 
 
 class FlipFinderApiTests(TestCase):
@@ -218,6 +222,39 @@ class FlipFinderApiTests(TestCase):
         self.assertTrue(page_two_payload['hasPreviousPage'])
         self.assertFalse(page_two_payload['hasNextPage'])
 
+    def test_custom_timeframe_results_use_selected_start_date(self):
+        selected_start = 1_704_067_200
+        self.create_all_time_snapshot(205, 'Custom shard', 500, selected_start - 86_400)
+        self.create_all_time_snapshot(205, 'Custom shard', 100, selected_start)
+        self.create_all_time_snapshot(205, 'Custom shard', 200, selected_start + 86_400)
+        self.create_all_time_snapshot(205, 'Custom shard', 104, selected_start + 172_800)
+
+        response = self.client.get(reverse('flip_finder_results_api'), {
+            'timeframe': 'custom',
+            'customDate': '2024-01-01',
+            'percent': '5',
+            'signal': 'low',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['meta']['source'], 'all_time_data')
+        self.assertEqual(payload['meta']['timeframe'], 'custom')
+        self.assertEqual(payload['meta']['rangeStart'], selected_start)
+        self.assertEqual(payload['results'][0]['name'], 'Custom shard')
+        self.assertEqual(payload['results'][0]['currentPrice'], 104)
+        self.assertEqual(payload['results'][0]['periodLow'], 100)
+        self.assertEqual(payload['results'][0]['periodHigh'], 200)
+
+    def test_custom_timeframe_requires_valid_date(self):
+        response = self.client.get(reverse('flip_finder_results_api'), {
+            'timeframe': 'custom',
+            'percent': '5',
+        })
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('customDate', response.json()['error'])
+
     def test_min_volume_filters_by_latest_twentyfour_snapshot_gp_volume(self):
         self.create_twentyfour_snapshot(210, 'Thin volume', 150, self.earlier_timestamp, volume=500)
         self.create_twentyfour_snapshot(210, 'Thin volume', 100, self.latest_timestamp, volume=20)
@@ -355,6 +392,26 @@ class FlipFinderApiTests(TestCase):
         self.assertEqual(payload['periodLow'], 100)
         self.assertEqual(payload['periodHigh'], 120)
         self.assertEqual(payload['currentPrice'], 120)
+
+    def test_custom_history_uses_selected_start_date(self):
+        selected_start = 1_704_067_200
+        self.create_all_time_snapshot(311, 'Custom history seed', 300, selected_start - 86_400)
+        self.create_all_time_snapshot(311, 'Custom history seed', 100, selected_start)
+        self.create_all_time_snapshot(311, 'Custom history seed', 0, selected_start + 86_400)
+        self.create_all_time_snapshot(311, 'Custom history seed', 120, selected_start + 172_800)
+
+        response = self.client.get(reverse('flip_finder_history_api'), {
+            'timeframe': 'custom',
+            'customDate': '2024-01-01',
+            'itemId': '311',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['timeframe'], 'custom')
+        self.assertEqual([point['timestamp'] for point in payload['points']], [selected_start, selected_start + 172_800])
+        self.assertEqual(payload['periodLow'], 100)
+        self.assertEqual(payload['periodHigh'], 120)
 
     def test_unsupported_timeframe_returns_400(self):
         response = self.client.get(reverse('flip_finder_results_api'), {'timeframe': '1h'})

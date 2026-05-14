@@ -31,7 +31,7 @@ FLIP_FINDER_TIMEFRAME_SECONDS = {
     '90d': 90 * 24 * 60 * 60,
     '1y': 365 * 24 * 60 * 60,
 }
-FLIP_FINDER_SUPPORTED_TIMEFRAMES = set(FLIP_FINDER_TIMEFRAME_SECONDS) | {'all'}
+FLIP_FINDER_SUPPORTED_TIMEFRAMES = set(FLIP_FINDER_TIMEFRAME_SECONDS) | {'all', 'custom'}
 FLIP_FINDER_SUPPORTED_SIGNALS = {'low', 'high', 'both'}
 FLIP_FINDER_SUPPORTED_SORTS = {'closest', 'name', 'signal', 'low', 'high'}
 FLIP_FINDER_SUPPORTED_DIRECTIONS = {'asc', 'desc'}
@@ -57,9 +57,10 @@ def build_flip_finder_results(query_params, metadata_by_id=None):
     params = _normalize_result_params(query_params)
     metadata_by_id = metadata_by_id or {}
 
-    if params['timeframe'] == 'all':
-        # All-time rows already use numeric timestamps and a single item_price,
-        # so the source can be summarized directly with aggregate queries.
+    if params['timeframe'] in {'all', 'custom'}:
+        # All-time rows already use numeric timestamps and a single item_price.
+        # Custom ranges reuse that source so arbitrary start dates are not
+        # limited by the bounded 24h snapshot window.
         summaries = _get_all_time_summaries(params)
         updated_timestamp = max(
             (summary['current_timestamp'] for summary in summaries if summary['current_timestamp'] is not None),
@@ -71,7 +72,7 @@ def build_flip_finder_results(query_params, metadata_by_id=None):
             metadata_by_id=metadata_by_id,
             source='all_time_data',
             price_basis='item_price',
-            range_start=None,
+            range_start=params['custom_start_timestamp'],
             range_end=updated_timestamp,
         )
 
@@ -114,12 +115,15 @@ def build_flip_finder_history(query_params):
     params = _normalize_history_params(query_params)
     item_id = params['item_id']
 
-    if params['timeframe'] == 'all':
+    if params['timeframe'] in {'all', 'custom'}:
         # All-time history is intentionally unbounded, but the database can drop
         # non-positive prices before Chart.js ever sees them.
+        rows_query = AllTimeData.objects.filter(item_id=item_id, item_price__gt=0)
+        if params['custom_start_timestamp'] is not None:
+            rows_query = rows_query.filter(timestamp__gte=params['custom_start_timestamp'])
+
         rows = list(
-            AllTimeData.objects
-            .filter(item_id=item_id, item_price__gt=0)
+            rows_query
             .order_by('timestamp')
             .values('item_id', 'item_name', 'item_price', 'timestamp')
         )
@@ -206,6 +210,10 @@ def _normalize_result_params(query_params):
 
     return {
         'timeframe': timeframe,
+        'custom_start_timestamp': _normalize_custom_start_timestamp(
+            timeframe,
+            _get_query_alias(query_params, 'customDate', 'custom_date', 'customStartDate', 'custom_start_date'),
+        ),
         'percent': _normalize_percent(query_params.get('percent')),
         'signal': signal,
         'search': _clean_query_value(query_params.get('search'), '').strip(),
@@ -237,6 +245,10 @@ def _normalize_history_params(query_params):
 
     return {
         'timeframe': timeframe,
+        'custom_start_timestamp': _normalize_custom_start_timestamp(
+            timeframe,
+            _get_query_alias(query_params, 'customDate', 'custom_date', 'customStartDate', 'custom_start_date'),
+        ),
         'item_id': item_id,
     }
 
@@ -290,6 +302,31 @@ def _normalize_page(raw_page):
     except (TypeError, ValueError):
         return 1
     return max(1, page)
+
+
+def _normalize_custom_start_timestamp(timeframe, raw_value):
+    """Return the UTC start timestamp for a custom date range."""
+    if timeframe != 'custom':
+        return None
+
+    raw_text = str(raw_value).strip() if raw_value is not None else ''
+    if not raw_text:
+        raise FlipFinderParamError('A valid customDate is required for custom timeframe')
+
+    numeric_timestamp = parse_snapshot_timestamp(raw_text)
+    if numeric_timestamp is not None:
+        return numeric_timestamp
+
+    try:
+        parsed_datetime = datetime.fromisoformat(raw_text.replace('Z', '+00:00'))
+    except ValueError:
+        raise FlipFinderParamError('A valid customDate is required for custom timeframe')
+
+    if parsed_datetime.tzinfo is None:
+        parsed_datetime = parsed_datetime.replace(tzinfo=timezone.utc)
+    else:
+        parsed_datetime = parsed_datetime.astimezone(timezone.utc)
+    return int(parsed_datetime.timestamp())
 
 
 def _get_twentyfour_timestamp_pairs(timeframe):
@@ -400,6 +437,8 @@ def _get_all_time_summaries(params):
         subqueries for item name, current price, and timestamp.
     """
     rows = AllTimeData.objects.filter(item_price__gt=0)
+    if params['custom_start_timestamp'] is not None:
+        rows = rows.filter(timestamp__gte=params['custom_start_timestamp'])
     if params['search']:
         # Search picks the item set, while low/high comparisons still use that
         # item's full all-time history so the selected timeframe remains honest.
@@ -427,7 +466,7 @@ def _get_all_time_summaries(params):
         if row['period_low'] is not None and row['period_high'] is not None
     }
 
-    for row in _get_latest_all_time_rows(summaries_by_item.keys()):
+    for row in _get_latest_all_time_rows(summaries_by_item.keys(), params['custom_start_timestamp']):
         summary = summaries_by_item.get(row['item_id'])
         if summary is None:
             continue
@@ -442,7 +481,7 @@ def _get_all_time_summaries(params):
     ]
 
 
-def _get_latest_all_time_rows(item_ids):
+def _get_latest_all_time_rows(item_ids, start_timestamp=None):
     """
     Return the latest valid AllTimeData row for each requested item.
 
@@ -456,6 +495,8 @@ def _get_latest_all_time_rows(item_ids):
         return []
 
     latest_rows = AllTimeData.objects.filter(item_id__in=item_ids, item_price__gt=0)
+    if start_timestamp is not None:
+        latest_rows = latest_rows.filter(timestamp__gte=start_timestamp)
     if connection.vendor == 'postgresql':
         latest_rows = latest_rows.order_by('item_id', '-timestamp').distinct('item_id')
     else:
@@ -637,13 +678,15 @@ def _build_meta(params, source, price_basis, range_start, range_end):
         'sortDirection': params.get('sortDirection'),
         'minPrice': params.get('min_price'),
         'minVolume': params.get('min_volume'),
-        'volumeFilterApplied': params.get('min_volume', 0) > 0 and params['timeframe'] != 'all',
+        'volumeFilterApplied': params.get('min_volume', 0) > 0 and source != 'all_time_data',
         'source': source,
         'priceBasis': price_basis,
         'rangeStart': range_start,
         'rangeEnd': range_end,
         'rangeStartIso': _timestamp_to_iso(range_start),
         'rangeEndIso': _timestamp_to_iso(range_end),
+        'customStartTimestamp': params.get('custom_start_timestamp'),
+        'customStartIso': _timestamp_to_iso(params.get('custom_start_timestamp')),
     }
 
 

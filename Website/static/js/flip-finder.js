@@ -19,7 +19,7 @@
         history: '/api/flip-finder/history/',
     };
 
-    const supportedTimeframes = new Set(['24h', '7d', '30d', '90d', '1y', 'all']);
+    const supportedTimeframes = new Set(['24h', '7d', '30d', '90d', '1y', 'all', 'custom']);
 
     const defaultState = {
         timeframe: '24h',
@@ -32,6 +32,7 @@
         sortDirection: 'asc',
         minVolume: '',
         minPrice: '',
+        customDate: '',
         selectedItemId: null,
     };
 
@@ -53,6 +54,7 @@
         previousPageButton: document.getElementById('ffPreviousPageButton'),
         nextPageButton: document.getElementById('ffNextPageButton'),
         resultsMeta: document.getElementById('ffResultsMeta'),
+        resultsCustomRange: document.getElementById('ffResultsCustomRange'),
         resultsBody: document.getElementById('ffResultsBody'),
         resultsTable: document.getElementById('ffResultsTable'),
         resultsScroll: document.getElementById('ffResultsScroll'),
@@ -60,6 +62,7 @@
         tableScrollbarTrack: document.getElementById('ffTableScrollbarTrack'),
         emptyState: document.getElementById('ffEmptyState'),
         selectedMeta: document.getElementById('ffSelectedMeta'),
+        selectedIconSlot: document.getElementById('ffSelectedIconSlot'),
         selectedSignal: document.getElementById('ffSelectedSignal'),
         selectedPrice: document.getElementById('ffSelectedPrice'),
         selectedLowDistance: document.getElementById('ffSelectedLowDistance'),
@@ -67,6 +70,12 @@
         selectedRange: document.getElementById('ffSelectedRange'),
         priceChartCanvas: document.getElementById('ffPriceChart'),
         priceChartEmpty: document.getElementById('ffPriceChartEmpty'),
+        customDateModal: document.getElementById('ffCustomDateModal'),
+        customDateForm: document.getElementById('ffCustomDateForm'),
+        customDateInput: document.getElementById('ffCustomDateInput'),
+        customDateError: document.getElementById('ffCustomDateError'),
+        customDateCancelButton: document.getElementById('ffCustomDateCancelButton'),
+        customDateCloseButton: document.getElementById('ffCustomDateCloseButton'),
     };
 
     let filteredResults = [];
@@ -83,6 +92,9 @@
     let resultsRequestId = 0;
     let historyRequestId = 0;
     let refreshTimer = null;
+    let lastResultsMeta = null;
+    let customDateTarget = 'results';
+    let customDateReturnFocus = null;
 
     const defaultSortDirections = {
         closest: 'asc',
@@ -152,9 +164,36 @@
         return `${Number(value).toFixed(1)}%`;
     }
 
+    function formatIsoDateOnly(value) {
+        if (!value) {
+            return '--';
+        }
+        return String(value).split('T')[0];
+    }
+
+    function formatDisplayDateOnly(value) {
+        if (!value) {
+            return '--';
+        }
+
+        const normalizedValue = String(value).includes('T') ? value : `${value}T00:00:00Z`;
+        const parsedDate = new Date(normalizedValue);
+        if (Number.isNaN(parsedDate.getTime())) {
+            return formatIsoDateOnly(value);
+        }
+        return parsedDate.toLocaleDateString(undefined, {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+        });
+    }
+
     function formatScanTime(meta) {
         if (!meta || !meta.rangeEndIso) {
             return 'No local data for this range';
+        }
+        if (meta.timeframe === 'custom' && meta.rangeStartIso) {
+            return `Custom scan · ${formatIsoDateOnly(meta.rangeStartIso)} - ${new Date(meta.rangeEndIso).toLocaleString()}`;
         }
         return `Local scan · ${new Date(meta.rangeEndIso).toLocaleString()}`;
     }
@@ -216,6 +255,7 @@
             page: state.page,
             minVolume: state.minVolume,
             minPrice: state.minPrice,
+            customDate: state.timeframe === 'custom' ? state.customDate : '',
         });
     }
 
@@ -227,6 +267,7 @@
         return fetchJson(endpoints.history, {
             timeframe: state.chartTimeframe,
             itemId: selectedResult.id,
+            customDate: state.chartTimeframe === 'custom' ? state.customDate : '',
         });
     }
 
@@ -332,6 +373,28 @@
         return `<span class="ff-item-icon" data-fallback="${fallback}"><img src="${escapeHtml(iconUrl)}" alt="${escapeHtml(result.name)}"></span>`;
     }
 
+    function wireItemIconFallbacks(scope) {
+        if (!scope) {
+            return;
+        }
+
+        scope.querySelectorAll('.ff-item-icon img').forEach((image) => {
+            const showFallback = () => {
+                const wrapper = image.closest('.ff-item-icon');
+                if (!wrapper) {
+                    return;
+                }
+                wrapper.classList.add('fallback');
+                wrapper.textContent = wrapper.dataset.fallback || '?';
+            };
+
+            image.addEventListener('error', showFallback);
+            if (image.complete && image.naturalWidth === 0) {
+                showFallback();
+            }
+        });
+    }
+
     function renderResult(result) {
         const selectedClass = selectedResult && selectedResult.id === result.id ? ' selected' : '';
         const signalClass = getSignalClass(result.signal);
@@ -402,6 +465,24 @@
         elements.resultsMeta.textContent = `${formatInteger(firstVisible)}-${formatInteger(lastVisible)} of ${formatInteger(totalMatches)} items`;
     }
 
+    function updateCustomRangeNotice() {
+        if (!elements.resultsCustomRange) {
+            return;
+        }
+
+        if (state.timeframe !== 'custom' || !state.customDate) {
+            elements.resultsCustomRange.hidden = true;
+            elements.resultsCustomRange.textContent = '';
+            return;
+        }
+
+        const rangeStart = lastResultsMeta && lastResultsMeta.timeframe === 'custom'
+            ? (lastResultsMeta.rangeStartIso || lastResultsMeta.customStartIso || state.customDate)
+            : state.customDate;
+        elements.resultsCustomRange.textContent = `Custom timeframe: scanning from ${formatDisplayDateOnly(rangeStart)} onward.`;
+        elements.resultsCustomRange.hidden = false;
+    }
+
     function renderLoadingIndicator() {
         return `
             <div class="ff-results-loading" role="status" aria-label="Loading results">
@@ -458,21 +539,7 @@
             });
         });
 
-        elements.resultsBody.querySelectorAll('.ff-item-icon img').forEach((image) => {
-            const showFallback = () => {
-                const wrapper = image.closest('.ff-item-icon');
-                if (!wrapper) {
-                    return;
-                }
-                wrapper.classList.add('fallback');
-                wrapper.textContent = wrapper.dataset.fallback || '?';
-            };
-
-            image.addEventListener('error', showFallback);
-            if (image.complete && image.naturalWidth === 0) {
-                showFallback();
-            }
-        });
+        wireItemIconFallbacks(elements.resultsBody);
 
         syncHorizontalScrollbarVisibility();
         window.requestAnimationFrame(syncHorizontalScrollbarVisibility);
@@ -492,6 +559,9 @@
 
     function resetSelectedPanel(message = 'Select a result.') {
         elements.selectedMeta.textContent = '--';
+        if (elements.selectedIconSlot) {
+            elements.selectedIconSlot.innerHTML = '<span class="ff-item-icon ff-selected-item-icon fallback">?</span>';
+        }
         elements.selectedSignal.textContent = '--';
         elements.selectedSignal.className = 'ff-signal-badge';
         elements.selectedPrice.textContent = '--';
@@ -518,6 +588,10 @@
         const historyRangeHigh = selectedHistory && hasValue(selectedHistory.periodHigh) ? selectedHistory.periodHigh : selectedResult.periodHigh;
 
         elements.selectedMeta.textContent = selectedResult.name;
+        if (elements.selectedIconSlot) {
+            elements.selectedIconSlot.innerHTML = renderItemIcon(selectedResult).replace('ff-item-icon', 'ff-item-icon ff-selected-item-icon');
+            wireItemIconFallbacks(elements.selectedIconSlot);
+        }
         elements.selectedSignal.textContent = getSignalLabel(selectedResult.signal);
         elements.selectedSignal.className = `ff-signal-badge ${signalClass}`;
         elements.selectedPrice.textContent = formatGp(selectedResult.currentPrice);
@@ -631,6 +705,7 @@
         elements.minPriceInput.value = state.minPrice;
         elements.searchInput.value = state.search;
         elements.sortSelect.value = state.sort;
+        updateCustomRangeNotice();
         updatePageButtons();
     }
 
@@ -657,12 +732,14 @@
 
             isLoadingResults = false;
             filteredResults = payload.results || [];
+            lastResultsMeta = payload.meta || null;
             state.page = payload.page || state.page;
             hasPreviousPage = Boolean(payload.hasPreviousPage);
             hasNextPage = Boolean(payload.hasNextPage);
             syncSelectedResult(filteredResults);
             elements.updatedAt.textContent = formatScanTime(payload.meta);
             renderResultsMeta(payload);
+            updateCustomRangeNotice();
             renderResults(filteredResults);
             refreshSelectedHistory();
         } catch (error) {
@@ -675,10 +752,12 @@
             filteredResults = [];
             selectedResult = null;
             selectedHistory = null;
+            lastResultsMeta = null;
             hasPreviousPage = false;
             hasNextPage = false;
             elements.updatedAt.textContent = 'Flip Finder unavailable';
             renderResultsMeta(null);
+            updateCustomRangeNotice();
             renderResults(filteredResults);
             renderSelectedPanel();
             renderPriceChart();
@@ -743,9 +822,75 @@
         queueFirstPageRefresh(180);
     }
 
+    function getTodayInputValue() {
+        const now = new Date();
+        const localNow = new Date(now.getTime() - (now.getTimezoneOffset() * 60000));
+        return localNow.toISOString().slice(0, 10);
+    }
+
+    function setCustomDateError(message) {
+        if (!elements.customDateError) {
+            return;
+        }
+        elements.customDateError.textContent = message;
+        elements.customDateError.hidden = !message;
+    }
+
+    function openCustomDateModal(target, returnFocusElement) {
+        if (!elements.customDateModal || !elements.customDateInput) {
+            return;
+        }
+        customDateTarget = target;
+        customDateReturnFocus = returnFocusElement || document.activeElement;
+        elements.customDateInput.max = getTodayInputValue();
+        elements.customDateInput.value = state.customDate || elements.customDateInput.max;
+        setCustomDateError('');
+        elements.customDateModal.hidden = false;
+        elements.customDateModal.setAttribute('aria-hidden', 'false');
+        window.requestAnimationFrame(() => elements.customDateInput.focus());
+    }
+
+    function closeCustomDateModal() {
+        if (!elements.customDateModal) {
+            return;
+        }
+        elements.customDateModal.hidden = true;
+        elements.customDateModal.setAttribute('aria-hidden', 'true');
+        if (customDateReturnFocus && typeof customDateReturnFocus.focus === 'function') {
+            customDateReturnFocus.focus();
+        }
+        customDateReturnFocus = null;
+    }
+
+    function applyCustomDateSelection() {
+        const selectedDate = elements.customDateInput ? elements.customDateInput.value : '';
+        if (!selectedDate) {
+            setCustomDateError('Select a date.');
+            return;
+        }
+
+        state.customDate = selectedDate;
+        if (customDateTarget === 'chart') {
+            state.chartTimeframe = 'custom';
+            closeCustomDateModal();
+            updateControlStates();
+            refreshSelectedHistory();
+            return;
+        }
+
+        state.timeframe = 'custom';
+        state.chartTimeframe = 'custom';
+        closeCustomDateModal();
+        queueFirstPageRefresh();
+    }
+
     elements.timeframeButtons.forEach((button) => {
         button.addEventListener('click', () => {
             if (!supportedTimeframes.has(button.dataset.timeframe)) {
+                return;
+            }
+            if (button.dataset.timeframe === 'custom') {
+                openCustomDateModal('results', button);
                 return;
             }
             state.timeframe = button.dataset.timeframe;
@@ -757,6 +902,10 @@
     elements.chartTimeframeButtons.forEach((button) => {
         button.addEventListener('click', () => {
             if (!supportedTimeframes.has(button.dataset.timeframe)) {
+                return;
+            }
+            if (button.dataset.timeframe === 'custom') {
+                openCustomDateModal('chart', button);
                 return;
             }
             state.chartTimeframe = button.dataset.timeframe;
@@ -821,6 +970,31 @@
             elements.resultsScroll.scrollTop = 0;
         }
         refreshResults();
+    });
+
+    if (elements.customDateForm) {
+        elements.customDateForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            applyCustomDateSelection();
+        });
+    }
+    if (elements.customDateCancelButton) {
+        elements.customDateCancelButton.addEventListener('click', closeCustomDateModal);
+    }
+    if (elements.customDateCloseButton) {
+        elements.customDateCloseButton.addEventListener('click', closeCustomDateModal);
+    }
+    if (elements.customDateModal) {
+        elements.customDateModal.addEventListener('click', (event) => {
+            if (event.target === elements.customDateModal) {
+                closeCustomDateModal();
+            }
+        });
+    }
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && elements.customDateModal && !elements.customDateModal.hidden) {
+            closeCustomDateModal();
+        }
     });
 
     elements.updatedAt.textContent = 'Loading local market data...';

@@ -289,7 +289,7 @@
 
 .ff-workspace {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(360px, 420px);
+    grid-template-columns: minmax(0, 1fr) minmax(420px, 480px);
     gap: 14px;
     align-items: start;
 }
@@ -364,6 +364,53 @@
     align-items: center;
 }
 
+.ff-selected-summary {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.ff-selected-copy {
+    min-width: 0;
+}
+
+.ff-selected-title-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.ff-selected-copy .ff-panel-meta {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ff-selected-icon-slot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+}
+
+.ff-selected-item-icon {
+    width: 52px;
+    height: 52px;
+    flex-basis: 52px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.16);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+}
+
+.ff-selected-icon-slot .ff-item-icon img {
+    max-width: 40px;
+    max-height: 40px;
+}
+
 .ff-results-actions {
     display: grid;
     grid-template-columns: minmax(220px, 1fr) 180px 104px 116px;
@@ -410,6 +457,16 @@
 .ff-chart-empty {
     color: var(--ff-muted);
     text-align: center;
+}
+
+.ff-results-custom-range {
+    padding: 11px 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.18);
+    border-bottom: 1px solid var(--ff-border);
+    background: linear-gradient(180deg, rgba(239, 246, 255, 0.9) 0%, rgba(248, 250, 252, 0.98) 100%);
+    color: var(--ff-primary-dark);
+    font-size: 0.79rem;
+    font-weight: 720;
 }
 
 .ff-empty-state {
@@ -735,17 +792,21 @@
 }
 
 .ff-chart-timeframe-control {
-    padding: 14px 16px 0;
+    padding: 12px 12px 0;
 }
 
 .ff-chart-timeframe-group {
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 2px;
     width: 100%;
 }
 
 .ff-chart-timeframe-group button {
-    padding: 0 8px;
+    min-width: 0;
+    padding: 0 4px;
+    font-size: 0.72rem;
+    letter-spacing: -0.01em;
 }
 
 .ff-selected-metrics {
@@ -792,6 +853,103 @@
     border: 1px dashed var(--ff-border);
     border-radius: 8px;
     background: var(--ff-bg);
+}
+
+.ff-custom-date-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    display: grid;
+    place-items: center;
+    padding: 18px;
+    background: rgba(15, 23, 42, 0.46);
+}
+
+.ff-custom-date-dialog {
+    width: min(100%, 420px);
+}
+
+.ff-custom-date-form {
+    overflow: hidden;
+    border: 1px solid var(--ff-border);
+    border-radius: 8px;
+    background: var(--ff-surface);
+    box-shadow: 0 22px 52px rgba(15, 23, 42, 0.28);
+}
+
+.ff-custom-date-header,
+.ff-custom-date-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+}
+
+.ff-custom-date-header {
+    border-bottom: 1px solid var(--ff-border);
+}
+
+.ff-custom-date-header h2 {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.2;
+    font-weight: 780;
+}
+
+.ff-custom-date-close {
+    width: 36px;
+    height: 36px;
+}
+
+.ff-custom-date-body {
+    padding: 16px;
+}
+
+.ff-custom-date-body input {
+    width: 100%;
+    height: 42px;
+    border: 1px solid var(--ff-border);
+    border-radius: 8px;
+    padding: 0 12px;
+    color: var(--ff-text);
+    background: var(--ff-surface);
+}
+
+.ff-custom-date-body input:focus {
+    border-color: var(--ff-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.13);
+    outline: none;
+}
+
+.ff-custom-date-error {
+    margin-top: 8px;
+    color: var(--ff-danger);
+    font-size: 0.78rem;
+    font-weight: 720;
+}
+
+.ff-custom-date-actions {
+    justify-content: flex-end;
+    border-top: 1px solid var(--ff-border);
+    background: var(--ff-bg);
+}
+
+.ff-custom-date-actions .ff-page-button {
+    min-width: 88px;
+    background: var(--ff-surface);
+}
+
+.ff-custom-date-apply {
+    border-color: var(--ff-primary);
+    background: var(--ff-primary) !important;
+    color: #FFFFFF;
+}
+
+.ff-custom-date-apply:hover,
+.ff-custom-date-apply:focus-visible {
+    color: #FFFFFF !important;
+    background: var(--ff-primary-dark) !important;
 }
 
 @media (max-width: 1320px) {
@@ -883,5 +1041,9 @@
 
     .ff-chart-wrap {
         height: 270px;
+    }
+
+    .ff-chart-timeframe-group {
+        grid-template-columns: repeat(auto-fit, minmax(54px, 1fr));
     }
 }
