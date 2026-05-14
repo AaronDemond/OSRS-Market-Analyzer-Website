@@ -1714,15 +1714,18 @@ class AllTimeData(models.Model):
     """
     Long-range item price snapshots for Flip Finder all-time comparisons.
 
-    What: Stores a normalized item price at a Unix timestamp.
+    What: Stores a normalized item price and traded volume at a Unix timestamp.
     Why: Existing 24h data is suitable for ranges up to one year, while all-time
          comparisons need a separate table that can grow independently.
     How: One row represents one item at one timestamp; uniqueness prevents a
-         backfill/import job from duplicating the same snapshot.
+        backfill/import job from duplicating the same snapshot. A standalone
+        backfill script normalizes legacy item-count volume into GP volume.
     """
     item_id = models.IntegerField(db_index=True)
     item_name = models.CharField(max_length=255)
     item_price = models.BigIntegerField()
+    # Flip Finder treats this as GP volume. Legacy rows may need the standalone
+    # backfill script to convert raw item-count volume into item_price * volume.
     volume = models.BigIntegerField(null=True, blank=True)
     timestamp = models.BigIntegerField()
 

@@ -429,7 +429,8 @@ def _get_all_time_summaries(params):
     """
     Summarize all-time data into one comparison row per item.
 
-    What: Compute current price and full-table low/high from AllTimeData.
+    What: Compute current price, full-table low/high, and latest stored volume
+        from AllTimeData.
     Why: The all-time range uses a dedicated storage model with numeric prices
         and timestamps instead of the 24h midpoint series.
     How: Aggregate extrema once per item, then fetch latest rows in a second
@@ -460,7 +461,7 @@ def _get_all_time_summaries(params):
             'current_timestamp': None,
             'period_low': row['period_low'],
             'period_high': row['period_high'],
-            'volume': None,
+            'volume': 0,
         }
         for row in extrema_rows
         if row['period_low'] is not None and row['period_high'] is not None
@@ -473,6 +474,7 @@ def _get_all_time_summaries(params):
         summary['item_name'] = row['item_name']
         summary['current_price'] = row['item_price']
         summary['current_timestamp'] = row['timestamp']
+        summary['volume'] = _valid_volume(row.get('volume'))
 
     return [
         summary
@@ -508,7 +510,7 @@ def _get_latest_all_time_rows(item_ids, start_timestamp=None):
             )
         ).filter(row_number=1)
 
-    return latest_rows.values('item_id', 'item_name', 'item_price', 'timestamp')
+    return latest_rows.values('item_id', 'item_name', 'item_price', 'volume', 'timestamp')
 
 
 def _build_results_payload(summaries, params, metadata_by_id, source, price_basis, range_start, range_end):
@@ -585,7 +587,7 @@ def _build_result(summary, params, metadata_by_id):
         return None
 
     volume = _valid_volume(summary.get('volume'))
-    if volume is not None and volume < params['min_volume']:
+    if volume < params['min_volume']:
         return None
 
     distance_from_low = ((current_price - period_low) / period_low) * 100
@@ -642,10 +644,7 @@ def _sort_results(results, params):
     results.sort(key=lambda result: result['name'].lower())
 
     if params['sort'] == 'volume':
-        # Keep items without volume at the end for either direction so `All`
-        # and `custom` remain predictable when their rows show `--`.
-        results.sort(key=lambda result: result['volume'] if result['volume'] is not None else -1, reverse=reverse)
-        results.sort(key=lambda result: result['volume'] is None)
+        results.sort(key=lambda result: result['volume'], reverse=reverse)
         return
 
     results.sort(key=lambda result: _sort_value(result, params['sort'], params['signal']), reverse=reverse)
@@ -690,7 +689,7 @@ def _build_meta(params, source, price_basis, range_start, range_end):
         'sortDirection': params.get('sortDirection'),
         'minPrice': params.get('min_price'),
         'minVolume': params.get('min_volume'),
-        'volumeFilterApplied': params.get('min_volume', 0) > 0 and source != 'all_time_data',
+        'volumeFilterApplied': params.get('min_volume', 0) > 0,
         'source': source,
         'priceBasis': price_basis,
         'rangeStart': range_start,
@@ -772,13 +771,13 @@ def _serialize_price(value):
 
 
 def _valid_volume(value):
-    """Return a non-negative volume integer, or None when the source lacks volume."""
+    """Return a non-negative volume integer, treating missing values as zero."""
     if value is None:
-        return None
+        return 0
     try:
         volume = int(value)
     except (TypeError, ValueError):
-        return None
+        return 0
     return max(0, volume)
 
 

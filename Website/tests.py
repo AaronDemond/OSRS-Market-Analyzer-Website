@@ -196,8 +196,8 @@ class FlipFinderApiTests(TestCase):
         self.assertEqual(payload['results'][0]['name'], 'Named item')
 
     def test_all_time_results_use_all_time_source(self):
-        self.create_all_time_snapshot(200, 'All-time shard', 50, 10)
-        self.create_all_time_snapshot(200, 'All-time shard', 90, 20)
+        self.create_all_time_snapshot(200, 'All-time shard', 50, 10, volume=2500)
+        self.create_all_time_snapshot(200, 'All-time shard', 90, 20, volume=9000)
 
         response = self.client.get(reverse('flip_finder_results_api'), {
             'timeframe': 'all',
@@ -213,6 +213,7 @@ class FlipFinderApiTests(TestCase):
         self.assertEqual(payload['results'][0]['currentPrice'], 90)
         self.assertEqual(payload['results'][0]['periodLow'], 50)
         self.assertEqual(payload['results'][0]['periodHigh'], 90)
+        self.assertEqual(payload['results'][0]['volume'], 9000)
 
     def test_all_time_results_classify_against_full_history(self):
         self.create_all_time_snapshot(201, 'All low candidate', 200, 5)
@@ -271,10 +272,10 @@ class FlipFinderApiTests(TestCase):
 
     def test_custom_timeframe_results_use_selected_start_date(self):
         selected_start = 1_704_067_200
-        self.create_all_time_snapshot(205, 'Custom shard', 500, selected_start - 86_400)
-        self.create_all_time_snapshot(205, 'Custom shard', 100, selected_start)
-        self.create_all_time_snapshot(205, 'Custom shard', 200, selected_start + 86_400)
-        self.create_all_time_snapshot(205, 'Custom shard', 104, selected_start + 172_800)
+        self.create_all_time_snapshot(205, 'Custom shard', 500, selected_start - 86_400, volume=1000)
+        self.create_all_time_snapshot(205, 'Custom shard', 100, selected_start, volume=1500)
+        self.create_all_time_snapshot(205, 'Custom shard', 200, selected_start + 86_400, volume=2500)
+        self.create_all_time_snapshot(205, 'Custom shard', 104, selected_start + 172_800, volume=3000)
 
         response = self.client.get(reverse('flip_finder_results_api'), {
             'timeframe': 'custom',
@@ -292,6 +293,7 @@ class FlipFinderApiTests(TestCase):
         self.assertEqual(payload['results'][0]['currentPrice'], 104)
         self.assertEqual(payload['results'][0]['periodLow'], 100)
         self.assertEqual(payload['results'][0]['periodHigh'], 200)
+        self.assertEqual(payload['results'][0]['volume'], 3000)
 
     def test_custom_timeframe_requires_valid_date(self):
         response = self.client.get(reverse('flip_finder_results_api'), {
@@ -363,24 +365,53 @@ class FlipFinderApiTests(TestCase):
         self.assertEqual(payload['results'][0]['name'], 'High all current')
         self.assertEqual(payload['results'][0]['currentPrice'], 120)
 
-    def test_all_time_ignores_min_volume_filter(self):
-        self.create_all_time_snapshot(240, 'Volume-free all', 50, 10)
-        self.create_all_time_snapshot(240, 'Volume-free all', 90, 20)
+    def test_all_time_min_volume_filters_by_latest_snapshot_gp_volume(self):
+        self.create_all_time_snapshot(240, 'Thin all volume', 50, 10, volume=4500)
+        self.create_all_time_snapshot(240, 'Thin all volume', 90, 20, volume=9000)
+        self.create_all_time_snapshot(241, 'Deep all volume', 50, 10, volume=5000)
+        self.create_all_time_snapshot(241, 'Deep all volume', 90, 20, volume=13500)
 
         response = self.client.get(reverse('flip_finder_results_api'), {
             'timeframe': 'all',
             'percent': '1',
             'signal': 'high',
-            'minVolume': '9999999999',
+            'minVolume': '10000',
         })
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
-        self.assertEqual(payload['meta']['minVolume'], 9_999_999_999)
-        self.assertFalse(payload['meta']['volumeFilterApplied'])
+        self.assertEqual(payload['meta']['minVolume'], 10000)
+        self.assertTrue(payload['meta']['volumeFilterApplied'])
         self.assertEqual(payload['totalMatches'], 1)
-        self.assertEqual(payload['results'][0]['name'], 'Volume-free all')
-        self.assertIsNone(payload['results'][0]['volume'])
+        self.assertEqual(payload['results'][0]['name'], 'Deep all volume')
+        self.assertEqual(payload['results'][0]['volume'], 13500)
+
+    def test_all_time_null_volume_is_treated_as_zero(self):
+        self.create_all_time_snapshot(242, 'Zeroed all volume', 50, 10, volume=None)
+        self.create_all_time_snapshot(242, 'Zeroed all volume', 90, 20, volume=None)
+
+        response = self.client.get(reverse('flip_finder_results_api'), {
+            'timeframe': 'all',
+            'percent': '1',
+            'signal': 'high',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['results'][0]['name'], 'Zeroed all volume')
+        self.assertEqual(payload['results'][0]['volume'], 0)
+
+        filtered_response = self.client.get(reverse('flip_finder_results_api'), {
+            'timeframe': 'all',
+            'percent': '1',
+            'signal': 'high',
+            'minVolume': '1',
+        })
+
+        self.assertEqual(filtered_response.status_code, 200)
+        filtered_payload = filtered_response.json()
+        self.assertTrue(filtered_payload['meta']['volumeFilterApplied'])
+        self.assertEqual(filtered_payload['totalMatches'], 0)
 
     def test_invalid_filter_values_default_without_error(self):
         self.create_twentyfour_snapshot(250, 'Safe defaults', 150, self.earlier_timestamp)
