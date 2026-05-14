@@ -20,6 +20,7 @@
     };
 
     const supportedTimeframes = new Set(['24h', '7d', '30d', '90d', '1y', 'all', 'custom']);
+    const mobileLayoutBreakpoint = 1100;
 
     const defaultState = {
         timeframe: '24h',
@@ -61,6 +62,8 @@
         tableScrollbar: document.getElementById('ffTableScrollbar'),
         tableScrollbarTrack: document.getElementById('ffTableScrollbarTrack'),
         emptyState: document.getElementById('ffEmptyState'),
+        chartModal: document.getElementById('ffChartModal'),
+        chartModalCloseButton: document.getElementById('ffChartModalCloseButton'),
         chartPanel: document.getElementById('ffChartPanel'),
         selectedMeta: document.getElementById('ffSelectedMeta'),
         selectedIconSlot: document.getElementById('ffSelectedIconSlot'),
@@ -95,6 +98,7 @@
     let refreshTimer = null;
     let customDateTarget = 'results';
     let customDateReturnFocus = null;
+    let chartModalReturnItemId = null;
     let resultsPanelHeightFrame = 0;
 
     const defaultSortDirections = {
@@ -307,6 +311,60 @@
         isSyncingHorizontalScroll = false;
     }
 
+    function isMobileLayout() {
+        return window.innerWidth <= mobileLayoutBreakpoint;
+    }
+
+    function openMobileChartModal(itemId = null) {
+        /**
+         * Reuse the existing chart card as a mobile-only modal.
+         *
+         * This keeps the chart rendering logic in one place while preventing the
+         * chart card from stacking below the table on smaller screens.
+         */
+        if (!elements.chartModal || !isMobileLayout() || !selectedResult) {
+            return;
+        }
+
+        chartModalReturnItemId = itemId || selectedResult.id;
+        elements.chartModal.classList.add('is-open');
+        elements.chartModal.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeMobileChartModal(restoreFocus = true) {
+        if (!elements.chartModal) {
+            return;
+        }
+
+        elements.chartModal.classList.remove('is-open');
+        elements.chartModal.setAttribute('aria-hidden', isMobileLayout() ? 'true' : 'false');
+
+        if (restoreFocus && chartModalReturnItemId && elements.resultsBody) {
+            const triggerButton = elements.resultsBody.querySelector(`[data-item-id="${chartModalReturnItemId}"]`);
+            if (triggerButton && typeof triggerButton.focus === 'function') {
+                triggerButton.focus();
+            }
+        }
+
+        chartModalReturnItemId = null;
+    }
+
+    function syncMobileChartModalState() {
+        if (!elements.chartModal) {
+            return;
+        }
+
+        if (!isMobileLayout()) {
+            elements.chartModal.classList.remove('is-open');
+            elements.chartModal.setAttribute('aria-hidden', 'false');
+            chartModalReturnItemId = null;
+            return;
+        }
+
+        const isOpen = elements.chartModal.classList.contains('is-open');
+        elements.chartModal.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+    }
+
     function syncResultsPanelHeight() {
         /**
          * Keep the results card capped to the chart card's natural desktop height.
@@ -343,6 +401,7 @@
     function handleViewportResize() {
         syncHorizontalScrollbarVisibility();
         queueResultsPanelHeightSync();
+        syncMobileChartModalState();
     }
 
     function bindHorizontalScrollbar() {
@@ -435,6 +494,7 @@
     function renderResult(result) {
         const selectedClass = selectedResult && selectedResult.id === result.id ? ' selected' : '';
         const signalClass = getSignalClass(result.signal);
+        const itemIconMarkup = renderItemIcon(result);
         const itemDetails = [
             hasValue(result.buyLimit) ? `Limit ${formatInteger(result.buyLimit)}` : null,
             getMemberText(result),
@@ -443,12 +503,13 @@
         return `
             <button type="button" class="ff-result-row${selectedClass}" data-item-id="${result.id}" role="row" aria-label="${escapeHtml(result.name)}">
                 <span class="ff-item-cell" role="cell">
-                    ${renderItemIcon(result)}
+                    ${itemIconMarkup}
                     <span>
                         <span class="ff-item-name">${escapeHtml(result.name)}</span>
                         <span class="ff-item-subtext">${escapeHtml(itemDetails)}</span>
                     </span>
                 </span>
+                <span class="ff-mobile-sticky-icon" aria-hidden="true">${itemIconMarkup}</span>
                 <span class="ff-signal-cell" role="cell">
                     <span class="ff-cell-label">Signal</span>
                     <span class="ff-signal-badge ${signalClass}">${getSignalLabel(result.signal)}</span>
@@ -554,6 +615,7 @@
                 selectedResult = filteredResults.find((result) => result.id === state.selectedItemId) || null;
                 selectedHistory = null;
                 renderResults(filteredResults);
+                openMobileChartModal(state.selectedItemId);
                 refreshSelectedHistory();
             });
         });
@@ -569,6 +631,7 @@
             selectedResult = null;
             selectedHistory = null;
             state.selectedItemId = null;
+            closeMobileChartModal(false);
             return;
         }
 
@@ -577,6 +640,7 @@
         if (!selectedResult) {
             selectedHistory = null;
             state.selectedItemId = null;
+            closeMobileChartModal(false);
             return;
         }
 
@@ -777,6 +841,7 @@
             selectedHistory = null;
             hasPreviousPage = false;
             hasNextPage = false;
+            closeMobileChartModal(false);
             elements.updatedAt.textContent = 'Flip Finder unavailable';
             renderResultsMeta(null);
             renderResults(filteredResults);
@@ -967,9 +1032,11 @@
     });
     elements.resetButton.addEventListener('click', () => {
         Object.assign(state, defaultState);
+        selectedResult = null;
         selectedHistory = null;
         hasPreviousPage = false;
         hasNextPage = false;
+        closeMobileChartModal(false);
         queueFirstPageRefresh();
     });
     elements.previousPageButton.addEventListener('click', () => {
@@ -1005,6 +1072,9 @@
     if (elements.customDateCloseButton) {
         elements.customDateCloseButton.addEventListener('click', closeCustomDateModal);
     }
+    if (elements.chartModalCloseButton) {
+        elements.chartModalCloseButton.addEventListener('click', () => closeMobileChartModal());
+    }
     if (elements.customDateModal) {
         elements.customDateModal.addEventListener('click', (event) => {
             if (event.target === elements.customDateModal) {
@@ -1012,13 +1082,25 @@
             }
         });
     }
+    if (elements.chartModal) {
+        elements.chartModal.addEventListener('click', (event) => {
+            if (event.target === elements.chartModal) {
+                closeMobileChartModal();
+            }
+        });
+    }
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && elements.customDateModal && !elements.customDateModal.hidden) {
             closeCustomDateModal();
+            return;
+        }
+        if (event.key === 'Escape' && elements.chartModal && elements.chartModal.classList.contains('is-open')) {
+            closeMobileChartModal();
         }
     });
 
     elements.updatedAt.textContent = 'Loading local market data...';
+    syncMobileChartModalState();
     bindHorizontalScrollbar();
     bindResultsPanelHeightSync();
     refreshResults();

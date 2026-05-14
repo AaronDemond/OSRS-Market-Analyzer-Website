@@ -313,6 +313,15 @@
     gap: 14px;
 }
 
+.ff-chart-modal-shell {
+    display: grid;
+    gap: 12px;
+}
+
+.ff-chart-modal-close {
+    display: none;
+}
+
 .ff-panel-header {
     display: flex;
     align-items: center;
@@ -763,6 +772,10 @@
     min-width: 0;
 }
 
+.ff-mobile-sticky-icon {
+    display: none;
+}
+
 .ff-item-icon {
     width: 38px;
     height: 38px;
@@ -1040,9 +1053,14 @@
     }
 }
 
-@media (max-width: 820px) {
+@media (max-width: 1100px) {
     .flip-finder-page {
         padding: 16px 0;
+    }
+
+    .ff-results-table {
+        --ff-results-grid: 56px 128px 132px 132px 150px 120px;
+        min-width: 778px;
     }
 
     .ff-header {
@@ -1063,7 +1081,36 @@
     }
 
     .ff-controls {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+            "timeframe timeframe"
+            "signal percent";
+    }
+
+    .ff-timeframe-control {
+        grid-area: timeframe;
+    }
+
+    .ff-signal-control {
+        grid-area: signal;
+    }
+
+    .ff-threshold-control {
+        grid-area: percent;
+        align-self: end;
+    }
+
+    .ff-threshold-control .ff-control-label {
+        display: none;
+    }
+
+    .ff-threshold-control .ff-percent-row {
+        grid-template-columns: 84px;
+        justify-content: end;
+    }
+
+    .ff-threshold-control .ff-percent-row input[type="range"] {
+        display: none;
     }
 
     .ff-filters {
@@ -1080,8 +1127,115 @@
         margin-left: 0;
     }
 
-    .ff-insight-column {
-        grid-template-columns: 1fr;
+    .ff-results-header {
+        display: none;
+    }
+
+    .ff-chart-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 1100;
+        display: grid;
+        align-items: center;
+        padding: 16px;
+        background: rgba(15, 23, 42, 0.52);
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition: opacity 0.18s ease, visibility 0.18s ease;
+    }
+
+    .ff-chart-modal.is-open {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+    }
+
+    .ff-chart-modal-shell {
+        width: min(100%, 460px);
+        max-height: calc(100dvh - 32px);
+        margin: 0 auto;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+        transform: translateY(18px);
+        transition: transform 0.18s ease;
+    }
+
+    .ff-chart-modal.is-open .ff-chart-modal-shell {
+        transform: translateY(0);
+    }
+
+    .ff-chart-modal-close {
+        display: inline-flex;
+        justify-self: end;
+    }
+
+    .ff-chart-modal .ff-chart-panel {
+        border: 1px solid var(--ff-border);
+        border-radius: 18px;
+        overflow: hidden;
+    }
+
+    .ff-chart-modal .ff-selected-header {
+        align-items: flex-start;
+    }
+
+    .ff-item-cell {
+        position: static;
+        left: auto;
+        grid-column: 1;
+        grid-row: 1;
+        justify-content: center;
+        min-width: 56px;
+        padding-left: 0;
+        padding-right: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    .ff-item-cell > span:last-child {
+        display: none;
+    }
+
+    .ff-results-head > :first-child {
+        position: static;
+        left: auto;
+        z-index: auto;
+        justify-content: center;
+        padding-left: 0;
+        padding-right: 0;
+        background: transparent;
+    }
+
+    .ff-item-cell > .ff-item-icon {
+        visibility: hidden;
+    }
+
+    .ff-mobile-sticky-icon {
+        position: sticky;
+        left: 10px;
+        z-index: 16;
+        display: flex;
+        grid-column: 1;
+        grid-row: 1;
+        align-self: center;
+        justify-self: start;
+        pointer-events: none;
+    }
+
+    .ff-mobile-sticky-icon .ff-item-icon {
+        position: sticky;
+        left: 0;
+        background: rgba(255, 255, 255, 0.96);
+        box-shadow: 0 0 0 1px rgba(217, 228, 240, 0.94), 0 8px 18px rgba(15, 23, 42, 0.10);
+    }
+
+    .ff-result-row:hover .ff-item-cell,
+    .ff-result-row:focus-visible .ff-item-cell,
+    .ff-result-row.selected .ff-item-cell {
+        background: transparent;
+        box-shadow: none;
     }
 
     .ff-panel-header {
@@ -1100,15 +1254,26 @@
         flex-basis: 42px;
     }
 
-    .ff-percent-row,
     .ff-filter-controls,
     .ff-results-actions,
     .ff-selected-metrics {
         grid-template-columns: 1fr;
     }
 
+    .ff-threshold-control .ff-percent-row {
+        grid-template-columns: 84px;
+    }
+
     .ff-segmented {
         overflow-x: auto;
+    }
+
+    .ff-mobile-sticky-icon {
+        left: 8px;
+    }
+
+    .ff-item-cell > span:last-child {
+        min-width: max-content;
     }
 
     .ff-chart-wrap {
