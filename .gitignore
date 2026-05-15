@@ -26,3 +26,4 @@ test_output/*
 *.log
 db_BACKUP_BEFORE_RESTORE.sqlite3
 sqlite_data.json
+Website/management/commands/___pycache__/*
